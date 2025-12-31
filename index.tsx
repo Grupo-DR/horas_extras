@@ -280,10 +280,16 @@ const App: React.FC = () => {
             <TrendingUp size={20} /> Dashboard
           </button>
           <button
-            onClick={() => setView('TASKS')}
-            className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-colors ${view === 'TASKS' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800 text-slate-300'}`}
+            onClick={() => setView('STRATEGIC')}
+            className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-colors ${view === 'STRATEGIC' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800 text-slate-300'}`}
           >
-            <Columns size={20} /> Kanban / Tarefas
+            <Activity size={20} /> Estratégico (Mães)
+          </button>
+          <button
+            onClick={() => setView('OPERATIONAL')}
+            className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-colors ${view === 'OPERATIONAL' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800 text-slate-300'}`}
+          >
+            <List size={20} /> Operacional (Filhas)
           </button>
           <button
             onClick={() => setView('SETTINGS')}
