@@ -54,11 +54,18 @@ const App: React.FC = () => {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const loadedTasks: Task[] = snapshot.docs.map(doc => {
         const data = doc.data();
+
+        const convertDate = (val: any) => {
+          if (!val) return new Date();
+          if (val.toDate) return val.toDate();
+          return new Date(val);
+        };
+
         return {
           id: doc.id,
           ...data,
-          startDate: data.startDate?.toDate ? data.startDate.toDate() : new Date(data.startDate || Date.now()),
-          endDate: data.endDate?.toDate ? data.endDate.toDate() : new Date(data.endDate || Date.now()),
+          startDate: convertDate(data.startDate),
+          endDate: convertDate(data.endDate),
         } as Task;
       });
       setTasks(loadedTasks);
@@ -253,7 +260,8 @@ const App: React.FC = () => {
 
     // Collaborator Performance
     const collaborators = MOCK_USERS.map(user => {
-      const userTasks = timeFilteredTasks.filter(t => t.assigneeId === user.id); // Metric based on ALL tasks
+      // Logic: Iterate through ALL tasks to count assigneeId matches
+      const userTasks = timeFilteredTasks.filter(t => t.assigneeId === user.id);
       const metrics = calculateMetrics(userTasks);
       return { user, ...metrics };
     });

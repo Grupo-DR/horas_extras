@@ -33,7 +33,15 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
     }
   }, [childTasks, isMother]);
 
-  const formatCurrency = (val?: number) => val ? `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-';
+  const formatBRL = (val?: number) => val ? val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-';
+
+  const displayResponsible = useMemo(() => {
+    if (task.category === 'Ação Mãe' && task.responsibleName) {
+      return task.responsibleName;
+    }
+    // Fallback found user or 'N/A'
+    return assignee ? assignee.name : 'N/A';
+  }, [task, assignee]);
 
   const statusColor = useMemo(() => {
     switch (task.status) {
@@ -117,28 +125,28 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
 
       {/* CORE INFO */}
       <div className="mb-3">
-        {/* MOTHER ACTION LAYOUT ENHANCEMENTS */}
+        {/* STRATEGIC HIGHLIGHT (MOTHERS) */}
         {isMother && (
-          <div className="mb-2 p-1.5 bg-slate-50 border border-slate-100 rounded">
+          <div className="mb-2 p-2 bg-blue-50/50 border border-blue-100 rounded-lg">
             {task.clientName && (
-              <p className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
-                <Building size={10} /> {task.clientName}
+              <p className="text-sm font-bold text-slate-800 uppercase tracking-wide flex items-center gap-1.5 mb-1">
+                <Building size={12} className="text-slate-500" /> {task.clientName}
               </p>
             )}
             {task.proposalName && (
-              <p className="text-xs text-blue-600 font-medium">{task.proposalName}</p>
+              <p className="text-xs font-bold text-blue-700 ml-0.5">{task.proposalName}</p>
             )}
           </div>
         )}
 
-        {/* STANDARD LAYOUT FOR CHILDREN (OR FALLBACK) */}
+        {/* FOR CHILDREN */}
         {!isMother && task.clientName && (
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-0.5 flex items-center gap-1">
             <Building size={10} /> {task.clientName}
           </p>
         )}
 
-        <h3 className="font-bold text-slate-800 text-sm leading-tight mb-1" title={task.title}>
+        <h3 className="font-bold text-slate-800 text-sm leading-tight mb-1 mt-2" title={task.title}>
           {task.title}
         </h3>
 
@@ -146,7 +154,7 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
           <p className="text-xs text-blue-600 mb-1">{task.proposalName}</p>
         )}
 
-        {!simple && <p className="text-slate-500 text-xs line-clamp-2">{task.description}</p>}
+        {!simple && <p className="text-slate-500 text-xs line-clamp-2 mt-1">{task.description}</p>}
       </div>
 
       {/* CHILD SUMMARY VISUALIZATION (For Mothers) */}
@@ -175,7 +183,7 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
         <div className="bg-slate-50 rounded-lg p-2 mb-3 border border-slate-100 grid grid-cols-2 gap-2">
           <div className="flex flex-col">
             <span className="text-[10px] text-slate-400 font-medium">Prévia</span>
-            <span className="text-xs font-bold text-slate-700">{formatCurrency(previaTask?.value)}</span>
+            <span className="text-xs font-bold text-slate-700">{formatBRL(previaTask?.value)}</span>
             {previaTask?.interestScore !== undefined && (
               <span className="text-[9px] text-slate-500 flex items-center gap-0.5">
                 <Target size={8} /> Nota: {previaTask.interestScore}
@@ -184,7 +192,7 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
           </div>
           <div className="flex flex-col border-l pl-2 border-slate-200">
             <span className="text-[10px] text-slate-400 font-medium">Proposta</span>
-            <span className="text-xs font-bold text-blue-700">{formatCurrency(propostaTask?.value)}</span>
+            <span className="text-xs font-bold text-blue-700">{formatBRL(propostaTask?.value)}</span>
           </div>
         </div>
       )}
@@ -193,7 +201,7 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
       {!isMother && (task.value !== undefined || task.category) && (
         <div className="bg-slate-50 rounded p-2 mb-3 flex justify-between items-center text-xs">
           <span className="font-semibold text-slate-600">{task.category}</span>
-          {task.value && <span className="font-bold text-green-600">{formatCurrency(task.value)}</span>}
+          {task.value && <span className="font-bold text-green-600">{formatBRL(task.value)}</span>}
         </div>
       )}
 
@@ -201,10 +209,8 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
         <div className="flex items-center gap-2 text-xs">
           <div className="flex items-center gap-1.5 text-slate-600" title="Responsável">
             <UserIcon size={12} className="text-slate-400" />
-            <span className="max-w-[80px] truncate">
-              {isMother && task.responsibleName
-                ? task.responsibleName.split(' ')[0]
-                : (assignee?.name.split(' ')[0] || 'N/A')}
+            <span className="max-w-[80px] truncate font-medium">
+              {displayResponsible.split(' ')[0]}
             </span>
           </div>
         </div>
