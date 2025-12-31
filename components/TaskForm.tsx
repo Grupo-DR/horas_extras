@@ -101,16 +101,16 @@ export const TaskForm: React.FC<Props> = ({
     // Clean up based on type
     const cleanedData = { ...formData };
     if (isChild) {
-      cleanedData.proposalName = undefined;
-      cleanedData.clientName = undefined;
-      cleanedData.responsibleName = undefined;
-      cleanedData.contactEmail = undefined;
-      cleanedData.contactPhone = undefined;
-      cleanedData.outcome = undefined; // Children don't have main outcome
+      delete cleanedData.proposalName;
+      delete cleanedData.clientName;
+      delete cleanedData.responsibleName;
+      delete cleanedData.contactEmail;
+      delete cleanedData.contactPhone;
+      delete cleanedData.outcome; // Children don't have main outcome
     } else {
-      cleanedData.parentId = undefined;
-      cleanedData.value = undefined;
-      cleanedData.interestScore = undefined;
+      delete cleanedData.parentId;
+      delete cleanedData.value;
+      delete cleanedData.interestScore;
       cleanedData.category = 'Ação Mãe';
     }
 

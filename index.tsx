@@ -28,6 +28,22 @@ const INITIAL_CHAIN: HelpChainLevel[] = [
   { level: 2, roleName: 'Diretor de Operações', contactEmail: 'diretor@construtora.com', triggerDaysBefore: 0, triggerWhenLate: true },
 ];
 
+// Função utilitária para remover chaves undefined recursivamente
+const stripUndefined = (obj: any): any => {
+  if (Array.isArray(obj)) {
+    return obj.map(v => stripUndefined(v));
+  } else if (obj !== null && typeof obj === 'object') {
+    return Object.keys(obj).reduce((acc, key) => {
+      const value = obj[key];
+      if (value !== undefined) {
+        acc[key] = stripUndefined(value);
+      }
+      return acc;
+    }, {} as any);
+  }
+  return obj;
+};
+
 const App: React.FC = () => {
   // --- STATE ---
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -94,32 +110,39 @@ const App: React.FC = () => {
 
   const handleSaveTask = async (taskData: Partial<Task>) => {
     try {
+      // Remove qualquer campo undefined remanescente antes de enviar
+      const cleanData = stripUndefined(taskData);
+
       if (editingTask) {
         const taskRef = doc(db, 'tasks', editingTask.id);
-        await updateDoc(taskRef, { ...taskData });
-        addLog(editingTask.id, 'Tarefa Atualizada', `Status: ${taskData.status}`);
+        await updateDoc(taskRef, { ...cleanData });
+        addLog(editingTask.id, 'Tarefa Atualizada', `Status: ${cleanData.status}`);
       } else {
         const newTaskData = {
-          ...taskData,
+          ...cleanData,
           status: TaskStatus.PENDING,
           progress: 0,
-          outcome: null // initialize as null
+          outcome: null // null é aceito pelo Firestore, undefined não
         };
-        const docRef = await addDoc(collection(db, 'tasks'), newTaskData);
+
+        // Garante limpeza final no objeto completo
+        const finalDocData = stripUndefined(newTaskData);
+
+        const docRef = await addDoc(collection(db, 'tasks'), finalDocData);
 
         addLog(docRef.id, 'Tarefa Criada');
         addNotification({
           taskId: docRef.id,
-          taskTitle: newTaskData.title as string,
+          taskTitle: finalDocData.title as string,
           type: 'START',
-          recipient: MOCK_USERS.find(u => u.id === newTaskData.assigneeId)?.email || 'admin',
-          subject: `Nova Tarefa Atribuída: ${newTaskData.title}`
+          recipient: MOCK_USERS.find(u => u.id === finalDocData.assigneeId)?.email || 'admin',
+          subject: `Nova Tarefa Atribuída: ${finalDocData.title}`
         });
       }
       setEditingTask(undefined);
     } catch (error) {
       console.error("Error saving task:", error);
-      alert("Erro ao salvar tarefa. Verifique o console.");
+      alert("Erro ao salvar tarefa. Verifique o console para mais detalhes.");
     }
   };
 
