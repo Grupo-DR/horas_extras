@@ -117,17 +117,35 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
 
       {/* CORE INFO */}
       <div className="mb-3">
-        {task.clientName && (
+        {/* MOTHER ACTION LAYOUT ENHANCEMENTS */}
+        {isMother && (
+          <div className="mb-2 p-1.5 bg-slate-50 border border-slate-100 rounded">
+            {task.clientName && (
+              <p className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                <Building size={10} /> {task.clientName}
+              </p>
+            )}
+            {task.proposalName && (
+              <p className="text-xs text-blue-600 font-medium">{task.proposalName}</p>
+            )}
+          </div>
+        )}
+
+        {/* STANDARD LAYOUT FOR CHILDREN (OR FALLBACK) */}
+        {!isMother && task.clientName && (
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-0.5 flex items-center gap-1">
             <Building size={10} /> {task.clientName}
           </p>
         )}
+
         <h3 className="font-bold text-slate-800 text-sm leading-tight mb-1" title={task.title}>
           {task.title}
         </h3>
-        {task.proposalName && (
+
+        {!isMother && task.proposalName && (
           <p className="text-xs text-blue-600 mb-1">{task.proposalName}</p>
         )}
+
         {!simple && <p className="text-slate-500 text-xs line-clamp-2">{task.description}</p>}
       </div>
 
@@ -183,7 +201,11 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
         <div className="flex items-center gap-2 text-xs">
           <div className="flex items-center gap-1.5 text-slate-600" title="Responsável">
             <UserIcon size={12} className="text-slate-400" />
-            <span className="max-w-[80px] truncate">{assignee?.name.split(' ')[0] || 'N/A'}</span>
+            <span className="max-w-[80px] truncate">
+              {isMother && task.responsibleName
+                ? task.responsibleName.split(' ')[0]
+                : (assignee?.name.split(' ')[0] || 'N/A')}
+            </span>
           </div>
         </div>
 

@@ -57,8 +57,8 @@ const App: React.FC = () => {
         return {
           id: doc.id,
           ...data,
-          startDate: data.startDate?.toDate ? data.startDate.toDate() : new Date(data.startDate),
-          endDate: data.endDate?.toDate ? data.endDate.toDate() : new Date(data.endDate),
+          startDate: data.startDate?.toDate ? data.startDate.toDate() : new Date(data.startDate || Date.now()),
+          endDate: data.endDate?.toDate ? data.endDate.toDate() : new Date(data.endDate || Date.now()),
         } as Task;
       });
       setTasks(loadedTasks);
@@ -253,7 +253,7 @@ const App: React.FC = () => {
 
     // Collaborator Performance
     const collaborators = MOCK_USERS.map(user => {
-      const userTasks = relevantChildren.filter(t => t.assigneeId === user.id); // Metric based on children (work done)
+      const userTasks = timeFilteredTasks.filter(t => t.assigneeId === user.id); // Metric based on ALL tasks
       const metrics = calculateMetrics(userTasks);
       return { user, ...metrics };
     });
