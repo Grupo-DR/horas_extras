@@ -65,7 +65,8 @@ const App: React.FC = () => {
             return val;
           }
           const parsed = new Date(val);
-          return isNaN(parsed.getTime()) ? new Date() : parsed;
+          // FIX: Fallback to Year 2000 to make errors visible
+          return isNaN(parsed.getTime()) ? new Date(2000, 0, 1) : parsed;
         };
 
         return {
@@ -256,25 +257,36 @@ const App: React.FC = () => {
   };
 
   const dashboardStats = useMemo(() => {
-    // Filter by time first
-    const relevantMothers = getFilteredTasks(motherTasks);
-    const relevantChildren = getFilteredTasks(childTasks);
+    // 1. Single Pass Filter by Time
+    const relevantTasks = getFilteredTasks(tasks);
 
+    // 2. Separate Mothers/Children from ALREADY filtered list
+    const relevantMothers = relevantTasks.filter(t => !t.parentId);
+    const relevantChildren = relevantTasks.filter(t => !!t.parentId);
+
+    // 3. Calculate Metrics (Reused function)
     const strategic = calculateMetrics(relevantMothers);
     const operational = calculateMetrics(relevantChildren);
 
-    // Financials (Based on Mothers Outcome)
-    const outcomes = {
-      success: relevantMothers.filter(t => t.outcome === TaskOutcome.SUCCESS).reduce((acc, t) => acc + (childTasks.filter(c => c.parentId === t.id && c.category === 'Proposta Comercial').reduce((s, c) => s + (c.value || 0), 0)), 0),
-      failure: relevantMothers.filter(t => t.outcome === TaskOutcome.FAILURE).reduce((acc, t) => acc + (childTasks.filter(c => c.parentId === t.id && c.category === 'Proposta Comercial').reduce((s, c) => s + (c.value || 0), 0)), 0),
-      study: relevantMothers.filter(t => t.outcome === TaskOutcome.STUDY).reduce((acc, t) => acc + (childTasks.filter(c => c.parentId === t.id && c.category === 'Proposta Comercial').reduce((s, c) => s + (c.value || 0), 0)), 0),
-      withdrawal: relevantMothers.filter(t => t.outcome === TaskOutcome.WITHDRAWAL).reduce((acc, t) => acc + (childTasks.filter(c => c.parentId === t.id && c.category === 'Proposta Comercial').reduce((s, c) => s + (c.value || 0), 0)), 0),
-    };
+    // 4. Financials - Optimized Single Reduce
+    const outcomes = relevantMothers.reduce((acc, mother) => {
+      // Sum value of CHILDREN that are 'Proposta Comercial' for this mother
+      const motherValue = tasks // checking against ALL tasks to find children
+        .filter(child => child.parentId === mother.id && child.category === 'Proposta Comercial')
+        .reduce((sum, child) => sum + (child.value || 0), 0);
 
-    // Collaborator Performance
+      if (mother.outcome === TaskOutcome.SUCCESS) acc.success += motherValue;
+      if (mother.outcome === TaskOutcome.FAILURE) acc.failure += motherValue;
+      if (mother.outcome === TaskOutcome.STUDY) acc.study += motherValue;
+      if (mother.outcome === TaskOutcome.WITHDRAWAL) acc.withdrawal += motherValue;
+
+      return acc;
+    }, { success: 0, failure: 0, study: 0, withdrawal: 0 });
+
+    // 5. Collaborators - Optimized Single Reduce Logic
     const collaborators = MOCK_USERS.map(user => {
-      // Logic: Iterate through ALL tasks to count assigneeId matches
-      const userTasks = timeFilteredTasks.filter(t => t.assigneeId === user.id);
+      // Logic: Iterate through RELEVANT tasks (time filtered) ONCE
+      const userTasks = relevantTasks.filter(t => t.assigneeId === user.id);
       const metrics = calculateMetrics(userTasks);
       return { user, ...metrics };
     });

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Task, TaskStatus, User, TaskOutcome } from '../types';
 import { Clock, AlertCircle, MoreHorizontal, User as UserIcon, Tag, Building, DollarSign, Target, Link, Award } from 'lucide-react';
-import { isPast, differenceInDays } from 'date-fns';
+import { isPast, differenceInDays, format, isValid } from 'date-fns';
 
 interface Props {
   task: Task;
@@ -36,7 +36,7 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
   const formatBRL = (val?: number) => val ? val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-';
 
   const displayResponsible = useMemo(() => {
-    // FIX: Always return the Internal Responsible (assignee)
+    // FIX: Always return the Internal Responsible (assignee) - REMOVED CONDITIONAL
     return assignee ? assignee.name : 'N/A';
   }, [assignee]);
 
@@ -234,6 +234,10 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
         </div>
 
         <div className="flex items-center gap-2 text-xs">
+          <span className="text-slate-400 text-[10px]">
+            {isValid(new Date(task.endDate)) ? format(new Date(task.endDate), 'dd/MM/yyyy') : '--/--/----'}
+          </span>
+
           {isOverdue ? (
             <span className="flex items-center gap-1 text-red-600 font-bold" title="Atrasado">
               <AlertCircle size={14} /> {Math.abs(daysLeft)}d

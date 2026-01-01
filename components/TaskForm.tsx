@@ -114,6 +114,10 @@ export const TaskForm: React.FC<Props> = ({
       cleanedData.category = 'Ação Mãe';
     }
 
+    // Force Date Conversion
+    if (cleanedData.startDate) cleanedData.startDate = new Date(cleanedData.startDate);
+    if (cleanedData.endDate) cleanedData.endDate = new Date(cleanedData.endDate);
+
     onSave(cleanedData);
     onClose();
   };
