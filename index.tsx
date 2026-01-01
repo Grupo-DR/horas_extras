@@ -13,7 +13,7 @@ import { ptBR } from 'date-fns/locale';
 
 // FIREBASE
 import { db } from './services/firebaseConfig';
-import { collection, onSnapshot, addDoc, updateDoc, doc, deleteDoc, query } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, doc, deleteDoc, query, Timestamp } from 'firebase/firestore';
 
 // --- MOCK DATA ---
 const MOCK_USERS: User[] = [
@@ -61,6 +61,9 @@ const App: React.FC = () => {
           if (!val) return new Date();
           if (typeof val.toDate === 'function') {
             return val.toDate(); // Firestore Timestamp
+          }
+          if (val && typeof val.seconds === 'number') {
+            return new Date(val.seconds * 1000); // Raw Firestore Timestamp object
           }
           if (val instanceof Date) {
             return val;
@@ -138,6 +141,10 @@ const App: React.FC = () => {
     try {
       // Remove qualquer campo undefined remanescente antes de enviar
       const cleanData = stripUndefined(taskData);
+
+      // FIX: Ensure Dates are converted to Firestore Timestamps for consistency
+      if (cleanData.startDate instanceof Date) cleanData.startDate = Timestamp.fromDate(cleanData.startDate);
+      if (cleanData.endDate instanceof Date) cleanData.endDate = Timestamp.fromDate(cleanData.endDate);
 
       if (editingTask) {
         const taskRef = doc(db, 'tasks', editingTask.id);
