@@ -36,12 +36,17 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
   const formatBRL = (val?: number) => val ? val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-';
 
   const displayResponsible = useMemo(() => {
-    if (task.category === 'Ação Mãe' && task.responsibleName) {
+    // FIX: Always return the Internal Responsible (assignee)
+    return assignee ? assignee.name : 'N/A';
+  }, [assignee]);
+
+  // FIX: Separate Logic for Client Contact
+  const clientContactName = useMemo(() => {
+    if (task.responsibleName && task.responsibleName.trim() !== '') {
       return task.responsibleName;
     }
-    // Fallback found user or 'N/A'
-    return assignee ? assignee.name : 'N/A';
-  }, [task, assignee]);
+    return null;
+  }, [task.responsibleName]);
 
   const statusColor = useMemo(() => {
     switch (task.status) {
@@ -128,13 +133,26 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
         {/* STRATEGIC HIGHLIGHT (MOTHERS) */}
         {isMother && (
           <div className="mb-2 p-2 bg-blue-50/50 border border-blue-100 rounded-lg">
+            {/* FIX: Highlight Client and Proposal for Mother Tasks */}
             {task.clientName && (
               <p className="text-sm font-bold text-slate-800 uppercase tracking-wide flex items-center gap-1.5 mb-1">
                 <Building size={12} className="text-slate-500" /> {task.clientName}
               </p>
             )}
             {task.proposalName && (
-              <p className="text-xs font-bold text-blue-700 ml-0.5">{task.proposalName}</p>
+              <div className="flex items-center gap-1 mt-1">
+                <Link size={10} className="text-blue-400" />
+                <p className="text-xs font-bold text-blue-700">{task.proposalName}</p>
+              </div>
+            )}
+            {/* External Contact Display within Mother Header */}
+            {clientContactName && (
+              <div className="mt-2 text-[10px] text-slate-500 border-t border-blue-100 pt-1">
+                <span className="font-semibold uppercase text-[9px] text-slate-400">Contato Cliente:</span>
+                <div className="font-medium text-slate-700 flex items-center gap-1">
+                  <UserIcon size={10} /> {clientContactName}
+                </div>
+              </div>
             )}
           </div>
         )}

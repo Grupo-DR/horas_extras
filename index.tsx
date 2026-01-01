@@ -55,10 +55,17 @@ const App: React.FC = () => {
       const loadedTasks: Task[] = snapshot.docs.map(doc => {
         const data = doc.data();
 
+        // FIX: Robust Date Conversion to prevent NaNd
         const convertDate = (val: any) => {
           if (!val) return new Date();
-          if (val.toDate) return val.toDate();
-          return new Date(val);
+          if (typeof val.toDate === 'function') {
+            return val.toDate(); // Firestore Timestamp
+          }
+          if (val instanceof Date) {
+            return val;
+          }
+          const parsed = new Date(val);
+          return isNaN(parsed.getTime()) ? new Date() : parsed;
         };
 
         return {
@@ -87,9 +94,15 @@ const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<'GRID' | 'KANBAN'>('KANBAN');
 
   // Filters
-  const [timeFilterType, setTimeFilterType] = useState<'MONTH' | 'YTD' | 'CUSTOM'>('MONTH');
+  // FIX: Initial filter includes Last Month (Dec 2025) for Dashboard visibility in Jan
+  const [timeFilterType, setTimeFilterType] = useState<'MONTH' | 'YTD' | 'CUSTOM'>('CUSTOM');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [customRange, setCustomRange] = useState<{ start: Date, end: Date }>({ start: startOfMonth(new Date()), end: endOfMonth(new Date()) });
+
+  // Custom range defaults to Last Month + Current Month
+  const [customRange, setCustomRange] = useState<{ start: Date, end: Date }>({
+    start: startOfMonth(new Date(new Date().setMonth(new Date().getMonth() - 1))), // Previous Month Start
+    end: endOfMonth(new Date())
+  });
   const [geminiLoading, setGeminiLoading] = useState(false);
 
 
@@ -580,6 +593,7 @@ const App: React.FC = () => {
                     <TaskCard
                       key={t.id}
                       task={t}
+                      assignee={MOCK_USERS.find(u => u.id === t.assigneeId)}
                       childTasks={hierarchyScan.children.filter(c => c.parentId === t.id)}
                       onEdit={(x) => { setEditingTask(x); setIsTaskModalOpen(true); }}
                       onStatusChange={handleStatusChange}
