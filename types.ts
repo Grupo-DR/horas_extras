@@ -36,6 +36,7 @@ export interface Notification {
   type: 'START' | 'END' | 'LATE_WARNING' | 'ESCALATION';
   recipient: string;
   subject: string;
+  content?: string; // Conteúdo gerado pela IA (e-mail draft)
   sentAt: Date;
 }
 

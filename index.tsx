@@ -7,7 +7,7 @@ import { KanbanBoard } from './components/KanbanBoard';
 import { EscalationSettings } from './components/EscalationSettings';
 import { HistoryPanel } from './components/HistoryPanel';
 import { Layout, LayoutDashboard, PlusCircle, Filter, Bell, Bot, Settings, LogOut, Columns, List, TrendingUp, AlertTriangle, CheckCircle, Calendar, DollarSign, Activity, Users, ChevronDown } from 'lucide-react';
-import { draftEscalationEmail } from './services/geminiService';
+import { draftEscalationEmail, draftWelcomeEmail } from './services/geminiService';
 import { isPast, format, startOfYear, isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -164,12 +164,24 @@ const App: React.FC = () => {
         const docRef = await addDoc(collection(db, 'tasks'), finalDocData);
 
         addLog(docRef.id, 'Tarefa Criada');
-        addNotification({
-          taskId: docRef.id,
-          taskTitle: finalDocData.title as string,
-          type: 'START',
-          recipient: MOCK_USERS.find(u => u.id === finalDocData.assigneeId)?.email || 'admin',
-          subject: `Nova Tarefa Atribuída: ${finalDocData.title}`
+
+        // --- GEMINI WELCOME EMAIL TRIGGER ---
+        const assigneeName = MOCK_USERS.find(u => u.id === finalDocData.assigneeId)?.name || 'Colaborador';
+        const assigneeEmail = MOCK_USERS.find(u => u.id === finalDocData.assigneeId)?.email || 'admin';
+
+        // Create full Task object for the function
+        const taskForEmail = { ...finalDocData, id: docRef.id } as Task;
+
+        // Async call - does not block UI, but updates notification later or immediately if fast
+        draftWelcomeEmail(taskForEmail, assigneeName).then(emailContent => {
+          addNotification({
+            taskId: docRef.id,
+            taskTitle: finalDocData.title as string,
+            type: 'START',
+            recipient: assigneeEmail,
+            subject: `Nova Tarefa Atribuída: ${finalDocData.title}`,
+            content: emailContent // Pass the generated content
+          });
         });
       }
       setEditingTask(undefined);
@@ -431,6 +443,14 @@ const App: React.FC = () => {
 
           <div className="flex actions gap-3">
             <button
+              onClick={() => setIsHistoryOpen(true)}
+              className="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors relative"
+              title="Histórico e E-mails"
+            >
+              <Bell size={20} />
+              {notifications.length > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>}
+            </button>
+            <button
               onClick={() => { setEditingTask(undefined); setIsTaskModalOpen(true); }}
               className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-bold shadow hover:bg-blue-700 transition-colors"
             >
@@ -670,6 +690,13 @@ const App: React.FC = () => {
         users={MOCK_USERS}
         availableParents={motherTasks}
         initialData={editingTask}
+      />
+
+      <HistoryPanel
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        logs={logs}
+        notifications={notifications}
       />
 
     </div>

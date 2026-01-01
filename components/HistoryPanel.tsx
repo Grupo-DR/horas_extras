@@ -41,35 +41,40 @@ export const HistoryPanel: React.FC<Props> = ({ logs, notifications, isOpen, onC
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {tab === 'LOGS' ? (
           logs.length === 0 ? <p className="text-center text-slate-400 mt-10">Nenhuma atividade registrada.</p> :
-          logs.map((log) => (
-            <div key={log.id} className="flex gap-3 text-sm">
-              <div className="min-w-[4px] w-1 bg-slate-300 rounded-full"></div>
-              <div>
-                <p className="font-medium text-slate-800">{log.action}</p>
-                <p className="text-slate-500 text-xs">{log.user} - {new Date(log.timestamp).toLocaleString()}</p>
-                {log.details && <p className="text-slate-600 mt-1 text-xs bg-slate-50 p-2 rounded">{log.details}</p>}
+            logs.map((log) => (
+              <div key={log.id} className="flex gap-3 text-sm">
+                <div className="min-w-[4px] w-1 bg-slate-300 rounded-full"></div>
+                <div>
+                  <p className="font-medium text-slate-800">{log.action}</p>
+                  <p className="text-slate-500 text-xs">{log.user} - {new Date(log.timestamp).toLocaleString()}</p>
+                  {log.details && <p className="text-slate-600 mt-1 text-xs bg-slate-50 p-2 rounded">{log.details}</p>}
+                </div>
               </div>
-            </div>
-          ))
+            ))
         ) : (
           notifications.length === 0 ? <p className="text-center text-slate-400 mt-10">Nenhum email enviado ainda.</p> :
-          notifications.map((notif) => (
-            <div key={notif.id} className="border border-slate-200 rounded-lg p-3 text-sm bg-slate-50">
-              <div className="flex justify-between items-start mb-2">
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
-                  notif.type === 'ESCALATION' ? 'bg-red-100 text-red-700' :
-                  notif.type === 'LATE_WARNING' ? 'bg-orange-100 text-orange-700' :
-                  'bg-blue-100 text-blue-700'
-                }`}>
-                  {notif.type}
-                </span>
-                <span className="text-xs text-slate-400">{new Date(notif.sentAt).toLocaleTimeString()}</span>
+            notifications.map((notif) => (
+              <div key={notif.id} className="border border-slate-200 rounded-lg p-3 text-sm bg-slate-50">
+                <div className="flex justify-between items-start mb-2">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${notif.type === 'ESCALATION' ? 'bg-red-100 text-red-700' :
+                      notif.type === 'LATE_WARNING' ? 'bg-orange-100 text-orange-700' :
+                        'bg-blue-100 text-blue-700'
+                    }`}>
+                    {notif.type}
+                  </span>
+                  <span className="text-xs text-slate-400">{new Date(notif.sentAt).toLocaleTimeString()}</span>
+                </div>
+                <p className="font-bold text-slate-800 mb-1">{notif.subject}</p>
+                <p className="text-slate-600 text-xs mb-2">Para: <span className="font-mono bg-white px-1 border rounded">{notif.recipient}</span></p>
+                <p className="text-xs text-slate-500">Ref: {notif.taskTitle}</p>
+
+                {notif.content && (
+                  <div className="mt-3 p-3 bg-white border border-slate-200 rounded text-xs text-slate-700 font-mono whitespace-pre-wrap">
+                    {notif.content}
+                  </div>
+                )}
               </div>
-              <p className="font-bold text-slate-800 mb-1">{notif.subject}</p>
-              <p className="text-slate-600 text-xs mb-2">Para: <span className="font-mono bg-white px-1 border rounded">{notif.recipient}</span></p>
-              <p className="text-xs text-slate-500">Ref: {notif.taskTitle}</p>
-            </div>
-          ))
+            ))
         )}
       </div>
     </div>
