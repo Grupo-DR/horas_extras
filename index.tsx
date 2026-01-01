@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
+import './index.css';
 import { Task, User, TaskStatus, HelpChainLevel, HistoryLog, Notification, TaskOutcome } from './types';
 import { TaskCard } from './components/TaskCard';
 import { TaskForm } from './components/TaskForm';
@@ -10,6 +11,17 @@ import { Layout, LayoutDashboard, PlusCircle, Filter, Bell, Bot, Settings, LogOu
 import { draftEscalationEmail, draftWelcomeEmail } from './services/geminiService';
 import { isPast, format, startOfYear, isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, LineChart, Line } from 'recharts';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Toaster, toast } from 'sonner';
+
+// THEME COLORS
+const COLORS = {
+  success: '#22c55e', // green-500
+  failure: '#ef4444', // red-500
+  study: '#3b82f6',   // blue-500
+  withdrawal: '#64748b' // slate-500
+};
 
 // FIREBASE
 import { db } from './services/firebaseConfig';
@@ -150,6 +162,7 @@ const App: React.FC = () => {
         const taskRef = doc(db, 'tasks', editingTask.id);
         await updateDoc(taskRef, { ...cleanData });
         addLog(editingTask.id, 'Tarefa Atualizada', `Status: ${cleanData.status}`);
+        toast.success("Tarefa atualizada com sucesso!");
       } else {
         const newTaskData = {
           ...cleanData,
@@ -172,7 +185,7 @@ const App: React.FC = () => {
         // Create full Task object for the function
         const taskForEmail = { ...finalDocData, id: docRef.id } as Task;
 
-        // Async call - does not block UI, but updates notification later or immediately if fast
+        // Async call - does not block UI
         draftWelcomeEmail(taskForEmail, assigneeName).then(emailContent => {
           addNotification({
             taskId: docRef.id,
@@ -180,14 +193,17 @@ const App: React.FC = () => {
             type: 'START',
             recipient: assigneeEmail,
             subject: `Nova Tarefa Atribuída: ${finalDocData.title}`,
-            content: emailContent // Pass the generated content
+            content: emailContent
           });
+          toast.info("Rascunho de e-mail gerado com sucesso!", { description: "Verifique o painel de notificações." });
         });
+
+        toast.success("Tarefa criada com sucesso!");
       }
       setEditingTask(undefined);
     } catch (error) {
       console.error("Error saving task:", error);
-      alert("Erro ao salvar tarefa. Verifique o console para mais detalhes.");
+      toast.error("Erro ao salvar tarefa.", { description: "Verifique sua conexão." });
     }
   };
 
@@ -323,8 +339,8 @@ const App: React.FC = () => {
     <div className="flex min-h-screen bg-slate-100 text-slate-800 font-sans">
 
       {/* SIDEBAR */}
-      <aside className="w-64 bg-slate-900 text-white flex-shrink-0 hidden md:flex flex-col">
-        <div className="p-6 border-b border-slate-700">
+      <aside className="w-64 bg-slate-900/95 backdrop-blur-md text-white flex-shrink-0 hidden md:flex flex-col border-r border-white/10 relative z-20">
+        <div className="p-6 border-b border-white/10 bg-slate-900/50">
           <h1 className="text-xl font-bold tracking-tight">Kanban <span className="text-blue-400">DR Construtora</span></h1>
           <p className="text-xs text-slate-400 mt-1">Gestão Comercial</p>
         </div>
@@ -332,33 +348,33 @@ const App: React.FC = () => {
         <nav className="flex-1 p-4 space-y-2">
           <button
             onClick={() => setView('DASHBOARD')}
-            className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-colors ${view === 'DASHBOARD' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800 text-slate-300'}`}
+            className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-all duration-300 ${view === 'DASHBOARD' ? 'bg-blue-600 shadow-lg shadow-blue-500/20 text-white' : 'hover:bg-white/5 text-slate-300'}`}
           >
             <TrendingUp size={20} /> Dashboard
           </button>
           <button
             onClick={() => setView('STRATEGIC')}
-            className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-colors ${view === 'STRATEGIC' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800 text-slate-300'}`}
+            className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-all duration-300 ${view === 'STRATEGIC' ? 'bg-blue-600 shadow-lg shadow-blue-500/20 text-white' : 'hover:bg-white/5 text-slate-300'}`}
           >
             <Activity size={20} /> Estratégico (Mães)
           </button>
           <button
             onClick={() => setView('OPERATIONAL')}
-            className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-colors ${view === 'OPERATIONAL' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800 text-slate-300'}`}
+            className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-all duration-300 ${view === 'OPERATIONAL' ? 'bg-blue-600 shadow-lg shadow-blue-500/20 text-white' : 'hover:bg-white/5 text-slate-300'}`}
           >
             <List size={20} /> Operacional (Filhas)
           </button>
           <button
             onClick={() => setView('SETTINGS')}
-            className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-colors ${view === 'SETTINGS' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800 text-slate-300'}`}
+            className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-all duration-300 ${view === 'SETTINGS' ? 'bg-blue-600 shadow-lg shadow-blue-500/20 text-white' : 'hover:bg-white/5 text-slate-300'}`}
           >
             <Settings size={20} /> Cadeia de Ajuda
           </button>
         </nav>
 
-        <div className="p-4 border-t border-slate-700">
+        <div className="p-4 border-t border-white/10 bg-slate-900/50">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center font-bold shadow-lg">
               {currentUser.name.charAt(0)}
             </div>
             <div>
@@ -370,10 +386,11 @@ const App: React.FC = () => {
       </aside>
 
       {/* MAIN CONTENT */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50/50 relative">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 pointer-events-none -z-10" />
 
         {/* HEADER */}
-        <header className="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-6 shadow-sm z-10">
+        <header className="bg-white/70 backdrop-blur-md border-b border-white/20 h-16 flex items-center justify-between px-6 sticky top-0 z-30">
           <div className="flex items-center gap-4">
             {/* VIEW TITLE */}
             <h2 className="text-lg font-bold text-slate-700 mr-4">
@@ -460,224 +477,321 @@ const App: React.FC = () => {
         </header>
 
         {/* CONTENT AREA */}
-        <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+        <div className="flex-1 overflow-y-auto p-6 relative">
+          <AnimatePresence mode="wait">
+            {view === 'DASHBOARD' && (
+              <motion.div
+                key="dashboard"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+                className="max-w-7xl mx-auto space-y-6"
+              >
 
-          {view === 'DASHBOARD' && (
-            <div className="max-w-7xl mx-auto space-y-6">
+                {/* SPLIT DASHBOARD LAYOUT */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
-              {/* SPLIT DASHBOARD LAYOUT */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* LEFT COLUMN: STRATEGIC (MOTHERS) */}
+                  <div className="space-y-4 border border-slate-300 bg-white rounded-xl p-4 shadow-sm">
+                    <h3 className="flex items-center gap-2 font-bold text-slate-800 text-lg border-b pb-2">
+                      <Activity className="text-blue-600" size={20} /> Estratégico (Ações Mãe)
+                    </h3>
 
-                {/* LEFT COLUMN: STRATEGIC (MOTHERS) */}
-                <div className="space-y-4 border border-slate-300 bg-white rounded-xl p-4 shadow-sm">
-                  <h3 className="flex items-center gap-2 font-bold text-slate-800 text-lg border-b pb-2">
-                    <Activity className="text-blue-600" size={20} /> Estratégico (Ações Mãe)
-                  </h3>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-slate-50 p-4 rounded-xl shadow-sm border-l-4 border-l-slate-400">
-                      <span className="text-slate-500 text-xs font-bold uppercase">Pendentes</span>
-                      <p className="text-2xl font-bold">{dashboardStats.strategic.pending}</p>
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-xl shadow-sm border-l-4 border-l-blue-500">
-                      <span className="text-slate-500 text-xs font-bold uppercase">Em Andamento</span>
-                      <p className="text-2xl font-bold text-blue-600">{dashboardStats.strategic.inProgress}</p>
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-xl shadow-sm border-l-4 border-l-red-500">
-                      <span className="text-slate-500 text-xs font-bold uppercase">Atrasadas / Críticas</span>
-                      <p className="text-2xl font-bold text-red-600">{dashboardStats.strategic.late}</p>
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-xl shadow-sm border-l-4 border-l-green-500">
-                      <span className="text-slate-500 text-xs font-bold uppercase">Concluídas</span>
-                      <p className="text-2xl font-bold text-green-600">{dashboardStats.strategic.completed}</p>
-                    </div>
-                  </div>
-
-                  {/* METRICS CARDS */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-slate-50 p-4 rounded-xl shadow-sm flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-slate-500 font-bold uppercase">Produtividade</p>
-                        <p className="text-xl font-bold text-slate-800">{dashboardStats.strategic.productivity}%</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-slate-50 p-4 rounded-xl shadow-sm border-l-4 border-l-slate-400">
+                        <span className="text-slate-500 text-xs font-bold uppercase">Pendentes</span>
+                        <p className="text-2xl font-bold">{dashboardStats.strategic.pending}</p>
                       </div>
-                      <TrendingUp size={24} className="text-green-500" />
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-xl shadow-sm flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-slate-500 font-bold uppercase">Risco Global</p>
-                        <p className="text-xl font-bold text-red-600">{dashboardStats.strategic.riskRate}%</p>
+                      <div className="bg-slate-50 p-4 rounded-xl shadow-sm border-l-4 border-l-blue-500">
+                        <span className="text-slate-500 text-xs font-bold uppercase">Em Andamento</span>
+                        <p className="text-2xl font-bold text-blue-600">{dashboardStats.strategic.inProgress}</p>
                       </div>
-                      <AlertTriangle size={24} className="text-red-500" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* RIGHT COLUMN: OPERATIONAL (CHILDREN) */}
-                <div className="space-y-4 border border-slate-300 bg-white rounded-xl p-4 shadow-sm">
-                  <h3 className="flex items-center gap-2 font-bold text-slate-800 text-lg border-b pb-2">
-                    <List className="text-emerald-600" size={20} /> Operacional (Ações Filhas)
-                  </h3>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-slate-50 p-4 rounded-xl shadow-sm border-l-4 border-l-slate-400">
-                      <span className="text-slate-500 text-xs font-bold uppercase">Pendentes</span>
-                      <p className="text-2xl font-bold">{dashboardStats.operational.pending}</p>
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-xl shadow-sm border-l-4 border-l-blue-500">
-                      <span className="text-slate-500 text-xs font-bold uppercase">Em Andamento</span>
-                      <p className="text-2xl font-bold text-blue-600">{dashboardStats.operational.inProgress}</p>
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-xl shadow-sm border-l-4 border-l-red-500">
-                      <span className="text-slate-500 text-xs font-bold uppercase">Atrasadas</span>
-                      <p className="text-2xl font-bold text-red-600">{dashboardStats.operational.late}</p>
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-xl shadow-sm border-l-4 border-l-green-500">
-                      <span className="text-slate-500 text-xs font-bold uppercase">Concluídas</span>
-                      <p className="text-2xl font-bold text-green-600">{dashboardStats.operational.completed}</p>
-                    </div>
-                  </div>
-
-                  {/* METRICS CARDS */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-slate-50 p-4 rounded-xl shadow-sm flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-slate-500 font-bold uppercase">Produtividade</p>
-                        <p className="text-xl font-bold text-slate-800">{dashboardStats.operational.productivity}%</p>
+                      <div className="bg-slate-50 p-4 rounded-xl shadow-sm border-l-4 border-l-red-500">
+                        <span className="text-slate-500 text-xs font-bold uppercase">Atrasadas / Críticas</span>
+                        <p className="text-2xl font-bold text-red-600">{dashboardStats.strategic.late}</p>
                       </div>
-                      <TrendingUp size={24} className="text-green-500" />
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-xl shadow-sm flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-slate-500 font-bold uppercase">Gargalos</p>
-                        <p className="text-xl font-bold text-orange-600">{dashboardStats.operational.riskRate}%</p>
+                      <div className="bg-slate-50 p-4 rounded-xl shadow-sm border-l-4 border-l-green-500">
+                        <span className="text-slate-500 text-xs font-bold uppercase">Concluídas</span>
+                        <p className="text-2xl font-bold text-green-600">{dashboardStats.strategic.completed}</p>
                       </div>
-                      <AlertTriangle size={24} className="text-orange-500" />
+                    </div>
+
+                    {/* METRICS CARDS */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-slate-50 p-4 rounded-xl shadow-sm flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-slate-500 font-bold uppercase">Produtividade</p>
+                          <p className="text-xl font-bold text-slate-800">{dashboardStats.strategic.productivity}%</p>
+                        </div>
+                        <TrendingUp size={24} className="text-green-500" />
+                      </div>
+                      <div className="bg-slate-50 p-4 rounded-xl shadow-sm flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-slate-500 font-bold uppercase">Risco Global</p>
+                          <p className="text-xl font-bold text-red-600">{dashboardStats.strategic.riskRate}%</p>
+                        </div>
+                        <AlertTriangle size={24} className="text-red-500" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* RIGHT COLUMN: OPERATIONAL (CHILDREN) */}
+                  <div className="space-y-4 border border-slate-300 bg-white rounded-xl p-4 shadow-sm">
+                    <h3 className="flex items-center gap-2 font-bold text-slate-800 text-lg border-b pb-2">
+                      <List className="text-emerald-600" size={20} /> Operacional (Ações Filhas)
+                    </h3>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-slate-50 p-4 rounded-xl shadow-sm border-l-4 border-l-slate-400">
+                        <span className="text-slate-500 text-xs font-bold uppercase">Pendentes</span>
+                        <p className="text-2xl font-bold">{dashboardStats.operational.pending}</p>
+                      </div>
+                      <div className="bg-slate-50 p-4 rounded-xl shadow-sm border-l-4 border-l-blue-500">
+                        <span className="text-slate-500 text-xs font-bold uppercase">Em Andamento</span>
+                        <p className="text-2xl font-bold text-blue-600">{dashboardStats.operational.inProgress}</p>
+                      </div>
+                      <div className="bg-slate-50 p-4 rounded-xl shadow-sm border-l-4 border-l-red-500">
+                        <span className="text-slate-500 text-xs font-bold uppercase">Atrasadas</span>
+                        <p className="text-2xl font-bold text-red-600">{dashboardStats.operational.late}</p>
+                      </div>
+                      <div className="bg-slate-50 p-4 rounded-xl shadow-sm border-l-4 border-l-green-500">
+                        <span className="text-slate-500 text-xs font-bold uppercase">Concluídas</span>
+                        <p className="text-2xl font-bold text-green-600">{dashboardStats.operational.completed}</p>
+                      </div>
+                    </div>
+
+                    {/* METRICS CARDS */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-slate-50 p-4 rounded-xl shadow-sm flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-slate-500 font-bold uppercase">Produtividade</p>
+                          <p className="text-xl font-bold text-slate-800">{dashboardStats.operational.productivity}%</p>
+                        </div>
+                        <TrendingUp size={24} className="text-green-500" />
+                      </div>
+                      <div className="bg-slate-50 p-4 rounded-xl shadow-sm flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-slate-500 font-bold uppercase">Gargalos</p>
+                          <p className="text-xl font-bold text-orange-600">{dashboardStats.operational.riskRate}%</p>
+                        </div>
+                        <AlertTriangle size={24} className="text-orange-500" />
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* FINANCIAL OUTCOME SECTION */}
-              <div className="bg-slate-200 h-px w-full my-6"></div>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl border border-green-200">
-                  <div className="flex items-center gap-2 mb-2 text-green-800">
-                    <CheckCircle size={18} /> <span className="font-bold text-sm">Sucesso (Vencemos)</span>
-                  </div>
-                  <p className="text-2xl font-bold text-green-700">R$ {dashboardStats.outcomes.success.toLocaleString()}</p>
-                </div>
-                <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-xl border border-red-200">
-                  <div className="flex items-center gap-2 mb-2 text-red-800">
-                    <AlertTriangle size={18} /> <span className="font-bold text-sm">Insucesso (Perdemos)</span>
-                  </div>
-                  <p className="text-2xl font-bold text-red-700">R$ {dashboardStats.outcomes.failure.toLocaleString()}</p>
-                </div>
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200">
-                  <div className="flex items-center gap-2 mb-2 text-blue-800">
-                    <Bot size={18} /> <span className="font-bold text-sm">Estudo (Análise)</span>
-                  </div>
-                  <p className="text-2xl font-bold text-blue-700">R$ {dashboardStats.outcomes.study.toLocaleString()}</p>
-                </div>
-                <div className="bg-gradient-to-br from-slate-50 to-slate-100 p-4 rounded-xl border border-slate-200">
-                  <div className="flex items-center gap-2 mb-2 text-slate-800">
-                    <LogOut size={18} /> <span className="font-bold text-sm">Desistência</span>
-                  </div>
-                  <p className="text-2xl font-bold text-slate-700">R$ {dashboardStats.outcomes.withdrawal.toLocaleString()}</p>
-                </div>
-              </div>
-
-              {/* COLLABORATOR TABLE */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center gap-2">
-                  <Users size={18} className="text-slate-500" />
-                  <h3 className="font-bold text-slate-700">Desempenho por Colaborador</h3>
-                </div>
-                <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b">
-                    <tr>
-                      <th className="px-6 py-3">Colaborador</th>
-                      <th className="px-6 py-3 text-center">Total Ações</th>
-                      <th className="px-6 py-3 text-center text-blue-600">Em Andamento</th>
-                      <th className="px-6 py-3 text-center text-red-600">Atrasadas</th>
-                      <th className="px-6 py-3 text-center text-green-600">Concluídas</th>
-                      <th className="px-6 py-3 text-center">Produtividade</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dashboardStats.collaborators.map((col, idx) => (
-                      <tr key={col.user.id} className="border-b hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-4 font-medium text-slate-800">{col.user.name}</td>
-                        <td className="px-6 py-4 text-center font-bold">{col.total}</td>
-                        <td className="px-6 py-4 text-center">{col.inProgress}</td>
-                        <td className="px-6 py-4 text-center font-bold text-red-600">{col.late}</td>
-                        <td className="px-6 py-4 text-center font-bold text-green-600">{col.completed}</td>
-                        <td className="px-6 py-4 text-center">
-                          <div className="w-full bg-slate-200 rounded-full h-1.5 dark:bg-gray-700 max-w-[100px] mx-auto">
-                            <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${col.productivity}%` }}></div>
+                {/* FINANCIAL OUTCOME SECTION - WITH SPARKLINES */}
+                <div className="bg-slate-200 h-px w-full my-6"></div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  {[
+                    { label: 'Sucesso (Vencemos)', value: dashboardStats.outcomes.success, color: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200', icon: CheckCircle, chartColor: '#16a34a' },
+                    { label: 'Insucesso (Perdemos)', value: dashboardStats.outcomes.failure, color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200', icon: AlertTriangle, chartColor: '#dc2626' },
+                    { label: 'Estudo (Análise)', value: dashboardStats.outcomes.study, color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200', icon: Bot, chartColor: '#2563eb' },
+                    { label: 'Desistência', value: dashboardStats.outcomes.withdrawal, color: 'text-slate-700', bg: 'bg-slate-50', border: 'border-slate-200', icon: LogOut, chartColor: '#475569' }
+                  ].map((item, idx) => (
+                    <div key={idx} className={`p-4 rounded-xl border ${item.border} ${item.bg} relative overflow-hidden group`}>
+                      <div className="flex justify-between items-start z-10 relative">
+                        <div>
+                          <div className={`flex items-center gap-2 mb-2 ${item.color.replace('700', '800')}`}>
+                            <item.icon size={18} /> <span className="font-bold text-sm">{item.label}</span>
                           </div>
-                          <span className="text-xs text-slate-500 mt-1 block">{col.productivity}%</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* STRATEGIC VIEW (MOTHERS) */}
-          {view === 'STRATEGIC' && (
-            <div className="p-6">
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-                <h3 className="font-bold text-slate-700 flex items-center gap-2 mb-4">
-                  <Activity size={18} className="text-purple-600" /> Ações Mãe (Estratégico)
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {hierarchyScan.mothers.map(t => (
-                    <TaskCard
-                      key={t.id}
-                      task={t}
-                      assignee={MOCK_USERS.find(u => u.id === t.assigneeId)}
-                      childTasks={hierarchyScan.children.filter(c => c.parentId === t.id)}
-                      onEdit={(x) => { setEditingTask(x); setIsTaskModalOpen(true); }}
-                      onStatusChange={handleStatusChange}
-                    />
+                          <p className={`text-2xl font-bold ${item.color}`}>R$ {item.value.toLocaleString()}</p>
+                        </div>
+                        {/* Sparkline Simulation */}
+                        <div className="h-12 w-24 opacity-50">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={[{ v: 10 }, { v: 30 }, { v: 20 }, { v: 50 }, { v: 40 }, { v: item.value / 1000 }]} >
+                              <Line type="monotone" dataKey="v" stroke={item.chartColor} strokeWidth={2} dot={false} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    </div>
                   ))}
-                  {hierarchyScan.mothers.length === 0 && (
-                    <p className="col-span-3 text-center text-slate-400 py-8">Nenhuma ação mãe encontrada.</p>
-                  )}
                 </div>
-              </div>
-            </div>
-          )}
 
-          {/* OPERATIONAL VIEW (CHILDREN) */}
-          {view === 'OPERATIONAL' && (
-            <div className="flex-1 overflow-hidden p-6 bg-slate-50 h-full">
-              <div className="h-full bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-                <div className="p-3 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
-                  <h3 className="font-bold text-slate-700 flex items-center gap-2">
-                    <List size={18} className="text-blue-600" /> Ações Filhas (Operacional)
+                {/* CHARTS ROW */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* DONUT CHART - OUTCOMES */}
+                  <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+                    <h3 className="font-bold text-slate-700 mb-4">Distribuição de Resultados</h3>
+                    <div className="flex-1 min-h-[250px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={[
+                              { name: 'Sucesso', value: dashboardStats.outcomes.success },
+                              { name: 'Insucesso', value: dashboardStats.outcomes.failure },
+                              { name: 'Estudo', value: dashboardStats.outcomes.study },
+                              { name: 'Desistência', value: dashboardStats.outcomes.withdrawal }
+                            ]}
+                            innerRadius={60}
+                            outerRadius={80}
+                            paddingAngle={5}
+                            dataKey="value"
+                          >
+                            <Cell key="cell-0" fill={COLORS.success} />
+                            <Cell key="cell-1" fill={COLORS.failure} />
+                            <Cell key="cell-2" fill={COLORS.study} />
+                            <Cell key="cell-3" fill={COLORS.withdrawal} />
+                          </Pie>
+                          <RechartsTooltip formatter={(value: number) => `R$ ${value.toLocaleString()}`} />
+                          <Legend verticalAlign="bottom" height={36} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  {/* STACKED BAR CHART - COLLABORATORS */}
+                  <div className="col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+                    <h3 className="font-bold text-slate-700 mb-4">Volume de Tarefas por Colaborador</h3>
+                    <div className="flex-1 min-h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={dashboardStats.collaborators.map(c => ({
+                            name: c.user.name.split(' ')[0], // First name only for compactness
+                            Conuídas: c.completed,
+                            Pendentes: c.pending,
+                            EmAndamento: c.inProgress,
+                            Atrasadas: c.late
+                          }))}
+                          margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
+                          <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
+                          <RechartsTooltip cursor={{ fill: '#f1f5f9' }} />
+                          <Legend />
+                          <Bar dataKey="Conuídas" stackId="a" fill={COLORS.success} radius={[0, 0, 4, 4]} />
+                          <Bar dataKey="EmAndamento" stackId="a" fill={COLORS.study} />
+                          <Bar dataKey="Pendentes" stackId="a" fill="#94a3b8" />
+                          <Bar dataKey="Atrasadas" stackId="a" fill={COLORS.failure} radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+
+                {/* COLLABORATOR TABLE */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                  <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center gap-2">
+                    <Users size={18} className="text-slate-500" />
+                    <h3 className="font-bold text-slate-700">Desempenho por Colaborador</h3>
+                  </div>
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b">
+                      <tr>
+                        <th className="px-6 py-3">Colaborador</th>
+                        <th className="px-6 py-3 text-center">Total Ações</th>
+                        <th className="px-6 py-3 text-center text-blue-600">Em Andamento</th>
+                        <th className="px-6 py-3 text-center text-red-600">Atrasadas</th>
+                        <th className="px-6 py-3 text-center text-green-600">Concluídas</th>
+                        <th className="px-6 py-3 text-center">Produtividade</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dashboardStats.collaborators.map((col, idx) => (
+                        <tr key={col.user.id} className="border-b hover:bg-slate-50 transition-colors">
+                          <td className="px-6 py-4 font-medium text-slate-800">{col.user.name}</td>
+                          <td className="px-6 py-4 text-center font-bold">{col.total}</td>
+                          <td className="px-6 py-4 text-center">{col.inProgress}</td>
+                          <td className="px-6 py-4 text-center font-bold text-red-600">{col.late}</td>
+                          <td className="px-6 py-4 text-center font-bold text-green-600">{col.completed}</td>
+                          <td className="px-6 py-4 text-center">
+                            <div className="w-full bg-slate-200 rounded-full h-1.5 dark:bg-gray-700 max-w-[100px] mx-auto">
+                              <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${col.productivity}%` }}></div>
+                            </div>
+                            <span className="text-xs text-slate-500 mt-1 block">{col.productivity}%</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </motion.div>
+            )}
+
+            {/* STRATEGIC VIEW (MOTHERS) */}
+            {view === 'STRATEGIC' && (
+              <motion.div
+                key="strategic"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className="h-full"
+              >
+                <div className="bg-white/50 backdrop-blur-sm rounded-xl border border-white/20 shadow-sm p-6 h-full overflow-y-auto">
+                  <h3 className="font-bold text-slate-700 flex items-center gap-2 mb-6 text-xl">
+                    <Activity size={24} className="text-purple-600" /> Ações Mãe (Estratégico)
                   </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {hierarchyScan.mothers.map((t, idx) => (
+                      <motion.div
+                        key={t.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.05 }}
+                      >
+                        <TaskCard
+                          task={t}
+                          assignee={MOCK_USERS.find(u => u.id === t.assigneeId)}
+                          childTasks={hierarchyScan.children.filter(c => c.parentId === t.id)}
+                          onEdit={(x) => { setEditingTask(x); setIsTaskModalOpen(true); }}
+                          onStatusChange={handleStatusChange}
+                        />
+                      </motion.div>
+                    ))}
+                    {hierarchyScan.mothers.length === 0 && (
+                      <p className="col-span-3 text-center text-slate-400 py-12">Nenhuma ação mãe encontrada.</p>
+                    )}
+                  </div>
                 </div>
-                <div className="flex-1 overflow-x-auto overflow-y-hidden p-4 bg-slate-50/50">
-                  <KanbanBoard
-                    tasks={hierarchyScan.children}
-                    users={MOCK_USERS}
-                    onStatusChange={handleStatusChange}
-                    onEdit={(t) => { setEditingTask(t); setIsTaskModalOpen(true); }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+              </motion.div>
+            )}
 
-          {/* SETTINGS VIEW */}
-          {view === 'SETTINGS' && (
-            <div className="max-w-4xl mx-auto">
-              <EscalationSettings chain={helpChain} onSave={setHelpChain} />
-            </div>
-          )}
+            {/* OPERATIONAL VIEW (CHILDREN) */}
+            {view === 'OPERATIONAL' && (
+              <motion.div
+                key="operational"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.3 }}
+                className="flex-1 h-full overflow-hidden"
+              >
+                <div className="h-full bg-slate-100/50 backdrop-blur rounded-xl border border-white/20 shadow-sm flex flex-col overflow-hidden">
+                  <div className="p-4 bg-white/60 border-b border-slate-200 flex justify-between items-center">
+                    <h3 className="font-bold text-slate-700 flex items-center gap-2 text-lg">
+                      <List size={20} className="text-blue-600" /> Ações Filhas (Operacional)
+                    </h3>
+                  </div>
+                  <div className="flex-1 overflow-x-auto overflow-y-hidden p-6">
+                    <KanbanBoard
+                      tasks={hierarchyScan.children}
+                      users={MOCK_USERS}
+                      onStatusChange={handleStatusChange}
+                      onEdit={(t) => { setEditingTask(t); setIsTaskModalOpen(true); }}
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* SETTINGS VIEW */}
+            {view === 'SETTINGS' && (
+              <motion.div
+                key="settings"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="max-w-4xl mx-auto"
+              >
+                <EscalationSettings chain={helpChain} onSave={setHelpChain} />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
       </main>
@@ -698,7 +812,7 @@ const App: React.FC = () => {
         logs={logs}
         notifications={notifications}
       />
-
+      <Toaster position="top-right" richColors />
     </div>
   );
 };

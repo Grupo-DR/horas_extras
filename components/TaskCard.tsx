@@ -86,25 +86,30 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
   }, [task.status]);
 
   return (
-    <div className={`bg-white rounded-xl p-4 shadow-sm border hover:shadow-md transition-all ${isOverdue ? 'border-red-300' : 'border-slate-200'}`}>
+    <div className={`bg-white/90 backdrop-blur-sm rounded-xl p-5 shadow-sm border transition-all duration-300 group hover:shadow-xl hover:-translate-y-1 relative overflow-hidden ${isOverdue ? 'border-red-200 shadow-red-100' : 'border-slate-100 hover:border-slate-200'}`}>
+
+      {/* DECORATIVE GRADIENT BAR */}
+      <div className={`absolute top-0 left-0 w-1 h-full ${task.status === TaskStatus.COMPLETED ? 'bg-green-500' :
+          isOverdue ? 'bg-red-500' :
+            task.status === TaskStatus.IN_PROGRESS ? 'bg-blue-500' : 'bg-slate-300'
+        }`} />
 
       {/* HEADER: Labels & Actions */}
-      <div className="flex justify-between items-start mb-2">
-        <div className="flex flex-wrap gap-1 items-center">
+      <div className="flex justify-between items-start mb-3 pl-2">
+        <div className="flex flex-wrap gap-1.5 items-center">
           {!simple && (
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusColor}`}>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor}`}>
               {statusLabel}
             </span>
           )}
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${priorityColor}`}>
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${priorityColor}`}>
             {task.priority === 'HIGH' ? 'Alta' : task.priority === 'MEDIUM' ? 'Média' : 'Baixa'}
           </span>
           {task.parentId && (
-            <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded border border-purple-200 font-medium flex items-center gap-1">
+            <span className="text-[10px] bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full border border-purple-100 font-medium flex items-center gap-1">
               <Link size={10} /> Vinculada
             </span>
           )}
-          {/* OUTCOME BADGE */}
           {outcomeDetails && task.status === TaskStatus.COMPLETED && (
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase flex items-center gap-1 ${outcomeDetails.color}`}>
               <Award size={10} /> {outcomeDetails.label}
@@ -112,141 +117,118 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
           )}
         </div>
 
-        <div className="relative group">
-          <button className="text-slate-400 hover:text-slate-600 p-1">
+        <div className="relative group/menu">
+          <button className="text-slate-300 hover:text-slate-600 p-1 transition-colors">
             <MoreHorizontal size={20} />
           </button>
-          <div className="absolute right-0 mt-1 w-48 bg-white border rounded-lg shadow-lg hidden group-hover:block z-20">
-            <button onClick={() => onEdit(task)} className="block w-full text-left px-4 py-2 text-sm hover:bg-slate-50 text-slate-700">Editar Detalhes</button>
+          <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-100 rounded-xl shadow-2xl hidden group-hover/menu:block z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <button onClick={() => onEdit(task)} className="block w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 text-slate-700 font-medium transition-colors">Editar Detalhes</button>
             {task.status !== TaskStatus.COMPLETED && (
-              <button onClick={() => onStatusChange(task.id, TaskStatus.COMPLETED)} className="block w-full text-left px-4 py-2 text-sm hover:bg-slate-50 text-green-600">Finalizar</button>
+              <button onClick={() => onStatusChange(task.id, TaskStatus.COMPLETED)} className="block w-full text-left px-4 py-2.5 text-sm hover:bg-green-50 text-green-700 font-medium transition-colors">Finalizar</button>
             )}
             {task.status === TaskStatus.COMPLETED && (
-              <button onClick={() => onStatusChange(task.id, TaskStatus.IN_PROGRESS)} className="block w-full text-left px-4 py-2 text-sm hover:bg-slate-50 text-blue-600">Reabrir</button>
+              <button onClick={() => onStatusChange(task.id, TaskStatus.IN_PROGRESS)} className="block w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 text-blue-700 font-medium transition-colors">Reabrir</button>
             )}
           </div>
         </div>
       </div>
 
       {/* CORE INFO */}
-      <div className="mb-3">
+      <div className="mb-4 pl-2">
         {/* STRATEGIC HIGHLIGHT (MOTHERS) */}
         {isMother && (
-          <div className="mb-2 p-2 bg-blue-50/50 border border-blue-100 rounded-lg">
-            {/* FIX: Highlight Client and Proposal for Mother Tasks */}
+          <div className="mb-2">
+            {/* CLIENT NAME - HIERARCHY TOP */}
             {task.clientName && (
-              <p className="text-sm font-bold text-slate-800 uppercase tracking-wide flex items-center gap-1.5 mb-1">
-                <Building size={12} className="text-slate-500" /> {task.clientName}
+              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1">
+                <Building size={10} /> {task.clientName}
               </p>
             )}
+            {/* PROPOSAL NAME */}
             {task.proposalName && (
-              <div className="flex items-center gap-1 mt-1">
-                <Link size={10} className="text-blue-400" />
-                <p className="text-xs font-bold text-blue-700">{task.proposalName}</p>
-              </div>
-            )}
-            {/* External Contact Display within Mother Header */}
-            {clientContactName && (
-              <div className="mt-2 text-[10px] text-slate-500 border-t border-blue-100 pt-1">
-                <span className="font-semibold uppercase text-[9px] text-slate-400">Contato Cliente:</span>
-                <div className="font-medium text-slate-700 flex items-center gap-1">
-                  <UserIcon size={10} /> {clientContactName}
-                </div>
-              </div>
+              <p className="text-xs font-bold text-blue-600 mb-1">{task.proposalName}</p>
             )}
           </div>
         )}
 
         {/* FOR CHILDREN */}
         {!isMother && task.clientName && (
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-0.5 flex items-center gap-1">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
             <Building size={10} /> {task.clientName}
           </p>
         )}
 
-        <h3 className="font-bold text-slate-800 text-sm leading-tight mb-1 mt-2" title={task.title}>
+        {/* MAIN TITLE */}
+        <h3 className="font-bold text-slate-800 text-base leading-snug mb-2 group-hover:text-blue-700 transition-colors" title={task.title}>
           {task.title}
         </h3>
 
         {!isMother && task.proposalName && (
-          <p className="text-xs text-blue-600 mb-1">{task.proposalName}</p>
+          <p className="text-xs text-blue-500 mb-2 font-medium">{task.proposalName}</p>
         )}
 
-        {!simple && <p className="text-slate-500 text-xs line-clamp-2 mt-1">{task.description}</p>}
+        {!simple && <p className="text-slate-500 text-xs line-clamp-2 leading-relaxed">{task.description}</p>}
       </div>
 
-      {/* CHILD SUMMARY VISUALIZATION (For Mothers) */}
+      {/* EXECUTIVES STATS (MOTHERS) */}
       {isMother && childStats && (childStats.pending > 0 || childStats.late > 0 || childStats.inProgress > 0) && (
-        <div className="flex gap-2 mb-3 bg-slate-50 p-2 rounded border border-slate-100">
+        <div className="flex gap-2 mb-4 pl-2">
           {childStats.late > 0 && (
-            <div className="text-[10px] font-bold text-red-600 border border-red-200 bg-red-50 px-1.5 py-0.5 rounded" title="Atrasadas">
-              {childStats.late} Atrasadas
+            <div className="flex flex-col items-center bg-red-50 border border-red-100 rounded p-1.5 min-w-[50px]">
+              <span className="text-xs font-black text-red-600">{childStats.late}</span>
+              <span className="text-[8px] uppercase font-bold text-red-400">Atraso</span>
             </div>
           )}
           {childStats.inProgress > 0 && (
-            <div className="text-[10px] font-bold text-blue-600 border border-blue-200 bg-blue-50 px-1.5 py-0.5 rounded" title="Em Andamento">
-              {childStats.inProgress} Andamento
+            <div className="flex flex-col items-center bg-blue-50 border border-blue-100 rounded p-1.5 min-w-[50px]">
+              <span className="text-xs font-black text-blue-600">{childStats.inProgress}</span>
+              <span className="text-[8px] uppercase font-bold text-blue-400">Andam.</span>
             </div>
           )}
           {childStats.pending > 0 && (
-            <div className="text-[10px] font-medium text-slate-500 border border-slate-200 bg-white px-1.5 py-0.5 rounded" title="Pendentes">
-              {childStats.pending} Pendentes
+            <div className="flex flex-col items-center bg-slate-50 border border-slate-100 rounded p-1.5 min-w-[50px]">
+              <span className="text-xs font-black text-slate-500">{childStats.pending}</span>
+              <span className="text-[8px] uppercase font-bold text-slate-400">Pend.</span>
             </div>
           )}
         </div>
       )}
 
-      {/* MOTHER METRICS */}
-      {isMother && (previaTask || propostaTask) && (
-        <div className="bg-slate-50 rounded-lg p-2 mb-3 border border-slate-100 grid grid-cols-2 gap-2">
-          <div className="flex flex-col">
-            <span className="text-[10px] text-slate-400 font-medium">Prévia</span>
-            <span className="text-xs font-bold text-slate-700">{formatBRL(previaTask?.value)}</span>
-            {previaTask?.interestScore !== undefined && (
-              <span className="text-[9px] text-slate-500 flex items-center gap-0.5">
-                <Target size={8} /> Nota: {previaTask.interestScore}
+      {/* METRICS & FOOTER */}
+      <div className="mt-auto pt-3 border-t border-slate-100 pl-2">
+        {/* VALUES ROW */}
+        {(task.value || (isMother && (previaTask || propostaTask))) && (
+          <div className="flex items-center gap-3 mb-3">
+            {isMother ? (
+              <>
+                {previaTask && <div className="text-xs"><span className="text-slate-400 text-[10px] block">Prévia</span> <span className="font-bold text-slate-700">{formatBRL(previaTask.value)}</span></div>}
+                {propostaTask && <div className="text-xs border-l pl-3 border-slate-200"><span className="text-blue-400 text-[10px] block">Proposta</span> <span className="font-bold text-blue-700">{formatBRL(propostaTask.value)}</span></div>}
+              </>
+            ) : (
+              task.value && <div className="text-xs"><span className="text-slate-400 text-[10px] block">Valor</span> <span className="font-bold text-green-600">{formatBRL(task.value)}</span></div>
+            )}
+          </div>
+        )}
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500 border border-white shadow-sm ring-1 ring-slate-200">
+              {displayResponsible.charAt(0)}
+            </div>
+            <span className="text-xs font-medium text-slate-500 max-w-[80px] truncate">{displayResponsible.split(' ')[0]}</span>
+          </div>
+
+          <div className="flex items-center gap-3 text-xs">
+            {isOverdue ? (
+              <span className="flex items-center gap-1 text-red-600 bg-red-50 px-2 py-0.5 rounded-full font-bold border border-red-100" title="Atrasado">
+                <AlertCircle size={12} /> {Math.abs(daysLeft)}d
+              </span>
+            ) : (
+              <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full border ${daysLeft <= 3 ? 'text-orange-600 bg-orange-50 border-orange-100' : 'text-slate-400 bg-slate-50 border-slate-100'}`} title="Prazo">
+                <Clock size={12} /> {daysLeft === 0 ? 'Hj' : `${daysLeft}d`}
               </span>
             )}
           </div>
-          <div className="flex flex-col border-l pl-2 border-slate-200">
-            <span className="text-[10px] text-slate-400 font-medium">Proposta</span>
-            <span className="text-xs font-bold text-blue-700">{formatBRL(propostaTask?.value)}</span>
-          </div>
-        </div>
-      )}
-
-      {/* CHILD METRICS */}
-      {!isMother && (task.value !== undefined || task.category) && (
-        <div className="bg-slate-50 rounded p-2 mb-3 flex justify-between items-center text-xs">
-          <span className="font-semibold text-slate-600">{task.category}</span>
-          {task.value && <span className="font-bold text-green-600">{formatBRL(task.value)}</span>}
-        </div>
-      )}
-
-      <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-100">
-        <div className="flex items-center gap-2 text-xs">
-          <div className="flex items-center gap-1.5 text-slate-600" title="Responsável">
-            <UserIcon size={12} className="text-slate-400" />
-            <span className="max-w-[80px] truncate font-medium">
-              {displayResponsible.split(' ')[0]}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-slate-400 text-[10px]">
-            {isValid(new Date(task.endDate)) ? format(new Date(task.endDate), 'dd/MM/yyyy') : '--/--/----'}
-          </span>
-
-          {isOverdue ? (
-            <span className="flex items-center gap-1 text-red-600 font-bold" title="Atrasado">
-              <AlertCircle size={14} /> {Math.abs(daysLeft)}d
-            </span>
-          ) : (
-            <span className="flex items-center gap-1 text-slate-500" title="Prazo">
-              <Clock size={14} /> {daysLeft === 0 ? 'Hj' : `${daysLeft}d`}
-            </span>
-          )}
         </div>
       </div>
 
