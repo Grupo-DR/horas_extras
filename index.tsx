@@ -30,6 +30,7 @@ const INITIAL_CHAIN: HelpChainLevel[] = [
 
 // Função utilitária para remover chaves undefined recursivamente
 const stripUndefined = (obj: any): any => {
+  if (obj instanceof Date) return obj;
   if (Array.isArray(obj)) {
     return obj.map(v => stripUndefined(v));
   } else if (obj !== null && typeof obj === 'object') {
@@ -63,6 +64,10 @@ const App: React.FC = () => {
           }
           if (val instanceof Date) {
             return val;
+          }
+          // RESILIENCE CHECK: Handle empty objects {} caused by recursion bug
+          if (typeof val === 'object' && Object.keys(val).length === 0) {
+            return new Date();
           }
           const parsed = new Date(val);
           // FIX: Fallback to Year 2000 to make errors visible

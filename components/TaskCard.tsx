@@ -14,8 +14,8 @@ interface Props {
 
 export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onEdit, onStatusChange, simple = false }) => {
 
-  const daysLeft = differenceInDays(new Date(task.endDate), new Date());
-  const isOverdue = isPast(new Date(task.endDate)) && task.status !== TaskStatus.COMPLETED;
+  const daysLeft = differenceInDays(task.endDate, new Date());
+  const isOverdue = isPast(task.endDate) && task.status !== TaskStatus.COMPLETED;
   const isMother = !task.parentId;
 
   // Helpers to get values from children
