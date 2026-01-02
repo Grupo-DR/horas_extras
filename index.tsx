@@ -316,8 +316,12 @@ const App: React.FC = () => {
     const relevantTasks = getFilteredTasks(tasks);
 
     // 2. Separate Mothers/Children from ALREADY filtered list
-    const relevantMothers = relevantTasks.filter(t => !t.parentId);
-    const relevantChildren = relevantTasks.filter(t => !!t.parentId);
+    // 2. Separate Mothers/Children from ALREADY filtered list
+    // FIX: Operational Stats now include Legacy Children (parentId) AND Pipeline Actions (opportunityId)
+    const relevantChildren = relevantTasks.filter(t => !!t.parentId || !!t.opportunityId);
+
+    // FIX: Strategic Stats only include Legacy Mothers (No parent, No opportunity)
+    const relevantMothers = relevantTasks.filter(t => !t.parentId && !t.opportunityId);
 
     // 3. Calculate Metrics (Reused function)
     const strategic = calculateMetrics(relevantMothers);
