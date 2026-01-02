@@ -272,7 +272,11 @@ const App: React.FC = () => {
     const end = timeFilterType === 'MONTH' ? endOfMonth(selectedDate) :
       timeFilterType === 'YTD' ? new Date() : customRange.end;
 
-    return sourceTasks.filter(t => isWithinInterval(new Date(t.startDate), { start, end }));
+    return sourceTasks.filter(t => {
+      const dateToCheck = new Date(t.startDate);
+      if (isNaN(dateToCheck.getTime())) return false; // Invalid Date, exclude from time filter
+      return isWithinInterval(dateToCheck, { start, end });
+    });
   };
 
   const timeFilteredTasks = getFilteredTasks(tasks);

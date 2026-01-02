@@ -165,7 +165,9 @@ export const TaskForm: React.FC<Props> = ({
                     required
                     className="w-full p-2 border border-slate-300 rounded-lg"
                     value={formatDateForInput(formData.startDate)}
-                    onChange={(e) => setFormData({ ...formData, startDate: new Date(e.target.value) })}
+                    onChange={(e) => {
+                      if (e.target.value) setFormData({ ...formData, startDate: new Date(e.target.value) })
+                    }}
                   />
                 </div>
                 <div>
@@ -175,7 +177,9 @@ export const TaskForm: React.FC<Props> = ({
                     required
                     className="w-full p-2 border border-slate-300 rounded-lg"
                     value={formatDateForInput(formData.endDate)}
-                    onChange={(e) => setFormData({ ...formData, endDate: new Date(e.target.value) })}
+                    onChange={(e) => {
+                      if (e.target.value) setFormData({ ...formData, endDate: new Date(e.target.value) })
+                    }}
                   />
                 </div>
               </div>
@@ -454,7 +458,9 @@ export const TaskForm: React.FC<Props> = ({
                     required
                     className="w-full p-2 border border-slate-300 rounded-lg"
                     value={formatDateForInput(formData.startDate)}
-                    onChange={(e) => setFormData({ ...formData, startDate: new Date(e.target.value) })}
+                    onChange={(e) => {
+                      if (e.target.value) setFormData({ ...formData, startDate: new Date(e.target.value) })
+                    }}
                   />
                 </div>
 
@@ -465,7 +471,9 @@ export const TaskForm: React.FC<Props> = ({
                     required
                     className="w-full p-2 border border-slate-300 rounded-lg"
                     value={formatDateForInput(formData.endDate)}
-                    onChange={(e) => setFormData({ ...formData, endDate: new Date(e.target.value) })}
+                    onChange={(e) => {
+                      if (e.target.value) setFormData({ ...formData, endDate: new Date(e.target.value) })
+                    }}
                   />
                 </div>
 
