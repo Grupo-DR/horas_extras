@@ -273,9 +273,14 @@ const App: React.FC = () => {
       timeFilterType === 'YTD' ? new Date() : customRange.end;
 
     return sourceTasks.filter(t => {
-      const dateToCheck = new Date(t.startDate);
-      if (isNaN(dateToCheck.getTime())) return false; // Invalid Date, exclude from time filter
-      return isWithinInterval(dateToCheck, { start, end });
+      const taskStart = new Date(t.startDate);
+      const taskEnd = new Date(t.endDate);
+
+      if (isNaN(taskStart.getTime())) return false;
+
+      // FIX: Check for OVERLAP instead of just Start Date to include active long-running tasks
+      // Overlap formula: (StartA <= EndB) and (EndA >= StartB)
+      return taskStart <= end && taskEnd >= start;
     });
   };
 
@@ -345,8 +350,17 @@ const App: React.FC = () => {
     // 5. Collaborators - Optimized Single Reduce Logic
     const collaborators = MOCK_USERS.map(user => {
       // Logic: Iterate through RELEVANT tasks (time filtered) ONCE
-      // FIX: Match by ID OR Name to handle legacy data where names were stored instead of IDs
-      const userTasks = relevantTasks.filter(t => t.assigneeId === user.id || t.assigneeId === user.name);
+      // FIX: Robust Fuzzy Matching for Legacy Data (ID, Full Name, First Name, Email)
+      const userTasks = relevantTasks.filter(t => {
+        if (!t.assigneeId) return false;
+        const assignee = t.assigneeId.toLowerCase().trim();
+        const idMatch = assignee === user.id.toLowerCase();
+        const nameMatch = assignee === user.name.toLowerCase();
+        const firstNameMatch = assignee === user.name.split(' ')[0].toLowerCase();
+        const emailMatch = assignee === user.email.toLowerCase();
+
+        return idMatch || nameMatch || firstNameMatch || emailMatch;
+      });
       const metrics = calculateMetrics(userTasks);
       return { user, ...metrics };
     });
