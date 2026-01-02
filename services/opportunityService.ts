@@ -9,62 +9,45 @@ import {
     Timestamp,
     query,
     orderBy,
-    where
+    runTransaction,
+    DocumentReference
 } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import {
     Opportunity,
     OpportunityStatus,
-    PipelineStage
+    PipelineStage,
+    Task,
+    TaskStatus
 } from '../types';
+import { getExecutionPercent, getNextStage } from '../domain/pipeline';
 
-const COLLECTION_NAME = 'opportunities';
-
-// --- CONFIGURATION & CONSTANTS ---
-
-const PROBABILITY_MAP: Record<PipelineStage, number> = {
-    [PipelineStage.LEAD_RECEBIDO]: 10,
-    [PipelineStage.DECISAO_PARTICIPACAO]: 20,
-    [PipelineStage.ORCAMENTO_PREVIO]: 30,
-    [PipelineStage.MEMORIA_COMPOSICOES]: 45,
-    [PipelineStage.PROPOSTA_TECNICA_COMERCIAL]: 60,
-    [PipelineStage.REVISAO_FINAL]: 75,
-    [PipelineStage.ENVIO_PROPOSTA]: 90,
-    [PipelineStage.AGUARDANDO_RESULTADO]: 100
-};
-
-// --- TYPES ---
-
-type ValidationResult = { valid: true } | { valid: false; message: string };
-
-// --- SERVICE ---
+const OPPORTUNITIES_COLLECTION = 'opportunities';
+const TASKS_COLLECTION = 'tasks';
 
 export const OpportunityService = {
 
     /**
      * Creates a new Opportunity. 
-     * Starts at LEAD_RECEBIDO with 10% probability.
      */
     async create(data: Omit<Opportunity, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'pipelineStage' | 'probability'>): Promise<string> {
-
-        // Initial Validations (Lead Recebido Requirements)
+        // Basic validations can remain for Creation
         if (!data.clientName || !data.deadline) {
-            throw new Error("Campos obrigatórios para Lead: Nome do Cliente e Prazo.");
+            throw new Error("Campos obrigatórios: Nome do Cliente e Prazo.");
         }
+
+        const initialStage = PipelineStage.LEAD_RECEBIDO;
 
         const newOpportunity: Omit<Opportunity, 'id'> = {
             ...data,
-            pipelineStage: PipelineStage.LEAD_RECEBIDO,
-            probability: PROBABILITY_MAP[PipelineStage.LEAD_RECEBIDO],
+            pipelineStage: initialStage,
+            probability: getExecutionPercent(initialStage),
             status: OpportunityStatus.ATIVA,
-            createdAt: new Date(), // Will be converted to Timestamp by Firestore SDK if using helper, but here wait...
-            // Firestore needs Timestamp or Date. The SDK usually handles Date -> Timestamp conversion on set.
-            // But we defined interface as Date. Let's send Date, firestore handles it.
+            createdAt: new Date(),
             updatedAt: new Date(),
         };
 
-        // We need to manually strict check undefined? The config has ignoreUndefinedProperties: true.
-        const docRef = await addDoc(collection(db, COLLECTION_NAME), newOpportunity);
+        const docRef = await addDoc(collection(db, OPPORTUNITIES_COLLECTION), newOpportunity);
         return docRef.id;
     },
 
@@ -72,14 +55,13 @@ export const OpportunityService = {
      * Fetches all opportunities.
      */
     async getAll(): Promise<Opportunity[]> {
-        const q = query(collection(db, COLLECTION_NAME), orderBy('updatedAt', 'desc'));
+        const q = query(collection(db, OPPORTUNITIES_COLLECTION), orderBy('updatedAt', 'desc'));
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => {
             const data = doc.data();
             return {
                 id: doc.id,
                 ...data,
-                // Convert Timestamps back to Dates
                 deadline: data.deadline?.toDate?.() || data.deadline,
                 createdAt: data.createdAt?.toDate?.() || data.createdAt,
                 updatedAt: data.updatedAt?.toDate?.() || data.updatedAt,
@@ -89,107 +71,90 @@ export const OpportunityService = {
     },
 
     /**
-     * Generic Update (for fields, NOT for Stage usually).
+     * Updates an opportunity generic fields.
      */
     async update(id: string, data: Partial<Opportunity>): Promise<void> {
-        const docRef = doc(db, COLLECTION_NAME, id);
+        const docRef = doc(db, OPPORTUNITIES_COLLECTION, id);
         await updateDoc(docRef, {
             ...data,
             updatedAt: new Date()
         });
     },
 
-
     /**
-     * Central Logic: Change Pipeline Stage with strict Validation.
+     * Advances the opportunity to the next stage and creates a linked Task.
+     * Uses a transaction to ensure consistency.
      */
-    async changeStage(opportunityId: string, currentData: Opportunity, newStage: PipelineStage): Promise<void> {
+    async advanceOpportunityToNextStage(opportunityId: string): Promise<{ updatedOpportunity: Opportunity, createdTask: Task }> {
 
-        // 0. Check Sequentiality (Optional but recommended: prevent jumping)
-        // For now, we trust the validation rules, but generally we should only allow current+1.
-        // Let's rely on validation to prevent jumping if requirements aren't met.
+        return await runTransaction(db, async (transaction) => {
+            // 1. Get Current Opportunity
+            const oppRef = doc(db, OPPORTUNITIES_COLLECTION, opportunityId);
+            const oppSnap = await transaction.get(oppRef);
 
-        // 1. Validate 'Exit' Requirements of the Current Stage
-        // To move FROM currentStage TO newStage (assuming forward progress)
-        // We must satisfy the requirements of the current stage.
-
-        // Exception: If moving backwards? Usually allowed without validation, 
-        // but the prompt says "Não permitir pular etapas sem validações".
-        // We will enforce validation on *Advance* (Forward).
-        const isAdvancing = this.getStageIndex(newStage) > this.getStageIndex(currentData.pipelineStage);
-
-        if (isAdvancing) {
-            const canMove = this.validateStageCompletion(currentData.pipelineStage, currentData);
-            if (!canMove.valid) {
-                throw new Error(`Não é possível avançar: ${canMove.message}`);
+            if (!oppSnap.exists()) {
+                throw new Error("Oportunidade não encontrada.");
             }
 
-            // Also ensure we are not skipping stages (moving 1 by 1)
-            if (this.getStageIndex(newStage) > this.getStageIndex(currentData.pipelineStage) + 1) {
-                throw new Error("Não é permitido pular etapas. Avance uma por vez.");
+            const currentOpp = oppSnap.data() as Opportunity;
+
+            // 2. Calculate Next Stage
+            const nextStage = getNextStage(currentOpp.pipelineStage);
+
+            if (!nextStage) {
+                throw new Error("A oportunidade já está na última etapa ou estado inválido.");
             }
-        }
 
-        // 2. Prepare Updates
-        const updates: Partial<Opportunity> = {
-            pipelineStage: newStage,
-            probability: PROBABILITY_MAP[newStage],
-            updatedAt: new Date()
-        };
+            // 3. Prepare Opportunity Updates
+            const newProbability = getExecutionPercent(nextStage);
+            const updatedOppData = {
+                pipelineStage: nextStage,
+                probability: newProbability,
+                updatedAt: new Date() // Firestore handles Date conversion usu. but best practice
+            };
 
-        await this.update(opportunityId, updates);
-    },
+            transaction.update(oppRef, updatedOppData);
 
-    getStageIndex(stage: PipelineStage): number {
-        const order = Object.values(PipelineStage);
-        return order.indexOf(stage);
-    },
+            // 4. Create Linked Task
+            // "Ao mover ... criar automaticamente uma Ação (tarefa filha) vinculada"
+            const newTaskRef = doc(collection(db, TASKS_COLLECTION));
 
-    /**
-     * Validates if the requirements of the CURRENT stage are met so we can ADVANCE.
-     */
-    validateStageCompletion(currentStage: PipelineStage, data: Opportunity): ValidationResult {
-        switch (currentStage) {
-            case PipelineStage.LEAD_RECEBIDO:
-                if (!data.clientName || !data.deadline) return { valid: false, message: "Dados básicos (Cliente, Prazo) incompletos." };
-                return { valid: true };
+            const newTaskData: Omit<Task, 'id'> = {
+                title: `[${nextStage}] - ${currentOpp.title}`,
+                description: `Tarefa gerada automaticamente para a etapa ${nextStage}.`,
+                opportunityId: opportunityId,
+                stageAtCreation: nextStage,
+                assigneeId: currentOpp.responsibleId || 'SYSTEM', // Fallback
+                status: TaskStatus.PENDING,
+                priority: 'MEDIO', // Default as per prompt request in "Types" section? Prompt said "ALTO"|"MEDIO"|"BAIXO" in modal. Default here? Prompt says: "priority: 'ALTO'|'MEDIO'|'BAIXO'". Let's default to MEDIO.
+                startDate: new Date(),
+                endDate: new Date(), // User will fill in modal
+                needsDetails: true,
+                progress: 0,
+                observations: '',
+                createdAt: new Date(), // Helper? No, just Date
+                updatedAt: new Date()
+            } as any;
+            // 'as any' mostly to avoid strict Type vs Firestore Timestamp mismatch during WRITE if interface assumes Date. 
+            // We'll trust Firestore SDK to convert Date -> Timestamp.
 
-            case PipelineStage.DECISAO_PARTICIPACAO:
-                if (!data.scopeSummary) return { valid: false, message: "Resumo do Escopo é obrigatório." };
-                if (!data.estimatedValue) return { valid: false, message: "Valor Estimado é obrigatório." };
-                if (!data.decision) return { valid: false, message: "Decisão (GO/NO IG) é obrigatória." };
-                if (data.decision === 'NO_GO') return { valid: false, message: "Decisão foi NÃO (NO GO). Cancele a oportunidade em vez de avançar." };
-                return { valid: true };
+            transaction.set(newTaskRef, newTaskData);
 
-            case PipelineStage.ORCAMENTO_PREVIO:
-                if (!data.preliminaryValue) return { valid: false, message: "Valor Preliminar é obrigatório." };
-                return { valid: true };
+            // 5. Return Results
+            // We construct the objects to return to UI immediately
+            const updatedOpportunity: Opportunity = {
+                ...currentOpp,
+                ...updatedOppData,
+                updatedAt: new Date() // Sync
+            };
 
-            case PipelineStage.MEMORIA_COMPOSICOES:
-                // Prompt: "Memória/Composições -> Documentos/anexos técnicos"
-                if (!data.technicalAttachments || data.technicalAttachments.length === 0) {
-                    // Let's be strict if the prompt demanded. "Documentos/anexos técnicos".
-                    // If we don't have file upload yet, we might check a url field or simply warn.
-                    // For strict compliance:
-                    // return { valid: false, message: "Anexos técnicos são obrigatórios." };
-                }
-                return { valid: true };
+            const createdTask: Task = {
+                id: newTaskRef.id,
+                ...newTaskData
+            };
 
-            case PipelineStage.PROPOSTA_TECNICA_COMERCIAL:
-                if (!data.proposalVersion) return { valid: false, message: "Versão da Proposta é obrigatória." };
-                return { valid: true };
-
-            case PipelineStage.REVISAO_FINAL:
-                if (!data.finalChecklistDone) return { valid: false, message: "Checklist de Revisão Final deve ser concluído." };
-                return { valid: true };
-
-            case PipelineStage.ENVIO_PROPOSTA:
-                if (!data.submissionDate) return { valid: false, message: "Data de Envio é obrigatória." };
-                return { valid: true };
-
-            default:
-                return { valid: true };
-        }
+            return { updatedOpportunity, createdTask };
+        });
     }
 
 };

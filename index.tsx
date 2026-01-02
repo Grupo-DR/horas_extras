@@ -110,6 +110,7 @@ const App: React.FC = () => {
   // UI State
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
+  const [taskFormMode, setTaskFormMode] = useState<'FULL' | 'QUICK_EDIT'>('FULL'); // NEW State
   // NEW OPPORTUNITY STATE
   const [isOpportunityModalOpen, setIsOpportunityModalOpen] = useState(false);
   const [editingOpportunity, setEditingOpportunity] = useState<Opportunity | undefined>(undefined);
@@ -745,7 +746,14 @@ const App: React.FC = () => {
                     <Activity size={24} className="text-purple-600" /> Pipeline de Vendas
                   </h3>
                   <div className="flex-1 overflow-hidden">
-                    <PipelineBoard onEditOpportunity={(op) => { setEditingOpportunity(op); setIsOpportunityModalOpen(true); }} />
+                    <PipelineBoard
+                      onEditOpportunity={(op) => { setEditingOpportunity(op); setIsOpportunityModalOpen(true); }}
+                      onTaskCreated={(task) => {
+                        setEditingTask(task);
+                        setTaskFormMode('QUICK_EDIT');
+                        setIsTaskModalOpen(true);
+                      }}
+                    />
                   </div>
                 </div>
 
@@ -848,11 +856,16 @@ const App: React.FC = () => {
       }
       <TaskForm
         isOpen={isTaskModalOpen}
-        onClose={() => setIsTaskModalOpen(false)}
+        onClose={() => {
+          setIsTaskModalOpen(false);
+          setEditingTask(undefined);
+          setTaskFormMode('FULL');
+        }}
         onSave={handleSaveTask}
         users={MOCK_USERS}
         availableParents={motherTasks}
         initialData={editingTask}
+        mode={taskFormMode}
       />
 
       <HistoryPanel

@@ -90,8 +90,8 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
 
       {/* DECORATIVE GRADIENT BAR */}
       <div className={`absolute top-0 left-0 w-1 h-full ${task.status === TaskStatus.COMPLETED ? 'bg-green-500' :
-          isOverdue ? 'bg-red-500' :
-            task.status === TaskStatus.IN_PROGRESS ? 'bg-blue-500' : 'bg-slate-300'
+        isOverdue ? 'bg-red-500' :
+          task.status === TaskStatus.IN_PROGRESS ? 'bg-blue-500' : 'bg-slate-300'
         }`} />
 
       {/* HEADER: Labels & Actions */}
@@ -100,6 +100,11 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
           {!simple && (
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor}`}>
               {statusLabel}
+            </span>
+          )}
+          {task.needsDetails && (
+            <span className="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full border border-yellow-200 font-bold flex items-center gap-1 animate-pulse" title="Necessário completar detalhes">
+              <AlertCircle size={10} /> Definir
             </span>
           )}
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${priorityColor}`}>

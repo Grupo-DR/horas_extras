@@ -55,7 +55,8 @@ export enum PipelineStage {
   DECISAO_PARTICIPACAO = 'DECISAO_PARTICIPACAO',
   ORCAMENTO_PREVIO = 'ORCAMENTO_PREVIO',
   MEMORIA_COMPOSICOES = 'MEMORIA_COMPOSICOES',
-  PROPOSTA_TECNICA_COMERCIAL = 'PROPOSTA_TECNICA_COMERCIAL',
+  PROPOSTA_TECNICA = 'PROPOSTA_TECNICA',
+  PROPOSTA_COMERCIAL = 'PROPOSTA_COMERCIAL',
   REVISAO_FINAL = 'REVISAO_FINAL',
   ENVIO_PROPOSTA = 'ENVIO_PROPOSTA',
   AGUARDANDO_RESULTADO = 'AGUARDANDO_RESULTADO'
@@ -74,22 +75,22 @@ export interface Opportunity {
   clientName: string;
   estimatedValue: number;
   pipelineStage: PipelineStage;
-  probability: number; // 0-100
+  probability: number; // Represents % Execution now
   status: OpportunityStatus;
   responsibleId: string;
-  deadline: Date; // Converted from Timestamp
-  createdAt: Date; // Converted from Timestamp
-  updatedAt: Date; // Converted from Timestamp
+  deadline: Date;
+  createdAt: Date;
+  updatedAt: Date;
 
-  // Specific Data for Validation Stages
+  // Specific Data for Validation Stages (Optional now mainly)
   description?: string;
-  scopeSummary?: string; // Decisão de Participação
-  decision?: 'GO' | 'NO_GO'; // Decisão de Participação
-  preliminaryValue?: number; // Orçamento Prévio
-  technicalAttachments?: string[]; // Memória/Composições - URLs or references
-  proposalVersion?: string; // Proposta Técnica/Comercial
-  finalChecklistDone?: boolean; // Revisão Final
-  submissionDate?: Date; // Envio da Proposta
+  scopeSummary?: string;
+  decision?: 'GO' | 'NO_GO';
+  preliminaryValue?: number;
+  technicalAttachments?: string[];
+  proposalVersion?: string;
+  finalChecklistDone?: boolean;
+  submissionDate?: Date;
 }
 
 export interface Task {
@@ -101,12 +102,14 @@ export interface Task {
   startDate: Date;
   endDate: Date;
   observations: string;
-  priority: 'LOW' | 'MEDIUM' | 'HIGH';
+  priority: 'BAIXO' | 'MEDIO' | 'ALTO'; // Changed to Portuguese as requested
   category?: string;
   progress: number;
 
-  // Link to Opportunity
+  // Link to Opportunity & Automation
   opportunityId?: string;
+  stageAtCreation?: PipelineStage;
+  needsDetails?: boolean;
 
   // Legacy / Compatibility Fields (may be deprecated or mapped)
   parentId?: string;
