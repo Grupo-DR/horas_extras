@@ -11,7 +11,7 @@ import { EscalationSettings } from './components/EscalationSettings';
 import { HistoryPanel } from './components/HistoryPanel';
 import { Layout, LayoutDashboard, PlusCircle, Filter, Bell, Bot, Settings, LogOut, Columns, List, TrendingUp, AlertTriangle, CheckCircle, Calendar, DollarSign, Activity, Users, ChevronDown } from 'lucide-react';
 import { draftEscalationEmail, draftWelcomeEmail } from './services/geminiService';
-import { isPast, format, startOfYear, isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
+import { isPast, format, startOfYear, isWithinInterval, startOfMonth, endOfMonth, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, LineChart, Line } from 'recharts';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -439,8 +439,12 @@ const App: React.FC = () => {
               <input
                 type="month"
                 className="bg-white border border-slate-200 rounded-md text-sm p-1"
-                value={format(selectedDate, 'yyyy-MM')}
-                onChange={(e) => setSelectedDate(new Date(e.target.value + '-01T00:00:00'))}
+                value={isValid(selectedDate) ? format(selectedDate, 'yyyy-MM') : ''}
+                onChange={(e) => {
+                  if (!e.target.value) return;
+                  const d = new Date(e.target.value + '-01T00:00:00');
+                  if (!isNaN(d.getTime())) setSelectedDate(d);
+                }}
               />
             )}
             {/* Simplified custom range for demo */}
@@ -449,7 +453,7 @@ const App: React.FC = () => {
                 <input
                   type="date"
                   className="bg-white border border-slate-200 rounded-md text-sm p-1"
-                  value={format(customRange.start, 'yyyy-MM-dd')}
+                  value={isValid(customRange.start) ? format(customRange.start, 'yyyy-MM-dd') : ''}
                   onChange={(e) => {
                     const date = new Date(e.target.value);
                     if (!isNaN(date.getTime())) setCustomRange(prev => ({ ...prev, start: date }));
@@ -459,7 +463,7 @@ const App: React.FC = () => {
                 <input
                   type="date"
                   className="bg-white border border-slate-200 rounded-md text-sm p-1"
-                  value={format(customRange.end, 'yyyy-MM-dd')}
+                  value={isValid(customRange.end) ? format(customRange.end, 'yyyy-MM-dd') : ''}
                   onChange={(e) => {
                     const date = new Date(e.target.value);
                     if (!isNaN(date.getTime())) setCustomRange(prev => ({ ...prev, end: date }));
