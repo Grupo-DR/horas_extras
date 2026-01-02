@@ -141,10 +141,15 @@ export const OpportunityService = {
             transaction.set(newTaskRef, newTaskData);
 
             // 5. Return Results
-            // We construct the objects to return to UI immediately
+            // FIX: Ensure all Timestamps are converted to Dates for UI compatibility
+            const convertToDate = (val: any) => (val && val.toDate) ? val.toDate() : val;
+
             const updatedOpportunity: Opportunity = {
                 ...currentOpp,
                 ...updatedOppData,
+                deadline: convertToDate(currentOpp.deadline),
+                createdAt: convertToDate(currentOpp.createdAt),
+                submissionDate: convertToDate(currentOpp.submissionDate),
                 updatedAt: new Date() // Sync
             };
 

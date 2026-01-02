@@ -280,8 +280,12 @@ const App: React.FC = () => {
   };
 
   const timeFilteredTasks = getFilteredTasks(tasks);
-  const motherTasks = tasks.filter(t => !t.parentId); // All mothers
-  const childTasks = tasks.filter(t => !!t.parentId); // All children
+
+  // FIX: Operational View now includes Legacy Children (parentId) AND Pipeline Actions (opportunityId)
+  const childTasks = tasks.filter(t => !!t.parentId || !!t.opportunityId);
+
+  // FIX: Strategic View only includes Legacy Mothers (No parent, No opportunity)
+  const motherTasks = tasks.filter(t => !t.parentId && !t.opportunityId);
 
   // View Filtering for Kanban/List
   const hierarchyScan = useMemo(() => {

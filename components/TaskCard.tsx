@@ -36,9 +36,9 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
   const formatBRL = (val?: number) => val ? val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-';
 
   const displayResponsible = useMemo(() => {
-    // FIX: Always return the Internal Responsible (assignee) - REMOVED CONDITIONAL
-    return assignee ? assignee.name : 'N/A';
-  }, [assignee]);
+    // FIX: Fallback to assigneeId (Name) if User lookup fails
+    return assignee ? assignee.name : (task.assigneeId || 'N/A');
+  }, [assignee, task.assigneeId]);
 
   // FIX: Separate Logic for Client Contact
   const clientContactName = useMemo(() => {

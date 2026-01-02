@@ -237,18 +237,28 @@ export const TaskForm: React.FC<Props> = ({
 
               {isChild && (
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                  <label className="block text-sm font-bold text-blue-800 mb-2">Vincular a Ação Mãe</label>
-                  <select
-                    required={isChild && !formData.opportunityId}
-                    className="w-full p-2.5 border border-blue-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none"
-                    value={formData.parentId || ''}
-                    onChange={(e) => setFormData({ ...formData, parentId: e.target.value })}
-                  >
-                    <option value="">Selecione a Ação Mãe...</option>
-                    {availableParents.map(parent => (
-                      <option key={parent.id} value={parent.id}>{parent.title} - {parent.clientName || 'Sem Cliente'}</option>
-                    ))}
-                  </select>
+                  <label className="block text-sm font-bold text-blue-800 mb-2">Vínculo</label>
+                  {formData.opportunityId ? (
+                    <div className="flex items-center gap-2 text-blue-700 bg-white p-2 rounded border border-blue-200">
+                      <Target size={18} />
+                      <span className="font-medium">Vinculado à Oportunidade (Automático)</span>
+                    </div>
+                  ) : (
+                    <>
+                      <label className="block text-xs font-medium text-blue-600 mb-1">Vincular a Ação Mãe</label>
+                      <select
+                        required={!formData.opportunityId}
+                        className="w-full p-2.5 border border-blue-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                        value={formData.parentId || ''}
+                        onChange={(e) => setFormData({ ...formData, parentId: e.target.value })}
+                      >
+                        <option value="">Selecione a Ação Mãe...</option>
+                        {availableParents.map(parent => (
+                          <option key={parent.id} value={parent.id}>{parent.title} - {parent.clientName || 'Sem Cliente'}</option>
+                        ))}
+                      </select>
+                    </>
+                  )}
                 </div>
               )}
 
