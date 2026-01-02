@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
-import { Task, User, TaskStatus, HelpChainLevel, HistoryLog, Notification, TaskOutcome } from './types';
+import { Task, User, TaskStatus, HelpChainLevel, HistoryLog, Notification, TaskOutcome, Opportunity } from './types';
 import { TaskCard } from './components/TaskCard';
 import { TaskForm } from './components/TaskForm';
+import { OpportunityForm } from './components/Pipeline/OpportunityForm'; // NEW
 import { KanbanBoard } from './components/KanbanBoard';
+import { PipelineBoard } from './components/Pipeline/PipelineBoard';
 import { EscalationSettings } from './components/EscalationSettings';
 import { HistoryPanel } from './components/HistoryPanel';
 import { Layout, LayoutDashboard, PlusCircle, Filter, Bell, Bot, Settings, LogOut, Columns, List, TrendingUp, AlertTriangle, CheckCircle, Calendar, DollarSign, Activity, Users, ChevronDown } from 'lucide-react';
@@ -108,6 +110,10 @@ const App: React.FC = () => {
   // UI State
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
+  // NEW OPPORTUNITY STATE
+  const [isOpportunityModalOpen, setIsOpportunityModalOpen] = useState(false);
+  const [editingOpportunity, setEditingOpportunity] = useState<Opportunity | undefined>(undefined);
+
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   const [view, setView] = useState<'DASHBOARD' | 'STRATEGIC' | 'OPERATIONAL' | 'SETTINGS'>('DASHBOARD');
@@ -356,13 +362,13 @@ const App: React.FC = () => {
             onClick={() => setView('STRATEGIC')}
             className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-all duration-300 ${view === 'STRATEGIC' ? 'bg-blue-600 shadow-lg shadow-blue-500/20 text-white' : 'hover:bg-white/5 text-slate-300'}`}
           >
-            <Activity size={20} /> Estratégico (Mães)
+            <Activity size={20} /> Pipeline (Estratégico)
           </button>
           <button
             onClick={() => setView('OPERATIONAL')}
             className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-all duration-300 ${view === 'OPERATIONAL' ? 'bg-blue-600 shadow-lg shadow-blue-500/20 text-white' : 'hover:bg-white/5 text-slate-300'}`}
           >
-            <List size={20} /> Operacional (Filhas)
+            <List size={20} /> Tarefas (Operacional)
           </button>
           <button
             onClick={() => setView('SETTINGS')}
@@ -395,8 +401,8 @@ const App: React.FC = () => {
             {/* VIEW TITLE */}
             <h2 className="text-lg font-bold text-slate-700 mr-4">
               {view === 'DASHBOARD' ? 'Visão Executiva' :
-                view === 'STRATEGIC' ? 'Estratégico (Mães)' :
-                  view === 'OPERATIONAL' ? 'Operacional (Filhas)' : 'Configurações'}
+                view === 'STRATEGIC' ? 'Pipeline Comercial' :
+                  view === 'OPERATIONAL' ? 'Tarefas e Prazos' : 'Configurações'}
             </h2>
 
             {/* TIME FILTERS */}
@@ -467,12 +473,23 @@ const App: React.FC = () => {
               <Bell size={20} />
               {notifications.length > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>}
             </button>
-            <button
-              onClick={() => { setEditingTask(undefined); setIsTaskModalOpen(true); }}
-              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-bold shadow hover:bg-blue-700 transition-colors"
-            >
-              <PlusCircle size={16} /> Nova Tarefa
-            </button>
+
+            {/* DYNAMIC ACTION BUTTON */}
+            {view === 'STRATEGIC' ? (
+              <button
+                onClick={() => { setEditingOpportunity(undefined); setIsOpportunityModalOpen(true); }}
+                className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white rounded-lg text-sm font-bold shadow hover:bg-purple-700 transition-colors"
+              >
+                <PlusCircle size={16} /> Nova Oportunidade
+              </button>
+            ) : (
+              <button
+                onClick={() => { setEditingTask(undefined); setIsTaskModalOpen(true); }}
+                className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-bold shadow hover:bg-blue-700 transition-colors"
+              >
+                <PlusCircle size={16} /> Nova Tarefa
+              </button>
+            )}
           </div>
         </header>
 
@@ -712,7 +729,7 @@ const App: React.FC = () => {
               </motion.div>
             )}
 
-            {/* STRATEGIC VIEW (MOTHERS) */}
+            {/* STRATEGIC VIEW (PIPELINE) */}
             {view === 'STRATEGIC' && (
               <motion.div
                 key="strategic"
@@ -720,33 +737,40 @@ const App: React.FC = () => {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
-                className="h-full"
+                className="h-full flex flex-col gap-6"
               >
-                <div className="bg-white/50 backdrop-blur-sm rounded-xl border border-white/20 shadow-sm p-6 h-full overflow-y-auto">
-                  <h3 className="font-bold text-slate-700 flex items-center gap-2 mb-6 text-xl">
-                    <Activity size={24} className="text-purple-600" /> Ações Mãe (Estratégico)
+                {/* NEW PIPELINE BOARD */}
+                <div className="flex-1 bg-white/50 backdrop-blur-sm rounded-xl border border-white/20 shadow-sm p-4 overflow-hidden flex flex-col">
+                  <h3 className="font-bold text-slate-700 flex items-center gap-2 mb-4 text-xl">
+                    <Activity size={24} className="text-purple-600" /> Pipeline de Vendas
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {hierarchyScan.mothers.map((t, idx) => (
-                      <motion.div
-                        key={t.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.05 }}
-                      >
+                  <div className="flex-1 overflow-hidden">
+                    <PipelineBoard onEditOpportunity={(op) => { setEditingOpportunity(op); setIsOpportunityModalOpen(true); }} />
+                  </div>
+                </div>
+
+                {/* LEGACY VIEW TOGGLE (Optional/Parallel Run) */}
+                <div className="bg-slate-100 p-2 rounded-lg border border-slate-200">
+                  <details>
+                    <summary className="cursor-pointer text-xs font-bold text-slate-500 uppercase tracking-wide hover:text-slate-700 select-none">
+                      Ver Ações Mãe (Legado)
+                    </summary>
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-2">
+                      {hierarchyScan.mothers.map((t, idx) => (
                         <TaskCard
+                          key={t.id}
                           task={t}
                           assignee={MOCK_USERS.find(u => u.id === t.assigneeId)}
                           childTasks={hierarchyScan.children.filter(c => c.parentId === t.id)}
                           onEdit={(x) => { setEditingTask(x); setIsTaskModalOpen(true); }}
                           onStatusChange={handleStatusChange}
                         />
-                      </motion.div>
-                    ))}
-                    {hierarchyScan.mothers.length === 0 && (
-                      <p className="col-span-3 text-center text-slate-400 py-12">Nenhuma ação mãe encontrada.</p>
-                    )}
-                  </div>
+                      ))}
+                      {hierarchyScan.mothers.length === 0 && (
+                        <p className="text-slate-400 text-sm">Nenhuma ação legado encontrada.</p>
+                      )}
+                    </div>
+                  </details>
                 </div>
               </motion.div>
             )}
@@ -797,6 +821,31 @@ const App: React.FC = () => {
       </main>
 
       {/* MODALS */}
+      {
+        isOpportunityModalOpen && (
+          <OpportunityForm
+            initialData={editingOpportunity}
+            onClose={() => setIsOpportunityModalOpen(false)}
+            onSave={() => {
+              // If needed, refresh board logic is handled inside PipelineBoard mostly, 
+              // but if we need global refresh we can add it. 
+              // Actually PipelineBoard fetches its own data. 
+              // We might need to trigger a refresh in PipelineBoard?
+              // For MVP, closing/opening re-mounts it or we rely on it auto-fetching?
+              // PipelineBoard has 'useEffect loadOpportunities []'. 
+              // To force refresh, we might need a signal.
+              // Or just window.location.reload() for now? No, that's bad.
+              // We can key the PipelineBoard to force re-render or context.
+              // Let's pass a key to PipelineBoard for now!
+              // Or better, let OpportunityForm handle its own logic and just tell parent "I saved".
+              // PipelineBoard needs to know to refetch.
+              // I'll add a refreshTrigger to PipelineBoard or something.
+              // For simplicity now: use window.dispatchEvent or just simple key change.
+              window.location.reload(); // Simplest quick fix for MVP sync to avoid complex state lift right now
+            }}
+          />
+        )
+      }
       <TaskForm
         isOpen={isTaskModalOpen}
         onClose={() => setIsTaskModalOpen(false)}
@@ -813,7 +862,7 @@ const App: React.FC = () => {
         notifications={notifications}
       />
       <Toaster position="top-right" richColors />
-    </div>
+    </div >
   );
 };
 

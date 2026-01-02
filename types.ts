@@ -47,9 +47,54 @@ export enum TaskOutcome {
   WITHDRAWAL = 'WITHDRAWAL'  // Desistência
 }
 
+
+// --- OPPORTUNITY & PIPELINE TYPES ---
+
+export enum PipelineStage {
+  LEAD_RECEBIDO = 'LEAD_RECEBIDO',
+  DECISAO_PARTICIPACAO = 'DECISAO_PARTICIPACAO',
+  ORCAMENTO_PREVIO = 'ORCAMENTO_PREVIO',
+  MEMORIA_COMPOSICOES = 'MEMORIA_COMPOSICOES',
+  PROPOSTA_TECNICA_COMERCIAL = 'PROPOSTA_TECNICA_COMERCIAL',
+  REVISAO_FINAL = 'REVISAO_FINAL',
+  ENVIO_PROPOSTA = 'ENVIO_PROPOSTA',
+  AGUARDANDO_RESULTADO = 'AGUARDANDO_RESULTADO'
+}
+
+export enum OpportunityStatus {
+  ATIVA = 'ATIVA',
+  GANHA = 'GANHA',
+  PERDIDA = 'PERDIDA',
+  CANCELADA = 'CANCELADA'
+}
+
+export interface Opportunity {
+  id: string;
+  title: string;
+  clientName: string;
+  estimatedValue: number;
+  pipelineStage: PipelineStage;
+  probability: number; // 0-100
+  status: OpportunityStatus;
+  responsibleId: string;
+  deadline: Date; // Converted from Timestamp
+  createdAt: Date; // Converted from Timestamp
+  updatedAt: Date; // Converted from Timestamp
+
+  // Specific Data for Validation Stages
+  description?: string;
+  scopeSummary?: string; // Decisão de Participação
+  decision?: 'GO' | 'NO_GO'; // Decisão de Participação
+  preliminaryValue?: number; // Orçamento Prévio
+  technicalAttachments?: string[]; // Memória/Composições - URLs or references
+  proposalVersion?: string; // Proposta Técnica/Comercial
+  finalChecklistDone?: boolean; // Revisão Final
+  submissionDate?: Date; // Envio da Proposta
+}
+
 export interface Task {
   id: string;
-  title: string; // Nome da obra/concorrência
+  title: string;
   description: string;
   assigneeId: string;
   status: TaskStatus;
@@ -57,19 +102,20 @@ export interface Task {
   endDate: Date;
   observations: string;
   priority: 'LOW' | 'MEDIUM' | 'HIGH';
-  category?: string; // Nova categoria
-  progress: number; // 0-100
+  category?: string;
+  progress: number;
 
-  // New Fields for Hierarchy & Details
-  parentId?: string; // ID da Ação Mãe (opcional)
-  value?: number; // Valor R$
-  interestScore?: number; // Nota da Matriz de Interesse
+  // Link to Opportunity
+  opportunityId?: string;
 
-  // Fields for Mother Action (Ação Mãe)
-  proposalName?: string; // Nome da Proposta
-  clientName?: string; // Nome do Cliente
-  responsibleName?: string; // Nome doResponsável (Texto livre ou diferente do assigneeId?)
-  contactEmail?: string; // Email do contato
-  contactPhone?: string; // Telefone do contato
-  outcome?: TaskOutcome; // Resultado da Concorrência
+  // Legacy / Compatibility Fields (may be deprecated or mapped)
+  parentId?: string;
+  value?: number;
+  interestScore?: number;
+  proposalName?: string;
+  clientName?: string;
+  responsibleName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  outcome?: TaskOutcome;
 }
