@@ -345,7 +345,8 @@ const App: React.FC = () => {
     // 5. Collaborators - Optimized Single Reduce Logic
     const collaborators = MOCK_USERS.map(user => {
       // Logic: Iterate through RELEVANT tasks (time filtered) ONCE
-      const userTasks = relevantTasks.filter(t => t.assigneeId === user.id);
+      // FIX: Match by ID OR Name to handle legacy data where names were stored instead of IDs
+      const userTasks = relevantTasks.filter(t => t.assigneeId === user.id || t.assigneeId === user.name);
       const metrics = calculateMetrics(userTasks);
       return { user, ...metrics };
     });
