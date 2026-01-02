@@ -487,25 +487,26 @@ export const TaskForm: React.FC<Props> = ({
                     onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
                   ></textarea>
                 </div>
-              </>
+              </div>
+            </>
           )}
 
-              <div className="flex justify-end pt-4 gap-3 bg-white sticky bottom-0 border-t mt-4 py-4">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-                >
-                  Salvar {mode === 'QUICK_EDIT' ? '' : 'Ação'}
-                </button>
-              </div>
-            </form>
+          <div className="flex justify-end pt-4 gap-3 bg-white sticky bottom-0 border-t mt-4 py-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+            >
+              Salvar {mode === 'QUICK_EDIT' ? '' : 'Ação'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
