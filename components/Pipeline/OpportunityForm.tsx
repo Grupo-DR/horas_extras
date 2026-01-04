@@ -139,15 +139,25 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, l
                                 </select>
                             </div>
 
-                            {/* Value */}
+                            {/* Value (BRL Mask) */}
                             <div>
-                                <label className="block text-sm font-medium text-slate-600 mb-1">Valor Estimado (R$)</label>
+                                <label className="block text-sm font-medium text-slate-600 mb-1">Valor da Proposta (R$)</label>
                                 <input
-                                    type="number"
-                                    value={formData.estimatedValue}
-                                    onChange={e => setFormData({ ...formData, estimatedValue: Number(e.target.value) })}
+                                    type="text"
+                                    value={formData.estimatedValue
+                                        ? (formData.estimatedValue).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                                        : ''}
+                                    onChange={e => {
+                                        // Remove everything that is not a digit
+                                        const rawValue = e.target.value.replace(/\D/g, '');
+
+                                        // Convert to number (cents -> float)
+                                        const numericValue = rawValue ? parseInt(rawValue, 10) / 100 : 0;
+
+                                        setFormData({ ...formData, estimatedValue: numericValue });
+                                    }}
                                     className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                    min="0"
+                                    placeholder="0,00"
                                 />
                             </div>
 
