@@ -14,8 +14,10 @@ interface Props {
 
 export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onEdit, onStatusChange, simple = false }) => {
 
-  const daysLeft = differenceInDays(task.endDate, new Date());
-  const isOverdue = isPast(task.endDate) && task.status !== TaskStatus.COMPLETED;
+  // SAFE DATE CHECKS
+  const safeEndDate = isValid(task.endDate) ? task.endDate : new Date();
+  const daysLeft = differenceInDays(safeEndDate, new Date());
+  const isOverdue = isPast(safeEndDate) && task.status !== TaskStatus.COMPLETED;
   const isMother = !task.parentId;
 
   // Helpers to get values from children
@@ -37,7 +39,7 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
 
   const displayResponsible = useMemo(() => {
     // FIX: Fallback to assigneeId (Name) if User lookup fails
-    return assignee ? assignee.name : (task.assigneeId || 'N/A');
+    return assignee ? assignee.name : (typeof task.assigneeId === 'string' ? task.assigneeId : 'N/A');
   }, [assignee, task.assigneeId]);
 
   // FIX: Separate Logic for Client Contact
@@ -131,31 +133,31 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
         {isMother && (
           <div className="mb-2">
             {/* CLIENT NAME - HIERARCHY TOP */}
-            {task.clientName && (
+            {typeof task.clientName === 'string' && task.clientName && (
               <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1">
                 <Building size={10} /> {task.clientName}
               </p>
             )}
             {/* PROPOSAL NAME */}
-            {task.proposalName && (
+            {typeof task.proposalName === 'string' && task.proposalName && (
               <p className="text-xs font-bold text-blue-600 mb-1">{task.proposalName}</p>
             )}
           </div>
         )}
 
         {/* FOR CHILDREN */}
-        {!isMother && task.clientName && (
+        {!isMother && typeof task.clientName === 'string' && task.clientName && (
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
             <Building size={10} /> {task.clientName}
           </p>
         )}
 
         {/* MAIN TITLE */}
-        <h3 className="font-bold text-slate-800 text-base leading-snug mb-2 group-hover:text-blue-700 transition-colors" title={task.title}>
-          {task.title}
+        <h3 className="font-bold text-slate-800 text-base leading-snug mb-2 group-hover:text-blue-700 transition-colors" title={typeof task.title === 'string' ? task.title : ''}>
+          {typeof task.title === 'string' ? task.title : 'Sem Título'}
         </h3>
 
-        {!isMother && task.proposalName && (
+        {!isMother && typeof task.proposalName === 'string' && task.proposalName && (
           <p className="text-xs text-blue-500 mb-2 font-medium">{task.proposalName}</p>
         )}
 

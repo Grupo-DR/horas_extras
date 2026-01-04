@@ -58,15 +58,38 @@ export const OpportunityService = {
     async getAll(): Promise<Opportunity[]> {
         const q = query(collection(db, OPPORTUNITIES_COLLECTION), orderBy('updatedAt', 'desc'));
         const snapshot = await getDocs(q);
+
+        // HELPER: Strict String Sanitizer
+        const safeStr = (v: any) => typeof v === 'string' ? v : '';
+
+        // HELPER: Strict Date Sanitizer
+        const safeDate = (val: any) => {
+            if (!val) return new Date(); // Default to now if missing
+            if (val instanceof Date) return val;
+            if (typeof val.toDate === 'function') return val.toDate(); // Firestore Timestamp
+            if (val && typeof val.seconds === 'number') return new Date(val.seconds * 1000); // Raw Timestamp
+
+            // Handle recursion bug objects or other trash
+            if (typeof val === 'object') return new Date();
+
+            const parsed = new Date(val);
+            return isNaN(parsed.getTime()) ? new Date() : parsed;
+        };
+
         return snapshot.docs.map(doc => {
             const data = doc.data();
             return {
                 id: doc.id,
                 ...data,
-                deadline: data.deadline?.toDate?.() || data.deadline,
-                createdAt: data.createdAt?.toDate?.() || data.createdAt,
-                updatedAt: data.updatedAt?.toDate?.() || data.updatedAt,
-                submissionDate: data.submissionDate?.toDate?.() || undefined,
+                // Apply Sanitization
+                title: safeStr(data.title),
+                clientName: safeStr(data.clientName),
+                responsibleId: safeStr(data.responsibleId),
+
+                deadline: safeDate(data.deadline),
+                createdAt: safeDate(data.createdAt),
+                updatedAt: safeDate(data.updatedAt),
+                submissionDate: data.submissionDate ? safeDate(data.submissionDate) : undefined,
             } as Opportunity;
         });
     },

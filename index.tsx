@@ -89,14 +89,30 @@ const App: React.FC = () => {
           if (typeof val === 'object' && Object.keys(val).length === 0) {
             return new Date();
           }
+          // Handle invalid types passed as dates
+          if (typeof val !== 'string' && typeof val !== 'number' && !(val instanceof Date) && typeof val.toDate !== 'function') {
+            return new Date();
+          }
+
           const parsed = new Date(val);
           // FIX: Fallback to Year 2000 to make errors visible
           return isNaN(parsed.getTime()) ? new Date(2000, 0, 1) : parsed;
         };
 
+        // HELPER: Strict String
+        const safeStr = (v: any) => typeof v === 'string' ? v : '';
+
         return {
           id: doc.id,
           ...data,
+          // DATA SHIELDING
+          title: safeStr(data.title),
+          description: safeStr(data.description),
+          clientName: safeStr(data.clientName),
+          proposalName: safeStr(data.proposalName),
+          assigneeId: safeStr(data.assigneeId),
+          responsibleName: safeStr(data.responsibleName),
+
           startDate: convertDate(data.startDate),
           endDate: convertDate(data.endDate),
         } as Task;
@@ -110,7 +126,15 @@ const App: React.FC = () => {
   const fetchOpportunities = async () => {
     try {
       const data = await OpportunityService.getAll();
-      setOpportunities(data);
+
+      // DOUBLE CHECK: Extra Layer of Sanitation before State
+      const sanitizedData = data.map(op => ({
+        ...op,
+        title: typeof op.title === 'string' ? op.title : '',
+        clientName: typeof op.clientName === 'string' ? op.clientName : '',
+      }));
+
+      setOpportunities(sanitizedData);
     } catch (e) {
       console.error("Error fetching opportunities", e);
       toast.error("Erro ao carregar pipeline.");
