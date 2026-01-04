@@ -110,8 +110,12 @@ const App: React.FC = () => {
           description: safeStr(data.description),
           clientName: safeStr(data.clientName),
           proposalName: safeStr(data.proposalName),
+          category: safeStr(data.category),
+          observations: safeStr(data.observations),
           assigneeId: safeStr(data.assigneeId),
           responsibleName: safeStr(data.responsibleName),
+
+          value: typeof data.value === 'number' ? data.value : 0,
 
           startDate: convertDate(data.startDate),
           endDate: convertDate(data.endDate),
@@ -979,23 +983,30 @@ const App: React.FC = () => {
       <TaskForm
         isOpen={isTaskModalOpen}
         initialData={editingTask}
-        existingCategories={Array.from(new Set(tasks.map(t => t.category).filter(Boolean))) as string[]}
+        existingCategories={Array.from(new Set(tasks.map(t => t.category).filter(cat => typeof cat === 'string' && cat !== ''))) as string[]}
         users={MOCK_USERS}
         availableParents={[
           ...tasks.filter(t => !t.parentId && !t.opportunityId),
-          ...opportunities.map(op => ({
-            id: op.id,
-            title: typeof op.title === 'string' ? `[Oportunidade] ${op.title}` : '[Oportunidade]',
-            clientName: typeof op.clientName === 'string' ? op.clientName : '',
-            // spread other required fields with defaults to satisfy Task type
-            description: '',
-            assigneeId: op.responsibleId || '',
-            status: TaskStatus.PENDING,
-            priority: 'MEDIO',
-            category: 'Oportunidade',
-            startDate: new Date(),
-            endDate: op.deadline || new Date(),
-          } as unknown as Task))
+          ...opportunities.map(op => {
+            // Safe conversion inside map to prevent crash
+            const opId = typeof op.id === 'string' ? op.id : 'invalid-id';
+            const opTitle = typeof op.title === 'string' ? op.title : 'Sem Título';
+            const opClient = typeof op.clientName === 'string' ? op.clientName : '';
+
+            return {
+              id: opId,
+              title: `[Oportunidade] ${opTitle}`,
+              clientName: opClient,
+              // spread other required fields with defaults to satisfy Task type
+              description: '',
+              assigneeId: op.responsibleId || '',
+              status: TaskStatus.PENDING,
+              priority: 'MEDIO',
+              category: 'Oportunidade',
+              startDate: new Date(),
+              endDate: op.deadline || new Date(),
+            } as unknown as Task;
+          })
         ]}
         onClose={() => {
           setIsTaskModalOpen(false);

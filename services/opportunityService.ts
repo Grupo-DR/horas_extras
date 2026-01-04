@@ -76,6 +76,9 @@ export const OpportunityService = {
             return isNaN(parsed.getTime()) ? new Date() : parsed;
         };
 
+        // HELPER: Strict Number Sanitizer
+        const safeNum = (v: any) => typeof v === 'number' ? v : 0;
+
         return snapshot.docs.map(doc => {
             const data = doc.data();
             return {
@@ -85,6 +88,7 @@ export const OpportunityService = {
                 title: safeStr(data.title),
                 clientName: safeStr(data.clientName),
                 responsibleId: safeStr(data.responsibleId),
+                estimatedValue: safeNum(data.estimatedValue),
 
                 deadline: safeDate(data.deadline),
                 createdAt: safeDate(data.createdAt),

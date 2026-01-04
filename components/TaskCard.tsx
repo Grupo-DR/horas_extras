@@ -135,12 +135,12 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
             {/* CLIENT NAME - HIERARCHY TOP */}
             {typeof task.clientName === 'string' && task.clientName && (
               <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1">
-                <Building size={10} /> {task.clientName}
+                <Building size={10} /> {String(task.clientName)}
               </p>
             )}
             {/* PROPOSAL NAME */}
             {typeof task.proposalName === 'string' && task.proposalName && (
-              <p className="text-xs font-bold text-blue-600 mb-1">{task.proposalName}</p>
+              <p className="text-xs font-bold text-blue-600 mb-1">{String(task.proposalName)}</p>
             )}
           </div>
         )}
@@ -148,17 +148,17 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
         {/* FOR CHILDREN */}
         {!isMother && typeof task.clientName === 'string' && task.clientName && (
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-            <Building size={10} /> {task.clientName}
+            <Building size={10} /> {String(task.clientName)}
           </p>
         )}
 
         {/* MAIN TITLE */}
-        <h3 className="font-bold text-slate-800 text-base leading-snug mb-2 group-hover:text-blue-700 transition-colors" title={typeof task.title === 'string' ? task.title : ''}>
-          {typeof task.title === 'string' ? task.title : 'Sem Título'}
+        <h3 className="font-bold text-slate-800 text-base leading-snug mb-2 group-hover:text-blue-700 transition-colors" title={String(task.title || '')}>
+          {String(task.title || 'Sem Título')}
         </h3>
 
-        {!isMother && typeof task.proposalName === 'string' && task.proposalName && (
-          <p className="text-xs text-blue-500 mb-2 font-medium">{task.proposalName}</p>
+        {!isMother && (typeof task.proposalName === 'string' && task.proposalName) && (
+          <p className="text-xs text-blue-500 mb-2 font-medium">{String(task.proposalName)}</p>
         )}
 
         {!simple && <p className="text-slate-500 text-xs line-clamp-2 leading-relaxed">{task.description}</p>}
