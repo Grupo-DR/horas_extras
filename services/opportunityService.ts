@@ -21,7 +21,7 @@ import {
     Task,
     TaskStatus
 } from '../types';
-import { getExecutionPercent, getNextStage } from '../domain/pipeline';
+import { getExecutionPercent, getNextStage, getStageLabel } from '../domain/pipeline';
 
 const OPPORTUNITIES_COLLECTION = 'opportunities';
 const TASKS_COLLECTION = 'tasks';

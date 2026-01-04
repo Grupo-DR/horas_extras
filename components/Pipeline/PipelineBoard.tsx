@@ -41,20 +41,24 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({ opportunities, ref
         // Rule: Only allow moving to the EXACT NEXT stage.
         const nextStage = getNextStage(opportunity.pipelineStage);
 
-        if (targetStage !== nextStage) {
-            toast.warning("Siga o fluxo: mova apenas para a próxima etapa.");
+        // SPECIAL RULE: Allow Backward "Aguardando Resultado" -> "Revisão"
+        const isSpecialBackwards = opportunity.pipelineStage === PipelineStage.AGUARDANDO_RESULTADO && targetStage === PipelineStage.REVISAO_FINAL;
+        const isForward = targetStage === nextStage;
+
+        if (!isForward && !isSpecialBackwards) {
+            toast.warning("Movimento não permitido.");
             return;
         }
 
-        // Logic for Advancing
+        // Logic for Advancing (or Moving Back)
         try {
-            const { updatedOpportunity, createdTask } = await OpportunityService.advanceOpportunityToNextStage(opportunity.id);
+            const { updatedOpportunity, createdTask } = await OpportunityService.moveOpportunity(opportunity.id, targetStage);
 
             // Update Local State
             // Update Parent State
             refreshOpportunities();
 
-            toast.success(`Avançou para ${targetStage}`);
+            toast.success(`Movido para ${targetStage === PipelineStage.REVISAO_FINAL ? 'Revisão' : targetStage}`);
 
             // Trigger Task Modal
             if (onTaskCreated) {
