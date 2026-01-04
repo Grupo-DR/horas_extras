@@ -4,6 +4,7 @@ import {
     addDoc,
     updateDoc,
     doc,
+    deleteDoc,
     getDocs,
     getDoc,
     Timestamp,
@@ -82,6 +83,13 @@ export const OpportunityService = {
     },
 
     /**
+     * Delete an opportunity.
+     */
+    async delete(id: string): Promise<void> {
+        await deleteDoc(doc(db, OPPORTUNITIES_COLLECTION, id));
+    },
+
+    /**
      * Advances the opportunity to the next stage and creates a linked Task.
      * Uses a transaction to ensure consistency.
      */
@@ -126,22 +134,19 @@ export const OpportunityService = {
                 stageAtCreation: nextStage,
                 assigneeId: currentOpp.responsibleId || 'SYSTEM', // Fallback
                 status: TaskStatus.PENDING,
-                priority: 'MEDIO', // Default as per prompt request in "Types" section? Prompt said "ALTO"|"MEDIO"|"BAIXO" in modal. Default here? Prompt says: "priority: 'ALTO'|'MEDIO'|'BAIXO'". Let's default to MEDIO.
+                priority: 'MEDIO',
                 startDate: new Date(),
-                endDate: new Date(), // User will fill in modal
+                endDate: new Date(),
                 needsDetails: true,
                 progress: 0,
                 observations: '',
-                createdAt: new Date(), // Helper? No, just Date
+                createdAt: new Date(),
                 updatedAt: new Date()
             } as any;
-            // 'as any' mostly to avoid strict Type vs Firestore Timestamp mismatch during WRITE if interface assumes Date. 
-            // We'll trust Firestore SDK to convert Date -> Timestamp.
 
             transaction.set(newTaskRef, newTaskData);
 
             // 5. Return Results
-            // FIX: Ensure all Timestamps are converted to Dates for UI compatibility
             const convertToDate = (val: any) => (val && val.toDate) ? val.toDate() : val;
 
             const updatedOpportunity: Opportunity = {

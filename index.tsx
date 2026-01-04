@@ -403,6 +403,19 @@ const App: React.FC = () => {
       return acc;
     }, { success: 0, failure: 0, study: 0, withdrawal: 0 });
 
+    // NEW: ADD PIPELINE OPPORTUNITIES TO FINANCIAL TOTALS
+    // Filter opportunities in 'RESULTADO' stage (which are "closed")
+    // Use 'result' field to categorize
+    const pipelineOutcomes = opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO);
+
+    pipelineOutcomes.forEach(op => {
+      const val = op.estimatedValue || 0;
+      if (op.result === TaskOutcome.SUCCESS) outcomes.success += val;
+      if (op.result === TaskOutcome.FAILURE) outcomes.failure += val;
+      if (op.result === TaskOutcome.STUDY) outcomes.study += val;
+      if (op.result === TaskOutcome.WITHDRAWAL) outcomes.withdrawal += val;
+    });
+
     // 5. Collaborators - Optimized with FUZZY MATCHING
     const collaborators = MOCK_USERS.map(user => {
       // Logic: Iterate through RELEVANT tasks (time filtered) ONCE
@@ -912,6 +925,17 @@ const App: React.FC = () => {
             }}
             onSave={() => {
               window.location.reload();
+            }}
+            onDelete={async (id) => {
+              if (confirm("Tem certeza que deseja excluir esta oportunidade?")) {
+                try {
+                  await OpportunityService.delete(id);
+                  toast.success("Oportunidade excluída.");
+                  window.location.reload();
+                } catch (e) {
+                  toast.error("Erro ao excluir.");
+                }
+              }
             }}
           />
         )

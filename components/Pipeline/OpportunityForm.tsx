@@ -10,9 +10,10 @@ interface OpportunityFormProps {
     linkedTasks?: Task[];
     onClose: () => void;
     onSave: () => void; // Trigger reload
+    onDelete?: (id: string) => void;
 }
 
-export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, linkedTasks = [], onClose, onSave }) => {
+export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, linkedTasks = [], onClose, onSave, onDelete }) => {
     const [formData, setFormData] = useState<Partial<Opportunity>>({
         clientName: '',
         title: '',
@@ -162,10 +163,6 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, l
                                 <p className="text-sm font-medium text-blue-900 mt-1">
                                     {initialData ? initialData.pipelineStage : 'LEAD RECEBIDO (Inicial)'}
                                 </p>
-                                <div className="mt-2 flex items-center text-xs text-blue-700">
-                                    <span className="font-bold mr-1">Probabilidade:</span>
-                                    {initialData ? initialData.probability : 10}%
-                                </div>
                             </div>
 
                             {/* Task Stats Display */}
@@ -202,10 +199,10 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, l
                                         value={formData.result || ''}
                                         onChange={e => setFormData({ ...formData, result: e.target.value as TaskOutcome })}
                                         className={`w-full px-3 py-2 border rounded-lg focus:ring-2 outline-none font-bold ${formData.result === TaskOutcome.SUCCESS ? 'text-green-700 bg-green-50 border-green-200' :
-                                                formData.result === TaskOutcome.FAILURE ? 'text-red-700 bg-red-50 border-red-200' :
-                                                    formData.result === TaskOutcome.STUDY ? 'text-blue-700 bg-blue-50 border-blue-200' :
-                                                        formData.result === TaskOutcome.WITHDRAWAL ? 'text-slate-600 bg-slate-100 border-slate-300' :
-                                                            'text-slate-500'
+                                            formData.result === TaskOutcome.FAILURE ? 'text-red-700 bg-red-50 border-red-200' :
+                                                formData.result === TaskOutcome.STUDY ? 'text-blue-700 bg-blue-50 border-blue-200' :
+                                                    formData.result === TaskOutcome.WITHDRAWAL ? 'text-slate-600 bg-slate-100 border-slate-300' :
+                                                        'text-slate-500'
                                             }`}
                                     >
                                         <option value="">Selecione o resultado...</option>
@@ -234,23 +231,34 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, l
                 </div>
 
                 {/* Footer */}
-                <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-200 rounded-lg transition-colors"
-                    >
-                        Cancelar
-                    </button>
-                    <button
-                        type="submit"
-                        form="opportunity-form"
-                        disabled={loading}
-                        className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg shadow hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50"
-                    >
-                        <Save size={18} />
-                        {loading ? 'Salvando...' : 'Salvar Oportunidade'}
-                    </button>
+                <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-between gap-3">
+                    {initialData?.id && onDelete && (
+                        <button
+                            type="button"
+                            onClick={() => onDelete(initialData.id)}
+                            className="px-4 py-2 text-red-600 font-medium hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                            Excluir
+                        </button>
+                    )}
+                    <div className="flex gap-3 ml-auto">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-200 rounded-lg transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            form="opportunity-form"
+                            disabled={loading}
+                            className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg shadow hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                        >
+                            <Save size={18} />
+                            {loading ? 'Salvando...' : 'Salvar Oportunidade'}
+                        </button>
+                    </div>
                 </div>
 
             </div>

@@ -9,7 +9,8 @@ export const PIPELINE_STEPS = [
     PipelineStage.PROPOSTA_COMERCIAL,
     PipelineStage.REVISAO_FINAL,
     PipelineStage.ENVIO_PROPOSTA,
-    PipelineStage.AGUARDANDO_RESULTADO
+    PipelineStage.AGUARDANDO_RESULTADO,
+    PipelineStage.RESULTADO
 ];
 
 export const getPipelineStages = (): PipelineStage[] => {
@@ -34,7 +35,8 @@ export const getExecutionPercent = (stage: PipelineStage): number => {
         case PipelineStage.PROPOSTA_COMERCIAL: return 62.5;
         case PipelineStage.REVISAO_FINAL: return 75.0;
         case PipelineStage.ENVIO_PROPOSTA: return 87.5;
-        case PipelineStage.AGUARDANDO_RESULTADO: return 100.0;
+        case PipelineStage.AGUARDANDO_RESULTADO: return 90.0;
+        case PipelineStage.RESULTADO: return 100.0;
         default: return 0;
     }
 };
@@ -50,6 +52,7 @@ export const getStageLabel = (stage: PipelineStage): string => {
         case PipelineStage.REVISAO_FINAL: return 'Revisão';
         case PipelineStage.ENVIO_PROPOSTA: return 'Envio da Proposta';
         case PipelineStage.AGUARDANDO_RESULTADO: return 'Aguardando Resultado';
+        case PipelineStage.RESULTADO: return 'Concluído / Resultado';
         default: return stage;
     }
 };
