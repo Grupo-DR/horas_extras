@@ -9,24 +9,8 @@ interface Props {
   users: User[];
   availableParents: Task[];
   initialData?: Task;
-  existingCategories?: string[];
   mode?: 'FULL' | 'QUICK_EDIT';
 }
-
-const CHILD_CATEGORIES = [
-  'Prévia',
-  'Proposta Comercial',
-  'Proposta Técnica',
-  'Memória de Compor',
-  'Cotação',
-  'Revisão',
-  'Visita Técnica',
-  'Reunião com Cliente',
-  'Reunião com Fornecedor',
-  'Reunião com Equipe',
-  'Análise Minuta',
-  'Análise Contrato'
-];
 
 export const TaskForm: React.FC<Props> = ({
   isOpen,
@@ -35,7 +19,6 @@ export const TaskForm: React.FC<Props> = ({
   users,
   availableParents,
   initialData,
-  existingCategories = [],
   mode = 'FULL'
 }) => {
   const [isChild, setIsChild] = useState(!!initialData?.parentId || !!initialData?.opportunityId);
@@ -282,7 +265,7 @@ export const TaskForm: React.FC<Props> = ({
                 </div>
 
                 {isChild ? (
-                  {/* REMOVED CATEGORY FIELD */ }
+                  null // REMOVED CATEGORY FIELD
                 ) : (
                   <div className="hidden">
                     <input type="hidden" value="Ação Mãe" />

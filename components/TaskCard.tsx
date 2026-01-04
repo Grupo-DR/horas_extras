@@ -21,8 +21,8 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
   const isMother = !task.parentId;
 
   // Helpers to get values from children
-  const previaTask = isMother ? childTasks.find(t => t.category === 'Prévia') : null;
-  const propostaTask = isMother ? childTasks.find(t => t.category === 'Proposta Comercial') : null;
+  // Helpers to get values from children
+  // REMOVED CATEGORY LOOKUPS (previa, proposta)
 
   // Status Counts for Mother Card
   const childStats = useMemo(() => {
@@ -191,16 +191,9 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
       {/* METRICS & FOOTER */}
       <div className="mt-auto pt-3 border-t border-slate-100 pl-2">
         {/* VALUES ROW */}
-        {(task.value || (isMother && (previaTask || propostaTask))) && (
+        {task.value && (
           <div className="flex items-center gap-3 mb-3">
-            {isMother ? (
-              <>
-                {previaTask && <div className="text-xs"><span className="text-slate-400 text-[10px] block">Prévia</span> <span className="font-bold text-slate-700">{formatBRL(previaTask.value)}</span></div>}
-                {propostaTask && <div className="text-xs border-l pl-3 border-slate-200"><span className="text-blue-400 text-[10px] block">Proposta</span> <span className="font-bold text-blue-700">{formatBRL(propostaTask.value)}</span></div>}
-              </>
-            ) : (
-              task.value && <div className="text-xs"><span className="text-slate-400 text-[10px] block">Valor</span> <span className="font-bold text-green-600">{formatBRL(task.value)}</span></div>
-            )}
+            <div className="text-xs"><span className="text-slate-400 text-[10px] block">Valor</span> <span className="font-bold text-slate-700">{formatBRL(task.value)}</span></div>
           </div>
         )}
 

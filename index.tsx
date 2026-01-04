@@ -112,7 +112,7 @@ const App: React.FC = () => {
           description: s(data.description),
           clientName: s(data.clientName),
           proposalName: s(data.proposalName),
-          category: s(data.category),
+          category: '', // REMOVED CATEGORY FEATURE: Force empty
           observations: s(data.observations),
           assigneeId: s(data.assigneeId),
           responsibleName: s(data.responsibleName),
@@ -989,7 +989,6 @@ const App: React.FC = () => {
       <TaskForm
         isOpen={isTaskModalOpen}
         initialData={editingTask}
-        existingCategories={Array.from(new Set(tasks.map(t => t.category).filter(cat => typeof cat === 'string' && cat.trim() !== ''))) as string[]}
         users={MOCK_USERS}
         availableParents={[
           ...tasks.filter(t => !t.parentId && !t.opportunityId).map(t => ({ ...t, id: String(t.id), title: String(t.title), clientName: String(t.clientName || '') })),
