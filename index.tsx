@@ -366,9 +366,21 @@ const App: React.FC = () => {
     // Calculate Strategic Metrics (Legacy + Opportunities)
     const strategicLegacy = calculateMetrics(relevantMothers);
     const strategicPipeline = {
-      pending: relevantOpportunities.filter(op => op.pipelineStage === PipelineStage.LEAD_RECEBIDO || op.pipelineStage === PipelineStage.DECISAO_PARTICIPACAO).length,
-      inProgress: relevantOpportunities.filter(op => op.status === 'ATIVA' && op.pipelineStage !== PipelineStage.LEAD_RECEBIDO && op.pipelineStage !== PipelineStage.AGUARDANDO_RESULTADO && op.pipelineStage !== PipelineStage.RESULTADO).length,
-      late: relevantOpportunities.filter(op => isPast(new Date(op.deadline)) && op.status === 'ATIVA' && op.pipelineStage !== PipelineStage.RESULTADO).length,
+      pending: relevantOpportunities.filter(op => {
+        const isCompleted = op.pipelineStage === PipelineStage.RESULTADO || op.status === 'GANHA' || op.status === 'PERDIDA';
+        return !isCompleted && op.pipelineStage === PipelineStage.LEAD_RECEBIDO;
+      }).length,
+      inProgress: relevantOpportunities.filter(op => {
+        const isCompleted = op.pipelineStage === PipelineStage.RESULTADO || op.status === 'GANHA' || op.status === 'PERDIDA';
+        const isPending = op.pipelineStage === PipelineStage.LEAD_RECEBIDO;
+        const isLate = isPast(new Date(op.deadline));
+        return !isCompleted && !isPending && !isLate;
+      }).length,
+      late: relevantOpportunities.filter(op => {
+        const isCompleted = op.pipelineStage === PipelineStage.RESULTADO || op.status === 'GANHA' || op.status === 'PERDIDA';
+        const isPending = op.pipelineStage === PipelineStage.LEAD_RECEBIDO;
+        return !isCompleted && !isPending && isPast(new Date(op.deadline));
+      }).length,
       completed: relevantOpportunities.filter(op => op.status === 'GANHA' || op.status === 'PERDIDA' || op.pipelineStage === PipelineStage.RESULTADO).length,
       total: relevantOpportunities.length
     };
