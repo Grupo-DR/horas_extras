@@ -90,10 +90,10 @@ export const OpportunityService = {
     },
 
     /**
-     * Advances the opportunity to the next stage and creates a linked Task.
-     * Uses a transaction to ensure consistency.
+     * Moves the opportunity to a specific stage and creates a linked Task.
+     * Validates if the move is allowed (Next Step OR Special Backwards Rule).
      */
-    async advanceOpportunityToNextStage(opportunityId: string): Promise<{ updatedOpportunity: Opportunity, createdTask: Task }> {
+    async moveOpportunity(opportunityId: string, targetStage: PipelineStage): Promise<{ updatedOpportunity: Opportunity, createdTask: Task }> {
 
         return await runTransaction(db, async (transaction) => {
             // 1. Get Current Opportunity
@@ -105,34 +105,40 @@ export const OpportunityService = {
             }
 
             const currentOpp = oppSnap.data() as Opportunity;
+            const currentStage = currentOpp.pipelineStage;
 
-            // 2. Calculate Next Stage
-            const nextStage = getNextStage(currentOpp.pipelineStage);
+            // 2. Validate Move
+            const allowedNext = getNextStage(currentStage);
 
-            if (!nextStage) {
-                throw new Error("A oportunidade já está na última etapa ou estado inválido.");
+            // Rule 1: Allow exact next stage
+            const isForward = targetStage === allowedNext;
+
+            // Rule 2: Special Backward Rule (Aguardando Resultado -> Revisão)
+            const isSpecialBackwards = currentStage === PipelineStage.AGUARDANDO_RESULTADO && targetStage === PipelineStage.REVISAO_FINAL;
+
+            if (!isForward && !isSpecialBackwards) {
+                throw new Error(`Movimento inválido: De ${currentStage} para ${targetStage}.`);
             }
 
             // 3. Prepare Opportunity Updates
-            const newProbability = getExecutionPercent(nextStage);
+            const newProbability = getExecutionPercent(targetStage);
             const updatedOppData = {
-                pipelineStage: nextStage,
+                pipelineStage: targetStage,
                 probability: newProbability,
-                updatedAt: new Date() // Firestore handles Date conversion usu. but best practice
+                updatedAt: new Date()
             };
 
             transaction.update(oppRef, updatedOppData);
 
             // 4. Create Linked Task
-            // "Ao mover ... criar automaticamente uma Ação (tarefa filha) vinculada"
             const newTaskRef = doc(collection(db, TASKS_COLLECTION));
 
             const newTaskData: Omit<Task, 'id'> = {
-                title: `[${nextStage}] - ${currentOpp.title}`,
-                description: `Tarefa gerada automaticamente para a etapa ${nextStage}.`,
+                title: `[${getStageLabel(targetStage)}] - ${currentOpp.title}`,
+                description: `Tarefa gerada automaticamente para a etapa ${getStageLabel(targetStage)}.`,
                 opportunityId: opportunityId,
-                stageAtCreation: nextStage,
-                assigneeId: currentOpp.responsibleId || 'SYSTEM', // Fallback
+                stageAtCreation: targetStage,
+                assigneeId: currentOpp.responsibleId || 'SYSTEM',
                 status: TaskStatus.PENDING,
                 priority: 'MEDIO',
                 startDate: new Date(),
@@ -155,7 +161,7 @@ export const OpportunityService = {
                 deadline: convertToDate(currentOpp.deadline),
                 createdAt: convertToDate(currentOpp.createdAt),
                 submissionDate: convertToDate(currentOpp.submissionDate),
-                updatedAt: new Date() // Sync
+                updatedAt: new Date()
             };
 
             const createdTask: Task = {

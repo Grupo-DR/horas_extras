@@ -49,7 +49,7 @@ export const getStageLabel = (stage: PipelineStage): string => {
         case PipelineStage.MEMORIA_COMPOSICOES: return 'Memória e Compor';
         case PipelineStage.PROPOSTA_TECNICA: return 'Proposta Técnica';
         case PipelineStage.PROPOSTA_COMERCIAL: return 'Proposta Comercial';
-        case PipelineStage.REVISAO_FINAL: return 'Revisão';
+        case PipelineStage.REVISAO_FINAL: return 'REVISAO';
         case PipelineStage.ENVIO_PROPOSTA: return 'Envio da Proposta';
         case PipelineStage.AGUARDANDO_RESULTADO: return 'Aguardando Resultado';
         case PipelineStage.RESULTADO: return 'Concluído / Resultado';
