@@ -86,6 +86,7 @@ export interface Opportunity {
   description?: string;
   scopeSummary?: string;
   decision?: 'GO' | 'NO_GO';
+  result?: TaskOutcome; // NEW: Replaces Decision usage in UI
   preliminaryValue?: number;
   technicalAttachments?: string[];
   proposalVersion?: string;

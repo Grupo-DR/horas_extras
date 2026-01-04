@@ -6,30 +6,17 @@ import { toast } from 'sonner';
 import { getNextStage, getPipelineStages } from '../../domain/pipeline'; // Import Domain
 
 interface PipelineBoardProps {
+    opportunities: Opportunity[]; // NEW
+    refreshOpportunities: () => void; // NEW
     onEditOpportunity?: (opportunity: Opportunity) => void;
-    onTaskCreated?: (task: Task) => void; // New prop
+    onTaskCreated?: (task: Task) => void;
 }
 
-export const PipelineBoard: React.FC<PipelineBoardProps> = ({ onEditOpportunity, onTaskCreated }) => {
-    const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-    const [loading, setLoading] = useState(true);
+export const PipelineBoard: React.FC<PipelineBoardProps> = ({ opportunities, refreshOpportunities, onEditOpportunity, onTaskCreated }) => {
+    // REMOVED: Internal state and fetching
 
-    // Load Opportunities
-    const loadOpportunities = async () => {
-        try {
-            const data = await OpportunityService.getAll();
-            setOpportunities(data);
-        } catch (error) {
-            console.error("Failed to load opportunities", error);
-            toast.error("Erro ao carregar oportunidades.");
-        } finally {
-            setLoading(false);
-        }
-    };
 
-    useEffect(() => {
-        loadOpportunities();
-    }, []);
+
 
     // Filter Opportunities by Stage
     const getOpportunitiesByStage = (stage: PipelineStage) => {
@@ -64,9 +51,8 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({ onEditOpportunity,
             const { updatedOpportunity, createdTask } = await OpportunityService.advanceOpportunityToNextStage(opportunity.id);
 
             // Update Local State
-            setOpportunities(prev => prev.map(op =>
-                op.id === opportunityId ? updatedOpportunity : op
-            ));
+            // Update Parent State
+            refreshOpportunities();
 
             toast.success(`Avançou para ${targetStage}`);
 
@@ -89,7 +75,7 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({ onEditOpportunity,
         }
     };
 
-    if (loading) return <div className="flex items-center justify-center h-full">Carregando Pipeline...</div>;
+
 
     const stages = getPipelineStages();
 

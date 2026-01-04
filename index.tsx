@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
-import { Task, User, TaskStatus, HelpChainLevel, HistoryLog, Notification, TaskOutcome, Opportunity } from './types';
+import { Task, User, TaskStatus, HelpChainLevel, HistoryLog, Notification, TaskOutcome, Opportunity, PipelineStage } from './types';
 import { TaskCard } from './components/TaskCard';
 import { TaskForm } from './components/TaskForm';
 import { OpportunityForm } from './components/Pipeline/OpportunityForm'; // NEW
@@ -11,6 +11,7 @@ import { EscalationSettings } from './components/EscalationSettings';
 import { HistoryPanel } from './components/HistoryPanel';
 import { Layout, LayoutDashboard, PlusCircle, Filter, Bell, Bot, Settings, LogOut, Columns, List, TrendingUp, AlertTriangle, CheckCircle, Calendar, DollarSign, Activity, Users, ChevronDown } from 'lucide-react';
 import { draftEscalationEmail, draftWelcomeEmail } from './services/geminiService';
+import { OpportunityService } from './services/opportunityService'; // NEW
 import { isPast, format, startOfYear, isWithinInterval, startOfMonth, endOfMonth, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, LineChart, Line } from 'recharts';
@@ -62,8 +63,10 @@ const stripUndefined = (obj: any): any => {
 const App: React.FC = () => {
   // --- STATE ---
   const [tasks, setTasks] = useState<Task[]>([]);
+  // NEW: Lifted Opportunities State
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
 
-  // FIREBASE SYNC
+  // FIREBASE SYNC TASKS
   useEffect(() => {
     const q = query(collection(db, 'tasks'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -102,6 +105,22 @@ const App: React.FC = () => {
     });
     return () => unsubscribe();
   }, []);
+
+  // NEW: FETCH OPPORTUNITIES
+  const fetchOpportunities = async () => {
+    try {
+      const data = await OpportunityService.getAll();
+      setOpportunities(data);
+    } catch (e) {
+      console.error("Error fetching opportunities", e);
+      toast.error("Erro ao carregar pipeline.");
+    }
+  };
+
+  useEffect(() => {
+    fetchOpportunities();
+  }, []);
+
   const [helpChain, setHelpChain] = useState<HelpChainLevel[]>(INITIAL_CHAIN);
   const [currentUser, setCurrentUser] = useState<User>(MOCK_USERS[0]);
   const [logs, setLogs] = useState<HistoryLog[]>([]);
@@ -317,22 +336,59 @@ const App: React.FC = () => {
   };
 
   const dashboardStats = useMemo(() => {
-    // 1. Single Pass Filter by Time
+    // 1. Single Pass Filter by Time for Tasks
     const relevantTasks = getFilteredTasks(tasks);
 
     // 2. Separate Mothers/Children from ALREADY filtered list
-    // 2. Separate Mothers/Children from ALREADY filtered list
-    // FIX: Operational Stats now include Legacy Children (parentId) AND Pipeline Actions (opportunityId)
     const relevantChildren = relevantTasks.filter(t => !!t.parentId || !!t.opportunityId);
 
-    // FIX: Strategic Stats only include Legacy Mothers (No parent, No opportunity)
+    // NEW: Strategic Stats now include Pipeline Opportunities
+    // Strategic = Legacy Mothers + Pipeline Opportunities
+    // For Ops, we use relevantMothers from Tasks (Legacy) + All Opportunities (Pipeline)
+    // Pipeline Opportunities usually don't have "Start/End" in the same way, but we can filter by UpdatedAt or similar if needed. 
+    // For now, let's include ALL Opportunities or filter them similarly? 
+    // The prompt implies we want to see Pipeline Stats in "Estratégico".
+
     const relevantMothers = relevantTasks.filter(t => !t.parentId && !t.opportunityId);
 
-    // 3. Calculate Metrics (Reused function)
-    const strategic = calculateMetrics(relevantMothers);
+    // Filter Opportunities by Time (using UpdatedAt or CreatedAt as proxy for activity)
+    // Or just use all acceptable as "Active" pipeline
+    const start = timeFilterType === 'MONTH' ? startOfMonth(selectedDate) :
+      timeFilterType === 'YTD' ? startOfYear(selectedDate) : customRange.start;
+    const end = timeFilterType === 'MONTH' ? endOfMonth(selectedDate) :
+      timeFilterType === 'YTD' ? new Date() : customRange.end;
+
+    const relevantOpportunities = opportunities.filter(op => {
+      const opDate = new Date(op.updatedAt || op.createdAt);
+      return opDate >= start && opDate <= end;
+    });
+
+    // Calculate Strategic Metrics (Legacy + Opportunities)
+    const strategicLegacy = calculateMetrics(relevantMothers);
+    const strategicPipeline = {
+      pending: relevantOpportunities.filter(op => op.pipelineStage === PipelineStage.LEAD_RECEBIDO || op.pipelineStage === PipelineStage.DECISAO_PARTICIPACAO).length,
+      inProgress: relevantOpportunities.filter(op => op.status === 'ATIVA' && op.pipelineStage !== PipelineStage.LEAD_RECEBIDO && op.pipelineStage !== PipelineStage.AGUARDANDO_RESULTADO).length,
+      late: relevantOpportunities.filter(op => isPast(new Date(op.deadline)) && op.status === 'ATIVA').length,
+      completed: relevantOpportunities.filter(op => op.status === 'GANHA' || op.status === 'PERDIDA').length, // Or use specific final stages
+      total: relevantOpportunities.length
+    };
+
+    // Combine Strategic
+    const strategic = {
+      pending: strategicLegacy.pending + strategicPipeline.pending,
+      inProgress: strategicLegacy.inProgress + strategicPipeline.inProgress,
+      late: strategicLegacy.late + strategicPipeline.late,
+      completed: strategicLegacy.completed + strategicPipeline.completed,
+      productivity: 0, // Recalc below
+      riskRate: 0 // Recalc below
+    };
+    const totalStrategic = strategic.pending + strategic.inProgress + strategic.late + strategic.completed;
+    strategic.productivity = totalStrategic > 0 ? Math.round((strategic.completed / totalStrategic) * 100) : 0;
+    strategic.riskRate = totalStrategic > 0 ? Math.round((strategic.late / totalStrategic) * 100) : 0;
+
     const operational = calculateMetrics(relevantChildren);
 
-    // 4. Financials - Optimized Single Reduce
+    // 4. Financials - Optimized Single Reduce (Legacy Only for now, maybe add Pipeline values?)
     const outcomes = relevantMothers.reduce((acc, mother) => {
       // Sum value of CHILDREN that are 'Proposta Comercial' for this mother
       const motherValue = tasks // checking against ALL tasks to find children
@@ -347,26 +403,31 @@ const App: React.FC = () => {
       return acc;
     }, { success: 0, failure: 0, study: 0, withdrawal: 0 });
 
-    // 5. Collaborators - Optimized Single Reduce Logic
+    // 5. Collaborators - Optimized with FUZZY MATCHING
     const collaborators = MOCK_USERS.map(user => {
       // Logic: Iterate through RELEVANT tasks (time filtered) ONCE
       // FIX: Robust Fuzzy Matching for Legacy Data (ID, Full Name, First Name, Email)
       const userTasks = relevantTasks.filter(t => {
         if (!t.assigneeId) return false;
         const assignee = t.assigneeId.toLowerCase().trim();
-        const idMatch = assignee === user.id.toLowerCase();
-        const nameMatch = assignee === user.name.toLowerCase();
-        const firstNameMatch = assignee === user.name.split(' ')[0].toLowerCase();
-        const emailMatch = assignee === user.email.toLowerCase();
+        const userId = user.id.toLowerCase();
+        const userName = user.name.toLowerCase();
 
-        return idMatch || nameMatch || firstNameMatch || emailMatch;
+        // Exact ID Match
+        if (assignee === userId) return true;
+
+        // Name containment (fuzzy)
+        // e.g. assignee="Antonio Augusto" matches user="Antonio Augusto da Silva"
+        if (userName.includes(assignee) || assignee.includes(userName)) return true;
+
+        return false;
       });
       const metrics = calculateMetrics(userTasks);
       return { user, ...metrics };
     });
 
     return { strategic, operational, outcomes, collaborators };
-  }, [tasks, timeFilterType, selectedDate, customRange]);
+  }, [tasks, opportunities, timeFilterType, selectedDate, customRange]);
 
 
   return (
@@ -778,6 +839,8 @@ const App: React.FC = () => {
                   </h3>
                   <div className="flex-1 overflow-hidden">
                     <PipelineBoard
+                      opportunities={opportunities} // NEW: Pass down
+                      refreshOpportunities={fetchOpportunities} // NEW: Pass down refresh
                       onEditOpportunity={(op) => { setEditingOpportunity(op); setIsOpportunityModalOpen(true); }}
                       onTaskCreated={(task) => {
                         setEditingTask(task);
@@ -842,39 +905,45 @@ const App: React.FC = () => {
         isOpportunityModalOpen && (
           <OpportunityForm
             initialData={editingOpportunity}
-            onClose={() => setIsOpportunityModalOpen(false)}
+            linkedTasks={tasks.filter(t => t.opportunityId === editingOpportunity?.id)} // NEW: Filter tasks here
+            onClose={() => {
+              setIsOpportunityModalOpen(false);
+              setEditingOpportunity(undefined);
+            }}
             onSave={() => {
-              // If needed, refresh board logic is handled inside PipelineBoard mostly, 
-              // but if we need global refresh we can add it. 
-              // Actually PipelineBoard fetches its own data. 
-              // We might need to trigger a refresh in PipelineBoard?
-              // For MVP, closing/opening re-mounts it or we rely on it auto-fetching?
-              // PipelineBoard has 'useEffect loadOpportunities []'. 
-              // To force refresh, we might need a signal.
-              // Or just window.location.reload() for now? No, that's bad.
-              // We can key the PipelineBoard to force re-render or context.
-              // Let's pass a key to PipelineBoard for now!
-              // Or better, let OpportunityForm handle its own logic and just tell parent "I saved".
-              // PipelineBoard needs to know to refetch.
-              // I'll add a refreshTrigger to PipelineBoard or something.
-              // For simplicity now: use window.dispatchEvent or just simple key change.
-              window.location.reload(); // Simplest quick fix for MVP sync to avoid complex state lift right now
+              window.location.reload();
             }}
           />
         )
       }
       <TaskForm
         isOpen={isTaskModalOpen}
+        initialData={editingTask}
+        existingCategories={Array.from(new Set(tasks.map(t => t.category).filter(Boolean))) as string[]}
+        users={MOCK_USERS}
+        availableParents={[
+          ...tasks.filter(t => !t.parentId && !t.opportunityId),
+          ...opportunities.map(op => ({
+            id: op.id,
+            title: `[Oportunidade] ${op.title}`,
+            clientName: op.clientName,
+            // spread other required fields with defaults to satisfy Task type
+            description: '',
+            assigneeId: op.responsibleId || '',
+            status: TaskStatus.PENDING,
+            priority: 'MEDIO',
+            category: 'Oportunidade',
+            startDate: new Date(),
+            endDate: op.deadline || new Date(),
+          } as unknown as Task))
+        ]}
         onClose={() => {
           setIsTaskModalOpen(false);
           setEditingTask(undefined);
-          setTaskFormMode('FULL');
+          setTaskFormMode('FULL'); // Reset
         }}
-        onSave={handleSaveTask}
-        users={MOCK_USERS}
-        availableParents={motherTasks}
-        initialData={editingTask}
         mode={taskFormMode}
+        onSave={handleSaveTask}
       />
 
       <HistoryPanel

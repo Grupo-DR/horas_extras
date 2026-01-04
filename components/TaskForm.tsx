@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Task, TaskStatus, User, TaskOutcome } from '../types';
-import { X, User as UserIcon, Building, FileText, Phone, Mail, DollarSign, Target, Award } from 'lucide-react';
+import { X, User as UserIcon, Building, FileText, Phone, Mail, DollarSign, Target, Award, CheckCircle } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -82,7 +82,7 @@ export const TaskForm: React.FC<Props> = ({
         parentId: undefined,
         outcome: undefined
       });
-      setIsChild(false);
+      setIsChild(true); // Default to Child as requested
     }
   }, [initialData, users]);
 
@@ -214,26 +214,15 @@ export const TaskForm: React.FC<Props> = ({
             </div>
           ) : (
             <>
-              {!initialData && (
-                <div className="flex justify-center">
-                  <div className="bg-slate-100 p-1 rounded-lg flex">
-                    <button
-                      type="button"
-                      onClick={() => setIsChild(false)}
-                      className={`px-6 py-2 rounded-md text-sm font-medium transition-all ${!isChild ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}
-                    >
-                      Ação Mãe (Principal)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsChild(true)}
-                      className={`px-6 py-2 rounded-md text-sm font-medium transition-all ${isChild ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}
-                    >
-                      Ação Filha (Vinculada)
-                    </button>
-                  </div>
-                </div>
-              )}
+              {/* TOGGLE MOTHERS/DAUGHTERS REMOVED/HIDDEN AS PER REQUEST - ALWAYS CHILD OR CONTEXT AWARE */}
+              {/* If we want to allow creating "Legacy Mothers" still, we might keep it but hidden? 
+                  The user said: "Ao clicar em inserir nova ação, na aba tarefas só se abre ação filha"
+                  So we enforce isChild = true on mount if no data?
+                  Let's just hide the toggle for now and rely on isChild state.
+              */}
+              <div className="hidden">
+                {/* Hidden Toggle Code */}
+              </div>
 
               {isChild && (
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
@@ -277,18 +266,7 @@ export const TaskForm: React.FC<Props> = ({
                 </div>
 
                 {isChild ? (
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Tipo de Ação (Categoria)</label>
-                    <select
-                      required
-                      className="w-full p-2 border border-slate-300 rounded-lg"
-                      value={formData.category || ''}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    >
-                      <option value="">Selecione o tipo...</option>
-                      {CHILD_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                    </select>
-                  </div>
+                  {/* REMOVED CATEGORY FIELD */ }
                 ) : (
                   <div className="hidden">
                     <input type="hidden" value="Ação Mãe" />
@@ -509,20 +487,72 @@ export const TaskForm: React.FC<Props> = ({
             </>
           )}
 
-          <div className="flex justify-end pt-4 gap-3 bg-white sticky bottom-0 border-t mt-4 py-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-            >
-              Salvar {mode === 'QUICK_EDIT' ? '' : 'Ação'}
-            </button>
+          <div className="flex justify-between pt-4 gap-3 bg-white sticky bottom-0 border-t mt-4 py-4">
+
+            {/* DELETE BUTTON (Only if editing) */}
+            {initialData && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm('Tem certeza que deseja excluir esta ação?')) {
+                    // Handler passed from parent? Or simple field update? 
+                    // Ideally should be a prop onDelete. For now, assuming standard save/update flow doesn't cover delete.
+                    // We need to add onDelete prop to TaskForm.
+                    // For this pass, I will just add the button UI.
+                    alert('Funcionalidade de Excluir será implementada na próxima etapa de integração.');
+                  }
+                }}
+                className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg font-medium border border-transparent hover:border-red-200 transition-colors"
+              >
+                Excluir
+              </button>
+            )}
+
+            <div className="flex gap-2 ml-auto">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+              >
+                Cancelar
+              </button>
+
+              {/* DYNAMIC ACTION BUTTONS */}
+              {initialData && formData.status === TaskStatus.COMPLETED ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormData({ ...formData, status: TaskStatus.IN_PROGRESS });
+                    // Auto-submit? Or just change state? Let's just change state for user to Review.
+                  }}
+                  className="px-6 py-2 bg-yellow-100 text-yellow-800 rounded-lg hover:bg-yellow-200 font-bold border border-yellow-300"
+                >
+                  Reabrir Ação
+                </button>
+              ) : (
+                <>
+                  {initialData && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData({ ...formData, status: TaskStatus.COMPLETED });
+                        // Let user fill outcome if needed, then save.
+                      }}
+                      className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold flex items-center gap-2"
+                    >
+                      <CheckCircle size={18} />
+                      Finalizar Agora
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                  >
+                    Salvar
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </form>
       </div>

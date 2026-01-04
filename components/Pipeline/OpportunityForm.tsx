@@ -1,17 +1,18 @@
 
 import React, { useState, useEffect } from 'react';
-import { Opportunity, PipelineStage } from '../../types';
+import { Opportunity, PipelineStage, Task, TaskStatus, TaskOutcome } from '../../types';
 import { OpportunityService } from '../../services/opportunityService';
 import { toast } from 'sonner';
 import { X, Save } from 'lucide-react';
 
 interface OpportunityFormProps {
     initialData?: Opportunity;
+    linkedTasks?: Task[];
     onClose: () => void;
     onSave: () => void; // Trigger reload
 }
 
-export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, onClose, onSave }) => {
+export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, linkedTasks = [], onClose, onSave }) => {
     const [formData, setFormData] = useState<Partial<Opportunity>>({
         clientName: '',
         title: '',
@@ -26,7 +27,19 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, o
     // Convert Date object to YYYY-MM-DD for input
     const formatDateForInput = (date?: Date) => {
         if (!date) return '';
-        return date.toISOString().split('T')[0];
+        try {
+            return new Date(date).toISOString().split('T')[0];
+        } catch (e) {
+            return '';
+        }
+    };
+
+    // Calculate Task Stats
+    const taskStats = {
+        pending: linkedTasks.filter(t => t.status === TaskStatus.PENDING).length,
+        inProgress: linkedTasks.filter(t => t.status === TaskStatus.IN_PROGRESS).length,
+        late: linkedTasks.filter(t => t.status === TaskStatus.LATE).length,
+        completed: linkedTasks.filter(t => t.status === TaskStatus.COMPLETED).length,
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -40,14 +53,12 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, o
                 toast.success("Oportunidade atualizada!");
             } else {
                 // Create (Validation happens in Service)
-                // Ensure mandatory fields for Lead exist
                 await OpportunityService.create({
                     title: formData.title || 'Nova Oportunidade',
                     clientName: formData.clientName!,
                     estimatedValue: Number(formData.estimatedValue) || 0,
                     responsibleId: formData.responsibleId!,
                     deadline: new Date(formData.deadline!)
-                    // Description etc optional
                 });
                 toast.success("Oportunidade criada com sucesso!");
             }
@@ -75,7 +86,7 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, o
                 </div>
 
                 {/* Body */}
-                <div className="p-6 overflow-y-auto">
+                <div className="p-6 overflow-y-auto flex-1">
                     <form id="opportunity-form" onSubmit={handleSubmit} className="space-y-4">
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -144,46 +155,64 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, o
                             </div>
                         </div>
 
-                        {/* Stage Info (Read Only on Creation) */}
-                        <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 mt-4">
-                            <p className="text-xs text-blue-600 font-bold uppercase tracking-wide">Etapa do Pipeline</p>
-                            <p className="text-sm font-medium text-blue-900 mt-1">
-                                {initialData ? initialData.pipelineStage : 'LEAD RECEBIDO (Inicial)'}
-                            </p>
-                            <div className="mt-2 flex items-center text-xs text-blue-700">
-                                <span className="font-bold mr-1">Probabilidade:</span>
-                                {initialData ? initialData.probability : 10}%
+                        {/* Stage Info & Task Stats */}
+                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mt-4 flex justify-between items-center">
+                            <div>
+                                <p className="text-xs text-blue-600 font-bold uppercase tracking-wide">Etapa Atual</p>
+                                <p className="text-sm font-medium text-blue-900 mt-1">
+                                    {initialData ? initialData.pipelineStage : 'LEAD RECEBIDO (Inicial)'}
+                                </p>
+                                <div className="mt-2 flex items-center text-xs text-blue-700">
+                                    <span className="font-bold mr-1">Probabilidade:</span>
+                                    {initialData ? initialData.probability : 10}%
+                                </div>
                             </div>
+
+                            {/* Task Stats Display */}
+                            {initialData && (
+                                <div className="text-right text-xs">
+                                    <p className="font-bold text-slate-700 mb-1">Ações Vinculadas</p>
+                                    <div className="flex gap-2 justify-end">
+                                        <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full" title="Pendentes">{taskStats.pending}</span>
+                                        <span className="bg-blue-200 text-blue-700 px-2 py-0.5 rounded-full" title="Em Andamento">{taskStats.inProgress}</span>
+                                        <span className="bg-red-200 text-red-700 px-2 py-0.5 rounded-full" title="Atrasadas">{taskStats.late}</span>
+                                        <span className="bg-green-200 text-green-700 px-2 py-0.5 rounded-full" title="Concluídas">{taskStats.completed}</span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
-
-                        {/* Decision Stage Fields */}
+                        {/* RESULTADO (Replaces Decision) */}
                         <div className="border-t border-slate-100 pt-4 mt-4">
-                            <h3 className="text-sm font-bold text-slate-700 mb-3">Decisão de Participação</h3>
+                            <h3 className="text-sm font-bold text-slate-700 mb-3">Conclusão da Oportunidade</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="col-span-2">
-                                    <label className="block text-sm font-medium text-slate-600 mb-1">Resumo do Escopo</label>
+                                    <label className="block text-sm font-medium text-slate-600 mb-1">Resumo do Escopo / Notas</label>
                                     <textarea
                                         rows={2}
                                         value={formData.scopeSummary || ''}
                                         onChange={e => setFormData({ ...formData, scopeSummary: e.target.value })}
                                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
-                                        placeholder="Descreva brevemente o escopo..."
+                                        placeholder="Descreva brevemente o escopo ou motivo do resultado..."
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-600 mb-1">Decisão (Go / No Go)</label>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">Resultado da Proposta</label>
                                     <select
-                                        value={formData.decision || ''}
-                                        onChange={e => setFormData({ ...formData, decision: e.target.value as 'GO' | 'NO_GO' })}
-                                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 outline-none font-bold ${formData.decision === 'GO' ? 'text-green-600 border-green-200 bg-green-50 focus:ring-green-500' :
-                                                formData.decision === 'NO_GO' ? 'text-red-600 border-red-200 bg-red-50 focus:ring-red-500' :
-                                                    'text-slate-500'
+                                        value={formData.result || ''}
+                                        onChange={e => setFormData({ ...formData, result: e.target.value as TaskOutcome })}
+                                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 outline-none font-bold ${formData.result === TaskOutcome.SUCCESS ? 'text-green-700 bg-green-50 border-green-200' :
+                                                formData.result === TaskOutcome.FAILURE ? 'text-red-700 bg-red-50 border-red-200' :
+                                                    formData.result === TaskOutcome.STUDY ? 'text-blue-700 bg-blue-50 border-blue-200' :
+                                                        formData.result === TaskOutcome.WITHDRAWAL ? 'text-slate-600 bg-slate-100 border-slate-300' :
+                                                            'text-slate-500'
                                             }`}
                                     >
-                                        <option value="">Pendente</option>
-                                        <option value="GO">GO (Participar)</option>
-                                        <option value="NO_GO">NO GO (Não Participar)</option>
+                                        <option value="">Selecione o resultado...</option>
+                                        <option value={TaskOutcome.SUCCESS}>Sucesso (Vencemos) 🏆</option>
+                                        <option value={TaskOutcome.FAILURE}>Insucesso (Perdemos) ❌</option>
+                                        <option value={TaskOutcome.STUDY}>Estudo (Apenas Análise) 📚</option>
+                                        <option value={TaskOutcome.WITHDRAWAL}>Desistência 🚫</option>
                                     </select>
                                 </div>
                             </div>

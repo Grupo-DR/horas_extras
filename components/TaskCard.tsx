@@ -86,7 +86,14 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
   }, [task.status]);
 
   return (
-    <div className={`bg-white/90 backdrop-blur-sm rounded-xl p-5 shadow-sm border transition-all duration-300 group hover:shadow-xl hover:-translate-y-1 relative overflow-hidden ${isOverdue ? 'border-red-200 shadow-red-100' : 'border-slate-100 hover:border-slate-200'}`}>
+    <div
+      onClick={() => onEdit && onEdit(task)} // NEW: Click to Edit
+      className={`
+      relative p-4 rounded-xl border border-slate-200 shadow-sm bg-white
+      hover:shadow-md transition-all cursor-pointer group
+      ${simple ? 'p-3' : ''}
+      hover:shadow-xl hover:-translate-y-1 relative overflow-hidden ${isOverdue ? 'border-red-200 shadow-red-100' : 'border-slate-100 hover:border-slate-200'}
+    `}>
 
       {/* DECORATIVE GRADIENT BAR */}
       <div className={`absolute top-0 left-0 w-1 h-full ${task.status === TaskStatus.COMPLETED ? 'bg-green-500' :
