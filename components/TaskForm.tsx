@@ -65,8 +65,16 @@ export const TaskForm: React.FC<Props> = ({
 
   useEffect(() => {
     if (initialData) {
-      setFormData(initialData);
-      setIsChild(!!initialData.parentId || !!initialData.opportunityId);
+      // SANITIZATION: Ensure we don't pass objects where strings are expected (Fix React Error #31)
+      const safeData = {
+        ...initialData,
+        title: typeof initialData.title === 'object' ? JSON.stringify(initialData.title) : initialData.title || '',
+        description: typeof initialData.description === 'object' ? JSON.stringify(initialData.description) : initialData.description || '',
+        // Ensure category is string or removed
+        category: typeof initialData.category === 'object' ? '' : initialData.category,
+      };
+      setFormData(safeData);
+      setIsChild(!!safeData.parentId || !!safeData.opportunityId);
     } else {
       setFormData({
         title: '',

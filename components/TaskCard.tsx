@@ -109,11 +109,6 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
               {statusLabel}
             </span>
           )}
-          {task.needsDetails && (
-            <span className="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full border border-yellow-200 font-bold flex items-center gap-1 animate-pulse" title="Necessário completar detalhes">
-              <AlertCircle size={10} /> Definir
-            </span>
-          )}
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${priorityColor}`}>
             {task.priority === 'ALTO' ? 'Alta' : task.priority === 'MEDIO' ? 'Média' : 'Baixa'}
           </span>
@@ -127,21 +122,6 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
               <Award size={10} /> {outcomeDetails.label}
             </span>
           )}
-        </div>
-
-        <div className="relative group/menu">
-          <button className="text-slate-300 hover:text-slate-600 p-1 transition-colors">
-            <MoreHorizontal size={20} />
-          </button>
-          <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-100 rounded-xl shadow-2xl hidden group-hover/menu:block z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <button onClick={() => onEdit(task)} className="block w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 text-slate-700 font-medium transition-colors">Editar Detalhes</button>
-            {task.status !== TaskStatus.COMPLETED && (
-              <button onClick={() => onStatusChange(task.id, TaskStatus.COMPLETED)} className="block w-full text-left px-4 py-2.5 text-sm hover:bg-green-50 text-green-700 font-medium transition-colors">Finalizar</button>
-            )}
-            {task.status === TaskStatus.COMPLETED && (
-              <button onClick={() => onStatusChange(task.id, TaskStatus.IN_PROGRESS)} className="block w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 text-blue-700 font-medium transition-colors">Reabrir</button>
-            )}
-          </div>
         </div>
       </div>
 
