@@ -600,14 +600,14 @@ const App: React.FC = () => {
               >
                 <PlusCircle size={16} /> Nova Oportunidade
               </button>
-            ) : (
+            ) : view === 'OPERATIONAL' ? (
               <button
                 onClick={() => { setEditingTask(undefined); setIsTaskModalOpen(true); }}
                 className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-bold shadow hover:bg-blue-700 transition-colors"
               >
                 <PlusCircle size={16} /> Nova Tarefa
               </button>
-            )}
+            ) : null}
           </div>
         </header>
 
@@ -961,8 +961,8 @@ const App: React.FC = () => {
           ...tasks.filter(t => !t.parentId && !t.opportunityId),
           ...opportunities.map(op => ({
             id: op.id,
-            title: `[Oportunidade] ${op.title}`,
-            clientName: op.clientName,
+            title: typeof op.title === 'string' ? `[Oportunidade] ${op.title}` : '[Oportunidade]',
+            clientName: typeof op.clientName === 'string' ? op.clientName : '',
             // spread other required fields with defaults to satisfy Task type
             description: '',
             assigneeId: op.responsibleId || '',

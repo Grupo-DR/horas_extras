@@ -250,9 +250,13 @@ export const TaskForm: React.FC<Props> = ({
                         onChange={(e) => setFormData({ ...formData, parentId: e.target.value })}
                       >
                         <option value="">Selecione a Ação Mãe...</option>
-                        {availableParents.map(parent => (
-                          <option key={parent.id} value={parent.id}>{parent.title} - {parent.clientName || 'Sem Cliente'}</option>
-                        ))}
+                        {availableParents.map(parent => {
+                          const parentTitle = typeof parent.title === 'string' ? parent.title : 'Ação Sem Título';
+                          const clientInfo = typeof parent.clientName === 'string' ? parent.clientName : 'Sem Cliente';
+                          return (
+                            <option key={parent.id} value={parent.id}>{parentTitle} - {clientInfo}</option>
+                          );
+                        })}
                       </select>
                     </>
                   )}
