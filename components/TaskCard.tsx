@@ -69,9 +69,9 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
 
   const priorityColor = useMemo(() => {
     switch (task.priority) {
-      case 'HIGH': return 'bg-red-50 text-red-600 border-red-100';
-      case 'MEDIUM': return 'bg-orange-50 text-orange-600 border-orange-100';
-      case 'LOW': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
+      case 'ALTO': return 'bg-red-50 text-red-600 border-red-100';
+      case 'MEDIO': return 'bg-orange-50 text-orange-600 border-orange-100';
+      case 'BAIXO': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
       default: return 'bg-slate-50 text-slate-600 border-slate-100';
     }
   }, [task.priority]);
@@ -108,7 +108,7 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
             </span>
           )}
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${priorityColor}`}>
-            {task.priority === 'HIGH' ? 'Alta' : task.priority === 'MEDIUM' ? 'Média' : 'Baixa'}
+            {task.priority === 'ALTO' ? 'Alta' : task.priority === 'MEDIO' ? 'Média' : 'Baixa'}
           </span>
           {task.parentId && (
             <span className="text-[10px] bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full border border-purple-100 font-medium flex items-center gap-1">

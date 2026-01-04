@@ -788,29 +788,7 @@ const App: React.FC = () => {
                   </div>
                 </div>
 
-                {/* LEGACY VIEW TOGGLE (Optional/Parallel Run) */}
-                <div className="bg-slate-100 p-2 rounded-lg border border-slate-200">
-                  <details>
-                    <summary className="cursor-pointer text-xs font-bold text-slate-500 uppercase tracking-wide hover:text-slate-700 select-none">
-                      Ver Ações Mãe (Legado)
-                    </summary>
-                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-2">
-                      {hierarchyScan.mothers.map((t, idx) => (
-                        <TaskCard
-                          key={t.id}
-                          task={t}
-                          assignee={MOCK_USERS.find(u => u.id === t.assigneeId)}
-                          childTasks={hierarchyScan.children.filter(c => c.parentId === t.id)}
-                          onEdit={(x) => { setEditingTask(x); setIsTaskModalOpen(true); }}
-                          onStatusChange={handleStatusChange}
-                        />
-                      ))}
-                      {hierarchyScan.mothers.length === 0 && (
-                        <p className="text-slate-400 text-sm">Nenhuma ação legado encontrada.</p>
-                      )}
-                    </div>
-                  </details>
-                </div>
+
               </motion.div>
             )}
 
@@ -855,9 +833,9 @@ const App: React.FC = () => {
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
+        </div >
 
-      </main>
+      </main >
 
       {/* MODALS */}
       {
