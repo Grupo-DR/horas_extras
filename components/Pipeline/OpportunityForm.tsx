@@ -47,19 +47,27 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, l
         e.preventDefault();
         setLoading(true);
 
+        const dataToSave = { ...formData };
+        // AUTO-MOVE: If result is set, move to RESULTADO stage
+        if (dataToSave.result && dataToSave.result !== '' as any) {
+            dataToSave.pipelineStage = PipelineStage.RESULTADO;
+            // Also update status to GANHA/PERDIDA based on result for consistency, if desired? 
+            // For now, just moving stage is requested.
+        }
+
         try {
             if (initialData?.id) {
                 // Update
-                await OpportunityService.update(initialData.id, formData);
+                await OpportunityService.update(initialData.id, dataToSave);
                 toast.success("Oportunidade atualizada!");
             } else {
                 // Create (Validation happens in Service)
                 await OpportunityService.create({
-                    title: formData.title || 'Nova Oportunidade',
-                    clientName: formData.clientName!,
-                    estimatedValue: Number(formData.estimatedValue) || 0,
-                    responsibleId: formData.responsibleId!,
-                    deadline: new Date(formData.deadline!)
+                    title: dataToSave.title || 'Nova Oportunidade',
+                    clientName: dataToSave.clientName!,
+                    estimatedValue: Number(dataToSave.estimatedValue) || 0,
+                    responsibleId: dataToSave.responsibleId!,
+                    deadline: new Date(dataToSave.deadline!)
                 });
                 toast.success("Oportunidade criada com sucesso!");
             }

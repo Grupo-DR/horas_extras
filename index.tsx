@@ -367,9 +367,9 @@ const App: React.FC = () => {
     const strategicLegacy = calculateMetrics(relevantMothers);
     const strategicPipeline = {
       pending: relevantOpportunities.filter(op => op.pipelineStage === PipelineStage.LEAD_RECEBIDO || op.pipelineStage === PipelineStage.DECISAO_PARTICIPACAO).length,
-      inProgress: relevantOpportunities.filter(op => op.status === 'ATIVA' && op.pipelineStage !== PipelineStage.LEAD_RECEBIDO && op.pipelineStage !== PipelineStage.AGUARDANDO_RESULTADO).length,
-      late: relevantOpportunities.filter(op => isPast(new Date(op.deadline)) && op.status === 'ATIVA').length,
-      completed: relevantOpportunities.filter(op => op.status === 'GANHA' || op.status === 'PERDIDA').length, // Or use specific final stages
+      inProgress: relevantOpportunities.filter(op => op.status === 'ATIVA' && op.pipelineStage !== PipelineStage.LEAD_RECEBIDO && op.pipelineStage !== PipelineStage.AGUARDANDO_RESULTADO && op.pipelineStage !== PipelineStage.RESULTADO).length,
+      late: relevantOpportunities.filter(op => isPast(new Date(op.deadline)) && op.status === 'ATIVA' && op.pipelineStage !== PipelineStage.RESULTADO).length,
+      completed: relevantOpportunities.filter(op => op.status === 'GANHA' || op.status === 'PERDIDA' || op.pipelineStage === PipelineStage.RESULTADO).length,
       total: relevantOpportunities.length
     };
 
