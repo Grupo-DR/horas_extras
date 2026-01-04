@@ -100,22 +100,25 @@ const App: React.FC = () => {
         };
 
         // HELPER: Strict String
-        const safeStr = (v: any) => typeof v === 'string' ? v : '';
+        const s = (v: any) => typeof v === 'string' ? v : '';
+        // HELPER: Strict Number
+        const n = (v: any) => typeof v === 'number' ? v : 0;
 
         return {
-          id: doc.id,
+          id: String(doc.id),
           ...data,
           // DATA SHIELDING
-          title: safeStr(data.title),
-          description: safeStr(data.description),
-          clientName: safeStr(data.clientName),
-          proposalName: safeStr(data.proposalName),
-          category: safeStr(data.category),
-          observations: safeStr(data.observations),
-          assigneeId: safeStr(data.assigneeId),
-          responsibleName: safeStr(data.responsibleName),
+          title: s(data.title),
+          description: s(data.description),
+          clientName: s(data.clientName),
+          proposalName: s(data.proposalName),
+          category: s(data.category),
+          observations: s(data.observations),
+          assigneeId: s(data.assigneeId),
+          responsibleName: s(data.responsibleName),
+          opportunityId: s(data.opportunityId),
 
-          value: typeof data.value === 'number' ? data.value : 0,
+          value: n(data.value),
 
           startDate: convertDate(data.startDate),
           endDate: convertDate(data.endDate),
@@ -132,10 +135,13 @@ const App: React.FC = () => {
       const data = await OpportunityService.getAll();
 
       // DOUBLE CHECK: Extra Layer of Sanitation before State
+      // Helper s() duplicated here for safety in this scope or define globally
+      const s = (v: any) => typeof v === 'string' ? v : '';
+
       const sanitizedData = data.map(op => ({
         ...op,
-        title: typeof op.title === 'string' ? op.title : '',
-        clientName: typeof op.clientName === 'string' ? op.clientName : '',
+        title: s(op.title),
+        clientName: s(op.clientName),
       }));
 
       setOpportunities(sanitizedData);
@@ -983,10 +989,10 @@ const App: React.FC = () => {
       <TaskForm
         isOpen={isTaskModalOpen}
         initialData={editingTask}
-        existingCategories={Array.from(new Set(tasks.map(t => t.category).filter(cat => typeof cat === 'string' && cat !== ''))) as string[]}
+        existingCategories={Array.from(new Set(tasks.map(t => t.category).filter(cat => typeof cat === 'string' && cat.trim() !== ''))) as string[]}
         users={MOCK_USERS}
         availableParents={[
-          ...tasks.filter(t => !t.parentId && !t.opportunityId),
+          ...tasks.filter(t => !t.parentId && !t.opportunityId).map(t => ({ ...t, id: String(t.id), title: String(t.title), clientName: String(t.clientName || '') })),
           ...opportunities.map(op => {
             // Safe conversion inside map to prevent crash
             const opId = typeof op.id === 'string' ? op.id : 'invalid-id';
@@ -994,9 +1000,9 @@ const App: React.FC = () => {
             const opClient = typeof op.clientName === 'string' ? op.clientName : '';
 
             return {
-              id: opId,
-              title: `[Oportunidade] ${opTitle}`,
-              clientName: opClient,
+              id: String(opId),
+              title: `[Oportunidade] ${String(opTitle)}`,
+              clientName: String(opClient),
               // spread other required fields with defaults to satisfy Task type
               description: '',
               assigneeId: op.responsibleId || '',

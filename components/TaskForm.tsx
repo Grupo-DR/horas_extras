@@ -110,6 +110,10 @@ export const TaskForm: React.FC<Props> = ({
       cleanedData.needsDetails = false;
     }
 
+    // Optional Link Logic: Clean up empty links
+    if (!cleanedData.parentId) delete cleanedData.parentId;
+    if (!cleanedData.opportunityId) delete cleanedData.opportunityId;
+
     if (cleanedData.startDate) cleanedData.startDate = new Date(cleanedData.startDate);
     if (cleanedData.endDate) cleanedData.endDate = new Date(cleanedData.endDate);
 
@@ -244,15 +248,15 @@ export const TaskForm: React.FC<Props> = ({
                     <>
                       <label className="block text-xs font-medium text-blue-600 mb-1">Vincular a Ação Mãe</label>
                       <select
-                        required={!formData.opportunityId}
                         className="w-full p-2.5 border border-blue-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none"
                         value={formData.parentId || ''}
                         onChange={(e) => setFormData({ ...formData, parentId: e.target.value })}
                       >
-                        <option value="">Selecione a Ação Mãe...</option>
+                        <option value="">Sem Vínculo (Ação Avulsa)</option>
                         {availableParents.map(parent => {
-                          const parentTitle = typeof parent.title === 'string' ? parent.title : 'Ação Sem Título';
-                          const clientInfo = typeof parent.clientName === 'string' ? parent.clientName : 'Sem Cliente';
+                          // BLINDAGEM DE RENDERIZAÇÃO
+                          const parentTitle = String(parent.title || 'Ação Sem Título');
+                          const clientInfo = String(parent.clientName || 'Sem Cliente');
                           return (
                             <option key={parent.id} value={parent.id}>{parentTitle} - {clientInfo}</option>
                           );
