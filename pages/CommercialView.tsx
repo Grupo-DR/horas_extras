@@ -1,17 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Task, User, TaskStatus, HelpChainLevel, HistoryLog, Notification, TaskOutcome, Opportunity, PipelineStage } from '../types';
 import { TaskForm } from '../components/TaskForm';
-import { Skeleton } from '../components/Skeleton';
-import { containerVariants, itemVariants } from '../utils/animations'; // Assuming I need to define local or utility. 
-// Or I define them inline if utility doesn't exist. I'll define loading state.
-import { AnimatePresence, motion } from 'framer-motion';
-
 import { OpportunityForm } from '../components/Pipeline/OpportunityForm';
-
-// ... (skipping lines, I can't do non-contiguous with replace_file_content easily if they are far apart)
-// Actually I should split this into two calls or use multi_replace.
-// multi_replace failed me before due to context.
-// I will use TWO replace_file_content calls.
 
 import { PipelineBoard } from '../components/Pipeline/PipelineBoard';
 import { EscalationSettings } from '../components/EscalationSettings';
@@ -22,7 +12,6 @@ import { OpportunityService } from '../services/opportunityService';
 import { isPast, format, startOfYear, isWithinInterval, startOfMonth, endOfMonth, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, LineChart, Line } from 'recharts';
-import { AnimatePresence, motion } from 'framer-motion';
 import { Toaster, toast } from 'sonner';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 
@@ -96,7 +85,6 @@ export const CommercialView: React.FC = () => {
     const [tasks, setTasks] = useState<Task[]>([]);
     // NEW: Lifted Opportunities State
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-    const [isLoading, setIsLoading] = useState(true); // NEW: Loading State
 
     // FIREBASE SYNC TASKS
     useEffect(() => {
@@ -185,11 +173,7 @@ export const CommercialView: React.FC = () => {
 
     useEffect(() => {
         const load = async () => {
-            setIsLoading(true);
             await fetchOpportunities();
-            // Simulate min load for smoothness
-            await new Promise(resolve => setTimeout(resolve, 800));
-            setIsLoading(false);
         };
         load();
     }, []);
@@ -537,7 +521,7 @@ export const CommercialView: React.FC = () => {
     return (
         <div className="flex h-full w-full flex-col overflow-hidden">
             {/* HEADER */}
-            <header className="bg-white/70 backdrop-blur-md border-b border-white/20 px-8 py-5 sticky top-0 z-30 flex justify-between items-center">
+            <header className="bg-white border-b border-slate-200 px-8 py-5 sticky top-0 z-30 flex justify-between items-center">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                         <LayoutDashboard className="text-blue-600" /> Gestão Comercial
@@ -650,7 +634,7 @@ export const CommercialView: React.FC = () => {
             </header>
 
             {(contractIdFilter || solutionIdFilter || kpiIdFilter) && (
-                <div className="bg-white/50 backdrop-blur-sm border-b border-indigo-100 px-6 py-2 flex items-center shadow-inner">
+                <div className="bg-white border-b border-indigo-100 px-6 py-2 flex items-center shadow-inner">
                     <div className="flex items-center gap-2 px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg text-xs font-bold animate-fadeIn">
                         <LinkIcon size={12} />
                         <span>
@@ -670,146 +654,130 @@ export const CommercialView: React.FC = () => {
 
             {/* CONTENT AREA */}
             <div className="flex-1 overflow-y-auto p-6 relative">
-                <AnimatePresence mode="wait">
-                    {view === 'DASHBOARD' && (
-                        <motion.div
-                            key="dashboard"
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.3 }}
-                            className="max-w-7xl mx-auto space-y-6"
-                        >
-                            {/* SIMPLIFIED DASHBOARD - FINANCIALS ONLY */}
-                            {/* FINANCIAL OUTCOME SECTION - WITH SPARKLINES */}
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
-                                {[
-                                    { label: 'Sucesso (Vencemos)', value: dashboardStats.outcomes.success, color: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200', icon: CheckCircle, chartColor: '#16a34a' },
-                                    { label: 'Insucesso (Perdemos)', value: dashboardStats.outcomes.failure, color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200', icon: AlertTriangle, chartColor: '#dc2626' },
-                                    { label: 'Estudo (Análise)', value: dashboardStats.outcomes.study, color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200', icon: Bot, chartColor: '#2563eb' },
-                                    { label: 'Desistência', value: dashboardStats.outcomes.withdrawal, color: 'text-slate-700', bg: 'bg-slate-50', border: 'border-slate-200', icon: LogOut, chartColor: '#475569' }
-                                ].map((item, idx) => (
-                                    <div key={idx} className={`p-4 rounded-xl border ${item.border} ${item.bg} relative overflow-hidden group`}>
-                                        <div className="flex justify-between items-start z-10 relative">
-                                            <div>
-                                                <div className={`flex items-center gap-2 mb-2 ${item.color.replace('700', '800')}`}>
-                                                    <item.icon size={18} /> <span className="font-bold text-sm">{item.label}</span>
-                                                </div>
-                                                <p className={`text-2xl font-bold ${item.color}`}>R$ {item.value.toLocaleString()}</p>
+                {view === 'DASHBOARD' && (
+                    <div
+                        className="max-w-7xl mx-auto space-y-6"
+                    >
+                        {/* SIMPLIFIED DASHBOARD - FINANCIALS ONLY */}
+                        {/* FINANCIAL OUTCOME SECTION - WITH SPARKLINES */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                            {[
+                                { label: 'Sucesso (Vencemos)', value: dashboardStats.outcomes.success, color: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200', icon: CheckCircle, chartColor: '#16a34a' },
+                                { label: 'Insucesso (Perdemos)', value: dashboardStats.outcomes.failure, color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200', icon: AlertTriangle, chartColor: '#dc2626' },
+                                { label: 'Estudo (Análise)', value: dashboardStats.outcomes.study, color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200', icon: Bot, chartColor: '#2563eb' },
+                                { label: 'Desistência', value: dashboardStats.outcomes.withdrawal, color: 'text-slate-700', bg: 'bg-slate-50', border: 'border-slate-200', icon: LogOut, chartColor: '#475569' }
+                            ].map((item, idx) => (
+                                <div key={idx} className={`p-4 rounded-xl border ${item.border} ${item.bg} relative overflow-hidden group`}>
+                                    <div className="flex justify-between items-start z-10 relative">
+                                        <div>
+                                            <div className={`flex items-center gap-2 mb-2 ${item.color.replace('700', '800')}`}>
+                                                <item.icon size={18} /> <span className="font-bold text-sm">{item.label}</span>
                                             </div>
-                                            {/* Sparkline Simulation */}
-                                            <div className="h-12 w-24 opacity-50">
-                                                <ResponsiveContainer width="100%" height="100%">
-                                                    <LineChart data={[{ v: 10 }, { v: 30 }, { v: 20 }, { v: 50 }, { v: 40 }, { v: item.value / 1000 }]} >
-                                                        <Line type="monotone" dataKey="v" stroke={item.chartColor} strokeWidth={2} dot={false} />
-                                                    </LineChart>
-                                                </ResponsiveContainer>
-                                            </div>
+                                            <p className={`text-2xl font-bold ${item.color}`}>R$ {item.value.toLocaleString()}</p>
+                                        </div>
+                                        {/* Sparkline Simulation */}
+                                        <div className="h-12 w-24 opacity-50">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <LineChart data={[{ v: 10 }, { v: 30 }, { v: 20 }, { v: 50 }, { v: 40 }, { v: item.value / 1000 }]} >
+                                                    <Line type="monotone" dataKey="v" stroke={item.chartColor} strokeWidth={2} dot={false} />
+                                                </LineChart>
+                                            </ResponsiveContainer>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-
-                            {/* CHARTS ROW */}
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                {/* DONUT CHART - OUTCOMES */}
-                                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
-                                    <h3 className="font-bold text-slate-700 mb-4">Distribuição de Resultados</h3>
-                                    <div className="flex-1 min-h-[250px]">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie
-                                                    data={[
-                                                        { name: 'Sucesso', value: dashboardStats.outcomes.success },
-                                                        { name: 'Insucesso', value: dashboardStats.outcomes.failure },
-                                                        { name: 'Estudo', value: dashboardStats.outcomes.study },
-                                                        { name: 'Desistência', value: dashboardStats.outcomes.withdrawal }
-                                                    ]}
-                                                    innerRadius={60}
-                                                    outerRadius={80}
-                                                    paddingAngle={5}
-                                                    dataKey="value"
-                                                >
-                                                    <Cell key="cell-0" fill={COLORS.success} />
-                                                    <Cell key="cell-1" fill={COLORS.failure} />
-                                                    <Cell key="cell-2" fill={COLORS.study} />
-                                                    <Cell key="cell-3" fill={COLORS.withdrawal} />
-                                                </Pie>
-                                                <RechartsTooltip formatter={(value: number) => `R$ ${value.toLocaleString()}`} />
-                                                <Legend verticalAlign="bottom" height={36} />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    </div>
                                 </div>
+                            ))}
+                        </div>
 
-                                {/* STACKED BAR CHART - CLIENT RESULTS */}
-                                <div className="col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
-                                    <h3 className="font-bold text-slate-700 mb-4">Top 5 Clientes (Volume Financeiro)</h3>
-                                    <div className="flex-1 min-h-[300px]">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart
-                                                data={dashboardStats.clientsChartData}
-                                                layout="vertical"
-                                                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                        {/* CHARTS ROW */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {/* DONUT CHART - OUTCOMES */}
+                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+                                <h3 className="font-bold text-slate-700 mb-4">Distribuição de Resultados</h3>
+                                <div className="flex-1 min-h-[250px]">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={[
+                                                    { name: 'Sucesso', value: dashboardStats.outcomes.success },
+                                                    { name: 'Insucesso', value: dashboardStats.outcomes.failure },
+                                                    { name: 'Estudo', value: dashboardStats.outcomes.study },
+                                                    { name: 'Desistência', value: dashboardStats.outcomes.withdrawal }
+                                                ]}
+                                                innerRadius={60}
+                                                outerRadius={80}
+                                                paddingAngle={5}
+                                                dataKey="value"
                                             >
-                                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                                                <XAxis type="number" hide />
-                                                <YAxis dataKey="name" type="category" width={100} axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-                                                <RechartsTooltip cursor={{ fill: '#f1f5f9' }} formatter={(value: number) => `R$ ${value.toLocaleString()}`} />
-                                                <Bar dataKey="value" fill={COLORS.study} radius={[0, 4, 4, 0]} barSize={20} />
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    </div>
+                                                <Cell key="cell-0" fill={COLORS.success} />
+                                                <Cell key="cell-1" fill={COLORS.failure} />
+                                                <Cell key="cell-2" fill={COLORS.study} />
+                                                <Cell key="cell-3" fill={COLORS.withdrawal} />
+                                            </Pie>
+                                            <RechartsTooltip formatter={(value: number) => `R$ ${value.toLocaleString()}`} />
+                                            <Legend verticalAlign="bottom" height={36} />
+                                        </PieChart>
+                                    </ResponsiveContainer>
                                 </div>
                             </div>
 
-                        </motion.div>
-                    )}
-
-                    {/* STRATEGIC VIEW (PIPELINE) */}
-                    {view === 'STRATEGIC' && (
-                        <motion.div
-                            key="strategic"
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            transition={{ duration: 0.3 }}
-                            className="h-full flex flex-col gap-6"
-                        >
-                            {/* NEW PIPELINE BOARD */}
-                            <div className="flex-1 bg-white/50 backdrop-blur-sm rounded-xl border border-white/20 shadow-sm p-4 overflow-hidden flex flex-col">
-                                <h3 className="font-bold text-slate-700 flex items-center gap-2 mb-4 text-xl">
-                                    <Activity size={24} className="text-purple-600" /> Pipeline de Vendas
-                                </h3>
-                                <div className="flex-1 overflow-hidden">
-                                    <PipelineBoard
-                                        opportunities={opportunities} // NEW: Pass down
-                                        refreshOpportunities={fetchOpportunities} // NEW: Pass down refresh
-                                        onEditOpportunity={(op) => { setEditingOpportunity(op); setIsOpportunityModalOpen(true); }}
-                                        onTaskCreated={(task) => {
-                                            setEditingTask(task);
-                                            setTaskFormMode('QUICK_EDIT');
-                                            setIsTaskModalOpen(true);
-                                        }}
-                                    />
+                            {/* STACKED BAR CHART - CLIENT RESULTS */}
+                            <div className="col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+                                <h3 className="font-bold text-slate-700 mb-4">Top 5 Clientes (Volume Financeiro)</h3>
+                                <div className="flex-1 min-h-[300px]">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart
+                                            data={dashboardStats.clientsChartData}
+                                            layout="vertical"
+                                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                                        >
+                                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                                            <XAxis type="number" hide />
+                                            <YAxis dataKey="name" type="category" width={100} axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                                            <RechartsTooltip cursor={{ fill: '#f1f5f9' }} formatter={(value: number) => `R$ ${value.toLocaleString()}`} />
+                                            <Bar dataKey="value" fill={COLORS.study} radius={[0, 4, 4, 0]} barSize={20} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
                                 </div>
                             </div>
-                        </motion.div>
-                    )}
+                        </div>
 
-                    {/* SETTINGS VIEW */}
-                    {view === 'SETTINGS' && (
-                        <motion.div
-                            key="settings"
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="max-w-4xl mx-auto"
-                        >
-                            <EscalationSettings chain={helpChain} onSave={setHelpChain} />
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                    </motion.div>
+                )}
+
+                {/* STRATEGIC VIEW (PIPELINE) */}
+                {view === 'STRATEGIC' && (
+                    <div
+                        className="h-full flex flex-col gap-6"
+                    >
+                        {/* NEW PIPELINE BOARD */}
+                        <div className="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm p-4 overflow-hidden flex flex-col">
+                            <h3 className="font-bold text-slate-700 flex items-center gap-2 mb-4 text-xl">
+                                <Activity size={24} className="text-purple-600" /> Pipeline de Vendas
+                            </h3>
+                            <div className="flex-1 overflow-hidden">
+                                <PipelineBoard
+                                    opportunities={opportunities} // NEW: Pass down
+                                    refreshOpportunities={fetchOpportunities} // NEW: Pass down refresh
+                                    onEditOpportunity={(op) => { setEditingOpportunity(op); setIsOpportunityModalOpen(true); }}
+                                    onTaskCreated={(task) => {
+                                        setEditingTask(task);
+                                        setTaskFormMode('QUICK_EDIT');
+                                        setIsTaskModalOpen(true);
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* SETTINGS VIEW */}
+                {view === 'SETTINGS' && (
+                    <div
+                        className="max-w-4xl mx-auto"
+                    >
+                        <EscalationSettings chain={helpChain} onSave={setHelpChain} />
+                    </div>
+                )}
             </div >
 
 

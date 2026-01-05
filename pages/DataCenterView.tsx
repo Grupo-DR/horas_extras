@@ -7,8 +7,6 @@ import { SolutionForm } from '../components/SolutionForm';
 import { ProjectModelCanvas } from '../components/ProjectModelCanvas';
 import { Lightbulb, Plus, Search, Database, Layout } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
-import { Skeleton } from '../components/Skeleton';
-import { AnimatePresence, motion } from 'framer-motion';
 
 // MOCK USERS (Should be shared context in real app)
 const MOCK_USERS: User[] = [
@@ -23,7 +21,6 @@ export const DataCenterView: React.FC = () => {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingSolution, setEditingSolution] = useState<DataSolution | undefined>(undefined);
     const [viewMode, setViewMode] = useState<'GALLERY' | 'SCRUM'>('GALLERY');
-    const [isLoading, setIsLoading] = useState(true);
     // PMC STATE
     const [isPMCOpen, setIsPMCOpen] = useState(false);
     const [selectedSolutionForPMC, setSelectedSolutionForPMC] = useState<DataSolution | undefined>(undefined);
@@ -31,10 +28,8 @@ export const DataCenterView: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
-        setIsLoading(true);
         const unsubscribe = SolutionService.subscribe((data) => {
             setSolutions(data);
-            setIsLoading(false);
         });
         return () => unsubscribe();
     }, []);
@@ -92,7 +87,7 @@ export const DataCenterView: React.FC = () => {
     return (
         <div className="flex-1 overflow-y-auto bg-slate-50/50 h-full relative">
             {/* HEADER */}
-            <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-8 py-6 flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 z-10 shadow-sm transition-all duration-300">
+            <div className="bg-white border-b border-slate-200 px-8 py-6 flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 z-10 shadow-sm transition-all duration-300">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
                         <Database className="text-blue-600" />
@@ -142,62 +137,42 @@ export const DataCenterView: React.FC = () => {
             </div>
 
             <div className="p-8 max-w-7xl mx-auto min-h-[500px]">
-                <AnimatePresence mode="wait">
-                    {viewMode === 'GALLERY' ? (
-                        isLoading ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 animate-pulse">
-                                <Skeleton className="h-48 rounded-xl" />
-                                <Skeleton className="h-48 rounded-xl" />
-                                <Skeleton className="h-48 rounded-xl" />
-                                <Skeleton className="h-48 rounded-xl" />
-                                <Skeleton className="h-48 rounded-xl" />
-                                <Skeleton className="h-48 rounded-xl" />
+                {viewMode === 'GALLERY' ? (
+                    solutions.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 text-center">
+                            <div className="bg-slate-100 p-6 rounded-full mb-4">
+                                <Database size={48} className="text-slate-300" />
                             </div>
-                        ) : solutions.length === 0 ? (
-                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-20 text-center">
-                                <div className="bg-slate-100 p-6 rounded-full mb-4">
-                                    <Database size={48} className="text-slate-300" />
-                                </div>
-                                <h3 className="text-xl font-bold text-slate-700 mb-2">Nenhuma Solução Criada</h3>
-                                <p className="text-slate-500 max-w-md mx-auto mb-6">
-                                    Comece criando uma nova solução estratégica para organizar seus dados e processos de inteligência.
-                                </p>
-                                <button
-                                    onClick={() => { setEditingSolution(undefined); setIsFormOpen(true); }}
-                                    className="text-blue-600 font-bold hover:underline"
-                                >
-                                    Criar primeira solução agora
-                                </button>
-                            </motion.div>
-                        ) : (
-                            <motion.div
-                                initial="hidden"
-                                animate="show"
-                                variants={{
-                                    hidden: { opacity: 0 },
-                                    show: { opacity: 1, transition: { staggerChildren: 0.1 } }
-                                }}
-                                className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+                            <h3 className="text-xl font-bold text-slate-700 mb-2">Nenhuma Solução Criada</h3>
+                            <p className="text-slate-500 max-w-md mx-auto mb-6">
+                                Comece criando uma nova solução estratégica para organizar seus dados e processos de inteligência.
+                            </p>
+                            <button
+                                onClick={() => { setEditingSolution(undefined); setIsFormOpen(true); }}
+                                className="text-blue-600 font-bold hover:underline"
                             >
-                                {filteredSolutions.map(solution => (
-                                    <motion.div key={solution.id} variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }}>
-                                        <SolutionCard
-                                            solution={solution}
-                                            onExplore={handleOpenPMC}
-                                            onEdit={handleEdit}
-                                            onDelete={handleDelete}
-                                        />
-                                    </motion.div>
-                                ))}
-                            </motion.div>
-                        )
+                                Criar primeira solução agora
+                            </button>
+                        </div>
                     ) : (
-                        // SCRUM VIEW (Wrapped in Motion for transition)
-                        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                            <ScrumBoard solutions={filteredSolutions} onEdit={handleEdit} onPMC={handleOpenPMC} />
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                        <div
+                            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+                        >
+                            {filteredSolutions.map(solution => (
+                                <SolutionCard
+                                    key={solution.id}
+                                    solution={solution}
+                                    onExplore={handleOpenPMC}
+                                    onEdit={handleEdit}
+                                    onDelete={handleDelete}
+                                />
+                            ))}
+                        </div>
+                    )
+                ) : (
+                    // SCRUM VIEW
+                    <ScrumBoard solutions={filteredSolutions} onEdit={handleEdit} onPMC={handleOpenPMC} />
+                )}
             </div>
 
             {/* MODALS */}

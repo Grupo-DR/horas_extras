@@ -6,8 +6,6 @@ import { ContractCard } from '../components/ContractCard';
 import { ContractForm } from '../components/ContractForm';
 import { PlusCircle, Search, FileText } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
-import { Skeleton } from '../components/Skeleton';
-import { AnimatePresence, motion } from 'framer-motion';
 
 export const ContractsView: React.FC = () => {
     const [contracts, setContracts] = useState<Contract[]>([]);
@@ -15,7 +13,6 @@ export const ContractsView: React.FC = () => {
     const [editingContract, setEditingContract] = useState<Contract | undefined>(undefined);
 
     const [searchTerm, setSearchTerm] = useState('');
-    const [isLoading, setIsLoading] = useState(true);
     const navigate = useNavigate();
 
     // DASHBOARD METRICS
@@ -39,11 +36,9 @@ export const ContractsView: React.FC = () => {
 
 
     useEffect(() => {
-        setIsLoading(true);
         // Subscribe to real-time updates
         const unsubscribe = ContractService.subscribe((data) => {
             setContracts(data);
-            setIsLoading(false);
         });
         return () => unsubscribe();
     }, []);
@@ -102,7 +97,7 @@ export const ContractsView: React.FC = () => {
     return (
         <div className="flex-1 overflow-y-auto bg-slate-50/50 h-full relative">
             {/* HEADER */}
-            <header className="bg-white/80 backdrop-blur-md border-b border-white/20 px-8 py-5 sticky top-0 z-30 flex justify-between items-center shadow-sm">
+            <header className="bg-white border-b border-slate-200 px-8 py-5 sticky top-0 z-30 flex justify-between items-center shadow-sm">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                         <FileText className="text-blue-600" /> Gestão de Contratos
@@ -165,50 +160,25 @@ export const ContractsView: React.FC = () => {
 
             {/* CONTENT GRID */}
             <div className="p-8 max-w-7xl mx-auto">
-                <AnimatePresence mode="wait">
-                    {isLoading ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 animate-pulse">
-                            <Skeleton className="h-64 rounded-xl" />
-                            <Skeleton className="h-64 rounded-xl" />
-                            <Skeleton className="h-64 rounded-xl" />
-                            <Skeleton className="h-64 rounded-xl" />
-                            <Skeleton className="h-64 rounded-xl" />
-                            <Skeleton className="h-64 rounded-xl" />
-                        </div>
-                    ) : contracts.length === 0 ? (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20 opacity-50">
-                            <FileText size={48} className="mx-auto mb-4 text-slate-300" />
-                            <p className="text-lg text-slate-500">Nenhum contrato cadastrado.</p>
-                            <p className="text-sm text-slate-400">Clique em "Novo Contrato" para começar.</p>
-                        </motion.div>
-                    ) : (
-                        <motion.div
-                            initial="hidden"
-                            animate="show"
-                            variants={{
-                                hidden: { opacity: 0 },
-                                show: {
-                                    opacity: 1,
-                                    transition: {
-                                        staggerChildren: 0.1
-                                    }
-                                }
-                            }}
-                            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
-                        >
-                            {filteredContracts.map(contract => (
-                                <motion.div key={contract.id} variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }}>
-                                    <ContractCard
-                                        contract={contract}
-                                        onAddMeasurement={handleAddMeasurement}
-                                        onEdit={handleEdit}
-                                        onDelete={handleDelete}
-                                    />
-                                </motion.div>
-                            ))}
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                {contracts.length === 0 ? (
+                    <div className="text-center py-20 opacity-50">
+                        <FileText size={48} className="mx-auto mb-4 text-slate-300" />
+                        <p className="text-lg text-slate-500">Nenhum contrato cadastrado.</p>
+                        <p className="text-sm text-slate-400">Clique em "Novo Contrato" para começar.</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {filteredContracts.map(contract => (
+                            <ContractCard
+                                key={contract.id}
+                                contract={contract}
+                                onAddMeasurement={handleAddMeasurement}
+                                onEdit={handleEdit}
+                                onDelete={handleDelete}
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* MODALS */}

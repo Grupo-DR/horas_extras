@@ -13,7 +13,7 @@ export const Sidebar: React.FC = () => {
     ];
 
     return (
-        <aside className="fixed left-0 top-0 h-full w-20 flex flex-col items-center py-6 bg-white/70 backdrop-blur-md border-r border-white/50 shadow-2xl z-50">
+        <aside className="fixed left-0 top-0 h-full w-20 flex flex-col items-center py-6 bg-white border-r border-slate-200 shadow-xl z-50">
             {/* BRAND */}
             <div className="flex flex-col items-center w-full mb-8">
                 <img src="/assets/dr-logo.png" alt="DR" className="h-14 w-auto object-contain" />
