@@ -30,25 +30,19 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, l
     });
 
     const [loading, setLoading] = useState(false);
-    const [users, setUsers] = useState<User[]>([]);
+    const [users, setUsers] = useState<User[]>(OFFICIAL_USERS);
 
     useEffect(() => {
         const loadUsers = async () => {
             try {
-                let data = await UserService.getAll();
-                if (!data || data.length === 0) {
-                    console.warn("UserService returned empty, using fallback mock users.");
-                    data = OFFICIAL_USERS;
-                }
-                setUsers(data);
-
-                // Set default responsible if not set and users exist
-                if (!formData.responsibleId && data.length > 0) {
-                    // logic to set default if needed
+                const data = await UserService.getAll();
+                // Only override if we actually got data back
+                if (data && data.length > 0) {
+                    setUsers(data);
                 }
             } catch (e) {
-                console.error("Error loading users", e);
-                setUsers(OFFICIAL_USERS);
+                console.error("Error loading users from DB (using defaults)", e);
+                // No need to set fallback, it's already initial state
             }
         }
         loadUsers();
