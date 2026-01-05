@@ -793,53 +793,53 @@ export const CommercialView: React.FC = () => {
                                         }}
                                     />
                                 </div>
-                        </motion.div>
+                            </div>
                         </motion.div>
                     )}
 
-                {/* SETTINGS VIEW */}
-                {view === 'SETTINGS' && (
-                    <motion.div
-                        key="settings"
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="max-w-4xl mx-auto"
-                    >
-                        <EscalationSettings chain={helpChain} onSave={setHelpChain} />
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </div >
+                    {/* SETTINGS VIEW */}
+                    {view === 'SETTINGS' && (
+                        <motion.div
+                            key="settings"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="max-w-4xl mx-auto"
+                        >
+                            <EscalationSettings chain={helpChain} onSave={setHelpChain} />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div >
 
 
-            {/* MODALS */ }
-    {
-        isOpportunityModalOpen && (
-            <OpportunityForm
-                initialData={editingOpportunity}
-                linkedTasks={tasks.filter(t => t.opportunityId === editingOpportunity?.id)} // NEW: Filter tasks here
-                onClose={() => {
-                    setIsOpportunityModalOpen(false);
-                    setEditingOpportunity(undefined);
-                }}
-                onSave={() => {
-                    window.location.reload();
-                }}
-                onDelete={async (id) => {
-                    if (confirm("Tem certeza que deseja excluir esta oportunidade?")) {
-                        try {
-                            await OpportunityService.delete(id);
-                            toast.success("Oportunidade excluída.");
+            {/* MODALS */}
+            {
+                isOpportunityModalOpen && (
+                    <OpportunityForm
+                        initialData={editingOpportunity}
+                        linkedTasks={tasks.filter(t => t.opportunityId === editingOpportunity?.id)} // NEW: Filter tasks here
+                        onClose={() => {
+                            setIsOpportunityModalOpen(false);
+                            setEditingOpportunity(undefined);
+                        }}
+                        onSave={() => {
                             window.location.reload();
-                        } catch (e) {
-                            toast.error("Erro ao excluir.");
-                        }
-                    }
-                }}
-            />
-        )
-    }
+                        }}
+                        onDelete={async (id) => {
+                            if (confirm("Tem certeza que deseja excluir esta oportunidade?")) {
+                                try {
+                                    await OpportunityService.delete(id);
+                                    toast.success("Oportunidade excluída.");
+                                    window.location.reload();
+                                } catch (e) {
+                                    toast.error("Erro ao excluir.");
+                                }
+                            }
+                        }}
+                    />
+                )
+            }
             <TaskForm
                 isOpen={isTaskModalOpen}
                 initialData={editingTask || (
