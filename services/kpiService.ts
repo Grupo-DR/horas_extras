@@ -80,12 +80,14 @@ export const KPIService = {
     },
 
     // UPDATE PROGRESS (Atomic-like with optimistic calc or read-modify-write)
-    // Note: To ensure we get the *latest* referenceDate for currentValue, we strictly should read the doc first or trust the client array.
-    // For safety, we will fetch the current doc, append, resort, and update.
     updateProgress: async (kpiId: string, value: number, referenceDate: Date, updatedBy: string) => {
+        console.log('Atualizando KPI:', kpiId, 'Values:', { value, referenceDate, updatedBy });
+
+        if (!kpiId) throw new Error("ID do KPI inválido");
+
         const docRef = doc(db, COLLECTION_NAME, kpiId);
 
-        // 1. Create the new entry
+        // 1. Prepare new entry
         const newEntry = {
             referenceDate: Timestamp.fromDate(referenceDate),
             value: Number(value),
@@ -93,57 +95,38 @@ export const KPIService = {
             date: Timestamp.now() // Audit timestamp
         };
 
-        // 2. We need to update the history array. 
-        // Since we need to recalculate currentValue based on the *latest* referenceDate, 
-        // we can't just arrayUnion if we want to update currentValue correctly in one go without reading.
-        // However, arrayUnion is best for concurrency. 
-        // Compromise: We use arrayUnion to add history, but we need to know if this new date is the latest.
-        // If we assume the user usually adds the latest data, we can just update currentValue.
-        // BUT the requirement says: "allow retroactive".
-
-        // So, we MUST read the current history to decide on currentValue.
-        // A transaction is ideal here.
-
-        await deleteDoc(docRef); // WAIT NO - Don't delete! 
-        // My previous thought process was interrupted. Let's use runTransaction or just get/update. 
-        // Given complexity/traffic, get/update is fine.
-
+        // 2. Read to determine if we need to update currentValue
         const snap = await import('firebase/firestore').then(mod => mod.getDoc(docRef));
-        if (!snap.exists()) throw new Error("KPI not found");
+
+        if (!snap.exists()) {
+            console.error("KPI Document not found for ID:", kpiId);
+            throw new Error("KPI not found");
+        }
 
         const raw = snap.data();
-        const existingHistory = Array.isArray(raw.history) ? raw.history : [];
+        const history = Array.isArray(raw.history) ? raw.history : [];
 
-        // Convert safe types for comparison
-        const parsedHistory = existingHistory.map((h: any) => ({
-            ...h,
-            referenceDate: h.referenceDate ? toDate(h.referenceDate) : toDate(h.date),
-            value: Number(h.value)
-        }));
+        // Check if this new date is the "latest" compared to existing ones
+        let isNewest = true;
+        for (const h of history) {
+            const hDate = h.referenceDate ? toDate(h.referenceDate) : toDate(h.date);
+            // If existing date is newer than new date, then new entry is NOT the newest
+            if (hDate > referenceDate) {
+                isNewest = false;
+                break;
+            }
+        }
 
-        // Add new one (local representation for sorting)
-        parsedHistory.push({
-            referenceDate: referenceDate,
-            value: Number(value),
-            updatedBy: updatedBy
-        });
-
-        // Sort by referenceDate DESC to find the latest
-        parsedHistory.sort((a: any, b: any) => b.referenceDate.getTime() - a.referenceDate.getTime());
-
-        const latestEntry = parsedHistory[0];
-        const newCurrentValue = latestEntry.value;
-
-        // Prepare Firestore Payload
-        // We append the new entry using arrayUnion to be cleaner or just rewrite the whole array if we want 100% order.
-        // Firestore doesn't hold order in arrays reliably if manipulated partially, but rewriting is safe for small arrays.
-        // Let's use arrayUnion to add the *raw* firestore entry, and update currentValue.
-
-        await updateDoc(docRef, {
+        const payload: any = {
             history: arrayUnion(newEntry),
-            currentValue: newCurrentValue,
             updatedAt: Timestamp.now()
-        });
+        };
+
+        if (isNewest) {
+            payload.currentValue = Number(value);
+        }
+
+        await updateDoc(docRef, payload);
     },
 
     // DELETE
