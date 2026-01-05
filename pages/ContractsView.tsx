@@ -4,6 +4,7 @@ import { Contract } from '../types';
 import { ContractService } from '../services/contractService';
 import { ContractCard } from '../components/ContractCard';
 import { ContractForm } from '../components/ContractForm';
+import { ContractDetailsModal } from '../components/ContractDetailsModal';
 import { PlusCircle, Search, FileText } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 
@@ -35,10 +36,14 @@ export const ContractsView: React.FC = () => {
     }, [contracts]);
 
 
+    const [detailsContract, setDetailsContract] = useState<Contract | null>(null);
+
     useEffect(() => {
         // Subscribe to real-time updates
         const unsubscribe = ContractService.subscribe((data) => {
             setContracts(data);
+            // Update details view live if open (optional but good)
+            setDetailsContract(curr => curr ? data.find(d => d.id === curr.id) || null : null);
         });
         return () => unsubscribe();
     }, []);
@@ -85,6 +90,17 @@ export const ContractsView: React.FC = () => {
         } catch (error) {
             console.error(error);
             toast.error("Erro ao adicionar medição.");
+        }
+    };
+
+    const handleRemoveMeasurement = async (contractId: string, measurementId: string) => {
+        if (!window.confirm("Confirma a exclusão desta medição?")) return;
+        try {
+            await ContractService.removeMeasurement(contractId, measurementId);
+            toast.success("Medição excluída.");
+        } catch (error) {
+            console.error(error);
+            toast.error("Erro ao excluir medição.");
         }
     };
 
@@ -172,7 +188,7 @@ export const ContractsView: React.FC = () => {
                             <ContractCard
                                 key={contract.id}
                                 contract={contract}
-                                onAddMeasurement={handleAddMeasurement}
+                                onViewDetails={(c) => setDetailsContract(c)}
                                 onEdit={handleEdit}
                                 onDelete={handleDelete}
                             />
@@ -188,6 +204,14 @@ export const ContractsView: React.FC = () => {
                 onSave={handleCreateContract}
                 initialData={editingContract}
                 onDelete={handleDelete}
+            />
+
+            <ContractDetailsModal
+                isOpen={!!detailsContract}
+                onClose={() => setDetailsContract(null)}
+                contract={detailsContract}
+                onAddMeasurement={handleAddMeasurement}
+                onRemoveMeasurement={handleRemoveMeasurement}
             />
 
             <Toaster position="top-right" richColors />

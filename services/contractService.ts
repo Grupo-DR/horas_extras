@@ -126,5 +126,26 @@ export const ContractService = {
             measurements: arrayUnion(newMeasurement),
             updatedAt: Timestamp.now()
         });
+    },
+
+    // REMOVE MEASUREMENT
+    removeMeasurement: async (contractId: string, measurementId: string) => {
+        const docRef = doc(db, COLLECTION_NAME, contractId);
+
+        // 1. Get current doc
+        const snap = await import('firebase/firestore').then(mod => mod.getDoc(docRef));
+        if (!snap.exists()) throw new Error("Contrato não encontrado");
+
+        const data = snap.data();
+        const measurements = Array.isArray(data.measurements) ? data.measurements : [];
+
+        // 2. Filter out the specific measurement
+        const updatedMeasurements = measurements.filter((m: any) => m.id !== measurementId);
+
+        // 3. Update doc
+        await updateDoc(docRef, {
+            measurements: updatedMeasurements,
+            updatedAt: Timestamp.now()
+        });
     }
 };
