@@ -22,6 +22,7 @@ import {
     TaskStatus
 } from '../types';
 import { getExecutionPercent, getNextStage, getStageLabel } from '../domain/pipeline';
+import { OFFICIAL_USERS } from '../constants';
 
 const OPPORTUNITIES_COLLECTION = 'opportunities';
 const TASKS_COLLECTION = 'tasks';
@@ -94,6 +95,17 @@ export const OpportunityService = {
                 createdAt: safeDate(data.createdAt),
                 updatedAt: safeDate(data.updatedAt),
                 submissionDate: data.submissionDate ? safeDate(data.submissionDate) : undefined,
+
+                // Fallback Logic for Responsible Name
+                responsibleName: (() => {
+                    const rId = safeStr(data.responsibleId);
+                    // 1. Check if ID exists in OFFICIAL_USERS
+                    const match = OFFICIAL_USERS.find(u => u.id === rId);
+                    if (match) return match.name;
+
+                    // 2. If not a known ID, assume it's a legacy Name or fallback
+                    return rId || 'N/A';
+                })(),
             } as Opportunity;
         });
     },

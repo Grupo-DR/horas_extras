@@ -74,7 +74,9 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
 
                 <div className="flex items-center text-xs text-slate-500">
                     <User className="w-3 h-3 mr-1" />
-                    <span className="truncate max-w-[150px]">{opportunity.responsibleName || 'N/A'}</span>
+                    <span className="truncate max-w-[150px]" title={opportunity.responsibleName || 'N/A'}>
+                        {opportunity.responsibleName || 'N/A'}
+                    </span>
                 </div>
 
                 <div className="flex justify-between items-center">
@@ -85,8 +87,8 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
 
                     {opportunity.priority && (
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${opportunity.priority === 'ALTA' ? 'bg-red-100 text-red-700' :
-                                opportunity.priority === 'MÉDIA' ? 'bg-orange-100 text-orange-700' :
-                                    'bg-emerald-100 text-emerald-700'
+                            opportunity.priority === 'MÉDIA' ? 'bg-orange-100 text-orange-700' :
+                                'bg-emerald-100 text-emerald-700'
                             }`}>
                             {opportunity.priority}
                         </span>
