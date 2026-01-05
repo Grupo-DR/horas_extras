@@ -87,17 +87,17 @@ export const KPICard: React.FC<Props> = ({ kpi, onExplore, onUpdate, onEdit, onD
             </p>
 
             {/* METRIC BOX */}
-            <div className="bg-slate-50 rounded-lg p-4 mb-6 relative">
-                <div className="flex justify-between items-end mb-2">
-                    <div>
+            <div className="bg-slate-50 rounded-lg p-4 mb-6 relative overflow-hidden">
+                <div className="flex justify-between items-end mb-2 gap-2">
+                    <div className="min-w-0 flex-1">
                         <span className="text-xs font-bold text-slate-400 block mb-1">ATUAL</span>
-                        <span className={`text-2xl font-bold ${isMet ? 'text-green-600' : 'text-slate-800'}`}>
+                        <span className={`text-xl font-bold truncate block ${isMet ? 'text-green-600' : 'text-slate-800'}`}>
                             {formatValue(kpi.currentValue)}
                         </span>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right min-w-0 flex-1">
                         <span className="text-xs font-bold text-slate-400 block mb-1">META</span>
-                        <span className="text-lg font-bold text-slate-600">
+                        <span className="text-base font-bold text-slate-600 truncate block">
                             {formatValue(kpi.targetValue)}
                         </span>
                     </div>
