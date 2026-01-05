@@ -140,13 +140,7 @@ export const KPICard: React.FC<Props> = ({ kpi, onExplore, onUpdate, onEdit, onD
                 >
                     Atualizar
                 </button>
-                <button
-                    onClick={() => onExplore(kpi.id)}
-                    className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-1 transition-colors group"
-                >
-                    Ações
-                    <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                </button>
+
             </div>
         </motion.div>
     );

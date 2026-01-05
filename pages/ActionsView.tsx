@@ -6,7 +6,7 @@ import { KanbanBoard } from '../components/KanbanBoard';
 import { HistoryPanel } from '../components/HistoryPanel';
 import { LayoutDashboard, Filter, Bell, PlusCircle, CheckSquare, Search, Users, Activity, FileText, Database, Target, X } from 'lucide-react';
 import { db } from '../services/firebaseConfig';
-import { collection, onSnapshot, addDoc, updateDoc, doc, query, Timestamp } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, doc, query, Timestamp, deleteDoc } from 'firebase/firestore';
 import { Toaster, toast } from 'sonner';
 
 // MOCK USERS (Shared context would be better, but duplicating for safety as per pattern)
@@ -129,6 +129,20 @@ export const ActionsView: React.FC = () => {
             toast.error('Erro ao mover tarefa');
         }
     };
+
+    const handleDeleteTask = async (taskId: string) => {
+        if (window.confirm("ATENÇÃO: Tem certeza que deseja excluir esta ação permanentemente?")) {
+            try {
+                await deleteDoc(doc(db, 'tasks', taskId));
+                toast.success('Tarefa excluída');
+            } catch (error) {
+                console.error(error);
+                toast.error('Erro ao excluir tarefa');
+            }
+        }
+    };
+
+
 
     // FILTER LOGIC
     const filteredTasks = useMemo(() => {
@@ -279,6 +293,7 @@ export const ActionsView: React.FC = () => {
                         users={MOCK_USERS}
                         onStatusChange={handleStatusChange}
                         onEdit={(t) => { setEditingTask(t); setIsTaskModalOpen(true); }}
+                        onDelete={handleDeleteTask}
                     />
                 </div>
 

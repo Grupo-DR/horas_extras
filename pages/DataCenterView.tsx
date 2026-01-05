@@ -112,13 +112,7 @@ export const DataCenterView: React.FC = () => {
                         <Plus size={20} />
                         Nova Solução
                     </button>
-                    <button
-                        onClick={() => navigate('/comercial?solutionId=ALL')}
-                        className="text-blue-600 font-bold hover:bg-blue-50 px-4 py-2 rounded-lg transition-colors flex items-center gap-2 border border-blue-200 shadow-sm"
-                    >
-                        <Search size={18} />
-                        Visualizar Todas as Ações de Dados
-                    </button>
+
                 </div>
             </div>
 

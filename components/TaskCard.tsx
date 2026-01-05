@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Task, TaskStatus, User, TaskOutcome } from '../types';
-import { Clock, AlertCircle, MoreHorizontal, User as UserIcon, Tag, Building, DollarSign, Target, Link, Award } from 'lucide-react';
+import { Clock, AlertCircle, MoreHorizontal, User as UserIcon, Tag, Building, DollarSign, Target, Link, Award, Trash2 } from 'lucide-react';
 import { isPast, differenceInDays, format, isValid } from 'date-fns';
 
 interface Props {
@@ -9,10 +9,11 @@ interface Props {
   childTasks?: Task[]; // Children of this task
   onEdit: (task: Task) => void;
   onStatusChange: (id: string, status: TaskStatus) => void;
+  onDelete?: (id: string) => void;
   simple?: boolean;
 }
 
-export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onEdit, onStatusChange, simple = false }) => {
+export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onEdit, onStatusChange, onDelete, simple = false }) => {
 
   // SAFE DATE CHECKS
   const safeEndDate = isValid(task.endDate) ? task.endDate : new Date();
@@ -127,6 +128,20 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
         </div>
       </div>
 
+      {/* ACTION BUTTONS */}
+      <div className="flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity absolute top-3 right-3">
+        {onDelete && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
+            className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded"
+            title="Excluir"
+          >
+            <Trash2 size={14} />
+          </button>
+        )}
+      </div>
+
+
       {/* CORE INFO */}
       <div className="mb-4 pl-2">
         {/* STRATEGIC HIGHLIGHT (MOTHERS) */}
@@ -165,28 +180,30 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
       </div>
 
       {/* EXECUTIVES STATS (MOTHERS) */}
-      {isMother && childStats && (childStats.pending > 0 || childStats.late > 0 || childStats.inProgress > 0) && (
-        <div className="flex gap-2 mb-4 pl-2">
-          {childStats.late > 0 && (
-            <div className="flex flex-col items-center bg-red-50 border border-red-100 rounded p-1.5 min-w-[50px]">
-              <span className="text-xs font-black text-red-600">{childStats.late}</span>
-              <span className="text-[8px] uppercase font-bold text-red-400">Atraso</span>
-            </div>
-          )}
-          {childStats.inProgress > 0 && (
-            <div className="flex flex-col items-center bg-blue-50 border border-blue-100 rounded p-1.5 min-w-[50px]">
-              <span className="text-xs font-black text-blue-600">{childStats.inProgress}</span>
-              <span className="text-[8px] uppercase font-bold text-blue-400">Andam.</span>
-            </div>
-          )}
-          {childStats.pending > 0 && (
-            <div className="flex flex-col items-center bg-slate-50 border border-slate-100 rounded p-1.5 min-w-[50px]">
-              <span className="text-xs font-black text-slate-500">{childStats.pending}</span>
-              <span className="text-[8px] uppercase font-bold text-slate-400">Pend.</span>
-            </div>
-          )}
-        </div>
-      )}
+      {
+        isMother && childStats && (childStats.pending > 0 || childStats.late > 0 || childStats.inProgress > 0) && (
+          <div className="flex gap-2 mb-4 pl-2">
+            {childStats.late > 0 && (
+              <div className="flex flex-col items-center bg-red-50 border border-red-100 rounded p-1.5 min-w-[50px]">
+                <span className="text-xs font-black text-red-600">{childStats.late}</span>
+                <span className="text-[8px] uppercase font-bold text-red-400">Atraso</span>
+              </div>
+            )}
+            {childStats.inProgress > 0 && (
+              <div className="flex flex-col items-center bg-blue-50 border border-blue-100 rounded p-1.5 min-w-[50px]">
+                <span className="text-xs font-black text-blue-600">{childStats.inProgress}</span>
+                <span className="text-[8px] uppercase font-bold text-blue-400">Andam.</span>
+              </div>
+            )}
+            {childStats.pending > 0 && (
+              <div className="flex flex-col items-center bg-slate-50 border border-slate-100 rounded p-1.5 min-w-[50px]">
+                <span className="text-xs font-black text-slate-500">{childStats.pending}</span>
+                <span className="text-[8px] uppercase font-bold text-slate-400">Pend.</span>
+              </div>
+            )}
+          </div>
+        )
+      }
 
       {/* METRICS & FOOTER */}
       <div className="mt-auto pt-3 border-t border-slate-100 pl-2">
@@ -219,6 +236,6 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
         </div>
       </div>
 
-    </div>
+    </div >
   );
 };

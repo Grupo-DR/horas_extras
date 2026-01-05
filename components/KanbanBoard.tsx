@@ -7,6 +7,7 @@ interface Props {
   users: User[];
   onStatusChange: (id: string, status: TaskStatus) => void;
   onEdit: (task: Task) => void;
+  onDelete: (id: string) => void;
 }
 
 const COLUMNS = [
@@ -16,7 +17,7 @@ const COLUMNS = [
   { id: TaskStatus.COMPLETED, title: 'Concluído', color: 'bg-green-50/50 border-green-100' },
 ];
 
-export const KanbanBoard: React.FC<Props> = ({ tasks, users, onStatusChange, onEdit }) => {
+export const KanbanBoard: React.FC<Props> = ({ tasks, users, onStatusChange, onEdit, onDelete }) => {
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     e.dataTransfer.setData('taskId', taskId);
     e.dataTransfer.effectAllowed = "move";
@@ -71,6 +72,7 @@ export const KanbanBoard: React.FC<Props> = ({ tasks, users, onStatusChange, onE
                     assignee={users.find(u => u.id === task.assigneeId)}
                     onEdit={onEdit}
                     onStatusChange={onStatusChange}
+                    onDelete={onDelete}
                     simple={true}
                   />
                 </div>
