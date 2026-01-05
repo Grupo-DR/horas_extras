@@ -290,7 +290,7 @@ export const TaskForm: React.FC<Props> = ({
                 )}
 
 
-                {!isChild && (
+                {formData.opportunityId && (
                   <>
                     <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-slate-50 border border-slate-200 rounded-lg">
                       <h3 className="md:col-span-2 text-sm font-bold text-slate-700 flex items-center gap-2">
