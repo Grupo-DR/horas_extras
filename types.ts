@@ -110,8 +110,12 @@ export interface Task {
 
   // Link to Opportunity & Automation
   opportunityId?: string;
+  contractId?: string; // NEW: Link to Contract Module
+  solutionId?: string; // NEW: Link to Data Solution
+  kpiId?: string; // NEW: Link to KPI
   stageAtCreation?: PipelineStage;
   needsDetails?: boolean;
+  outcome?: TaskOutcome;
 
   // Legacy / Compatibility Fields (may be deprecated or mapped)
   parentId?: string;
@@ -122,5 +126,77 @@ export interface Task {
   responsibleName?: string;
   contactEmail?: string;
   contactPhone?: string;
-  outcome?: TaskOutcome;
+
+}
+
+export enum AppModule {
+  COMMERCIAL = 'COMMERCIAL',
+  CONTRACTS = 'CONTRACTS',
+  DATA_CENTER = 'DATA_CENTER',
+  KPI = 'KPI'
+}
+
+// --- CONTRACT TYPES ---
+
+export enum ContractStatus {
+  ACTIVE = 'ACTIVE',
+  FINISHED = 'FINISHED',
+  SUSPENDED = 'SUSPENDED'
+}
+
+export interface ContractMeasurement {
+  id: string;
+  date: Date;
+  value: number;
+  description: string;
+}
+
+export interface Contract {
+  id: string;
+  name: string;
+  siteName: string; // Nome da Obra
+  clientName: string;
+  totalValue: number;
+  startDate: Date;
+  endDate: Date;
+  measurements: ContractMeasurement[];
+  status: ContractStatus;
+
+  // Timestamps for Metadata
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface DataSolution {
+  id: string;
+  name: string;
+  stakeholders: string[]; // List of names
+  deadline: Date;
+  responsibleId: string; // Link to user
+  responsibleName?: string; // Display cache
+  status: 'ACTIVE' | 'COMPLETED' | 'ON_HOLD';
+
+  description?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface KPIHistory {
+  date: Date;
+  value: number;
+}
+
+export interface KPI {
+  id: string;
+  name: string;
+  description: string;
+  unit: 'R$' | '%' | 'N' | 'BRL'; // Currency, Percentage, Number
+  targetValue: number;
+  currentValue: number;
+  responsibleId: string;
+  responsibleName?: string;
+
+  history: KPIHistory[];
+
+  updatedAt?: Date;
 }

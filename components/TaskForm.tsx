@@ -8,7 +8,7 @@ interface Props {
   onSave: (task: Partial<Task>) => void;
   users: User[];
   availableParents: Task[];
-  initialData?: Task;
+  initialData?: Partial<Task>;
   mode?: 'FULL' | 'QUICK_EDIT';
 }
 
@@ -23,28 +23,27 @@ export const TaskForm: React.FC<Props> = ({
 }) => {
   const [isChild, setIsChild] = useState(!!initialData?.parentId || !!initialData?.opportunityId);
 
-  const [formData, setFormData] = useState<Partial<Task>>(
-    initialData || {
-      title: '',
-      description: '',
-      assigneeId: users[0]?.id || '',
-      status: TaskStatus.PENDING,
-      priority: 'MEDIO',
-      category: '',
-      observations: '',
-      progress: 0,
-      startDate: new Date(),
-      endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      value: 0,
-      interestScore: 0,
-      proposalName: '',
-      clientName: '',
-      responsibleName: '',
-      contactEmail: '',
-      contactPhone: '',
-      outcome: undefined
-    }
-  );
+  const [formData, setFormData] = useState<Partial<Task>>({
+    title: '',
+    description: '',
+    assigneeId: users[0]?.id || '',
+    status: TaskStatus.PENDING,
+    priority: 'MEDIO',
+    category: '',
+    observations: '',
+    progress: 0,
+    startDate: new Date(),
+    endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    value: 0,
+    interestScore: 0,
+    proposalName: '',
+    clientName: '',
+    responsibleName: '',
+    contactEmail: '',
+    contactPhone: '',
+    outcome: undefined,
+    ...initialData // Merge passed data (edit or template)
+  });
 
   useEffect(() => {
     if (initialData) {
