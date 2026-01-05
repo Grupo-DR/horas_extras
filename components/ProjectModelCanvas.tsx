@@ -11,8 +11,9 @@ interface Props {
 }
 
 const PMC_COLORS = {
-    purple: 'bg-purple-50 border-purple-200 text-purple-900',
-    yellow: 'bg-yellow-50 border-yellow-200 text-yellow-900',
+    // Simplified solid colors for blocks
+    purple: 'bg-indigo-50 border-indigo-200 text-indigo-900',
+    yellow: 'bg-amber-50 border-amber-200 text-amber-900',
     orange: 'bg-orange-50 border-orange-200 text-orange-900',
     green: 'bg-emerald-50 border-emerald-200 text-emerald-900',
     blue: 'bg-blue-50 border-blue-200 text-blue-900'
@@ -77,29 +78,39 @@ export const ProjectModelCanvas: React.FC<Props> = ({ isOpen, onClose, solution 
         }
     };
 
-    const handleEditItem = async (key: string, index: number) => {
+    // MODAL STATE
+    const [editModal, setEditModal] = useState<{ isOpen: boolean, key: string, index: number, text: string } | null>(null);
+
+    const openEditModal = (key: string, index: number, text: string) => {
+        setEditModal({ isOpen: true, key, index, text });
+    };
+
+    const closeEditModal = () => setEditModal(null);
+
+    const saveEditModal = async () => {
+        if (!editModal) return;
+        const { key, index, text } = editModal;
+
         const currentList = data[key] || [];
-        const currentText = currentList[index];
-        const newText = window.prompt("Editar item:", currentText);
-
-        if (newText === null || newText === currentText) return;
-
         const newList = [...currentList];
-        if (newText === "") {
-            // Treat empty string as delete? Or just ignore? Let's ignore empty edits for safety, explicitly delete via X
+
+        if (text.trim() === "") {
+            newList.splice(index, 1); // Delete if empty
         } else {
-            newList[index] = newText;
+            newList[index] = text;
         }
 
         const newData = { ...data, [key]: newList };
-        setData(newData);
+        setData(newData); // Optimistic
 
         try {
             await SolutionService.update(solution.id, { pmcData: newData });
-            // No toast for edit to keep it fluid
+            // toast.success("Item atualizado.");
         } catch (error) {
-            toast.error("Erro ao editar.");
+            console.error(error);
+            toast.error("Erro ao salvar edição.");
         }
+        closeEditModal();
     };
 
     const handleDeleteItem = async (key: string, index: number) => {
@@ -113,191 +124,129 @@ export const ProjectModelCanvas: React.FC<Props> = ({ isOpen, onClose, solution 
 
         try {
             await SolutionService.update(solution.id, { pmcData: newData });
-            toast.success("Item removido.");
+            // toast.success("Item removido.");
         } catch (error) {
+            console.error(error);
             toast.error("Erro ao remover.");
         }
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
-            <div className="bg-white w-full h-full max-w-[95vw] max-h-[95vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-white w-full h-full flex flex-col overflow-hidden">
 
                 {/* HEADER */}
-                <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+                <div className="bg-white px-6 py-3 border-b border-slate-200 flex justify-between items-center shadow-sm z-10">
                     <div>
-                        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                             <Layout className="text-blue-600" />
                             Project Model Canvas
                         </h2>
-                        <p className="text-slate-500 text-sm">Planejamento Visual para: <span className="font-bold text-blue-700">{solution.name}</span></p>
+                        <p className="text-slate-500 text-xs">Planejamento Visual: <span className="font-bold text-blue-700">{solution.name}</span></p>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500"
+                        className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500"
                     >
                         <X size={24} />
                     </button>
                 </div>
 
-                {/* CANVAS GRID - SCROLLABLE */}
-                <div className="flex-1 overflow-y-auto p-6 bg-slate-100/50">
-                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 min-h-[800px]">
+                {/* CANVAS GRID - FULLSCREEN NO SCROLL (Ideally) but we allow scroll if content overflows block height */}
+                <div className="flex-1 p-2 bg-slate-50 overflow-hidden">
+                    <div className="grid grid-cols-5 gap-2 h-full w-full">
 
-                        {/* 
-                            PMC LAYOUT STRATEGY: 
-                            Standard PMC is 5 columns.
-                            Col 1: Justificativas (Purple)
-                            Col 2: Objetivos (Purple) + Beneficios (Purple)
-                            Col 3: Produto (Yellow) + Requisitos (Yellow)
-                            Col 4: Stakeholders (Orange) + Equipe (Orange)
-                            Col 5: Premissas (Green) + Entregas (Green) + Riscos(Blue) etc...
-                            
-                            Adapting to User's Color Groups and 13 Blocks.
-                            We will use a Masonry-like or defined Grid approach.
-                            Let's try to group them visually by columns as per standard PMC logical flow:
-                            WHY (Purple) -> WHAT (Yellow) -> WHO (Orange) -> HOW (Green/Blue) -> WHEN/HOW MUCH (Blue)
-                        */}
-
-                        {/* COLUMN 1: POR QUÊ? (Purple) */}
-                        <div className="space-y-4">
-                            <PMCBlock
-                                block={BLOCKS.find(b => b.key === 'justificativas')!}
-                                items={data.justificativas}
-                                onAdd={() => handleAddItem('justificativas')}
-                                onEdit={(i) => handleEditItem('justificativas', i)}
-                                onDelete={(i) => handleDeleteItem('justificativas', i)}
-                            />
-                            <PMCBlock
-                                block={BLOCKS.find(b => b.key === 'objetivoSmart')!}
-                                items={data.objetivoSmart}
-                                onAdd={() => handleAddItem('objetivoSmart')}
-                                onEdit={(i) => handleEditItem('objetivoSmart', i)}
-                                onDelete={(i) => handleDeleteItem('objetivoSmart', i)}
-                            />
-                            <PMCBlock
-                                block={BLOCKS.find(b => b.key === 'beneficios')!}
-                                items={data.beneficios}
-                                onAdd={() => handleAddItem('beneficios')}
-                                onEdit={(i) => handleEditItem('beneficios', i)}
-                                onDelete={(i) => handleDeleteItem('beneficios', i)}
-                            />
+                        {/* 1. WHY (Purple) */}
+                        <div className="col-span-1 grid grid-rows-6 gap-2 h-full">
+                            <div className="row-span-2"><PMCBlock block={BLOCKS.find(b => b.key === 'justificativas')!} items={data.justificativas} onAdd={() => handleAddItem('justificativas')} onEdit={(i) => openEditModal('justificativas', i, data.justificativas[i])} onDelete={(i) => handleDeleteItem('justificativas', i)} /></div>
+                            <div className="row-span-2"><PMCBlock block={BLOCKS.find(b => b.key === 'objetivoSmart')!} items={data.objetivoSmart} onAdd={() => handleAddItem('objetivoSmart')} onEdit={(i) => openEditModal('objetivoSmart', i, data.objetivoSmart[i])} onDelete={(i) => handleDeleteItem('objetivoSmart', i)} /></div>
+                            <div className="row-span-2"><PMCBlock block={BLOCKS.find(b => b.key === 'beneficios')!} items={data.beneficios} onAdd={() => handleAddItem('beneficios')} onEdit={(i) => openEditModal('beneficios', i, data.beneficios[i])} onDelete={(i) => handleDeleteItem('beneficios', i)} /></div>
                         </div>
 
-                        {/* COLUMN 2: O QUÊ? (Yellow) */}
-                        <div className="space-y-4">
-                            <PMCBlock
-                                block={BLOCKS.find(b => b.key === 'solucao')!}
-                                items={data.solucao}
-                                onAdd={() => handleAddItem('solucao')}
-                                onEdit={(i) => handleEditItem('solucao', i)}
-                                onDelete={(i) => handleDeleteItem('solucao', i)}
-                            />
-                            <PMCBlock
-                                block={BLOCKS.find(b => b.key === 'requisitos')!}
-                                items={data.requisitos}
-                                onAdd={() => handleAddItem('requisitos')}
-                                onEdit={(i) => handleEditItem('requisitos', i)}
-                                onDelete={(i) => handleDeleteItem('requisitos', i)}
-                            />
+                        {/* 2. WHAT (Yellow) */}
+                        <div className="col-span-1 grid grid-rows-2 gap-2 h-full">
+                            <div className="row-span-1"><PMCBlock block={BLOCKS.find(b => b.key === 'solucao')!} items={data.solucao} onAdd={() => handleAddItem('solucao')} onEdit={(i) => openEditModal('solucao', i, data.solucao[i])} onDelete={(i) => handleDeleteItem('solucao', i)} /></div>
+                            <div className="row-span-1"><PMCBlock block={BLOCKS.find(b => b.key === 'requisitos')!} items={data.requisitos} onAdd={() => handleAddItem('requisitos')} onEdit={(i) => openEditModal('requisitos', i, data.requisitos[i])} onDelete={(i) => handleDeleteItem('requisitos', i)} /></div>
                         </div>
 
-                        {/* COLUMN 3: QUEM? (Orange) */}
-                        <div className="space-y-4">
-                            <PMCBlock
-                                block={BLOCKS.find(b => b.key === 'stakeholders')!}
-                                items={data.stakeholders}
-                                onAdd={() => handleAddItem('stakeholders')}
-                                onEdit={(i) => handleEditItem('stakeholders', i)}
-                                onDelete={(i) => handleDeleteItem('stakeholders', i)}
-                            />
-                            <PMCBlock
-                                block={BLOCKS.find(b => b.key === 'equipe')!}
-                                items={data.equipe}
-                                onAdd={() => handleAddItem('equipe')}
-                                onEdit={(i) => handleEditItem('equipe', i)}
-                                onDelete={(i) => handleDeleteItem('equipe', i)}
-                            />
+                        {/* 3. WHO (Orange) */}
+                        <div className="col-span-1 grid grid-rows-2 gap-2 h-full">
+                            <div className="row-span-1"><PMCBlock block={BLOCKS.find(b => b.key === 'stakeholders')!} items={data.stakeholders} onAdd={() => handleAddItem('stakeholders')} onEdit={(i) => openEditModal('stakeholders', i, data.stakeholders[i])} onDelete={(i) => handleDeleteItem('stakeholders', i)} /></div>
+                            <div className="row-span-1"><PMCBlock block={BLOCKS.find(b => b.key === 'equipe')!} items={data.equipe} onAdd={() => handleAddItem('equipe')} onEdit={(i) => openEditModal('equipe', i, data.equipe[i])} onDelete={(i) => handleDeleteItem('equipe', i)} /></div>
                         </div>
 
-                        {/* COLUMN 4: COMO? (Green) */}
-                        <div className="space-y-4">
-                            <PMCBlock
-                                block={BLOCKS.find(b => b.key === 'premissas')!}
-                                items={data.premissas}
-                                onAdd={() => handleAddItem('premissas')}
-                                onEdit={(i) => handleEditItem('premissas', i)}
-                                onDelete={(i) => handleDeleteItem('premissas', i)}
-                            />
-                            <PMCBlock
-                                block={BLOCKS.find(b => b.key === 'entregas')!}
-                                items={data.entregas}
-                                onAdd={() => handleAddItem('entregas')}
-                                onEdit={(i) => handleEditItem('entregas', i)}
-                                onDelete={(i) => handleDeleteItem('entregas', i)}
-                            />
-                            <PMCBlock
-                                block={BLOCKS.find(b => b.key === 'manutencao')!}
-                                items={data.manutencao}
-                                onAdd={() => handleAddItem('manutencao')}
-                                onEdit={(i) => handleEditItem('manutencao', i)}
-                                onDelete={(i) => handleDeleteItem('manutencao', i)}
-                            />
+                        {/* 4. HOW (Green) */}
+                        <div className="col-span-1 grid grid-rows-3 gap-2 h-full">
+                            <div className="row-span-1"><PMCBlock block={BLOCKS.find(b => b.key === 'premissas')!} items={data.premissas} onAdd={() => handleAddItem('premissas')} onEdit={(i) => openEditModal('premissas', i, data.premissas[i])} onDelete={(i) => handleDeleteItem('premissas', i)} /></div>
+                            <div className="row-span-1"><PMCBlock block={BLOCKS.find(b => b.key === 'entregas')!} items={data.entregas} onAdd={() => handleAddItem('entregas')} onEdit={(i) => openEditModal('entregas', i, data.entregas[i])} onDelete={(i) => handleDeleteItem('entregas', i)} /></div>
+                            <div className="row-span-1"><PMCBlock block={BLOCKS.find(b => b.key === 'manutencao')!} items={data.manutencao} onAdd={() => handleAddItem('manutencao')} onEdit={(i) => openEditModal('manutencao', i, data.manutencao[i])} onDelete={(i) => handleDeleteItem('manutencao', i)} /></div>
                         </div>
 
-                        {/* COLUMN 5: QUANDO E QUANTO? (Blue) */}
-                        <div className="space-y-4">
-                            <PMCBlock
-                                block={BLOCKS.find(b => b.key === 'riscos')!}
-                                items={data.riscos}
-                                onAdd={() => handleAddItem('riscos')}
-                                onEdit={(i) => handleEditItem('riscos', i)}
-                                onDelete={(i) => handleDeleteItem('riscos', i)}
-                            />
-                            <PMCBlock
-                                block={BLOCKS.find(b => b.key === 'cronograma')!}
-                                items={data.cronograma}
-                                onAdd={() => handleAddItem('cronograma')}
-                                onEdit={(i) => handleEditItem('cronograma', i)}
-                                onDelete={(i) => handleDeleteItem('cronograma', i)}
-                            />
-                            <PMCBlock
-                                block={BLOCKS.find(b => b.key === 'custo')!}
-                                items={data.custo}
-                                onAdd={() => handleAddItem('custo')}
-                                onEdit={(i) => handleEditItem('custo', i)}
-                                onDelete={(i) => handleDeleteItem('custo', i)}
-                            />
+                        {/* 5. WHEN/HOW MUCH (Blue) */}
+                        <div className="col-span-1 grid grid-rows-3 gap-2 h-full">
+                            <div className="row-span-1"><PMCBlock block={BLOCKS.find(b => b.key === 'riscos')!} items={data.riscos} onAdd={() => handleAddItem('riscos')} onEdit={(i) => openEditModal('riscos', i, data.riscos[i])} onDelete={(i) => handleDeleteItem('riscos', i)} /></div>
+                            <div className="row-span-1"><PMCBlock block={BLOCKS.find(b => b.key === 'cronograma')!} items={data.cronograma} onAdd={() => handleAddItem('cronograma')} onEdit={(i) => openEditModal('cronograma', i, data.cronograma[i])} onDelete={(i) => handleDeleteItem('cronograma', i)} /></div>
+                            <div className="row-span-1"><PMCBlock block={BLOCKS.find(b => b.key === 'custo')!} items={data.custo} onAdd={() => handleAddItem('custo')} onEdit={(i) => openEditModal('custo', i, data.custo[i])} onDelete={(i) => handleDeleteItem('custo', i)} /></div>
                         </div>
 
                     </div>
                 </div>
+
+                {/* EDIT MODAL */}
+                {editModal && (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                        <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg">
+                            <h3 className="text-lg font-bold mb-4 text-slate-800">Editar Post-it</h3>
+                            <textarea
+                                className="w-full h-32 p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none text-slate-700"
+                                value={editModal.text}
+                                onChange={(e) => setEditModal({ ...editModal, text: e.target.value })}
+                                autoFocus
+                            />
+                            <div className="flex justify-end gap-3 mt-4">
+                                <button
+                                    onClick={closeEditModal}
+                                    className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-lg transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={saveEditModal}
+                                    className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors"
+                                >
+                                    Salvar Alterações
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
 };
 
+
 // SUB-COMPONENT FOR BLOCKS
 const PMCBlock = ({ block, items = [], onAdd, onEdit, onDelete }: any) => {
     return (
         <div className={`h-full border rounded-xl shadow-sm flex flex-col ${block.color} transition-all hover:shadow-md`}>
-            <div className={`p-3 border-b border-black/5 font-bold text-sm uppercase flex justify-between items-center`}>
+            <div className={`p-2 border-b border-black/10 font-bold text-xs uppercase flex justify-between items-center bg-black/5`}>
                 {block.title}
-                <button onClick={onAdd} className="bg-white/50 hover:bg-white/80 p-1 rounded-md transition-colors">
-                    <Plus size={14} />
+                <button onClick={onAdd} className="bg-white/50 hover:bg-white/80 p-0.5 rounded transition-colors">
+                    <Plus size={12} />
                 </button>
             </div>
-            <div className="p-3 flex-1 flex flex-col gap-2 min-h-[150px]">
+            <div className="p-2 flex-1 flex flex-col gap-2 overflow-y-auto">
                 {items.map((item: string, idx: number) => (
                     <div
                         key={idx}
-                        className="bg-white p-2 rounded text-sm shadow-sm border border-black/5 cursor-pointer group relative hover:ring-2 ring-blue-200 transition-all text-slate-700"
+                        className="bg-white p-2 rounded text-xs shadow-sm border border-black/5 cursor-pointer hover:ring-2 ring-blue-200 transition-all text-slate-700 break-words group relative"
                         onClick={() => onEdit(idx)}
                     >
                         {item}
                         <button
                             onClick={(e) => { e.stopPropagation(); onDelete(idx); }}
-                            className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                            className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-0.5 bg-red-100 text-red-600 rounded-full transition-opacity"
                         >
                             <X size={10} />
                         </button>

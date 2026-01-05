@@ -98,6 +98,14 @@ export const ContractCard: React.FC<Props> = ({ contract, onAddMeasurement, onEd
                             <span>Total: {contract.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                             <span>Saldo: {remainingValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                         </div>
+                        {contract.adjustments && contract.adjustments.length > 0 && (
+                            <div className="mt-2 text-xs text-slate-500 bg-slate-50 p-2 rounded border border-slate-100 flex justify-between items-center">
+                                <span className="font-bold">Alterações de Escopo:</span>
+                                <span>
+                                    {contract.adjustments.reduce((acc, adj) => acc + adj.value, 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </span>
+                            </div>
+                        )}
                     </div>
 
                     {/* TEMPORAL BLOCK */}

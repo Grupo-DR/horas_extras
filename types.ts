@@ -160,6 +160,7 @@ export interface Contract {
   startDate: Date;
   endDate: Date;
   measurements: ContractMeasurement[];
+  adjustments?: { type: 'ADITIVO' | 'REAJUSTE'; date: Date; value: number; newEndDate?: Date }[]; // NEW
   status: ContractStatus;
 
   // Timestamps for Metadata
@@ -191,6 +192,9 @@ export interface DataSolution {
     riscos: string[];
     cronograma: string[];
     custo: string[];
+    contractId?: string; // NEW
+    startDate?: Date;   // NEW
+    endDate?: Date;     // NEW
   };
   createdAt?: Date;
   updatedAt?: Date;

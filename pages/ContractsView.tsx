@@ -21,12 +21,16 @@ export const ContractsView: React.FC = () => {
 
         const walletValue = activeContracts.reduce((acc, c) => acc + c.totalValue, 0);
 
+        const executedValue = activeContracts.reduce((acc, c) => {
+            return acc + (c.measurements || []).reduce((sum, m) => sum + (m.value || 0), 0);
+        }, 0);
+
         const totalBalance = activeContracts.reduce((acc, c) => {
             const accumulated = (c.measurements || []).reduce((sum, m) => sum + (m.value || 0), 0);
             return acc + (c.totalValue - accumulated);
         }, 0);
 
-        return { activeCount, walletValue, totalBalance };
+        return { activeCount, walletValue, executedValue, totalBalance };
     }, [contracts]);
 
 
@@ -122,7 +126,7 @@ export const ContractsView: React.FC = () => {
 
             {/* BI DASHBOARD */}
             <div className="bg-white border-b border-indigo-100 px-8 py-6 mb-6">
-                <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl flex items-center justify-between shadow-sm">
                         <div>
                             <p className="text-indigo-600 font-bold text-xs uppercase tracking-wide">Contratos Ativos</p>
@@ -142,6 +146,18 @@ export const ContractsView: React.FC = () => {
                         </div>
                         <div className="bg-white p-3 rounded-full text-emerald-500 shadow-sm">
                             <PlusCircle size={24} />
+                        </div>
+                    </div>
+
+                    <div className="bg-purple-50 border border-purple-100 p-4 rounded-xl flex items-center justify-between shadow-sm">
+                        <div>
+                            <p className="text-purple-600 font-bold text-xs uppercase tracking-wide">Valor Executado Ativo</p>
+                            <p className="text-3xl font-bold text-purple-900 mt-1">
+                                {stats.executedValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </p>
+                        </div>
+                        <div className="bg-white p-3 rounded-full text-purple-500 shadow-sm">
+                            <FileText size={24} />
                         </div>
                     </div>
 

@@ -11,10 +11,23 @@ interface Props {
     onDelete: (kpiId: string) => void;
 }
 
+import { differenceInDays, format } from 'date-fns';
+
 export const KPICard: React.FC<Props> = ({ kpi, onExplore, onUpdate, onEdit, onDelete }) => {
     const percentage = kpi.targetValue > 0 ? (kpi.currentValue / kpi.targetValue) * 100 : 0;
     const gap = kpi.targetValue - kpi.currentValue;
     const isMet = kpi.currentValue >= kpi.targetValue;
+
+    // Temporal Calcs
+    const now = new Date();
+    // Default to created/updated if no start/end
+    const start = kpi.startDate ? new Date(kpi.startDate) : new Date(kpi.updatedAt || new Date());
+    const end = kpi.endDate ? new Date(kpi.endDate) : new Date(new Date().setMonth(new Date().getMonth() + 1)); // Default 1 month
+
+    const totalDays = differenceInDays(end, start) || 1;
+    const elapsedDays = differenceInDays(now, start);
+    const timeProgress = Math.min(Math.max((elapsedDays / totalDays) * 100, 0), 100);
+
 
     // Trend logic: Compare last 2 history items
     const history = kpi.history || [];
@@ -69,7 +82,7 @@ export const KPICard: React.FC<Props> = ({ kpi, onExplore, onUpdate, onEdit, onD
                 </div>
             </div>
 
-            <p className="text-slate-500 text-sm mb-6 pl-3 flex-1 line-clamp-2">
+            <p className="text-slate-500 text-sm mb-6 pl-3 flex-1 line-clamp-3 overflow-hidden text-ellipsis">
                 {kpi.description}
             </p>
 
@@ -102,6 +115,20 @@ export const KPICard: React.FC<Props> = ({ kpi, onExplore, onUpdate, onEdit, onD
                 <div className="flex justify-between text-xs font-medium">
                     <span className="text-blue-600">{percentage.toFixed(1)}% Concluído</span>
                     <span className="text-slate-400">Gap: {formatValue(gap)}</span>
+                </div>
+            </div>
+
+            {/* TIMELINE PROGRESS */}
+            <div className="mb-6 px-1">
+                <div className="flex justify-between items-end mb-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Evolução do Tempo</span>
+                    <span className="text-[10px] font-bold text-slate-600">{timeProgress.toFixed(0)}%</span>
+                </div>
+                <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                    <div
+                        className="h-1.5 rounded-full bg-slate-400 shadow transition-all duration-500"
+                        style={{ width: `${timeProgress}%` }}
+                    ></div>
                 </div>
             </div>
 

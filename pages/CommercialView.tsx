@@ -532,10 +532,26 @@ export const CommercialView: React.FC = () => {
     return (
         <div className="flex h-full w-full flex-col overflow-hidden">
             {/* HEADER */}
-            <header className="bg-white/70 backdrop-blur-md border-b border-white/20 h-16 flex items-center justify-between px-6 sticky top-0 z-30">
+            <header className="bg-white/70 backdrop-blur-md border-b border-white/20 px-8 py-5 sticky top-0 z-30 flex justify-between items-center">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                        <LayoutDashboard className="text-blue-600" /> Gestão Comercial
+                    </h1>
+                    <p className="text-slate-500 text-sm mt-1">Pipeline e Ações Operacionais</p>
+                </div>
+
                 <div className="flex items-center gap-4">
-                    {/* VIEW TITLE */}
-                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+                    {/* VIEW TITLE - Removed old view switcher from LEFT, put it here or keep it simple? 
+                        User asked for "Cabeçalho Padrão... igual das outras telas".
+                        Other screens have Title/Subtitle on Left, and Actions on Right.
+                        CommercialView has a View Switcher (Dashboard/Pipeline/Actions).
+                        Let's keep the View Switcher but move it to the Right or Center, or below.
+                        Actually, let's keep it in the "actions" area on the right or just below title if it fits.
+                        But ContractsView header is: Title/Subtitle Left, Search/Button Right.
+                        Let's try to fit the switcher on the Right along with Actions.
+                    */}
+
+                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg mr-4">
                         <button
                             onClick={() => setView('DASHBOARD')}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-bold transition-all ${view === 'DASHBOARD' ? 'bg-white shadow text-blue-700' : 'text-slate-500 hover:text-slate-700'
