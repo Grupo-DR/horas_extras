@@ -7,10 +7,14 @@ import { toast } from 'sonner';
 import { X, Save } from 'lucide-react';
 
 const MOCK_USERS_FALLBACK: User[] = [
-    { id: '1', name: 'Ana Silva', role: 'Comercial', email: 'ana@dr.com' },
-    { id: '2', name: 'Carlos Santos', role: 'Gerente', email: 'carlos@dr.com' },
-    { id: '3', name: 'Mariana Costa', role: 'Engenheira', email: 'mariana@dr.com' },
-    { id: '4', name: 'Paulo Oliveira', role: 'Diretor', email: 'paulo@dr.com' }
+    { id: 'u1', name: 'Antonio Augusto da Silva', role: 'Analista Comercial', email: 'antonio.silva@grupodr.com.br' },
+    { id: 'u2', name: 'Cintia Ferreira', role: 'Engenheira Orçamentista', email: 'cintia.ferreira@grupodr.com.br' },
+    { id: 'u3', name: 'Tatiana Guimarães', role: 'Engenheira Auxiliar', email: 'tatiana.guimaraes@grupodr.com.br' },
+    { id: 'u4', name: 'Nilton Camilo', role: 'Gerente Comercial', email: 'nilton.camilo@grupodr.com.br' },
+    { id: 'u5', name: 'Maria Tereza', role: 'Engenheiro Trainee', email: 'maria.tereza@grupodr.com.br' },
+    { id: 'u6', name: 'Isabela Costa', role: 'Assistente Comercial', email: 'isabela.costa@grupodr.com.br' },
+    { id: 'u7', name: 'Fabiana Fernandes', role: 'Analista Comercial Jr', email: 'fabiana.fernandes@grupodr.com.br' },
+    { id: 'u8', name: 'Clara Santos', role: 'Jovem Aprendiz', email: 'clara.santos@grupodr.com.br' },
 ];
 
 interface OpportunityFormProps {
@@ -179,8 +183,8 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, l
                                 <label className="block text-sm font-medium text-slate-600 mb-1">Prioridade</label>
                                 <select
                                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-bold ${formData.priority === 'ALTA' ? 'text-red-700 bg-red-50 border-red-200' :
-                                            formData.priority === 'MÉDIA' ? 'text-orange-700 bg-orange-50 border-orange-200' :
-                                                'text-emerald-700 bg-emerald-50 border-emerald-200'
+                                        formData.priority === 'MÉDIA' ? 'text-orange-700 bg-orange-50 border-orange-200' :
+                                            'text-emerald-700 bg-emerald-50 border-emerald-200'
                                         }`}
                                     value={formData.priority || 'MÉDIA'}
                                     onChange={e => setFormData({ ...formData, priority: e.target.value as any })}
