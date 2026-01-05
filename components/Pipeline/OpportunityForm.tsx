@@ -6,6 +6,13 @@ import { UserService } from '../../services/userService';
 import { toast } from 'sonner';
 import { X, Save } from 'lucide-react';
 
+const MOCK_USERS_FALLBACK: User[] = [
+    { id: '1', name: 'Ana Silva', role: 'Comercial', email: 'ana@dr.com' },
+    { id: '2', name: 'Carlos Santos', role: 'Gerente', email: 'carlos@dr.com' },
+    { id: '3', name: 'Mariana Costa', role: 'Engenheira', email: 'mariana@dr.com' },
+    { id: '4', name: 'Paulo Oliveira', role: 'Diretor', email: 'paulo@dr.com' }
+];
+
 interface OpportunityFormProps {
     initialData?: Opportunity;
     linkedTasks?: Task[];
@@ -31,14 +38,20 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, l
     useEffect(() => {
         const loadUsers = async () => {
             try {
-                const data = await UserService.getAll();
+                let data = await UserService.getAll();
+                if (!data || data.length === 0) {
+                    console.warn("UserService returned empty, using fallback mock users.");
+                    data = MOCK_USERS_FALLBACK;
+                }
                 setUsers(data);
+
                 // Set default responsible if not set and users exist
                 if (!formData.responsibleId && data.length > 0) {
-                    // Optionally set a default, but better to force selection or leave empty
+                    // logic to set default if needed
                 }
             } catch (e) {
                 console.error("Error loading users", e);
+                setUsers(MOCK_USERS_FALLBACK);
             }
         }
         loadUsers();
@@ -85,8 +98,9 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, l
                     clientName: dataToSave.clientName!,
                     estimatedValue: Number(dataToSave.estimatedValue) || 0,
                     responsibleId: dataToSave.responsibleId!,
+                    responsibleName: users.find(u => u.id === dataToSave.responsibleId)?.name || 'N/A',
                     deadline: new Date(dataToSave.deadline!),
-                    priority: dataToSave.priority
+                    priority: dataToSave.priority || 'MÉDIA'
                 });
                 toast.success("Oportunidade criada com sucesso!");
             }
@@ -157,6 +171,23 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, l
                                     {users.map(u => (
                                         <option key={u.id} value={u.id}>{u.name}</option>
                                     ))}
+                                </select>
+                            </div>
+
+                            {/* Priority */}
+                            <div>
+                                <label className="block text-sm font-medium text-slate-600 mb-1">Prioridade</label>
+                                <select
+                                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-bold ${formData.priority === 'ALTA' ? 'text-red-700 bg-red-50 border-red-200' :
+                                            formData.priority === 'MÉDIA' ? 'text-orange-700 bg-orange-50 border-orange-200' :
+                                                'text-emerald-700 bg-emerald-50 border-emerald-200'
+                                        }`}
+                                    value={formData.priority || 'MÉDIA'}
+                                    onChange={e => setFormData({ ...formData, priority: e.target.value as any })}
+                                >
+                                    <option value="ALTA">Alta Urgência 🚨</option>
+                                    <option value="MÉDIA">Média</option>
+                                    <option value="BAIXA">Baixa</option>
                                 </select>
                             </div>
 

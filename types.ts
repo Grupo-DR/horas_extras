@@ -79,6 +79,7 @@ export interface Opportunity {
   probability: number; // Represents % Execution now
   status: OpportunityStatus;
   responsibleId: string;
+  responsibleName?: string; // NEW: Denormalized for display
   deadline: Date;
   priority?: 'BAIXA' | 'MÉDIA' | 'ALTA'; // NEW: Priority Field
   createdAt: Date;

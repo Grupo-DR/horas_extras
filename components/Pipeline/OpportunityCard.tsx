@@ -74,12 +74,23 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
 
                 <div className="flex items-center text-xs text-slate-500">
                     <User className="w-3 h-3 mr-1" />
-                    <span className="truncate max-w-[150px]">{opportunity.responsibleId}</span>
+                    <span className="truncate max-w-[150px]">{opportunity.responsibleName || 'N/A'}</span>
                 </div>
 
-                <div className={`flex items-center text-xs ${isOverdue ? 'text-red-500 font-bold' : 'text-slate-400'}`}>
-                    <Calendar className="w-3 h-3 mr-1" />
-                    <span>{format(opportunity.deadline, "dd 'de' MMM", { locale: ptBR })}</span>
+                <div className="flex justify-between items-center">
+                    <div className={`flex items-center text-xs ${isOverdue ? 'text-red-500 font-bold' : 'text-slate-400'}`}>
+                        <Calendar className="w-3 h-3 mr-1" />
+                        <span>{format(opportunity.deadline, "dd 'de' MMM", { locale: ptBR })}</span>
+                    </div>
+
+                    {opportunity.priority && (
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${opportunity.priority === 'ALTA' ? 'bg-red-100 text-red-700' :
+                                opportunity.priority === 'MÉDIA' ? 'bg-orange-100 text-orange-700' :
+                                    'bg-emerald-100 text-emerald-700'
+                            }`}>
+                            {opportunity.priority}
+                        </span>
+                    )}
                 </div>
             </div>
         </div>
