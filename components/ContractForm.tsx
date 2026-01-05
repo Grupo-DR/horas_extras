@@ -11,6 +11,19 @@ interface Props {
     onDelete?: (id: string) => void;
 }
 
+const formatDateForInput = (date: any): string => {
+    if (!date) return '';
+    let d: Date | null = null;
+    if (date instanceof Timestamp) d = date.toDate();
+    else if (date instanceof Date) d = date;
+    else if (typeof date === 'string') d = new Date(date);
+
+    if (d && !isNaN(d.getTime())) {
+        return d.toISOString().split('T')[0];
+    }
+    return '';
+};
+
 export const ContractForm: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, onDelete }) => {
     const [formData, setFormData] = useState({
         name: '',
@@ -28,8 +41,9 @@ export const ContractForm: React.FC<Props> = ({ isOpen, onClose, onSave, initial
                 siteName: initialData.siteName,
                 clientName: initialData.clientName,
                 totalValue: initialData.totalValue || 0,
-                startDate: initialData.startDate ? new Date(initialData.startDate).toISOString().split('T')[0] : '',
-                endDate: initialData.endDate ? new Date(initialData.endDate).toISOString().split('T')[0] : ''
+                // FIX: Check if it's Timestamp (has toDate) or Date or string
+                startDate: formatDateForInput(initialData.startDate),
+                endDate: formatDateForInput(initialData.endDate)
             });
         } else if (isOpen) {
             // Reset if opening in create mode
@@ -54,14 +68,22 @@ export const ContractForm: React.FC<Props> = ({ isOpen, onClose, onSave, initial
 
         try {
             // Safe conversion
+            // FIX: Ensure we don't reset dates to "today" if inputs are empty
+            const startDate = formData.startDate
+                ? new Date(formData.startDate + 'T12:00:00')
+                : (initialData?.startDate || null);
+
+            const endDate = formData.endDate
+                ? new Date(formData.endDate + 'T12:00:00')
+                : (initialData?.endDate || null);
+
             const contractPayload = {
                 name: String(formData.name),
                 siteName: String(formData.siteName),
                 clientName: String(formData.clientName),
                 totalValue: Number(formData.totalValue),
-                // Convert strings to Dates for the Service to handle Timestamp conversion
-                startDate: new Date(formData.startDate + 'T12:00:00'),
-                endDate: new Date(formData.endDate + 'T12:00:00'),
+                startDate,
+                endDate,
                 status: ContractStatus.ACTIVE
             };
 

@@ -9,14 +9,15 @@ const COLLECTION_NAME = 'contracts';
 const n = (v: any) => (typeof v === 'number' && !isNaN(v) ? v : 0);
 const s = (v: any) => (typeof v === 'string' ? v : '');
 const d = (v: any) => {
+    if (!v) return null; // FIX: Don't default to today
     if (v instanceof Timestamp) return v.toDate();
     if (v && typeof v.toDate === 'function') return v.toDate();
     if (v instanceof Date) return v;
     if (typeof v === 'string') {
         const parsed = new Date(v);
-        return isNaN(parsed.getTime()) ? new Date() : parsed;
+        return isNaN(parsed.getTime()) ? null : parsed;
     }
-    return new Date();
+    return null;
 };
 
 export const ContractService = {
