@@ -206,8 +206,10 @@ export interface DataSolution {
 }
 
 export interface KPIHistory {
-  date: Date;
+  date?: Date; // Deprecated: Kept for backward compatibility if needed, or remove if migration is forced
+  referenceDate: Date;
   value: number;
+  updatedBy: string;
 }
 
 export interface KPI {

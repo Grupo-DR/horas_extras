@@ -4,6 +4,8 @@ import { KPI, User } from '../types';
 import { KPIService } from '../services/kpiService';
 import { KPICard } from '../components/KPICard';
 import { KPIForm } from '../components/KPIForm';
+import { KPIUpdateModal } from '../components/KPIUpdateModal';
+import { KPIDetailsModal } from '../components/KPIDetailsModal';
 import { Plus, Search, Target, LayoutDashboard } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 
@@ -21,9 +23,15 @@ const MOCK_USERS: User[] = [
 
 export const KPIView: React.FC = () => {
     const [kpis, setKpis] = useState<KPI[]>([]);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    // Modal States
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingKPI, setEditingKPI] = useState<KPI | undefined>(undefined);
-    const [searchTerm, setSearchTerm] = useState('');
+
+    // New Modals
+    const [updatingKPI, setUpdatingKPI] = useState<KPI | null>(null);
+    const [detailsKPI, setDetailsKPI] = useState<KPI | null>(null);
 
     useEffect(() => {
         const unsubscribe = KPIService.subscribe(setKpis);
@@ -64,30 +72,30 @@ export const KPIView: React.FC = () => {
         }
     };
 
-    const handleUpdateProgress = async (kpiId: string) => {
-        // Simple prompt for now - In production, use a nice modal
-        const valStr = window.prompt("Insira o novo valor atualizado para este KPI:");
-        if (valStr) {
-            const val = parseFloat(valStr.replace(',', '.'));
-            if (!isNaN(val)) {
-                try {
-                    await KPIService.updateProgress(kpiId, val);
-                    toast.success("Progresso atualizado!");
-                } catch (e) {
-                    console.error(e);
-                    toast.error("Erro ao atualizar progresso.");
-                }
-            } else {
-                toast.error("Valor inválido.");
-            }
+    const handleUpdateClick = (kpiId: string) => {
+        const kpi = kpis.find(k => k.id === kpiId);
+        if (kpi) setUpdatingKPI(kpi);
+    };
+
+    const handleUpdateSave = async (value: number, date: Date) => {
+        if (!updatingKPI) return;
+        try {
+            // UpdatedBy is MOCK here. In real app, get from Auth Context.
+            const updatedBy = "Antonio Augusto";
+            await KPIService.updateProgress(updatingKPI.id, value, date, updatedBy);
+            toast.success("Progresso atualizado!");
+        } catch (e) {
+            console.error(e);
+            toast.error("Erro ao atualizar progresso.");
         }
     };
 
-    const navigate = useNavigate();
-
     const handleExplore = (kpiId: string) => {
-        navigate(`/comercial?kpiId=${kpiId}`);
+        const kpi = kpis.find(k => k.id === kpiId);
+        if (kpi) setDetailsKPI(kpi);
     };
+
+    const navigate = useNavigate();
 
     const filteredKpis = kpis.filter(k =>
         k.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -152,7 +160,7 @@ export const KPIView: React.FC = () => {
                                 key={kpi.id}
                                 kpi={kpi}
                                 onExplore={handleExplore}
-                                onUpdate={handleUpdateProgress}
+                                onUpdate={handleUpdateClick}
                                 onEdit={handleEdit}
                                 onDelete={handleDelete}
                             />
@@ -169,6 +177,21 @@ export const KPIView: React.FC = () => {
                 users={MOCK_USERS}
                 initialData={editingKPI}
                 onDelete={handleDelete}
+            />
+
+            {updatingKPI && (
+                <KPIUpdateModal
+                    isOpen={!!updatingKPI}
+                    onClose={() => setUpdatingKPI(null)}
+                    onSave={handleUpdateSave}
+                    kpi={updatingKPI}
+                />
+            )}
+
+            <KPIDetailsModal
+                isOpen={!!detailsKPI}
+                onClose={() => setDetailsKPI(null)}
+                kpi={detailsKPI}
             />
 
             <Toaster position="top-right" richColors />

@@ -46,7 +46,8 @@ export const KPICard: React.FC<Props> = ({ kpi, onExplore, onUpdate, onEdit, onD
         <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col h-full hover:shadow-md transition-shadow relative overflow-hidden"
+            className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col h-full hover:shadow-md transition-shadow relative overflow-hidden cursor-pointer"
+            onClick={() => onExplore(kpi.id)}
         >
             {/* BACKGROUND DECORATION */}
             <div className={`absolute top-0 left-0 w-1.5 h-full ${isMet ? 'bg-green-500' : 'bg-blue-500'}`}></div>
@@ -135,7 +136,7 @@ export const KPICard: React.FC<Props> = ({ kpi, onExplore, onUpdate, onEdit, onD
             {/* ACTIONS */}
             <div className="flex gap-2 mt-auto pl-3">
                 <button
-                    onClick={() => onUpdate(kpi.id)}
+                    onClick={(e) => { e.stopPropagation(); onUpdate(kpi.id); }}
                     className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg text-sm font-bold transition-colors"
                 >
                     Atualizar
