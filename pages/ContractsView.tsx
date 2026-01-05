@@ -13,7 +13,7 @@ export const ContractsView: React.FC = () => {
     const [contracts, setContracts] = useState<Contract[]>([]);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingContract, setEditingContract] = useState<Contract | undefined>(undefined);
-    const [editingContract, setEditingContract] = useState<Contract | undefined>(undefined);
+
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const navigate = useNavigate();
