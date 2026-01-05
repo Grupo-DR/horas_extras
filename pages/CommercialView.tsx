@@ -6,7 +6,7 @@ import { OpportunityForm } from '../components/Pipeline/OpportunityForm';
 import { PipelineBoard } from '../components/Pipeline/PipelineBoard';
 import { EscalationSettings } from '../components/EscalationSettings';
 import { HistoryPanel } from '../components/HistoryPanel';
-import { Layout, LayoutDashboard, PlusCircle, Filter, Bell, Bot, Settings, LogOut, Columns, List, TrendingUp, AlertTriangle, CheckCircle, Calendar, DollarSign, Activity, Users, ChevronDown, Link as LinkIcon, X } from 'lucide-react';
+import { Layout, LayoutDashboard, PlusCircle, Filter, Bell, Bot, Settings, LogOut, Columns, List, TrendingUp, AlertTriangle, CheckCircle, Calendar, DollarSign, Activity, Users, ChevronDown, Link as LinkIcon, X, FileText, Target } from 'lucide-react';
 import { draftEscalationEmail, draftWelcomeEmail } from '../services/geminiService';
 import { OpportunityService } from '../services/opportunityService';
 import { UserService } from '../services/userService';
@@ -523,18 +523,66 @@ export const CommercialView: React.FC = () => {
 
         // 5. Results by Client (Aggregation)
         const clientResults = relevantOpportunities.reduce((acc, op) => {
-            const client = s(op.clientName) || 'Não idenficado';
-            if (!acc[client]) acc[client] = 0;
-            acc[client] += n(op.estimatedValue);
+            const client = s(op.clientName) || 'Não identificado';
+            if (!acc[client]) {
+                acc[client] = { name: client, success: 0, failure: 0, study: 0, withdrawal: 0 };
+            }
+            const val = n(op.estimatedValue);
+            // Use Result for Closed Ops, or classify open ops?
+            // User requested grouping by status/outcome.
+            // Start with Pipeline Outcomes
+            if (op.pipelineStage === PipelineStage.RESULTADO) {
+                if (op.result === TaskOutcome.SUCCESS) acc[client].success += val;
+                if (op.result === TaskOutcome.FAILURE) acc[client].failure += val;
+                if (op.result === TaskOutcome.STUDY) acc[client].study += val;
+                if (op.result === TaskOutcome.WITHDRAWAL) acc[client].withdrawal += val;
+            } else {
+                // Active ops are not "Result" yet, maybe classify as Study? Or just ignore for "Results" table?
+                // User asked for "Valor Total em Sucesso", etc. implying outcomes.
+                // We will verify tasks (Legacy) too.
+            }
             return acc;
-        }, {} as Record<string, number>);
+        }, {} as Record<string, { name: string, success: number, failure: number, study: number, withdrawal: number }>);
 
-        const clientsChartData = Object.entries(clientResults)
-            .map(([name, value]) => ({ name, value }))
-            .sort((a, b) => (b.value as number) - (a.value as number))
-            .slice(0, 5); // Top 5 Clients
+        // Merge with Legacy Tasks for Clients
+        relevantMothers.forEach(task => {
+            const client = s(task.clientName) || 'Não identificado';
+            if (!clientResults[client]) {
+                clientResults[client] = { name: client, success: 0, failure: 0, study: 0, withdrawal: 0 };
+            }
+            // Get children value
+            const taskValue = tasks
+                .filter(child => child.parentId === task.id && child.category === 'Proposta Comercial')
+                .reduce((sum, child) => sum + (child.value || 0), 0);
 
-        return { strategic, outcomes, clientsChartData };
+            if (task.outcome === TaskOutcome.SUCCESS) clientResults[client].success += taskValue;
+            if (task.outcome === TaskOutcome.FAILURE) clientResults[client].failure += taskValue;
+            if (task.outcome === TaskOutcome.STUDY) clientResults[client].study += taskValue;
+            if (task.outcome === TaskOutcome.WITHDRAWAL) clientResults[client].withdrawal += taskValue;
+        });
+
+
+        const clientsAnalysisData = Object.values(clientResults).sort((a, b) => b.success - a.success);
+
+        // 6. Conversion Rate & Pipeline Totals
+        // Conversion Rate = (Success Count / Total Opportunities) * 100
+        const totalOpsCount = relevantOpportunities.length + relevantMothers.length;
+        const totalSuccessCount =
+            relevantOpportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length +
+            relevantMothers.filter(t => t.outcome === TaskOutcome.SUCCESS).length;
+
+        const conversionRate = totalOpsCount > 0 ? (totalSuccessCount / totalOpsCount) * 100 : 0;
+
+        // VGV (Valor Global de Vendas Potential?) or Total Pipeline Value?
+        // User asked "% Value over Pipeline VGV". Let's assume VGV = Sum of All Opportunity Values (Active + Closed)
+        const totalPipelineValue =
+            relevantOpportunities.reduce((sum, op) => sum + n(op.estimatedValue), 0) +
+            relevantMothers.reduce((sum, mother) => {
+                return sum + tasks.filter(c => c.parentId === mother.id && c.category === 'Proposta Comercial').reduce((s, c) => s + (c.value || 0), 0);
+            }, 0);
+
+
+        return { strategic, outcomes, clientsAnalysisData, conversionRate, totalOpsCount, totalPipelineValue };
     }, [tasks, opportunities, timeFilterType, selectedDate, customRange]);
 
 
@@ -676,9 +724,63 @@ export const CommercialView: React.FC = () => {
             <div className="flex-1 overflow-y-auto p-6 relative">
                 {view === 'DASHBOARD' && (
                     <div
-                        className="max-w-7xl mx-auto space-y-6"
+                        className="max-w-7xl mx-auto space-y-8"
                     >
-                        {/* 1. QUANTITATIVE SUMMARY TABLE (NEW) */}
+                        {/* 0. INDICATORS ROW (Restored) */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                            <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                                <p className="text-slate-500 font-bold text-xs uppercase tracking-wide flex items-center gap-1">
+                                    <FileText size={14} /> Total em Propostas
+                                </p>
+                                <p className="text-2xl font-bold text-indigo-900 mt-2">
+                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(dashboardStats.totalPipelineValue)}
+                                </p>
+                                <span className="text-xs text-indigo-400 mt-1 font-medium">{dashboardStats.totalOpsCount} oportunidades</span>
+                            </div>
+
+                            <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                                <p className="text-slate-500 font-bold text-xs uppercase tracking-wide flex items-center gap-1">
+                                    <CheckCircle size={14} /> Sucesso (Fechado)
+                                </p>
+                                <p className="text-2xl font-bold text-emerald-900 mt-2">
+                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(dashboardStats.outcomes.success)}
+                                </p>
+                            </div>
+
+                            <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                                <p className="text-slate-500 font-bold text-xs uppercase tracking-wide flex items-center gap-1 text-blue-800">
+                                    <Bot size={14} /> Valor em Estudo
+                                </p>
+                                <p className="text-2xl font-bold text-blue-900 mt-2">
+                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(dashboardStats.outcomes.study)}
+                                </p>
+                            </div>
+
+                            {/* Conversion Rate Card (NEW) */}
+                            <div className="bg-gradient-to-br from-violet-500 to-purple-600 text-white p-4 rounded-xl shadow-md flex flex-col justify-between transform hover:scale-105 transition-transform">
+                                <p className="text-white/80 font-bold text-xs uppercase tracking-wide flex items-center gap-1">
+                                    <Target size={14} /> Taxa de Conversão
+                                </p>
+                                <div className="flex items-end gap-2 mt-2">
+                                    <p className="text-3xl font-extrabold text-white">
+                                        {dashboardStats.conversionRate.toFixed(1)}%
+                                    </p>
+                                    <span className="text-xs text-white/70 mb-1 font-medium">de sucesso</span>
+                                </div>
+                            </div>
+
+                            <div className="bg-red-50 border border-red-100 p-4 rounded-xl shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                                <p className="text-slate-500 font-bold text-xs uppercase tracking-wide flex items-center gap-1">
+                                    <AlertTriangle size={14} /> Insucesso / Perda
+                                </p>
+                                <p className="text-2xl font-bold text-red-900 mt-2">
+                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(dashboardStats.outcomes.failure)}
+                                </p>
+                            </div>
+                        </div>
+
+
+                        {/* 1. QUANTITATIVE SUMMARY TABLE (REFORMED) */}
                         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                             <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
                                 <Activity size={20} className="text-blue-600" />
@@ -688,49 +790,114 @@ export const CommercialView: React.FC = () => {
                                 <table className="w-full text-sm text-left">
                                     <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
                                         <tr>
-                                            <th className="px-4 py-3">Métrica</th>
-                                            <th className="px-4 py-3 text-right">Quantidade</th>
-                                            <th className="px-4 py-3 text-right">Volume (R$)</th>
+                                            <th className="px-6 py-3 rounded-tl-lg">Categoria</th>
+                                            <th className="px-6 py-3 text-center">Quantidade</th>
+                                            <th className="px-6 py-3 text-center">% Qtd</th>
+                                            <th className="px-6 py-3 text-right">Valor (R$)</th>
+                                            <th className="px-6 py-3 text-right rounded-tr-lg">% Valor</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        <tr className="hover:bg-slate-50">
-                                            <td className="px-4 py-3 font-medium text-slate-700">Total de Oportunidades</td>
-                                            <td className="px-4 py-3 text-right font-bold">{dashboardStats.strategic.total}</td>
-                                            <td className="px-4 py-3 text-right font-medium text-slate-500">-</td>
-                                        </tr>
-                                        <tr className="hover:bg-slate-50">
-                                            <td className="px-4 py-3 font-medium text-green-700 flex items-center gap-2"><CheckCircle size={14} /> Sucesso</td>
-                                            <td className="px-4 py-3 text-right font-bold text-green-700">
-                                                {/* Calculate Count from Outcomes if possible or approximate */}
-                                                {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length +
-                                                    tasks.filter(t => !t.parentId && !t.opportunityId && t.outcome === TaskOutcome.SUCCESS).length}
+                                    <tbody className="divide-y divide-slate-100 font-medium">
+                                        {/* SUCCESS */}
+                                        <tr className="hover:bg-emerald-50/30 transition-colors group">
+                                            <td className="px-6 py-4 text-emerald-700 flex items-center gap-2">
+                                                <div className="p-1.5 bg-emerald-100 rounded text-emerald-600 group-hover:bg-emerald-200 transition-colors"><CheckCircle size={14} /></div>
+                                                Sucesso
                                             </td>
-                                            <td className="px-4 py-3 text-right font-bold text-green-700">R$ {dashboardStats.outcomes.success.toLocaleString()}</td>
+                                            <td className="px-6 py-4 text-center font-bold text-slate-700">
+                                                {
+                                                    (() => {
+                                                        const count = opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length +
+                                                            tasks.filter(t => !t.parentId && !t.opportunityId && t.outcome === TaskOutcome.SUCCESS).length;
+                                                        return count;
+                                                    })()
+                                                }
+                                            </td>
+                                            <td className="px-6 py-4 text-center text-slate-500 text-xs">
+                                                {dashboardStats.totalOpsCount > 0 ?
+                                                    ((opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length + tasks.filter(t => !t.parentId && !t.opportunityId && t.outcome === TaskOutcome.SUCCESS).length) / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
+                                                    : '0%'}
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-bold text-emerald-700">
+                                                R$ {dashboardStats.outcomes.success.toLocaleString()}
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-slate-500 text-xs">
+                                                {dashboardStats.totalPipelineValue > 0 ? (dashboardStats.outcomes.success / dashboardStats.totalPipelineValue * 100).toFixed(1) + '%' : '0%'}
+                                            </td>
                                         </tr>
-                                        <tr className="hover:bg-slate-50">
-                                            <td className="px-4 py-3 font-medium text-red-700 flex items-center gap-2"><AlertTriangle size={14} /> Insucesso</td>
-                                            <td className="px-4 py-3 text-right font-bold text-red-700">
+                                        {/* FAILURE */}
+                                        <tr className="hover:bg-red-50/30 transition-colors group">
+                                            <td className="px-6 py-4 text-red-700 flex items-center gap-2">
+                                                <div className="p-1.5 bg-red-100 rounded text-red-600 group-hover:bg-red-200 transition-colors"><AlertTriangle size={14} /></div>
+                                                Insucesso
+                                            </td>
+                                            <td className="px-6 py-4 text-center font-bold text-slate-700">
                                                 {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length +
                                                     tasks.filter(t => !t.parentId && !t.opportunityId && t.outcome === TaskOutcome.FAILURE).length}
                                             </td>
-                                            <td className="px-4 py-3 text-right font-bold text-red-700">R$ {dashboardStats.outcomes.failure.toLocaleString()}</td>
+                                            <td className="px-6 py-4 text-center text-slate-500 text-xs">
+                                                {dashboardStats.totalOpsCount > 0 ?
+                                                    ((opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length + tasks.filter(t => !t.parentId && !t.opportunityId && t.outcome === TaskOutcome.FAILURE).length) / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
+                                                    : '0%'}
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-bold text-red-700">
+                                                R$ {dashboardStats.outcomes.failure.toLocaleString()}
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-slate-500 text-xs">
+                                                {dashboardStats.totalPipelineValue > 0 ? (dashboardStats.outcomes.failure / dashboardStats.totalPipelineValue * 100).toFixed(1) + '%' : '0%'}
+                                            </td>
                                         </tr>
-                                        <tr className="hover:bg-slate-50">
-                                            <td className="px-4 py-3 font-medium text-blue-700 flex items-center gap-2"><Bot size={14} /> Estudo</td>
-                                            <td className="px-4 py-3 text-right font-bold text-blue-700">
+                                        {/* STUDY */}
+                                        <tr className="hover:bg-blue-50/30 transition-colors group">
+                                            <td className="px-6 py-4 text-blue-700 flex items-center gap-2">
+                                                <div className="p-1.5 bg-blue-100 rounded text-blue-600 group-hover:bg-blue-200 transition-colors"><Bot size={14} /></div>
+                                                Em Estudo
+                                            </td>
+                                            <td className="px-6 py-4 text-center font-bold text-slate-700">
                                                 {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length +
                                                     tasks.filter(t => !t.parentId && !t.opportunityId && t.outcome === TaskOutcome.STUDY).length}
                                             </td>
-                                            <td className="px-4 py-3 text-right font-bold text-blue-700">R$ {dashboardStats.outcomes.study.toLocaleString()}</td>
+                                            <td className="px-6 py-4 text-center text-slate-500 text-xs">
+                                                {dashboardStats.totalOpsCount > 0 ?
+                                                    ((opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length + tasks.filter(t => !t.parentId && !t.opportunityId && t.outcome === TaskOutcome.STUDY).length) / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
+                                                    : '0%'}
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-bold text-blue-700">
+                                                R$ {dashboardStats.outcomes.study.toLocaleString()}
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-slate-500 text-xs">
+                                                {dashboardStats.totalPipelineValue > 0 ? (dashboardStats.outcomes.study / dashboardStats.totalPipelineValue * 100).toFixed(1) + '%' : '0%'}
+                                            </td>
                                         </tr>
-                                        <tr className="hover:bg-slate-50">
-                                            <td className="px-4 py-3 font-medium text-slate-600 flex items-center gap-2"><LogOut size={14} /> Desistência</td>
-                                            <td className="px-4 py-3 text-right font-bold text-slate-600">
+                                        {/* WITHDRAWAL */}
+                                        <tr className="hover:bg-slate-50/50 transition-colors group">
+                                            <td className="px-6 py-4 text-slate-600 flex items-center gap-2">
+                                                <div className="p-1.5 bg-slate-100 rounded text-slate-500 group-hover:bg-slate-200 transition-colors"><LogOut size={14} /></div>
+                                                Desistência
+                                            </td>
+                                            <td className="px-6 py-4 text-center font-bold text-slate-700">
                                                 {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length +
                                                     tasks.filter(t => !t.parentId && !t.opportunityId && t.outcome === TaskOutcome.WITHDRAWAL).length}
                                             </td>
-                                            <td className="px-4 py-3 text-right font-bold text-slate-600">R$ {dashboardStats.outcomes.withdrawal.toLocaleString()}</td>
+                                            <td className="px-6 py-4 text-center text-slate-500 text-xs">
+                                                {dashboardStats.totalOpsCount > 0 ?
+                                                    ((opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length + tasks.filter(t => !t.parentId && !t.opportunityId && t.outcome === TaskOutcome.WITHDRAWAL).length) / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
+                                                    : '0%'}
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-bold text-slate-600">
+                                                R$ {dashboardStats.outcomes.withdrawal.toLocaleString()}
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-slate-500 text-xs">
+                                                {dashboardStats.totalPipelineValue > 0 ? (dashboardStats.outcomes.withdrawal / dashboardStats.totalPipelineValue * 100).toFixed(1) + '%' : '0%'}
+                                            </td>
+                                        </tr>
+                                        {/* TOTAL */}
+                                        <tr className="bg-slate-50 border-t-2 border-slate-100 font-bold">
+                                            <td className="px-6 py-4 text-slate-800">TOTAL</td>
+                                            <td className="px-6 py-4 text-center text-slate-800">{dashboardStats.totalOpsCount}</td>
+                                            <td className="px-6 py-4 text-center text-slate-800">100%</td>
+                                            <td className="px-6 py-4 text-right text-slate-800">R$ {dashboardStats.totalPipelineValue.toLocaleString()}</td>
+                                            <td className="px-6 py-4 text-right text-slate-800">100%</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -740,10 +907,10 @@ export const CommercialView: React.FC = () => {
 
                         {/* CHARTS ROW */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* BAR CHART - OUTCOMES distribution (REPLACED PIE) */}
+                            {/* BAR CHART - OUTCOMES distribution */}
                             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
                                 <h3 className="font-bold text-slate-700 mb-4">Distribuição de Resultados (Financeiro)</h3>
-                                <div className="flex-1 min-h-[300px]">
+                                <div className="flex-1 min-h-[350px]">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart
                                             data={[
@@ -752,14 +919,19 @@ export const CommercialView: React.FC = () => {
                                                 { name: 'Estudo', value: dashboardStats.outcomes.study, fill: COLORS.study },
                                                 { name: 'Desistência', value: dashboardStats.outcomes.withdrawal, fill: COLORS.withdrawal }
                                             ]}
-                                            layout="vertical"
-                                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                                            layout="horizontal"
+                                            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                                            barSize={40}
                                         >
-                                            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                                            <XAxis type="number" hide />
-                                            <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />
-                                            <RechartsTooltip formatter={(value: number) => `R$ ${value.toLocaleString()}`} cursor={{ fill: 'transparent' }} />
-                                            <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={30}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                            <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                                            <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`} />
+                                            <RechartsTooltip
+                                                cursor={{ fill: '#f8fafc' }}
+                                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                                formatter={(value: number) => [`R$ ${value.toLocaleString()}`, 'Valor']}
+                                            />
+                                            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                                                 {
                                                     [
                                                         { name: 'Sucesso', value: dashboardStats.outcomes.success, fill: COLORS.success },
@@ -776,25 +948,41 @@ export const CommercialView: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* TABLE - CLIENT RESULTS (REPLACED CHART) */}
+                            {/* TABLE - CLIENT ANALYSIS (REFORMED: All Clients + Segmented Values) */}
                             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
-                                <h3 className="font-bold text-slate-700 mb-4">Top Clientes (Volume)</h3>
-                                <div className="flex-1 overflow-auto max-h-[300px]">
+                                <h3 className="font-bold text-slate-700 mb-4 flex items-center justify-between">
+                                    <span>Análise de Clientes</span>
+                                    <span className="text-xs font-normal text-slate-500 bg-slate-100 px-2 py-1 rounded-full">{dashboardStats.clientsAnalysisData.length} Clientes</span>
+                                </h3>
+                                <div className="flex-1 overflow-auto max-h-[350px] custom-scrollbar">
                                     <table className="w-full text-sm text-left">
-                                        <thead className="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0">
+                                        <thead className="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0 z-10 shadow-sm">
                                             <tr>
-                                                <th className="px-4 py-2">Cliente</th>
-                                                <th className="px-4 py-2 text-right">Volume (R$)</th>
+                                                <th className="px-4 py-3">Cliente</th>
+                                                <th className="px-4 py-3 text-right text-emerald-600">Sucesso</th>
+                                                <th className="px-4 py-3 text-right text-red-600">Insucesso</th>
+                                                <th className="px-4 py-3 text-right text-blue-600">Estudo</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
-                                            {dashboardStats.clientsChartData.map((client, idx) => (
-                                                <tr key={idx} className="hover:bg-slate-50">
-                                                    <td className="px-4 py-2 font-medium text-slate-700 truncate max-w-[150px]" title={client.name}>
+                                            {dashboardStats.clientsAnalysisData.length === 0 && (
+                                                <tr>
+                                                    <td colSpan={4} className="text-center py-8 text-slate-400 italic">Nenhum dado disponível no período.</td>
+                                                </tr>
+                                            )}
+                                            {dashboardStats.clientsAnalysisData.map((client, idx) => (
+                                                <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                                    <td className="px-4 py-3 font-medium text-slate-700 max-w-[150px] truncate" title={client.name}>
                                                         {client.name}
                                                     </td>
-                                                    <td className="px-4 py-2 text-right font-bold text-slate-600">
-                                                        R$ {Number(client.value).toLocaleString()}
+                                                    <td className="px-4 py-3 text-right font-medium text-slate-600">
+                                                        {client.success > 0 ? `R$ ${client.success.toLocaleString()}` : '-'}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right text-slate-400 text-xs">
+                                                        {client.failure > 0 ? `R$ ${client.failure.toLocaleString()}` : '-'}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right text-slate-400 text-xs">
+                                                        {client.study > 0 ? `R$ ${client.study.toLocaleString()}` : '-'}
                                                     </td>
                                                 </tr>
                                             ))}
@@ -803,6 +991,7 @@ export const CommercialView: React.FC = () => {
                                 </div>
                             </div>
                         </div>
+
 
                     </div>
                 )}
