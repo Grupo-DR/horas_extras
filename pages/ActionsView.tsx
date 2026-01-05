@@ -8,6 +8,8 @@ import { LayoutDashboard, Filter, Bell, PlusCircle, CheckSquare, Search, Users, 
 import { db } from '../services/firebaseConfig';
 import { collection, onSnapshot, addDoc, updateDoc, doc, query, Timestamp, deleteDoc } from 'firebase/firestore';
 import { Toaster, toast } from 'sonner';
+import { Skeleton } from '../components/Skeleton';
+import { AnimatePresence, motion } from 'framer-motion';
 
 // MOCK USERS (Shared context would be better, but duplicating for safety as per pattern)
 const MOCK_USERS: User[] = [
@@ -57,9 +59,11 @@ export const ActionsView: React.FC = () => {
     const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
     // FIREBASE SYNC
     useEffect(() => {
+        setIsLoading(true);
         const q = query(collection(db, 'tasks'));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const loaded: Task[] = snapshot.docs.map(doc => {
@@ -80,6 +84,7 @@ export const ActionsView: React.FC = () => {
                 } as Task;
             });
             setTasks(loaded);
+            setIsLoading(false);
         });
         return () => unsubscribe();
     }, []);
@@ -189,7 +194,7 @@ export const ActionsView: React.FC = () => {
     return (
         <div className="flex flex-col h-full bg-slate-50/50">
             {/* HEADER */}
-            <div className="bg-white border-b border-slate-200 px-8 py-5 flex items-center justify-between sticky top-0 z-20 shadow-sm">
+            <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-8 py-5 flex items-center justify-between sticky top-0 z-20 shadow-sm transition-all duration-300">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                         <CheckSquare className="text-blue-600" /> Gestão de Ações

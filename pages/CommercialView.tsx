@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Task, User, TaskStatus, HelpChainLevel, HistoryLog, Notification, TaskOutcome, Opportunity, PipelineStage } from '../types';
 import { TaskForm } from '../components/TaskForm';
+import { Skeleton } from '../components/Skeleton';
+import { containerVariants, itemVariants } from '../utils/animations'; // Assuming I need to define local or utility. 
+// Or I define them inline if utility doesn't exist. I'll define loading state.
+import { AnimatePresence, motion } from 'framer-motion';
 
 import { OpportunityForm } from '../components/Pipeline/OpportunityForm';
 
@@ -92,6 +96,7 @@ export const CommercialView: React.FC = () => {
     const [tasks, setTasks] = useState<Task[]>([]);
     // NEW: Lifted Opportunities State
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+    const [isLoading, setIsLoading] = useState(true); // NEW: Loading State
 
     // FIREBASE SYNC TASKS
     useEffect(() => {
@@ -179,7 +184,14 @@ export const CommercialView: React.FC = () => {
     };
 
     useEffect(() => {
-        fetchOpportunities();
+        const load = async () => {
+            setIsLoading(true);
+            await fetchOpportunities();
+            // Simulate min load for smoothness
+            await new Promise(resolve => setTimeout(resolve, 800));
+            setIsLoading(false);
+        };
+        load();
     }, []);
 
     const [helpChain, setHelpChain] = useState<HelpChainLevel[]>(INITIAL_CHAIN);
@@ -781,53 +793,53 @@ export const CommercialView: React.FC = () => {
                                         }}
                                     />
                                 </div>
-                            </div>
+                        </motion.div>
                         </motion.div>
                     )}
 
-                    {/* SETTINGS VIEW */}
-                    {view === 'SETTINGS' && (
-                        <motion.div
-                            key="settings"
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="max-w-4xl mx-auto"
-                        >
-                            <EscalationSettings chain={helpChain} onSave={setHelpChain} />
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div >
+                {/* SETTINGS VIEW */}
+                {view === 'SETTINGS' && (
+                    <motion.div
+                        key="settings"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="max-w-4xl mx-auto"
+                    >
+                        <EscalationSettings chain={helpChain} onSave={setHelpChain} />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div >
 
 
-            {/* MODALS */}
-            {
-                isOpportunityModalOpen && (
-                    <OpportunityForm
-                        initialData={editingOpportunity}
-                        linkedTasks={tasks.filter(t => t.opportunityId === editingOpportunity?.id)} // NEW: Filter tasks here
-                        onClose={() => {
-                            setIsOpportunityModalOpen(false);
-                            setEditingOpportunity(undefined);
-                        }}
-                        onSave={() => {
+            {/* MODALS */ }
+    {
+        isOpportunityModalOpen && (
+            <OpportunityForm
+                initialData={editingOpportunity}
+                linkedTasks={tasks.filter(t => t.opportunityId === editingOpportunity?.id)} // NEW: Filter tasks here
+                onClose={() => {
+                    setIsOpportunityModalOpen(false);
+                    setEditingOpportunity(undefined);
+                }}
+                onSave={() => {
+                    window.location.reload();
+                }}
+                onDelete={async (id) => {
+                    if (confirm("Tem certeza que deseja excluir esta oportunidade?")) {
+                        try {
+                            await OpportunityService.delete(id);
+                            toast.success("Oportunidade excluída.");
                             window.location.reload();
-                        }}
-                        onDelete={async (id) => {
-                            if (confirm("Tem certeza que deseja excluir esta oportunidade?")) {
-                                try {
-                                    await OpportunityService.delete(id);
-                                    toast.success("Oportunidade excluída.");
-                                    window.location.reload();
-                                } catch (e) {
-                                    toast.error("Erro ao excluir.");
-                                }
-                            }
-                        }}
-                    />
-                )
-            }
+                        } catch (e) {
+                            toast.error("Erro ao excluir.");
+                        }
+                    }
+                }}
+            />
+        )
+    }
             <TaskForm
                 isOpen={isTaskModalOpen}
                 initialData={editingTask || (
