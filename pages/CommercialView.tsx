@@ -586,6 +586,23 @@ export const CommercialView: React.FC = () => {
     }, [tasks, opportunities, timeFilterType, selectedDate, customRange]);
 
 
+
+
+    // NEW: Delete Opportunity
+    const handleDeleteOpportunity = async (id: string) => {
+        if (window.confirm("ATENÇÃO: Tem certeza que deseja excluir esta oportunidade permanentemente?")) {
+            try {
+                await OpportunityService.delete(id);
+                toast.success("Oportunidade excluída com sucesso.");
+                // Refresh list
+                await fetchOpportunities();
+            } catch (error) {
+                console.error("Erro ao excluir oportunidade:", error);
+                toast.error("Erro ao excluir oportunidade.");
+            }
+        }
+    };
+
     return (
         <div className="flex h-full w-full flex-col overflow-hidden">
             {/* HEADER */}
