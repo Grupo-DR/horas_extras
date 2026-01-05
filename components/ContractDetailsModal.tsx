@@ -26,18 +26,42 @@ interface ContractDetailsModalProps {
     onRemoveMeasurement: (contractId: string, measurementId: string) => Promise<void>;
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload, label, crossoverDate }: any) => {
     if (active && payload && payload.length) {
+        // Detect if hovering over projection
+        const isProjection = payload[0]?.payload?.isProjection;
+
         return (
             <div className="bg-white/90 backdrop-blur-md border border-slate-200 p-3 rounded-xl shadow-xl">
-                <p className="text-slate-500 text-xs font-bold mb-1 uppercase">{label}</p>
+                <p className="text-slate-500 text-xs font-bold mb-1 uppercase">
+                    {label} {isProjection && '(Projeção)'}
+                </p>
                 <div className="space-y-1">
-                    {payload.map((p: any, idx: number) => (
-                        <p key={idx} style={{ color: p.color }} className="font-bold text-sm">
-                            {p.name}: {p.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </p>
-                    ))}
+                    {payload.map((p: any, idx: number) => {
+                        // Skip rendering null values
+                        if (p.value === null || p.value === undefined) return null;
+
+                        let name = p.name;
+                        if (p.dataKey === 'accumulatedProjected') name = 'Projeção Acumulado';
+                        if (p.dataKey === 'balanceProjected') name = 'Projeção Saldo';
+
+                        return (
+                            <p key={idx} style={{ color: p.color }} className="font-bold text-sm">
+                                {name}: {p.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </p>
+                        );
+                    })}
                 </div>
+                {isProjection && crossoverDate && (
+                    <div className="mt-2 pt-2 border-t border-slate-100">
+                        <p className="text-xs text-slate-500">
+                            Tendência de Cruzamento: <br />
+                            <span className="font-bold text-slate-700">
+                                {format(new Date(crossoverDate), 'dd/MM/yyyy')}
+                            </span>
+                        </p>
+                    </div>
+                )}
             </div>
         );
     }
@@ -59,13 +83,13 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
     const [loading, setLoading] = useState(false);
 
     // Prepare Chart Data
-    const chartData = useMemo(() => {
-        if (!contract) return [];
+    const { chartData, crossoverDate } = useMemo(() => {
+        if (!contract) return { chartData: [], crossoverDate: null };
 
         const measurements = contract.measurements || [];
         const totalValue = contract.totalValue || 0;
         const startDate = new Date(contract.startDate);
-
+        const endDate = new Date(contract.endDate);
         // Sort measurements by date
         const sorted = [...measurements].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
@@ -78,14 +102,22 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                 value: 0,
                 accumulated: 0,
                 balance: totalValue,
+                accumulatedProjected: null,
+                balanceProjected: null,
+                isProjection: false,
                 description: 'Início do Contrato'
             }
         ];
 
         let accumulated = 0;
+        let lastDate = startDate;
+
+        // Process Real Data
         sorted.forEach(m => {
             const mDate = new Date(m.date);
             accumulated += m.value;
+            lastDate = mDate;
+
             points.push({
                 date: mDate,
                 shortDate: format(mDate, 'dd/MM/yy'),
@@ -93,17 +125,83 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                 value: m.value,
                 accumulated: accumulated,
                 balance: totalValue - accumulated,
+                accumulatedProjected: null,
+                balanceProjected: null,
+                isProjection: false,
                 description: m.description
             });
         });
 
-        // Ensure chronological order if measurements predate start date (edge case)
-        return points.sort((a, b) => a.date.getTime() - b.date.getTime());
+        // Calculate Rate and Projections
+        let foundCrossover = null;
+
+        if (sorted.length > 0 && totalValue > 0) {
+            const daysElapsed = Math.max(1, Math.ceil((lastDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+            const dailyRate = accumulated / daysElapsed;
+
+            // Start projection from the last real point to ensure continuity
+            const lastPoint = points[points.length - 1];
+            // Initialize projection values at the convergence point
+            lastPoint.accumulatedProjected = lastPoint.accumulated;
+            lastPoint.balanceProjected = lastPoint.balance;
+
+            let projectionAccumulated = accumulated;
+            let projectionBalance = totalValue - accumulated;
+
+            // Generate Weekly Projection Points until End Date
+            // We iterate day by day but push weekly to keep chart clean? 
+            // Better: Iterate by larger steps or strict daily? Let's do roughly 10 points or weekly.
+            // Let's do daily simulation for accurate crossover, but only push points occasionally?
+            // User requested "daily or weekly". Let's do weekly to avoid thousands of points if long contract.
+
+            let currentDate = new Date(lastDate);
+            currentDate.setDate(currentDate.getDate() + 1); // Start next day
+
+            while (currentDate <= endDate) {
+                const daysInFuture = Math.ceil((currentDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+                projectionAccumulated = accumulated + (dailyRate * daysInFuture);
+                projectionBalance = (totalValue - accumulated) - (dailyRate * daysInFuture);
+
+                // Detect crossover (First time Accumulated >= Balance)
+                if (!foundCrossover && projectionAccumulated >= projectionBalance) {
+                    foundCrossover = new Date(currentDate);
+                }
+
+                // Push points every 7 days OR if it's the endDate OR if it's the crossover date (for precision)
+                // Actually, let's just do every 7 days + End Date.
+                // Recharts handles gaps fine.
+                const isWeekly = Math.ceil((currentDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) % 7 === 0;
+                const isFinal = currentDate.getTime() === endDate.getTime();
+
+                if (isWeekly || isFinal) {
+                    points.push({
+                        date: new Date(currentDate),
+                        shortDate: format(currentDate, 'dd/MM/yy'),
+                        monthYear: format(currentDate, 'MMM yy', { locale: ptBR }),
+                        value: 0,
+                        accumulated: null, // null removes from real line
+                        balance: null,
+                        accumulatedProjected: projectionAccumulated,
+                        balanceProjected: projectionBalance,
+                        isProjection: true,
+                        description: 'Projeção'
+                    });
+                }
+
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+        }
+
+        // Sort by date
+        const finalChartData = points.sort((a, b) => a.date.getTime() - b.date.getTime());
+        return { chartData: finalChartData, crossoverDate: foundCrossover };
     }, [contract]);
 
     // Financial Stats
     const totalValue = contract?.totalValue || 0;
-    const executedValue = chartData.length > 0 ? chartData[chartData.length - 1].accumulated : 0;
+    // Get last "Real" point for stats
+    const realPoints = chartData.filter((d: any) => !d.isProjection);
+    const executedValue = realPoints.length > 0 ? realPoints[realPoints.length - 1].accumulated : 0;
     const balance = totalValue - executedValue;
     const progress = totalValue > 0 ? (executedValue / totalValue) * 100 : 0;
 
@@ -224,7 +322,7 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                                 tick={{ fill: '#64748b', fontSize: 12 }}
                                                 tickFormatter={(val) => val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}
                                             />
-                                            <Tooltip content={<CustomTooltip />} />
+                                            <Tooltip content={<CustomTooltip crossoverDate={crossoverDate} />} />
 
                                             <ReferenceLine
                                                 y={totalValue}
@@ -236,6 +334,18 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                                     fill: '#ef4444',
                                                     fontSize: 10,
                                                     fontWeight: 'bold'
+                                                }}
+                                            />
+
+                                            <ReferenceLine
+                                                y={totalValue / 2}
+                                                stroke="#94a3b8"
+                                                strokeDasharray="2 2"
+                                                label={{
+                                                    value: '50%',
+                                                    position: 'insideLeft',
+                                                    fill: '#94a3b8',
+                                                    fontSize: 10
                                                 }}
                                             />
 
@@ -254,6 +364,26 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                                 name="Saldo Remanescente"
                                                 stroke="#f59e0b"
                                                 strokeWidth={3}
+                                                dot={false}
+                                            />
+
+                                            {/* PROJECTIONS */}
+                                            <Line
+                                                type="monotone"
+                                                dataKey="accumulatedProjected"
+                                                name="Projeção Acumulado"
+                                                stroke="#2563eb"
+                                                strokeWidth={2}
+                                                strokeDasharray="5 5"
+                                                dot={false}
+                                            />
+                                            <Line
+                                                type="monotone"
+                                                dataKey="balanceProjected"
+                                                name="Projeção Saldo"
+                                                stroke="#f59e0b"
+                                                strokeWidth={2}
+                                                strokeDasharray="5 5"
                                                 dot={false}
                                             />
                                         </ComposedChart>
