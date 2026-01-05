@@ -9,18 +9,27 @@ interface PipelineBoardProps {
     opportunities: Opportunity[]; // NEW
     refreshOpportunities: () => void; // NEW
     onEditOpportunity?: (opportunity: Opportunity) => void;
+    onDeleteOpportunity?: (id: string) => void; // NEW
     onTaskCreated?: (task: Task) => void;
 }
 
-export const PipelineBoard: React.FC<PipelineBoardProps> = ({ opportunities, refreshOpportunities, onEditOpportunity, onTaskCreated }) => {
+export const PipelineBoard: React.FC<PipelineBoardProps> = ({ opportunities, refreshOpportunities, onEditOpportunity, onDeleteOpportunity, onTaskCreated }) => {
     // REMOVED: Internal state and fetching
 
 
 
 
-    // Filter Opportunities by Stage
+    // Filter Opportunities by Stage and Sort by Priority
     const getOpportunitiesByStage = (stage: PipelineStage) => {
-        return opportunities.filter(op => op.pipelineStage === stage);
+        const priorityOrder = { 'ALTA': 0, 'MÉDIA': 1, 'BAIXA': 2, undefined: 1 };
+
+        return opportunities
+            .filter(op => op.pipelineStage === stage)
+            .sort((a, b) => {
+                const pA = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 1;
+                const pB = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 1;
+                return pA - pB;
+            });
     };
 
     // Drag Handlers
@@ -95,6 +104,7 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({ opportunities, ref
                             onDrop={handleDrop}
                             onDragOver={handleDragOver}
                             onCardClick={handleCardClick}
+                            onDelete={(id) => onDeleteOpportunity && onDeleteOpportunity(id)}
                         />
                     ))}
                 </div>

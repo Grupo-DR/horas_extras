@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { Opportunity, PipelineStage, Task, TaskStatus, TaskOutcome } from '../../types';
+import { User, Opportunity, PipelineStage, Task, TaskStatus, TaskOutcome } from '../../types';
 import { OpportunityService } from '../../services/opportunityService';
+import { UserService } from '../../services/userService';
 import { toast } from 'sonner';
 import { X, Save } from 'lucide-react';
 
@@ -19,11 +20,30 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, l
         title: '',
         estimatedValue: 0,
         deadline: undefined,
-        responsibleId: 'Antonio Augusto', // Mock default
+        responsibleId: '', // Default empty
+        priority: 'MÉDIA', // Default value
         ...initialData // Override with initial if present
     });
 
     const [loading, setLoading] = useState(false);
+    const [users, setUsers] = useState<User[]>([]);
+
+    useEffect(() => {
+        const loadUsers = async () => {
+            try {
+                const data = await UserService.getAll();
+                setUsers(data);
+                // Set default responsible if not set and users exist
+                if (!formData.responsibleId && data.length > 0) {
+                    // Optionally set a default, but better to force selection or leave empty
+                }
+            } catch (e) {
+                console.error("Error loading users", e);
+            }
+        }
+        loadUsers();
+    }, []);
+
 
     // Convert Date object to YYYY-MM-DD for input
     const formatDateForInput = (date?: Date) => {
@@ -51,8 +71,6 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, l
         // AUTO-MOVE: If result is set, move to RESULTADO stage
         if (dataToSave.result && dataToSave.result !== '' as any) {
             dataToSave.pipelineStage = PipelineStage.RESULTADO;
-            // Also update status to GANHA/PERDIDA based on result for consistency, if desired? 
-            // For now, just moving stage is requested.
         }
 
         try {
@@ -67,7 +85,8 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, l
                     clientName: dataToSave.clientName!,
                     estimatedValue: Number(dataToSave.estimatedValue) || 0,
                     responsibleId: dataToSave.responsibleId!,
-                    deadline: new Date(dataToSave.deadline!)
+                    deadline: new Date(dataToSave.deadline!),
+                    priority: dataToSave.priority
                 });
                 toast.success("Oportunidade criada com sucesso!");
             }
@@ -129,15 +148,18 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, l
                             <div>
                                 <label className="block text-sm font-medium text-slate-600 mb-1">Responsável</label>
                                 <select
+                                    required
                                     value={formData.responsibleId}
                                     onChange={e => setFormData({ ...formData, responsibleId: e.target.value })}
                                     className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                 >
-                                    <option value="Antonio Augusto">Antonio Augusto</option>
-                                    <option value="Cintia Ferreira">Cintia Ferreira</option>
-                                    <option value="Nilton Camilo">Nilton Camilo</option>
+                                    <option value="">Selecione o responsável</option>
+                                    {users.map(u => (
+                                        <option key={u.id} value={u.id}>{u.name}</option>
+                                    ))}
                                 </select>
                             </div>
+
 
                             {/* Value (BRL Mask) */}
                             <div>

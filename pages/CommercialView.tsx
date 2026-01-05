@@ -9,6 +9,7 @@ import { HistoryPanel } from '../components/HistoryPanel';
 import { Layout, LayoutDashboard, PlusCircle, Filter, Bell, Bot, Settings, LogOut, Columns, List, TrendingUp, AlertTriangle, CheckCircle, Calendar, DollarSign, Activity, Users, ChevronDown, Link as LinkIcon, X } from 'lucide-react';
 import { draftEscalationEmail, draftWelcomeEmail } from '../services/geminiService';
 import { OpportunityService } from '../services/opportunityService';
+import { UserService } from '../services/userService';
 import { isPast, format, startOfYear, isWithinInterval, startOfMonth, endOfMonth, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, LineChart, Line } from 'recharts';
@@ -174,6 +175,21 @@ export const CommercialView: React.FC = () => {
             toast.error("Erro ao carregar pipeline.");
         }
     };
+
+    // NEW: User State
+    const [users, setUsers] = useState<User[]>([]);
+
+    useEffect(() => {
+        const loadUsers = async () => {
+            try {
+                const data = await UserService.getAll();
+                setUsers(data);
+            } catch (e) {
+                console.error("Error loading users", e);
+            }
+        };
+        loadUsers();
+    }, []);
 
     useEffect(() => {
         const load = async () => {
@@ -662,85 +678,128 @@ export const CommercialView: React.FC = () => {
                     <div
                         className="max-w-7xl mx-auto space-y-6"
                     >
-                        {/* SIMPLIFIED DASHBOARD - FINANCIALS ONLY */}
-                        {/* FINANCIAL OUTCOME SECTION - WITH SPARKLINES */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
-                            {[
-                                { label: 'Sucesso (Vencemos)', value: dashboardStats.outcomes.success, color: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200', icon: CheckCircle, chartColor: '#16a34a' },
-                                { label: 'Insucesso (Perdemos)', value: dashboardStats.outcomes.failure, color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200', icon: AlertTriangle, chartColor: '#dc2626' },
-                                { label: 'Estudo (Análise)', value: dashboardStats.outcomes.study, color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200', icon: Bot, chartColor: '#2563eb' },
-                                { label: 'Desistência', value: dashboardStats.outcomes.withdrawal, color: 'text-slate-700', bg: 'bg-slate-50', border: 'border-slate-200', icon: LogOut, chartColor: '#475569' }
-                            ].map((item, idx) => (
-                                <div key={idx} className={`p-4 rounded-xl border ${item.border} ${item.bg} relative overflow-hidden group`}>
-                                    <div className="flex justify-between items-start z-10 relative">
-                                        <div>
-                                            <div className={`flex items-center gap-2 mb-2 ${item.color.replace('700', '800')}`}>
-                                                <item.icon size={18} /> <span className="font-bold text-sm">{item.label}</span>
-                                            </div>
-                                            <p className={`text-2xl font-bold ${item.color}`}>R$ {item.value.toLocaleString()}</p>
-                                        </div>
-                                        {/* Sparkline Simulation */}
-                                        <div className="h-12 w-24 opacity-50">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <LineChart data={[{ v: 10 }, { v: 30 }, { v: 20 }, { v: 50 }, { v: 40 }, { v: item.value / 1000 }]} >
-                                                    <Line type="monotone" dataKey="v" stroke={item.chartColor} strokeWidth={2} dot={false} />
-                                                </LineChart>
-                                            </ResponsiveContainer>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
+                        {/* 1. QUANTITATIVE SUMMARY TABLE (NEW) */}
+                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                            <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                <Activity size={20} className="text-blue-600" />
+                                Resumo Quantitativo do Pipeline
+                            </h3>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
+                                        <tr>
+                                            <th className="px-4 py-3">Métrica</th>
+                                            <th className="px-4 py-3 text-right">Quantidade</th>
+                                            <th className="px-4 py-3 text-right">Volume (R$)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        <tr className="hover:bg-slate-50">
+                                            <td className="px-4 py-3 font-medium text-slate-700">Total de Oportunidades</td>
+                                            <td className="px-4 py-3 text-right font-bold">{dashboardStats.strategic.total}</td>
+                                            <td className="px-4 py-3 text-right font-medium text-slate-500">-</td>
+                                        </tr>
+                                        <tr className="hover:bg-slate-50">
+                                            <td className="px-4 py-3 font-medium text-green-700 flex items-center gap-2"><CheckCircle size={14} /> Sucesso</td>
+                                            <td className="px-4 py-3 text-right font-bold text-green-700">
+                                                {/* Calculate Count from Outcomes if possible or approximate */}
+                                                {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length +
+                                                    tasks.filter(t => !t.parentId && !t.opportunityId && t.outcome === TaskOutcome.SUCCESS).length}
+                                            </td>
+                                            <td className="px-4 py-3 text-right font-bold text-green-700">R$ {dashboardStats.outcomes.success.toLocaleString()}</td>
+                                        </tr>
+                                        <tr className="hover:bg-slate-50">
+                                            <td className="px-4 py-3 font-medium text-red-700 flex items-center gap-2"><AlertTriangle size={14} /> Insucesso</td>
+                                            <td className="px-4 py-3 text-right font-bold text-red-700">
+                                                {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length +
+                                                    tasks.filter(t => !t.parentId && !t.opportunityId && t.outcome === TaskOutcome.FAILURE).length}
+                                            </td>
+                                            <td className="px-4 py-3 text-right font-bold text-red-700">R$ {dashboardStats.outcomes.failure.toLocaleString()}</td>
+                                        </tr>
+                                        <tr className="hover:bg-slate-50">
+                                            <td className="px-4 py-3 font-medium text-blue-700 flex items-center gap-2"><Bot size={14} /> Estudo</td>
+                                            <td className="px-4 py-3 text-right font-bold text-blue-700">
+                                                {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length +
+                                                    tasks.filter(t => !t.parentId && !t.opportunityId && t.outcome === TaskOutcome.STUDY).length}
+                                            </td>
+                                            <td className="px-4 py-3 text-right font-bold text-blue-700">R$ {dashboardStats.outcomes.study.toLocaleString()}</td>
+                                        </tr>
+                                        <tr className="hover:bg-slate-50">
+                                            <td className="px-4 py-3 font-medium text-slate-600 flex items-center gap-2"><LogOut size={14} /> Desistência</td>
+                                            <td className="px-4 py-3 text-right font-bold text-slate-600">
+                                                {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length +
+                                                    tasks.filter(t => !t.parentId && !t.opportunityId && t.outcome === TaskOutcome.WITHDRAWAL).length}
+                                            </td>
+                                            <td className="px-4 py-3 text-right font-bold text-slate-600">R$ {dashboardStats.outcomes.withdrawal.toLocaleString()}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
 
+
                         {/* CHARTS ROW */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            {/* DONUT CHART - OUTCOMES */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* BAR CHART - OUTCOMES distribution (REPLACED PIE) */}
                             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
-                                <h3 className="font-bold text-slate-700 mb-4">Distribuição de Resultados</h3>
-                                <div className="flex-1 min-h-[250px]">
+                                <h3 className="font-bold text-slate-700 mb-4">Distribuição de Resultados (Financeiro)</h3>
+                                <div className="flex-1 min-h-[300px]">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <PieChart>
-                                            <Pie
-                                                data={[
-                                                    { name: 'Sucesso', value: dashboardStats.outcomes.success },
-                                                    { name: 'Insucesso', value: dashboardStats.outcomes.failure },
-                                                    { name: 'Estudo', value: dashboardStats.outcomes.study },
-                                                    { name: 'Desistência', value: dashboardStats.outcomes.withdrawal }
-                                                ]}
-                                                innerRadius={60}
-                                                outerRadius={80}
-                                                paddingAngle={5}
-                                                dataKey="value"
-                                            >
-                                                <Cell key="cell-0" fill={COLORS.success} />
-                                                <Cell key="cell-1" fill={COLORS.failure} />
-                                                <Cell key="cell-2" fill={COLORS.study} />
-                                                <Cell key="cell-3" fill={COLORS.withdrawal} />
-                                            </Pie>
-                                            <RechartsTooltip formatter={(value: number) => `R$ ${value.toLocaleString()}`} />
-                                            <Legend verticalAlign="bottom" height={36} />
-                                        </PieChart>
+                                        <BarChart
+                                            data={[
+                                                { name: 'Sucesso', value: dashboardStats.outcomes.success, fill: COLORS.success },
+                                                { name: 'Insucesso', value: dashboardStats.outcomes.failure, fill: COLORS.failure },
+                                                { name: 'Estudo', value: dashboardStats.outcomes.study, fill: COLORS.study },
+                                                { name: 'Desistência', value: dashboardStats.outcomes.withdrawal, fill: COLORS.withdrawal }
+                                            ]}
+                                            layout="vertical"
+                                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                                        >
+                                            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                                            <XAxis type="number" hide />
+                                            <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />
+                                            <RechartsTooltip formatter={(value: number) => `R$ ${value.toLocaleString()}`} cursor={{ fill: 'transparent' }} />
+                                            <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={30}>
+                                                {
+                                                    [
+                                                        { name: 'Sucesso', value: dashboardStats.outcomes.success, fill: COLORS.success },
+                                                        { name: 'Insucesso', value: dashboardStats.outcomes.failure, fill: COLORS.failure },
+                                                        { name: 'Estudo', value: dashboardStats.outcomes.study, fill: COLORS.study },
+                                                        { name: 'Desistência', value: dashboardStats.outcomes.withdrawal, fill: COLORS.withdrawal }
+                                                    ].map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                                                    ))
+                                                }
+                                            </Bar>
+                                        </BarChart>
                                     </ResponsiveContainer>
                                 </div>
                             </div>
 
-                            {/* STACKED BAR CHART - CLIENT RESULTS */}
-                            <div className="col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
-                                <h3 className="font-bold text-slate-700 mb-4">Top 5 Clientes (Volume Financeiro)</h3>
-                                <div className="flex-1 min-h-[300px]">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart
-                                            data={dashboardStats.clientsChartData}
-                                            layout="vertical"
-                                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                                        >
-                                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                                            <XAxis type="number" hide />
-                                            <YAxis dataKey="name" type="category" width={100} axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-                                            <RechartsTooltip cursor={{ fill: '#f1f5f9' }} formatter={(value: number) => `R$ ${value.toLocaleString()}`} />
-                                            <Bar dataKey="value" fill={COLORS.study} radius={[0, 4, 4, 0]} barSize={20} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
+                            {/* TABLE - CLIENT RESULTS (REPLACED CHART) */}
+                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+                                <h3 className="font-bold text-slate-700 mb-4">Top Clientes (Volume)</h3>
+                                <div className="flex-1 overflow-auto max-h-[300px]">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0">
+                                            <tr>
+                                                <th className="px-4 py-2">Cliente</th>
+                                                <th className="px-4 py-2 text-right">Volume (R$)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {dashboardStats.clientsChartData.map((client, idx) => (
+                                                <tr key={idx} className="hover:bg-slate-50">
+                                                    <td className="px-4 py-2 font-medium text-slate-700 truncate max-w-[150px]" title={client.name}>
+                                                        {client.name}
+                                                    </td>
+                                                    <td className="px-4 py-2 text-right font-bold text-slate-600">
+                                                        R$ {Number(client.value).toLocaleString()}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         </div>
@@ -753,9 +812,9 @@ export const CommercialView: React.FC = () => {
                     <div
                         className="h-full flex flex-col gap-6"
                     >
-                        {/* NEW PIPELINE BOARD */}
-                        <div className="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm p-4 overflow-hidden flex flex-col">
-                            <h3 className="font-bold text-slate-700 flex items-center gap-2 mb-4 text-xl">
+                        {/* NEW PIPELINE BOARD - Task 4: Fixed Height */}
+                        <div className="h-[calc(100vh-200px)] bg-white rounded-xl border border-slate-200 shadow-sm p-4 overflow-hidden flex flex-col">
+                            <h3 className="font-bold text-slate-700 flex items-center gap-2 mb-4 text-xl flex-shrink-0">
                                 <Activity size={24} className="text-purple-600" /> Pipeline de Vendas
                             </h3>
                             <div className="flex-1 overflow-hidden">
@@ -763,6 +822,7 @@ export const CommercialView: React.FC = () => {
                                     opportunities={opportunities} // NEW: Pass down
                                     refreshOpportunities={fetchOpportunities} // NEW: Pass down refresh
                                     onEditOpportunity={(op) => { setEditingOpportunity(op); setIsOpportunityModalOpen(true); }}
+                                    onDeleteOpportunity={handleDeleteOpportunity}
                                     onTaskCreated={(task) => {
                                         setEditingTask(task);
                                         setTaskFormMode('QUICK_EDIT');
@@ -784,34 +844,16 @@ export const CommercialView: React.FC = () => {
                 )}
             </div >
 
-
-            {/* MODALS */}
-            {
-                isOpportunityModalOpen && (
-                    <OpportunityForm
-                        initialData={editingOpportunity}
-                        linkedTasks={tasks.filter(t => t.opportunityId === editingOpportunity?.id)} // NEW: Filter tasks here
-                        onClose={() => {
-                            setIsOpportunityModalOpen(false);
-                            setEditingOpportunity(undefined);
-                        }}
-                        onSave={() => {
-                            window.location.reload();
-                        }}
-                        onDelete={async (id) => {
-                            if (confirm("Tem certeza que deseja excluir esta oportunidade?")) {
-                                try {
-                                    await OpportunityService.delete(id);
-                                    toast.success("Oportunidade excluída.");
-                                    window.location.reload();
-                                } catch (e) {
-                                    toast.error("Erro ao excluir.");
-                                }
-                            }
-                        }}
-                    />
-                )
-            }
+            {/* MODAL OVERLAYS */}
+            {isOpportunityModalOpen && (
+                <OpportunityForm
+                    initialData={editingOpportunity}
+                    linkedTasks={tasks.filter(t => t.opportunityId === editingOpportunity?.id)}
+                    onClose={() => { setIsOpportunityModalOpen(false); setEditingOpportunity(undefined); }}
+                    onSave={fetchOpportunities}
+                    onDelete={handleDeleteOpportunity}
+                />
+            )}
             <TaskForm
                 isOpen={isTaskModalOpen}
                 initialData={editingTask || (

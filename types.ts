@@ -80,6 +80,7 @@ export interface Opportunity {
   status: OpportunityStatus;
   responsibleId: string;
   deadline: Date;
+  priority?: 'BAIXA' | 'MÉDIA' | 'ALTA'; // NEW: Priority Field
   createdAt: Date;
   updatedAt: Date;
 

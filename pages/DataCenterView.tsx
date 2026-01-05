@@ -175,7 +175,7 @@ export const DataCenterView: React.FC = () => {
                     )
                 ) : (
                     // SCRUM VIEW
-                    <ScrumBoard solutions={filteredSolutions} onEdit={handleEdit} onPMC={handleOpenPMC} />
+                    <ScrumBoard solutions={filteredSolutions} onEdit={handleEdit} onPMC={handleOpenPMC} onDelete={handleDelete} />
                 )}
             </div>
 
@@ -203,7 +203,7 @@ export const DataCenterView: React.FC = () => {
 };
 
 // SCRUM BOARD COMPONENT
-const ScrumBoard = ({ solutions, onEdit, onPMC }: { solutions: DataSolution[], onEdit: (s: DataSolution) => void, onPMC: (id: string) => void }) => {
+const ScrumBoard = ({ solutions, onEdit, onPMC, onDelete }: { solutions: DataSolution[], onEdit: (s: DataSolution) => void, onPMC: (id: string) => void, onDelete: (id: string) => void }) => {
 
     const isLate = (date?: Date) => date && new Date() > new Date(date);
 
@@ -279,6 +279,9 @@ const ScrumBoard = ({ solutions, onEdit, onPMC }: { solutions: DataSolution[], o
                                         </button>
                                         <button onClick={(e) => { e.stopPropagation(); onEdit(s); }} className="hover:text-blue-600 p-1">
                                             Editar
+                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); onDelete(s.id); }} className="hover:text-red-600 p-1 text-red-500" title="Excluir">
+                                            Excluir
                                         </button>
                                     </div>
                                 </div>

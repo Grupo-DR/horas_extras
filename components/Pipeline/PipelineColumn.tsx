@@ -9,6 +9,7 @@ interface PipelineColumnProps {
     onDrop: (e: React.DragEvent, stage: PipelineStage) => void;
     onDragOver: (e: React.DragEvent) => void;
     onCardClick: (id: string) => void;
+    onDelete: (id: string) => void;
 }
 
 export const PipelineColumn: React.FC<PipelineColumnProps> = ({
@@ -16,7 +17,10 @@ export const PipelineColumn: React.FC<PipelineColumnProps> = ({
     opportunities,
     onDrop,
     onDragOver,
-    onCardClick
+    onDrop,
+    onDragOver,
+    onCardClick,
+    onDelete // NEW
 }) => {
     const totalValue = opportunities.reduce((sum, op) => sum + op.estimatedValue, 0);
 
@@ -56,6 +60,7 @@ export const PipelineColumn: React.FC<PipelineColumnProps> = ({
                         opportunity={op}
                         onDragStart={(e, id) => e.dataTransfer.setData('opportunityId', id)}
                         onClick={onCardClick}
+                        onDelete={onDelete}
                     />
                 ))}
 
