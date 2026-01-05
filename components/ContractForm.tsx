@@ -8,9 +8,10 @@ interface Props {
     onClose: () => void;
     onSave: (contract: any) => Promise<void>;
     initialData?: Contract;
+    onDelete?: (id: string) => void;
 }
 
-export const ContractForm: React.FC<Props> = ({ isOpen, onClose, onSave, initialData }) => {
+export const ContractForm: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, onDelete }) => {
     const [formData, setFormData] = useState({
         name: '',
         siteName: '',
@@ -168,6 +169,15 @@ export const ContractForm: React.FC<Props> = ({ isOpen, onClose, onSave, initial
                         >
                             Cancelar
                         </button>
+                        {initialData && initialData.id && onDelete && (
+                            <button
+                                type="button"
+                                onClick={() => onDelete(initialData.id)}
+                                className="px-4 py-2 text-red-600 font-bold hover:bg-red-50 rounded-lg mr-2 transition-colors"
+                            >
+                                Excluir
+                            </button>
+                        )}
                         <button
                             type="submit"
                             disabled={loading}

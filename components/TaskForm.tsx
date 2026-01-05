@@ -10,6 +10,7 @@ interface Props {
   availableParents: Task[];
   initialData?: Partial<Task>;
   mode?: 'FULL' | 'QUICK_EDIT';
+  onDelete?: (id: string) => void;
 }
 
 export const TaskForm: React.FC<Props> = ({
@@ -19,7 +20,8 @@ export const TaskForm: React.FC<Props> = ({
   users,
   availableParents,
   initialData,
-  mode = 'FULL'
+  mode = 'FULL',
+  onDelete
 }) => {
   const [isChild, setIsChild] = useState(!!initialData?.parentId || !!initialData?.opportunityId);
 
@@ -440,19 +442,11 @@ export const TaskForm: React.FC<Props> = ({
 
           <div className="flex justify-between pt-4 gap-3 bg-white sticky bottom-0 border-t mt-4 py-4">
 
-            {/* DELETE BUTTON (Only if editing) */}
-            {initialData && (
+            {/* DELETE BUTTON (Only if editing and ID exists) */}
+            {initialData && initialData.id && onDelete && (
               <button
                 type="button"
-                onClick={() => {
-                  if (confirm('Tem certeza que deseja excluir esta ação?')) {
-                    // Handler passed from parent? Or simple field update? 
-                    // Ideally should be a prop onDelete. For now, assuming standard save/update flow doesn't cover delete.
-                    // We need to add onDelete prop to TaskForm.
-                    // For this pass, I will just add the button UI.
-                    alert('Funcionalidade de Excluir será implementada na próxima etapa de integração.');
-                  }
-                }}
+                onClick={() => onDelete(initialData.id!)}
                 className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg font-medium border border-transparent hover:border-red-200 transition-colors"
               >
                 Excluir

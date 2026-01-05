@@ -603,6 +603,21 @@ export const CommercialView: React.FC = () => {
         }
     };
 
+    // NEW: Delete Task (for TaskForm)
+    const handleDeleteTask = async (taskId: string) => {
+        if (window.confirm("ATENÇÃO: Tem certeza que deseja excluir esta ação permanentemente?")) {
+            try {
+                await deleteDoc(doc(db, 'tasks', taskId));
+                toast.success('Tarefa excluída');
+                setIsTaskModalOpen(false);
+                setEditingTask(undefined);
+            } catch (error) {
+                console.error(error);
+                toast.error('Erro ao excluir tarefa');
+            }
+        }
+    };
+
     return (
         <div className="flex h-full w-full flex-col overflow-hidden">
             {/* HEADER */}
@@ -1098,6 +1113,7 @@ export const CommercialView: React.FC = () => {
                 }}
                 mode={taskFormMode}
                 onSave={handleSaveTask}
+                onDelete={handleDeleteTask}
             />
 
             <HistoryPanel

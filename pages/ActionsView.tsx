@@ -352,6 +352,7 @@ export const ActionsView: React.FC = () => {
                 availableParents={[]} // No parents selection for now in ActionsView quick add, or maybe yes? Leaving empty for simplicity as per requirements (mostly children tasks)
                 onClose={() => { setIsTaskModalOpen(false); setEditingTask(undefined); }}
                 onSave={handleSaveTask}
+                onDelete={handleDeleteTask}
             />
 
             <HistoryPanel

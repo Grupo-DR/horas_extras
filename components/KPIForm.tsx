@@ -8,9 +8,10 @@ interface Props {
     onSave: (kpi: Omit<KPI, 'id' | 'currentValue' | 'history' | 'updatedAt'>) => Promise<void>;
     users: User[];
     initialData?: KPI;
+    onDelete?: (id: string) => void;
 }
 
-export const KPIForm: React.FC<Props> = ({ isOpen, onClose, onSave, users, initialData }) => {
+export const KPIForm: React.FC<Props> = ({ isOpen, onClose, onSave, users, initialData, onDelete }) => {
     const [loading, setLoading] = useState(false);
 
     // FORM STATE
@@ -191,6 +192,15 @@ export const KPIForm: React.FC<Props> = ({ isOpen, onClose, onSave, users, initi
                         >
                             Cancelar
                         </button>
+                        {initialData && initialData.id && onDelete && (
+                            <button
+                                type="button"
+                                onClick={() => onDelete(initialData.id)}
+                                className="px-4 py-2 text-red-600 font-bold hover:bg-red-50 rounded-lg mr-auto transition-colors align-middle absolute left-6"
+                            >
+                                Excluir
+                            </button>
+                        )}
                         <button
                             type="submit"
                             disabled={loading}

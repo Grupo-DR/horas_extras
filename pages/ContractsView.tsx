@@ -187,6 +187,7 @@ export const ContractsView: React.FC = () => {
                 onClose={() => { setIsFormOpen(false); setEditingContract(undefined); }}
                 onSave={handleCreateContract}
                 initialData={editingContract}
+                onDelete={handleDelete}
             />
 
             <Toaster position="top-right" richColors />

@@ -168,6 +168,7 @@ export const KPIView: React.FC = () => {
                 onSave={handleCreateKPI}
                 users={MOCK_USERS}
                 initialData={editingKPI}
+                onDelete={handleDelete}
             />
 
             <Toaster position="top-right" richColors />
