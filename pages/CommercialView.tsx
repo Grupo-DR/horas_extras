@@ -741,7 +741,7 @@ export const CommercialView: React.FC = () => {
                             </div>
                         </div>
 
-                    </motion.div>
+                    </div>
                 )}
 
                 {/* STRATEGIC VIEW (PIPELINE) */}

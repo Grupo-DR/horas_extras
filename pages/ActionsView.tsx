@@ -57,7 +57,7 @@ export const ActionsView: React.FC = () => {
     const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-    const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+
 
     // FIREBASE SYNC
     useEffect(() => {
