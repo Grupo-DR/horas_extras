@@ -15,9 +15,10 @@ export const Sidebar: React.FC = () => {
     return (
         <aside className="fixed left-0 top-0 h-full w-20 flex flex-col items-center py-6 bg-white/70 backdrop-blur-md border-r border-white/50 shadow-2xl z-50">
             {/* BRAND */}
-            <div className="mb-8">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 shadow-lg shadow-blue-500/30 flex items-center justify-center text-white font-bold text-lg">
-                    DR
+            <div className="flex flex-col items-center w-full mb-8">
+                <img src="/assets/dr-logo.png" alt="DR" className="h-14 w-auto object-contain" />
+                <div className="bg-blue-600 w-full py-1 mt-2 flex justify-center shadow-lg">
+                    <span className="text-[10px] text-white font-black tracking-[0.4em] uppercase">NEXUS</span>
                 </div>
             </div>
 
