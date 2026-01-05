@@ -191,7 +191,7 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
       {/* METRICS & FOOTER */}
       <div className="mt-auto pt-3 border-t border-slate-100 pl-2">
         {/* VALUES ROW */}
-        {task.value && (
+        {(task.value !== undefined && task.value > 0) && (
           <div className="flex items-center gap-3 mb-3">
             <div className="text-xs"><span className="text-slate-400 text-[10px] block">Valor</span> <span className="font-bold text-slate-700">{formatBRL(task.value)}</span></div>
           </div>
