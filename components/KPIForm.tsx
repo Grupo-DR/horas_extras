@@ -147,7 +147,7 @@ export const KPIForm: React.FC<Props> = ({ isOpen, onClose, onSave, users, initi
                     {/* DATES */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-1">Início (Opcional)</label>
+                            <label className="block text-sm font-semibold text-slate-700 mb-1">Início</label>
                             <input
                                 type="date"
                                 className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
@@ -156,7 +156,7 @@ export const KPIForm: React.FC<Props> = ({ isOpen, onClose, onSave, users, initi
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-1">Fim / Prazo (Opcional)</label>
+                            <label className="block text-sm font-semibold text-slate-700 mb-1">Fim / Prazo</label>
                             <input
                                 type="date"
                                 className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"

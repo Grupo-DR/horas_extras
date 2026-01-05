@@ -43,6 +43,9 @@ export const KPIService = {
                         date: toDate(h.date),
                         value: n(h.value)
                     })) : [],
+
+                    startDate: raw.startDate ? toDate(raw.startDate) : undefined,
+                    endDate: raw.endDate ? toDate(raw.endDate) : undefined,
                     updatedAt: toDate(raw.updatedAt),
                 } as KPI;
             });
@@ -60,6 +63,9 @@ export const KPIService = {
             currentValue: 0, // Starts at 0
             responsibleId: s(kpi.responsibleId),
             responsibleName: s(kpi.responsibleName),
+
+            startDate: kpi.startDate ? Timestamp.fromDate(kpi.startDate) : null,
+            endDate: kpi.endDate ? Timestamp.fromDate(kpi.endDate) : null,
             history: [],
             updatedAt: Timestamp.now()
         };
@@ -97,6 +103,11 @@ export const KPIService = {
 
     update: async (id: string, data: Partial<KPI>) => {
         const docRef = doc(db, COLLECTION_NAME, id);
-        await updateDoc(docRef, { ...data, updatedAt: Timestamp.now() });
+        const payload: any = { ...data, updatedAt: Timestamp.now() };
+
+        if (data.startDate) payload.startDate = Timestamp.fromDate(data.startDate);
+        if (data.endDate) payload.endDate = Timestamp.fromDate(data.endDate);
+
+        await updateDoc(docRef, payload);
     }
 };

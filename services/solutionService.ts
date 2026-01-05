@@ -21,7 +21,12 @@ const s = (v: any) => typeof v === 'string' ? v : '';
 
 // Helper: Strict Status
 const strictStatus = (v: any) => {
-    if (['ACTIVE', 'COMPLETED', 'ON_HOLD'].includes(v)) return v;
+    if (['ACTIVE', 'COMPLETED', 'ON_HOLD', 'TODO', 'REVIEW'].includes(v)) return v; // Standardized Enum Values
+    // Fallback for user custom strings if we were to support them, but sticking to Types for now makes sense.
+    // User requested explicit strings: ['Requirements', 'A fazer', 'Em processo', 'Revisão/Teste', 'Concluído', 'ACTIVE', 'COMPLETED', 'ON_HOLD']
+    // However, our types.ts uses ENUM-like keys: 'ON_HOLD' (which maps to Requirements), 'TODO' (A Fazer), 'ACTIVE' (Em Processo), 'REVIEW' (Revisão), 'COMPLETED' (Concluído).
+    // The DataCenterView.tsx matches these keys. So we must allow these keys.
+    if (['Requirements', 'A fazer', 'Em processo', 'Revisão/Teste', 'Concluído'].includes(v)) return v; // Allow these just in case legacy or direct writes
     return 'ACTIVE';
 }
 
@@ -43,6 +48,7 @@ export const SolutionService = {
                     responsibleName: s(raw.responsibleName),
                     status: strictStatus(raw.status),
                     description: s(raw.description),
+                    pmcData: raw.pmcData || {},
                     createdAt: toDate(raw.createdAt),
                     updatedAt: toDate(raw.updatedAt),
                 } as DataSolution;
