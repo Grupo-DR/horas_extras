@@ -177,6 +177,21 @@ export interface DataSolution {
   status: 'ACTIVE' | 'COMPLETED' | 'ON_HOLD';
 
   description?: string;
+  pmcData?: {
+    justificativas: string[];
+    objetivoSmart: string[];
+    beneficios: string[];
+    solucao: string[];
+    requisitos: string[];
+    stakeholders: string[];
+    equipe: string[];
+    entregas: string[];
+    premissas: string[];
+    manutencao: string[]; // Grupos de Entrega / Manutenção? User spec: "Entregas, Premissas, Manutenção"
+    riscos: string[];
+    cronograma: string[];
+    custo: string[];
+  };
   createdAt?: Date;
   updatedAt?: Date;
 }

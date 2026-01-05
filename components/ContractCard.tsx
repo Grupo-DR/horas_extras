@@ -140,20 +140,12 @@ export const ContractCard: React.FC<Props> = ({ contract, onAddMeasurement, onEd
                 </div>
 
                 {/* FOOTER ACTIONS */}
-                <div className="bg-slate-50 border-t border-slate-100 p-3 grid grid-cols-2 gap-3">
-                    <button
-                        onClick={() => setIsMeasureFormOpen(true)}
-                        className="flex items-center justify-center gap-2 py-2 rounded-lg bg-white border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 hover:text-slate-800 hover:border-slate-300 transition-all shadow-sm"
-                    >
-                        <Plus size={14} className="text-green-600" /> Nova Medição
-                    </button>
-                    <button
-                        onClick={handleOpenCommercial}
-                        className="flex items-center justify-center gap-2 py-2 rounded-lg bg-white border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 hover:text-slate-800 hover:border-slate-300 transition-all shadow-sm"
-                    >
-                        <ExternalLink size={14} className="text-blue-600" /> Ver Tarefas
-                    </button>
-                </div>
+                <button
+                    onClick={() => setIsMeasureFormOpen(true)}
+                    className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-white border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 hover:text-slate-800 hover:border-slate-300 transition-all shadow-sm"
+                >
+                    <Plus size={14} className="text-green-600" /> Nova Medição
+                </button>
 
             </motion.div>
 

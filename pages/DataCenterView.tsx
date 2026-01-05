@@ -4,7 +4,8 @@ import { DataSolution, User } from '../types';
 import { SolutionService } from '../services/solutionService';
 import { SolutionCard } from '../components/SolutionCard';
 import { SolutionForm } from '../components/SolutionForm';
-import { Lightbulb, Plus, Search, Database } from 'lucide-react';
+import { ProjectModelCanvas } from '../components/ProjectModelCanvas';
+import { Lightbulb, Plus, Search, Database, Layout } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 
 // MOCK USERS (Should be shared context in real app)
@@ -19,6 +20,10 @@ export const DataCenterView: React.FC = () => {
     const [solutions, setSolutions] = useState<DataSolution[]>([]);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingSolution, setEditingSolution] = useState<DataSolution | undefined>(undefined);
+    // PMC STATE
+    const [isPMCOpen, setIsPMCOpen] = useState(false);
+    const [selectedSolutionForPMC, setSelectedSolutionForPMC] = useState<DataSolution | undefined>(undefined);
+
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
@@ -63,9 +68,12 @@ export const DataCenterView: React.FC = () => {
 
     const navigate = useNavigate();
 
-    const handleExplore = (solutionId: string) => {
-        // Navigate to Commercial View with Filter
-        navigate(`/comercial?solutionId=${solutionId}`);
+    const handleOpenPMC = (solutionId: string) => {
+        const solution = solutions.find(s => s.id === solutionId);
+        if (solution) {
+            setSelectedSolutionForPMC(solution);
+            setIsPMCOpen(true);
+        }
     };
 
     const filteredSolutions = solutions.filter(s =>
@@ -103,6 +111,13 @@ export const DataCenterView: React.FC = () => {
                         <Plus size={20} />
                         Nova Solução
                     </button>
+                    <button
+                        onClick={() => navigate('/comercial?solutionId=ALL')}
+                        className="text-blue-600 font-bold hover:bg-blue-50 px-4 py-2 rounded-lg transition-colors flex items-center gap-2 border border-blue-200 shadow-sm"
+                    >
+                        <Search size={18} />
+                        Visualizar Todas as Ações de Dados
+                    </button>
                 </div>
             </div>
 
@@ -130,7 +145,7 @@ export const DataCenterView: React.FC = () => {
                             <SolutionCard
                                 key={solution.id}
                                 solution={solution}
-                                onExplore={handleExplore}
+                                onExplore={handleOpenPMC}
                                 onEdit={handleEdit}
                                 onDelete={handleDelete}
                             />
@@ -147,6 +162,15 @@ export const DataCenterView: React.FC = () => {
                 users={MOCK_USERS}
                 initialData={editingSolution}
             />
+
+            {/* PMC MODAL */}
+            {selectedSolutionForPMC && (
+                <ProjectModelCanvas
+                    isOpen={isPMCOpen}
+                    onClose={() => { setIsPMCOpen(false); setSelectedSolutionForPMC(undefined); }}
+                    solution={selectedSolutionForPMC}
+                />
+            )}
 
             <Toaster position="top-right" richColors />
         </div>

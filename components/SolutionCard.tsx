@@ -1,6 +1,6 @@
 import React from 'react';
 import { DataSolution } from '../types';
-import { Calendar, User, Users, ChevronRight, Pencil, Trash2 } from 'lucide-react';
+import { Calendar, User, Users, Pencil, Trash2, Layout } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion } from 'framer-motion';
@@ -89,8 +89,8 @@ export const SolutionCard: React.FC<Props> = ({ solution, onExplore, onEdit, onD
                     onClick={() => onExplore(solution.id)}
                     className="w-full mt-auto bg-slate-50 hover:bg-slate-100 text-blue-600 border border-slate-200 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors group"
                 >
-                    Explorar Ações
-                    <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                    <Layout size={16} />
+                    Project Model Canvas
                 </button>
             </div>
         </motion.div>

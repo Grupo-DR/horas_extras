@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Contract } from '../types';
 import { ContractService } from '../services/contractService';
 import { ContractCard } from '../components/ContractCard';
@@ -11,6 +12,23 @@ export const ContractsView: React.FC = () => {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingContract, setEditingContract] = useState<Contract | undefined>(undefined);
     const [searchTerm, setSearchTerm] = useState('');
+    const navigate = useNavigate();
+
+    // DASHBOARD METRICS
+    const stats = React.useMemo(() => {
+        const activeContracts = contracts.filter(c => c.status === 'ACTIVE');
+        const activeCount = activeContracts.length;
+
+        const walletValue = activeContracts.reduce((acc, c) => acc + c.totalValue, 0);
+
+        const totalBalance = activeContracts.reduce((acc, c) => {
+            const accumulated = (c.measurements || []).reduce((sum, m) => sum + (m.value || 0), 0);
+            return acc + (c.totalValue - accumulated);
+        }, 0);
+
+        return { activeCount, walletValue, totalBalance };
+    }, [contracts]);
+
 
     useEffect(() => {
         // Subscribe to real-time updates
@@ -101,6 +119,55 @@ export const ContractsView: React.FC = () => {
                     </button>
                 </div>
             </header>
+
+            {/* BI DASHBOARD */}
+            <div className="bg-white border-b border-indigo-100 px-8 py-6 mb-6">
+                <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl flex items-center justify-between shadow-sm">
+                        <div>
+                            <p className="text-indigo-600 font-bold text-xs uppercase tracking-wide">Contratos Ativos</p>
+                            <p className="text-3xl font-bold text-indigo-900 mt-1">{stats.activeCount}</p>
+                        </div>
+                        <div className="bg-white p-3 rounded-full text-indigo-500 shadow-sm">
+                            <FileText size={24} />
+                        </div>
+                    </div>
+
+                    <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl flex items-center justify-between shadow-sm">
+                        <div>
+                            <p className="text-emerald-600 font-bold text-xs uppercase tracking-wide">Valor em Carteira</p>
+                            <p className="text-3xl font-bold text-emerald-900 mt-1">
+                                {stats.walletValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </p>
+                        </div>
+                        <div className="bg-white p-3 rounded-full text-emerald-500 shadow-sm">
+                            <PlusCircle size={24} />
+                        </div>
+                    </div>
+
+                    <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-center justify-between shadow-sm">
+                        <div>
+                            <p className="text-blue-600 font-bold text-xs uppercase tracking-wide">Saldo a Executar</p>
+                            <p className="text-3xl font-bold text-blue-900 mt-1">
+                                {stats.totalBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </p>
+                        </div>
+                        <div className="bg-white p-3 rounded-full text-blue-500 shadow-sm">
+                            <Search size={24} />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="max-w-7xl mx-auto mt-6 flex justify-end">
+                    <button
+                        onClick={() => navigate('/comercial?contractId=ALL')}
+                        className="text-indigo-600 font-bold hover:bg-indigo-50 px-4 py-2 rounded-lg transition-colors flex items-center gap-2 border border-indigo-200 shadow-sm hover:shadow"
+                    >
+                        <Search size={18} />
+                        Visualizar Todas as Ações de Obras
+                    </button>
+                </div>
+            </div>
 
             {/* CONTENT GRID */}
             <div className="p-8 max-w-7xl mx-auto">
