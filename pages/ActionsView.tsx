@@ -147,11 +147,11 @@ export const ActionsView: React.FC = () => {
     // FILTER LOGIC
     const filteredTasks = useMemo(() => {
         return tasks.filter(t => {
-            // 1. Module Filter
-            if (filterModule === 'COMMERCIAL' && !t.opportunityId) return false;
-            if (filterModule === 'CONTRACT' && !t.contractId) return false;
-            if (filterModule === 'DATA' && !t.solutionId) return false;
-            if (filterModule === 'KPI' && !t.kpiId) return false;
+            // 1. Module Filter (Hybrid Approach: ID OR Category)
+            if (filterModule === 'COMMERCIAL' && (!t.opportunityId && t.moduleCategory !== 'COMERCIAL')) return false;
+            if (filterModule === 'CONTRACT' && (!t.contractId && t.moduleCategory !== 'CONTRATOS')) return false;
+            if (filterModule === 'DATA' && (!t.solutionId && t.moduleCategory !== 'DADOS')) return false;
+            if (filterModule === 'KPI' && (!t.kpiId && t.moduleCategory !== 'KPI')) return false;
 
             // 1.1 Strict Context URL Filter (Overrides Module generic filter if present)
             if (contractIdParam && t.contractId !== contractIdParam) return false;

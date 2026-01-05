@@ -174,7 +174,8 @@ export const OpportunityService = {
                 progress: 0,
                 observations: '',
                 createdAt: new Date(),
-                updatedAt: new Date()
+                updatedAt: new Date(),
+                moduleCategory: 'COMERCIAL' // Auto-categorization
             } as any;
 
             transaction.set(newTaskRef, newTaskData);

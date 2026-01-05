@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Task, TaskStatus, User, TaskOutcome } from '../types';
+import { Task, TaskStatus, User, TaskOutcome, ModuleCategory } from '../types';
 import { X, User as UserIcon, Building, FileText, Phone, Mail, DollarSign, Target, Award, CheckCircle } from 'lucide-react';
 
 interface Props {
@@ -42,6 +42,7 @@ export const TaskForm: React.FC<Props> = ({
     contactEmail: '',
     contactPhone: '',
     outcome: undefined,
+    moduleCategory: 'GERAL', // Default
     ...initialData // Merge passed data (edit or template)
   });
 
@@ -68,9 +69,11 @@ export const TaskForm: React.FC<Props> = ({
         observations: '',
         progress: 0,
         startDate: new Date(),
+        startDate: new Date(),
         endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         parentId: undefined,
-        outcome: undefined
+        outcome: undefined,
+        moduleCategory: 'GERAL'
       });
       setIsChild(true); // Default to Child as requested
     }
@@ -261,6 +264,21 @@ export const TaskForm: React.FC<Props> = ({
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   />
+                </div>
+
+                <div className="md:col-span-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Vincular ao Módulo</label>
+                  <select
+                    className="w-full p-2 border border-slate-300 rounded-lg"
+                    value={formData.moduleCategory || 'GERAL'}
+                    onChange={(e) => setFormData({ ...formData, moduleCategory: e.target.value as ModuleCategory })}
+                  >
+                    <option value="GERAL">Geral (Sem Vínculo)</option>
+                    <option value="COMERCIAL">Comercial</option>
+                    <option value="CONTRATOS">Contratos (Obras)</option>
+                    <option value="DADOS">Dados e Soluções</option>
+                    <option value="KPI">Gestão de KPIs</option>
+                  </select>
                 </div>
 
                 {isChild ? (

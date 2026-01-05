@@ -95,6 +95,8 @@ export interface Opportunity {
   submissionDate?: Date;
 }
 
+export type ModuleCategory = 'COMERCIAL' | 'CONTRATOS' | 'DADOS' | 'KPI' | 'GERAL';
+
 export interface Task {
   id: string;
   title: string;
@@ -106,6 +108,7 @@ export interface Task {
   observations: string;
   priority: 'BAIXO' | 'MEDIO' | 'ALTO'; // Changed to Portuguese as requested
   category?: string;
+  moduleCategory: ModuleCategory; // NEW: Field for robust filtering
   progress: number;
 
   // Link to Opportunity & Automation
