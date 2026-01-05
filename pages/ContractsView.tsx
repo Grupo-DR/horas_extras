@@ -127,50 +127,30 @@ export const ContractsView: React.FC = () => {
             {/* BI DASHBOARD */}
             <div className="bg-white border-b border-indigo-100 px-8 py-6 mb-6">
                 <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl flex items-center justify-between shadow-sm">
-                        <div>
-                            <p className="text-indigo-600 font-bold text-xs uppercase tracking-wide">Contratos Ativos</p>
-                            <p className="text-3xl font-bold text-indigo-900 mt-1">{stats.activeCount}</p>
-                        </div>
-                        <div className="bg-white p-3 rounded-full text-indigo-500 shadow-sm">
-                            <FileText size={24} />
-                        </div>
+                    <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl shadow-sm flex flex-col justify-between">
+                        <p className="text-slate-500 font-bold text-xs uppercase tracking-wide">Contratos Ativos</p>
+                        <p className="text-4xl font-bold text-slate-800 mt-2">{stats.activeCount}</p>
                     </div>
 
-                    <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl flex items-center justify-between shadow-sm">
-                        <div>
-                            <p className="text-emerald-600 font-bold text-xs uppercase tracking-wide">Valor em Carteira</p>
-                            <p className="text-3xl font-bold text-emerald-900 mt-1">
-                                {stats.walletValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                            </p>
-                        </div>
-                        <div className="bg-white p-3 rounded-full text-emerald-500 shadow-sm">
-                            <PlusCircle size={24} />
-                        </div>
+                    <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl shadow-sm flex flex-col justify-between">
+                        <p className="text-slate-500 font-bold text-xs uppercase tracking-wide">Valor em Carteira</p>
+                        <p className="text-3xl font-bold text-slate-800 mt-2">
+                            {stats.walletValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </p>
                     </div>
 
-                    <div className="bg-purple-50 border border-purple-100 p-4 rounded-xl flex items-center justify-between shadow-sm">
-                        <div>
-                            <p className="text-purple-600 font-bold text-xs uppercase tracking-wide">Valor Executado Ativo</p>
-                            <p className="text-3xl font-bold text-purple-900 mt-1">
-                                {stats.executedValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                            </p>
-                        </div>
-                        <div className="bg-white p-3 rounded-full text-purple-500 shadow-sm">
-                            <FileText size={24} />
-                        </div>
+                    <div className="bg-purple-50 border border-purple-100 p-4 rounded-xl shadow-sm flex flex-col justify-between">
+                        <p className="text-slate-500 font-bold text-xs uppercase tracking-wide">Valor Executado Ativo</p>
+                        <p className="text-3xl font-bold text-slate-800 mt-2">
+                            {stats.executedValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </p>
                     </div>
 
-                    <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-center justify-between shadow-sm">
-                        <div>
-                            <p className="text-blue-600 font-bold text-xs uppercase tracking-wide">Saldo a Executar</p>
-                            <p className="text-3xl font-bold text-blue-900 mt-1">
-                                {stats.totalBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                            </p>
-                        </div>
-                        <div className="bg-white p-3 rounded-full text-blue-500 shadow-sm">
-                            <Search size={24} />
-                        </div>
+                    <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl shadow-sm flex flex-col justify-between">
+                        <p className="text-slate-500 font-bold text-xs uppercase tracking-wide">Saldo a Executar</p>
+                        <p className="text-3xl font-bold text-slate-800 mt-2">
+                            {stats.totalBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </p>
                     </div>
                 </div>
 

@@ -203,75 +203,83 @@ export const DataCenterView: React.FC = () => {
 
 // SCRUM BOARD COMPONENT
 const ScrumBoard = ({ solutions, onEdit, onPMC }: { solutions: DataSolution[], onEdit: (s: DataSolution) => void, onPMC: (id: string) => void }) => {
-    // Columns: Requirements, A fazer, Em processo, Revisão/Teste, Concluído
-    // Mapping Status to Columns might require a more granular status in DataSolution type.
-    // For now we map: ACTIVE -> Em Processo, COMPLETED -> Concluído, PAUSED -> A Fazer (Assumption for demo)
-    // Or we should update DataSolution status to have these values?
-    // User asked for specific columns. Let's map roughly or just display them.
-    // Ideally we would add a 'scrumStage' field to DataSolution. 
-    // Assuming we can't change schema too drastically right now without migration, lets map:
-    // PENDING -> Requirements
-    // TODO -> A Fazer
-    // IN_PROGRESS -> Em Processo
-    // REVIEW -> Revisao
-    // DONE -> Concluido
-
-    // Since we only have ACTIVE, COMPLETED, PAUSED in Status Enum (or similar simple string).
-    // Let's assume the user wants to Drag & Drop eventually, but for now just display.
-    // Wait, `status` is just a string in the interface usually? 
-    // Let's check types.ts. It is 'ACTIVE' | 'COMPLETED' | 'PAUSED' usually.
-    // Let's use simple filtering for now, and maybe a "Mock" distribution or fallback.
-    // Actually, to fully implement "Fluxo Scrum" properly, we should really add a `stage` field.
-    // But let's map loosely:
-    // PAUSED -> Requirements / A Fazer
-    // ACTIVE -> Em Processo
-    // COMPLETED -> Concluido
-
-    // To enable the requested columns, we might need to fake it or rely on a new field.
-    // Let's just group by Status for now and Add "Late" tags.
-
-    // Columns requested: Requirements, A fazer, Em processo, Revisão/Teste, Concluído.
-    // That's 5 columns.
-    // We only have 3 status values.
-    // Let's just put all 'ACTIVE' in 'Em Processo', 'ON_HOLD' in 'Requirements', 'COMPLETED' in 'Concluído'.
-    // And leave 'A Fazer' and 'Revisão' empty for now or put new items there if we had a field.
 
     const isLate = (date?: Date) => date && new Date() > new Date(date);
 
+    // Filter by statuses from types.ts
     const stages = [
-        { id: 'PAUSED', label: 'Backlog / Requirements', items: solutions.filter(s => s.status === 'ON_HOLD') },
-        { id: 'TODO', label: 'A Fazer', items: [] }, // Empty for now
+        { id: 'ON_HOLD', label: 'Backlog / Requirements', items: solutions.filter(s => s.status === 'ON_HOLD') },
+        { id: 'TODO', label: 'A Fazer', items: solutions.filter(s => s.status === 'TODO') },
         { id: 'ACTIVE', label: 'Em Processo', items: solutions.filter(s => s.status === 'ACTIVE') },
-        { id: 'REVIEW', label: 'Revisão / Teste', items: [] }, // Empty
+        { id: 'REVIEW', label: 'Revisão / Teste', items: solutions.filter(s => s.status === 'REVIEW') },
         { id: 'COMPLETED', label: 'Concluído', items: solutions.filter(s => s.status === 'COMPLETED') }
     ];
+
+    const handleDragStart = (e: React.DragEvent, id: string) => {
+        e.dataTransfer.setData('solutionId', id);
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+    };
+
+    const handleDrop = async (e: React.DragEvent, newStatus: string) => {
+        const solutionId = e.dataTransfer.getData('solutionId');
+        if (!solutionId) return;
+
+        // Optimistic update would be complex here without state lifting or prop drilling setSolutions
+        // We will rely on real-time subscription update for now or just trigger update
+        try {
+            await SolutionService.update(solutionId, { status: newStatus as any });
+            toast.success("Status atualizado!");
+        } catch (error) {
+            console.error(error);
+            toast.error("Erro ao mover solução.");
+        }
+    };
 
     return (
         <div className="flex gap-4 h-full overflow-x-auto pb-4">
             {stages.map(stage => (
-                <div key={stage.id} className="min-w-[280px] bg-slate-100 rounded-xl p-3 flex flex-col h-full">
+                <div
+                    key={stage.id}
+                    className="min-w-[280px] bg-slate-100 rounded-xl p-3 flex flex-col h-full transition-colors hover:bg-slate-200/50"
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, stage.id)}
+                >
                     <div className="font-bold text-slate-600 mb-3 flex justify-between items-center">
                         <span className="uppercase text-xs tracking-wider">{stage.label}</span>
                         <span className="bg-slate-200 text-slate-600 text-xs px-2 py-0.5 rounded-full">{stage.items.length}</span>
                     </div>
                     <div className="flex-1 flex flex-col gap-3 overflow-y-auto">
                         {stage.items.length === 0 && (
-                            <div className="text-center py-10 opacity-30 text-sm italic">Vazio</div>
+                            <div className="text-center py-10 opacity-30 text-sm italic">Arrastar para aqui</div>
                         )}
                         {stage.items.map((s: any) => (
-                            <div key={s.id} className="bg-white p-3 rounded-lg shadow-sm border border-slate-200 hover:shadow-md transition-shadow cursor-pointer flex flex-col gap-2" onClick={() => onPMC(s.id)}>
+                            <div
+                                key={s.id}
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, s.id)}
+                                className="bg-white p-3 rounded-lg shadow-sm border border-slate-200 hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing flex flex-col gap-2 relative group"
+                            // REMOVED onClick for PMC here to prevent conflict. PMC access via button below.
+                            >
                                 <div className="flex justify-between items-start">
                                     <span className="font-bold text-slate-800 line-clamp-2 text-sm leading-tight">{s.name}</span>
                                     {isLate(s.deadline) && s.status !== 'COMPLETED' && (
-                                        <span className="bg-red-100 text-red-600 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded">Atrasada</span>
+                                        <span className="bg-red-100 text-red-600 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded">ATRASADO</span>
                                     )}
                                 </div>
                                 <p className="text-xs text-slate-500 line-clamp-2">{s.description}</p>
                                 <div className="mt-auto pt-2 flex justify-between items-center text-xs text-slate-400">
                                     <span>{s.responsibleName?.split(' ')[0]}</span>
-                                    <button onClick={(e) => { e.stopPropagation(); onEdit(s); }} className="hover:text-blue-600 p-1">
-                                        Editar
-                                    </button>
+                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onClick={(e) => { e.stopPropagation(); onPMC(s.id); }} className="hover:text-blue-600 p-1 font-bold" title="Abrir PMC">
+                                            PMC
+                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); onEdit(s); }} className="hover:text-blue-600 p-1">
+                                            Editar
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         ))}

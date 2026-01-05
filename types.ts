@@ -175,7 +175,7 @@ export interface DataSolution {
   deadline: Date;
   responsibleId: string; // Link to user
   responsibleName?: string; // Display cache
-  status: 'ACTIVE' | 'COMPLETED' | 'ON_HOLD';
+  status: 'ACTIVE' | 'COMPLETED' | 'ON_HOLD' | 'TODO' | 'REVIEW';
 
   description?: string;
   pmcData?: {
@@ -216,6 +216,9 @@ export interface KPI {
   responsibleName?: string;
 
   history: KPIHistory[];
+
+  startDate?: Date;
+  endDate?: Date;
 
   updatedAt?: Date;
 }

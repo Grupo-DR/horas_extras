@@ -52,9 +52,9 @@ export const KPICard: React.FC<Props> = ({ kpi, onExplore, onUpdate, onEdit, onD
             <div className={`absolute top-0 left-0 w-1.5 h-full ${isMet ? 'bg-green-500' : 'bg-blue-500'}`}></div>
 
             <div className="flex justify-between items-start mb-4 pl-3">
-                <div>
-                    <h3 className="font-bold text-slate-800 text-lg leading-tight">{kpi.name}</h3>
-                    <p className="text-xs text-slate-500 mt-1 uppercase font-bold tracking-wider">
+                <div className="flex-1 min-w-0 pr-2">
+                    <h3 className="font-bold text-slate-800 text-lg leading-tight truncate">{kpi.name}</h3>
+                    <p className="text-xs text-slate-500 mt-1 uppercase font-bold tracking-wider truncate">
                         {kpi.responsibleName || 'Responsável'}
                     </p>
                 </div>
