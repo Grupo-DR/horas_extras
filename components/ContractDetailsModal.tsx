@@ -60,25 +60,46 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
 
     // Prepare Chart Data
     const chartData = useMemo(() => {
-        if (!contract || !contract.measurements) return [];
+        if (!contract) return [];
+
+        const measurements = contract.measurements || [];
+        const totalValue = contract.totalValue || 0;
+        const startDate = new Date(contract.startDate);
 
         // Sort measurements by date
-        const sorted = [...contract.measurements].sort((a, b) => a.date.getTime() - b.date.getTime());
+        const sorted = [...measurements].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-        // Create cumulative data
+        // Create data points starting with the contract start date
+        const points = [
+            {
+                date: startDate,
+                shortDate: format(startDate, 'dd/MM/yy'),
+                monthYear: format(startDate, 'MMM yy', { locale: ptBR }),
+                value: 0,
+                accumulated: 0,
+                balance: totalValue,
+                description: 'Início do Contrato'
+            }
+        ];
+
         let accumulated = 0;
-        return sorted.map(m => {
+        sorted.forEach(m => {
+            const mDate = new Date(m.date);
             accumulated += m.value;
-            return {
-                date: m.date,
-                shortDate: format(m.date, 'dd/MM/yy'),
-                monthYear: format(m.date, 'MMM yy', { locale: ptBR }),
+            points.push({
+                date: mDate,
+                shortDate: format(mDate, 'dd/MM/yy'),
+                monthYear: format(mDate, 'MMM yy', { locale: ptBR }),
                 value: m.value,
                 accumulated: accumulated,
+                balance: totalValue - accumulated,
                 description: m.description
-            };
+            });
         });
-    }, [contract?.measurements]);
+
+        // Ensure chronological order if measurements predate start date (edge case)
+        return points.sort((a, b) => a.date.getTime() - b.date.getTime());
+    }, [contract]);
 
     // Financial Stats
     const totalValue = contract?.totalValue || 0;
@@ -221,11 +242,19 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                             <Area
                                                 type="monotone"
                                                 dataKey="accumulated"
-                                                name="Acumulado"
+                                                name="Valor Medido Acumulado"
                                                 stroke="#2563eb"
                                                 strokeWidth={3}
                                                 fillOpacity={1}
                                                 fill="url(#colorAccumulated)"
+                                            />
+                                            <Line
+                                                type="monotone"
+                                                dataKey="balance"
+                                                name="Saldo Remanescente"
+                                                stroke="#f59e0b"
+                                                strokeWidth={3}
+                                                dot={false}
                                             />
                                         </ComposedChart>
                                     </ResponsiveContainer>
