@@ -26,7 +26,7 @@ interface ContractDetailsModalProps {
     onRemoveMeasurement: (contractId: string, measurementId: string) => Promise<void>;
 }
 
-const CustomTooltip = ({ active, payload, label, crossoverDate }: any) => {
+const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
         // Detect if hovering over projection
         const isProjection = payload[0]?.payload?.isProjection;
@@ -52,16 +52,6 @@ const CustomTooltip = ({ active, payload, label, crossoverDate }: any) => {
                         );
                     })}
                 </div>
-                {isProjection && crossoverDate && (
-                    <div className="mt-2 pt-2 border-t border-slate-100">
-                        <p className="text-xs text-slate-500">
-                            Tendência de Cruzamento: <br />
-                            <span className="font-bold text-slate-700">
-                                {format(new Date(crossoverDate), 'dd/MM/yyyy')}
-                            </span>
-                        </p>
-                    </div>
-                )}
             </div>
         );
     }
@@ -83,8 +73,8 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
     const [loading, setLoading] = useState(false);
 
     // Prepare Chart Data
-    const { chartData, crossoverDate } = useMemo(() => {
-        if (!contract) return { chartData: [], crossoverDate: null };
+    const chartData = useMemo(() => {
+        if (!contract) return [];
 
         const measurements = contract.measurements || [];
         const totalValue = contract.totalValue || 0;
@@ -133,8 +123,6 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
         });
 
         // Calculate Rate and Projections
-        let foundCrossover = null;
-
         if (sorted.length > 0 && totalValue > 0) {
             const daysElapsed = Math.max(1, Math.ceil((lastDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
             const dailyRate = accumulated / daysElapsed;
@@ -148,32 +136,24 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
             let projectionAccumulated = accumulated;
             let projectionBalance = totalValue - accumulated;
 
-            // Generate Weekly Projection Points until End Date
-            // We iterate day by day but push weekly to keep chart clean? 
-            // Better: Iterate by larger steps or strict daily? Let's do roughly 10 points or weekly.
-            // Let's do daily simulation for accurate crossover, but only push points occasionally?
-            // User requested "daily or weekly". Let's do weekly to avoid thousands of points if long contract.
+            // Generate Monthly Projection Points until End Date
+            // We iterate day by day to calculate values correctly, but only push points strictly for months and end date
 
             let currentDate = new Date(lastDate);
             currentDate.setDate(currentDate.getDate() + 1); // Start next day
+
+            let lastPushedMonth = lastDate.getMonth();
 
             while (currentDate <= endDate) {
                 const daysInFuture = Math.ceil((currentDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
                 projectionAccumulated = accumulated + (dailyRate * daysInFuture);
                 projectionBalance = (totalValue - accumulated) - (dailyRate * daysInFuture);
 
-                // Detect crossover (First time Accumulated >= Balance)
-                if (!foundCrossover && projectionAccumulated >= projectionBalance) {
-                    foundCrossover = new Date(currentDate);
-                }
-
-                // Push points every 7 days OR if it's the endDate OR if it's the crossover date (for precision)
-                // Actually, let's just do every 7 days + End Date.
-                // Recharts handles gaps fine.
-                const isWeekly = Math.ceil((currentDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) % 7 === 0;
+                const currentMonth = currentDate.getMonth();
+                const isNewMonth = currentMonth !== lastPushedMonth;
                 const isFinal = currentDate.getTime() === endDate.getTime();
 
-                if (isWeekly || isFinal) {
+                if (isNewMonth || isFinal) {
                     points.push({
                         date: new Date(currentDate),
                         shortDate: format(currentDate, 'dd/MM/yy'),
@@ -186,6 +166,7 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                         isProjection: true,
                         description: 'Projeção'
                     });
+                    lastPushedMonth = currentMonth;
                 }
 
                 currentDate.setDate(currentDate.getDate() + 1);
@@ -193,8 +174,7 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
         }
 
         // Sort by date
-        const finalChartData = points.sort((a, b) => a.date.getTime() - b.date.getTime());
-        return { chartData: finalChartData, crossoverDate: foundCrossover };
+        return points.sort((a, b) => a.date.getTime() - b.date.getTime());
     }, [contract]);
 
     // Financial Stats
@@ -310,11 +290,12 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                             </defs>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                                             <XAxis
-                                                dataKey="shortDate"
+                                                dataKey="monthYear"
                                                 axisLine={false}
                                                 tickLine={false}
                                                 tick={{ fill: '#64748b', fontSize: 12 }}
                                                 dy={10}
+                                                interval="preserveStartEnd"
                                             />
                                             <YAxis
                                                 axisLine={false}
@@ -322,7 +303,7 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                                 tick={{ fill: '#64748b', fontSize: 12 }}
                                                 tickFormatter={(val) => val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}
                                             />
-                                            <Tooltip content={<CustomTooltip crossoverDate={crossoverDate} />} />
+                                            <Tooltip content={<CustomTooltip />} />
 
                                             <ReferenceLine
                                                 y={totalValue}
