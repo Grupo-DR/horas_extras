@@ -17,8 +17,6 @@ export const PipelineColumn: React.FC<PipelineColumnProps> = ({
     opportunities,
     onDrop,
     onDragOver,
-    onDrop,
-    onDragOver,
     onCardClick,
     onDelete // NEW
 }) => {
