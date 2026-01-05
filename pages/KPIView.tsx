@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { KPI, User } from '../types';
 import { KPIService } from '../services/kpiService';
 import { KPICard } from '../components/KPICard';
@@ -78,8 +79,10 @@ export const KPIView: React.FC = () => {
         }
     };
 
+    const navigate = useNavigate();
+
     const handleExplore = (kpiId: string) => {
-        window.location.href = `/comercial?kpiId=${kpiId}`;
+        navigate(`/comercial?kpiId=${kpiId}`);
     };
 
     const filteredKpis = kpis.filter(k =>

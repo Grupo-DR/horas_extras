@@ -15,7 +15,7 @@ import { ptBR } from 'date-fns/locale';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, LineChart, Line } from 'recharts';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Toaster, toast } from 'sonner';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 
 // THEME COLORS
 const COLORS = {
@@ -69,6 +69,7 @@ const safeData = (v: any) => {
 export const CommercialView: React.FC = () => {
     // --- STATE ---
     const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
     const contractIdFilter = searchParams.get('contractId');
     const solutionIdFilter = searchParams.get('solutionId');
     const kpiIdFilter = searchParams.get('kpiId');
@@ -661,7 +662,7 @@ export const CommercialView: React.FC = () => {
                         </span>
                         <div className="h-3 w-px bg-indigo-200 mx-1"></div>
                         <button
-                            onClick={() => window.location.href = '/comercial'}
+                            onClick={() => navigate('/comercial')}
                             className="hover:bg-indigo-100 p-0.5 rounded transition-colors text-indigo-500 hover:text-indigo-800 flex items-center gap-1"
                         >
                             <X size={14} />

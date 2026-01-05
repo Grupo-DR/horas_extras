@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DataSolution, User } from '../types';
 import { SolutionService } from '../services/solutionService';
 import { SolutionCard } from '../components/SolutionCard';
@@ -60,9 +61,11 @@ export const DataCenterView: React.FC = () => {
         }
     };
 
+    const navigate = useNavigate();
+
     const handleExplore = (solutionId: string) => {
         // Navigate to Commercial View with Filter
-        window.location.href = `/comercial?solutionId=${solutionId}`;
+        navigate(`/comercial?solutionId=${solutionId}`);
     };
 
     const filteredSolutions = solutions.filter(s =>

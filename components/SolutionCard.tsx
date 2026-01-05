@@ -41,7 +41,7 @@ export const SolutionCard: React.FC<Props> = ({ solution, onExplore, onEdit, onD
                         </button>
                         <button
                             onClick={(e) => { e.stopPropagation(); onDelete(solution.id); }}
-                            className="p-1 hover:bg-red-50 rounded text-slate-400 hover:text-red-500 transition-colors"
+                            className="p-1 hover:bg-red-50 rounded text-red-500 hover:text-red-600 transition-colors"
                         >
                             <Trash2 size={14} />
                         </button>

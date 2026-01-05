@@ -63,7 +63,7 @@ export const ContractCard: React.FC<Props> = ({ contract, onAddMeasurement, onEd
                         </button>
                         <button
                             onClick={(e) => { e.stopPropagation(); onDelete(contract.id); }}
-                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            className="p-1.5 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         >
                             <Trash2 size={16} />
                         </button>
