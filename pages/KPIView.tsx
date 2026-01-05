@@ -17,6 +17,7 @@ const MOCK_USERS: User[] = [
 export const KPIView: React.FC = () => {
     const [kpis, setKpis] = useState<KPI[]>([]);
     const [isFormOpen, setIsFormOpen] = useState(false);
+    const [editingKPI, setEditingKPI] = useState<KPI | undefined>(undefined);
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
@@ -26,12 +27,35 @@ export const KPIView: React.FC = () => {
 
     const handleCreateKPI = async (data: any) => {
         try {
-            await KPIService.create(data);
-            toast.success("Indicador criado com sucesso!");
+            if (editingKPI) {
+                await KPIService.update(editingKPI.id, data);
+                toast.success("Indicador atualizado!");
+            } else {
+                await KPIService.create(data);
+                toast.success("Indicador criado com sucesso!");
+            }
             setIsFormOpen(false);
+            setEditingKPI(undefined);
         } catch (error) {
             console.error(error);
-            toast.error("Erro ao criar KPI.");
+            toast.error("Erro ao salvar KPI.");
+        }
+    };
+
+    const handleEdit = (kpi: KPI) => {
+        setEditingKPI(kpi);
+        setIsFormOpen(true);
+    };
+
+    const handleDelete = async (id: string) => {
+        if (window.confirm("ATENÇÃO: Tem certeza que deseja excluir este KPI?")) {
+            try {
+                await KPIService.delete(id);
+                toast.success("KPI excluído.");
+            } catch (error) {
+                console.error(error);
+                toast.error("Erro ao excluir KPI.");
+            }
         }
     };
 
@@ -87,7 +111,7 @@ export const KPIView: React.FC = () => {
                         />
                     </div>
                     <button
-                        onClick={() => setIsFormOpen(true)}
+                        onClick={() => { setEditingKPI(undefined); setIsFormOpen(true); }}
                         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors shadow-lg shadow-blue-200"
                     >
                         <Plus size={20} />
@@ -108,7 +132,7 @@ export const KPIView: React.FC = () => {
                             Defina metas claras e acompanhe o progresso da sua equipe em tempo real.
                         </p>
                         <button
-                            onClick={() => setIsFormOpen(true)}
+                            onClick={() => { setEditingKPI(undefined); setIsFormOpen(true); }}
                             className="text-blue-600 font-bold hover:underline"
                         >
                             Criar primeiro KPI agora
@@ -122,6 +146,8 @@ export const KPIView: React.FC = () => {
                                 kpi={kpi}
                                 onExplore={handleExplore}
                                 onUpdate={handleUpdateProgress}
+                                onEdit={handleEdit}
+                                onDelete={handleDelete}
                             />
                         ))}
                     </div>
@@ -131,9 +157,10 @@ export const KPIView: React.FC = () => {
             {/* MODALS */}
             <KPIForm
                 isOpen={isFormOpen}
-                onClose={() => setIsFormOpen(false)}
+                onClose={() => { setIsFormOpen(false); setEditingKPI(undefined); }}
                 onSave={handleCreateKPI}
                 users={MOCK_USERS}
+                initialData={editingKPI}
             />
 
             <Toaster position="top-right" richColors />

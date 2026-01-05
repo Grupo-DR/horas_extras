@@ -93,5 +93,10 @@ export const KPIService = {
     // DELETE
     delete: async (id: string) => {
         await deleteDoc(doc(db, COLLECTION_NAME, id));
+    },
+
+    update: async (id: string, data: Partial<KPI>) => {
+        const docRef = doc(db, COLLECTION_NAME, id);
+        await updateDoc(docRef, { ...data, updatedAt: Timestamp.now() });
     }
 };

@@ -7,9 +7,10 @@ interface Props {
     onClose: () => void;
     onSave: (solution: Omit<DataSolution, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
     users: User[];
+    initialData?: DataSolution;
 }
 
-export const SolutionForm: React.FC<Props> = ({ isOpen, onClose, onSave, users }) => {
+export const SolutionForm: React.FC<Props> = ({ isOpen, onClose, onSave, users, initialData }) => {
     const [loading, setLoading] = useState(false);
 
     // FORM STATE
@@ -19,6 +20,22 @@ export const SolutionForm: React.FC<Props> = ({ isOpen, onClose, onSave, users }
     const [responsibleId, setResponsibleId] = useState('');
     const [stakeholderInput, setStakeholderInput] = useState('');
     const [stakeholders, setStakeholders] = useState<string[]>([]);
+
+    React.useEffect(() => {
+        if (isOpen && initialData) {
+            setName(initialData.name);
+            setDescription(initialData.description || '');
+            setDeadline(initialData.deadline ? new Date(initialData.deadline).toISOString().split('T')[0] : '');
+            setResponsibleId(initialData.responsibleId);
+            setStakeholders(initialData.stakeholders || []);
+        } else if (isOpen) {
+            setName('');
+            setDescription('');
+            setDeadline('');
+            setResponsibleId('');
+            setStakeholders([]);
+        }
+    }, [isOpen, initialData]);
 
     const handleAddStakeholder = () => {
         if (stakeholderInput.trim()) {
@@ -72,7 +89,7 @@ export const SolutionForm: React.FC<Props> = ({ isOpen, onClose, onSave, users }
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
-                    <h2 className="text-xl font-bold text-slate-800">Nova Solução de Dados</h2>
+                    <h2 className="text-xl font-bold text-slate-800">{initialData ? 'Editar Solução' : 'Nova Solução de Dados'}</h2>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
                         <X size={24} />
                     </button>
@@ -181,7 +198,7 @@ export const SolutionForm: React.FC<Props> = ({ isOpen, onClose, onSave, users }
                             {loading ? 'Salvando...' : (
                                 <>
                                     <Save size={18} />
-                                    Criar Solução
+                                    {initialData ? 'Atualizar' : 'Criar Solução'}
                                 </>
                             )}
                         </button>

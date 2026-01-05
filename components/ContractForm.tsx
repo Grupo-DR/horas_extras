@@ -7,9 +7,10 @@ interface Props {
     isOpen: boolean;
     onClose: () => void;
     onSave: (contract: any) => Promise<void>;
+    initialData?: Contract;
 }
 
-export const ContractForm: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
+export const ContractForm: React.FC<Props> = ({ isOpen, onClose, onSave, initialData }) => {
     const [formData, setFormData] = useState({
         name: '',
         siteName: '',
@@ -18,6 +19,29 @@ export const ContractForm: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
         startDate: '',
         endDate: ''
     });
+
+    React.useEffect(() => {
+        if (isOpen && initialData) {
+            setFormData({
+                name: initialData.name,
+                siteName: initialData.siteName,
+                clientName: initialData.clientName,
+                totalValue: initialData.totalValue || 0,
+                startDate: initialData.startDate ? new Date(initialData.startDate).toISOString().split('T')[0] : '',
+                endDate: initialData.endDate ? new Date(initialData.endDate).toISOString().split('T')[0] : ''
+            });
+        } else if (isOpen) {
+            // Reset if opening in create mode
+            setFormData({
+                name: '',
+                siteName: '',
+                clientName: '',
+                totalValue: 0,
+                startDate: '',
+                endDate: ''
+            });
+        }
+    }, [isOpen, initialData]);
 
     const [loading, setLoading] = useState(false);
 
@@ -55,7 +79,7 @@ export const ContractForm: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
 
                 <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                    <h3 className="font-bold text-slate-800 text-lg">Novo Contrato</h3>
+                    <h3 className="font-bold text-slate-800 text-lg">{initialData ? 'Editar Contrato' : 'Novo Contrato'}</h3>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
                         <X size={20} />
                     </button>
@@ -149,7 +173,7 @@ export const ContractForm: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
                             disabled={loading}
                             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg flex items-center gap-2 transition-colors shadow-lg shadow-blue-500/30"
                         >
-                            {loading ? 'Salvando...' : <><Save size={18} /> Criar Contrato</>}
+                            {loading ? 'Salvando...' : <><Save size={18} /> {initialData ? 'Atualizar' : 'Criar Contrato'}</>}
                         </button>
                     </div>
 

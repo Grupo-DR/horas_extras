@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DataSolution, User } from '../types';
 import { SolutionService } from '../services/solutionService';
 import { SolutionCard } from '../components/SolutionCard';
-import { SolutionForm } from '../components/SolutionForm'; // Assuming you created this
+import { SolutionForm } from '../components/SolutionForm';
 import { Lightbulb, Plus, Search, Database } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 
@@ -17,6 +17,7 @@ const MOCK_USERS: User[] = [
 export const DataCenterView: React.FC = () => {
     const [solutions, setSolutions] = useState<DataSolution[]>([]);
     const [isFormOpen, setIsFormOpen] = useState(false);
+    const [editingSolution, setEditingSolution] = useState<DataSolution | undefined>(undefined);
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
@@ -26,12 +27,36 @@ export const DataCenterView: React.FC = () => {
 
     const handleCreateSolution = async (data: any) => {
         try {
-            await SolutionService.create(data);
-            toast.success("Solução criada com sucesso!");
+            if (editingSolution) {
+                await SolutionService.update(editingSolution.id, data);
+                toast.success("Solução atualizada!");
+            } else {
+                await SolutionService.create(data);
+                toast.success("Solução criada com sucesso!");
+            }
             setIsFormOpen(false);
+            setEditingSolution(undefined);
         } catch (error) {
             console.error(error);
-            toast.error("Erro ao criar solução.");
+            toast.error("Erro ao salvar solução.");
+        }
+    };
+
+    // CRUD
+    const handleEdit = (solution: DataSolution) => {
+        setEditingSolution(solution);
+        setIsFormOpen(true);
+    };
+
+    const handleDelete = async (id: string) => {
+        if (window.confirm("ATENÇÃO: Tem certeza que deseja excluir esta Solução?")) {
+            try {
+                await SolutionService.delete(id);
+                toast.success("Solução excluída.");
+            } catch (error) {
+                console.error(error);
+                toast.error("Erro ao excluir solução.");
+            }
         }
     };
 
@@ -69,7 +94,7 @@ export const DataCenterView: React.FC = () => {
                         />
                     </div>
                     <button
-                        onClick={() => setIsFormOpen(true)}
+                        onClick={() => { setEditingSolution(undefined); setIsFormOpen(true); }}
                         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors shadow-lg shadow-blue-200"
                     >
                         <Plus size={20} />
@@ -90,7 +115,7 @@ export const DataCenterView: React.FC = () => {
                             Comece criando uma nova solução estratégica para organizar seus dados e processos de inteligência.
                         </p>
                         <button
-                            onClick={() => setIsFormOpen(true)}
+                            onClick={() => { setEditingSolution(undefined); setIsFormOpen(true); }}
                             className="text-blue-600 font-bold hover:underline"
                         >
                             Criar primeira solução agora
@@ -103,6 +128,8 @@ export const DataCenterView: React.FC = () => {
                                 key={solution.id}
                                 solution={solution}
                                 onExplore={handleExplore}
+                                onEdit={handleEdit}
+                                onDelete={handleDelete}
                             />
                         ))}
                     </div>
@@ -112,9 +139,10 @@ export const DataCenterView: React.FC = () => {
             {/* MODALS */}
             <SolutionForm
                 isOpen={isFormOpen}
-                onClose={() => setIsFormOpen(false)}
+                onClose={() => { setIsFormOpen(false); setEditingSolution(undefined); }}
                 onSave={handleCreateSolution}
                 users={MOCK_USERS}
+                initialData={editingSolution}
             />
 
             <Toaster position="top-right" richColors />

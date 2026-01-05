@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Contract, ContractStatus } from '../types';
 import { differenceInDays, format } from 'date-fns';
-import { AlertTriangle, Calendar, CheckCircle, Clock, Plus, ExternalLink } from 'lucide-react';
+import { AlertTriangle, Calendar, CheckCircle, Clock, Plus, ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { MeasurementForm } from './MeasurementForm';
 import { useNavigate } from 'react-router-dom';
@@ -9,9 +9,11 @@ import { useNavigate } from 'react-router-dom';
 interface Props {
     contract: Contract;
     onAddMeasurement: (contractId: string, measurement: any) => Promise<void>;
+    onEdit: (contract: Contract) => void;
+    onDelete: (contractId: string) => void;
 }
 
-export const ContractCard: React.FC<Props> = ({ contract, onAddMeasurement }) => {
+export const ContractCard: React.FC<Props> = ({ contract, onAddMeasurement, onEdit, onDelete }) => {
     const navigate = useNavigate();
     const [isMeasureFormOpen, setIsMeasureFormOpen] = useState(false);
 
@@ -52,12 +54,26 @@ export const ContractCard: React.FC<Props> = ({ contract, onAddMeasurement }) =>
                         <h3 className="font-bold text-slate-800 text-lg line-clamp-1" title={contract.name}>{contract.name}</h3>
                         <p className="text-sm text-slate-500 font-medium line-clamp-1">{contract.siteName} • {contract.clientName}</p>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-bold whitespace-nowrap ${contract.status === ContractStatus.ACTIVE ? 'bg-green-100 text-green-700' :
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onEdit(contract); }}
+                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors"
+                        >
+                            <Pencil size={16} />
+                        </button>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onDelete(contract.id); }}
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                            <Trash2 size={16} />
+                        </button>
+                        <span className={`px-2 py-1 rounded-full text-xs font-bold whitespace-nowrap ml-2 ${contract.status === ContractStatus.ACTIVE ? 'bg-green-100 text-green-700' :
                             contract.status === ContractStatus.FINISHED ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'
-                        }`}>
-                        {contract.status === ContractStatus.ACTIVE ? 'EM ANDAMENTO' :
-                            contract.status === ContractStatus.FINISHED ? 'CONCLUÍDO' : 'SUSPENSO'}
-                    </span>
+                            }`}>
+                            {contract.status === ContractStatus.ACTIVE ? 'EM ANDAMENTO' :
+                                contract.status === ContractStatus.FINISHED ? 'CONCLUÍDO' : 'SUSPENSO'}
+                        </span>
+                    </div>
                 </div>
 
                 {/* BODY */}

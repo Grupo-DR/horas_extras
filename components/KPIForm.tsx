@@ -7,9 +7,10 @@ interface Props {
     onClose: () => void;
     onSave: (kpi: Omit<KPI, 'id' | 'currentValue' | 'history' | 'updatedAt'>) => Promise<void>;
     users: User[];
+    initialData?: KPI;
 }
 
-export const KPIForm: React.FC<Props> = ({ isOpen, onClose, onSave, users }) => {
+export const KPIForm: React.FC<Props> = ({ isOpen, onClose, onSave, users, initialData }) => {
     const [loading, setLoading] = useState(false);
 
     // FORM STATE
@@ -18,6 +19,22 @@ export const KPIForm: React.FC<Props> = ({ isOpen, onClose, onSave, users }) => 
     const [unit, setUnit] = useState<KPI['unit']>('R$');
     const [targetValue, setTargetValue] = useState('');
     const [responsibleId, setResponsibleId] = useState('');
+
+    React.useEffect(() => {
+        if (isOpen && initialData) {
+            setName(initialData.name);
+            setDescription(initialData.description);
+            setUnit(initialData.unit);
+            setTargetValue(String(initialData.targetValue));
+            setResponsibleId(initialData.responsibleId);
+        } else if (isOpen) {
+            setName('');
+            setDescription('');
+            setUnit('R$');
+            setTargetValue('');
+            setResponsibleId('');
+        }
+    }, [isOpen, initialData]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -60,7 +77,7 @@ export const KPIForm: React.FC<Props> = ({ isOpen, onClose, onSave, users }) => 
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-xl">
                     <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                        <Target className="text-blue-600" /> Novo Indicador (KPI)
+                        <Target className="text-blue-600" /> {initialData ? 'Editar Indicador' : 'Novo Indicador (KPI)'}
                     </h2>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
                         <X size={24} />
@@ -152,7 +169,7 @@ export const KPIForm: React.FC<Props> = ({ isOpen, onClose, onSave, users }) => 
                             {loading ? 'Salvando...' : (
                                 <>
                                     <Save size={18} />
-                                    Criar Indicador
+                                    {initialData ? 'Atualizar' : 'Criar Indicador'}
                                 </>
                             )}
                         </button>

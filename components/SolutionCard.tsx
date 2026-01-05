@@ -1,6 +1,6 @@
 import React from 'react';
 import { DataSolution } from '../types';
-import { Calendar, User, Users, ChevronRight } from 'lucide-react';
+import { Calendar, User, Users, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion } from 'framer-motion';
@@ -8,9 +8,11 @@ import { motion } from 'framer-motion';
 interface Props {
     solution: DataSolution;
     onExplore: (solutionId: string) => void;
+    onEdit: (solution: DataSolution) => void;
+    onDelete: (solutionId: string) => void;
 }
 
-export const SolutionCard: React.FC<Props> = ({ solution, onExplore }) => {
+export const SolutionCard: React.FC<Props> = ({ solution, onExplore, onEdit, onDelete }) => {
     return (
         <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -24,12 +26,26 @@ export const SolutionCard: React.FC<Props> = ({ solution, onExplore }) => {
                         {solution.name}
                     </h3>
                     <span className={`px-2 py-1 rounded text-xs font-bold uppercase whitespace-nowrap ${solution.status === 'ACTIVE' ? 'bg-blue-100 text-blue-700' :
-                            solution.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
-                                'bg-slate-100 text-slate-600'
+                        solution.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                            'bg-slate-100 text-slate-600'
                         }`}>
                         {solution.status === 'ACTIVE' ? 'Ativo' :
                             solution.status === 'COMPLETED' ? 'Concluído' : 'Pausado'}
                     </span>
+                    <div className="flex gap-1 ml-2">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onEdit(solution); }}
+                            className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-blue-600 transition-colors"
+                        >
+                            <Pencil size={14} />
+                        </button>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onDelete(solution.id); }}
+                            className="p-1 hover:bg-red-50 rounded text-slate-400 hover:text-red-500 transition-colors"
+                        >
+                            <Trash2 size={14} />
+                        </button>
+                    </div>
                 </div>
 
                 <p className="text-slate-500 text-sm mb-6 flex-1 line-clamp-3">

@@ -1,15 +1,17 @@
 import React from 'react';
 import { KPI } from '../types';
-import { TrendingUp, TrendingDown, Minus, Target, Award, ArrowRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Target, Award, ArrowRight, Pencil, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface Props {
     kpi: KPI;
     onExplore: (kpiId: string) => void;
     onUpdate: (kpiId: string) => void;
+    onEdit: (kpi: KPI) => void;
+    onDelete: (kpiId: string) => void;
 }
 
-export const KPICard: React.FC<Props> = ({ kpi, onExplore, onUpdate }) => {
+export const KPICard: React.FC<Props> = ({ kpi, onExplore, onUpdate, onEdit, onDelete }) => {
     const percentage = kpi.targetValue > 0 ? (kpi.currentValue / kpi.targetValue) * 100 : 0;
     const gap = kpi.targetValue - kpi.currentValue;
     const isMet = kpi.currentValue >= kpi.targetValue;
@@ -43,13 +45,27 @@ export const KPICard: React.FC<Props> = ({ kpi, onExplore, onUpdate }) => {
                         {kpi.responsibleName || 'Responsável'}
                     </p>
                 </div>
-                <div className={`p-2 rounded-full ${trend === 'up' ? 'bg-green-100 text-green-600' :
+                <div className="flex gap-2 items-center">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onEdit(kpi); }}
+                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors"
+                    >
+                        <Pencil size={16} />
+                    </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onDelete(kpi.id); }}
+                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                        <Trash2 size={16} />
+                    </button>
+                    <div className={`p-2 rounded-full ${trend === 'up' ? 'bg-green-100 text-green-600' :
                         trend === 'down' ? 'bg-red-100 text-red-600' :
                             'bg-slate-100 text-slate-500'
-                    }`}>
-                    {trend === 'up' && <TrendingUp size={20} />}
-                    {trend === 'down' && <TrendingDown size={20} />}
-                    {trend === 'flat' && <Minus size={20} />}
+                        }`}>
+                        {trend === 'up' && <TrendingUp size={20} />}
+                        {trend === 'down' && <TrendingDown size={20} />}
+                        {trend === 'flat' && <Minus size={20} />}
+                    </div>
                 </div>
             </div>
 

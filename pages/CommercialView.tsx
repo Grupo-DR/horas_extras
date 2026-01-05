@@ -534,24 +534,31 @@ export const CommercialView: React.FC = () => {
             <header className="bg-white/70 backdrop-blur-md border-b border-white/20 h-16 flex items-center justify-between px-6 sticky top-0 z-30">
                 <div className="flex items-center gap-4">
                     {/* VIEW TITLE */}
-                    <h2 className="text-lg font-bold text-slate-700 mr-4">
-                        {view === 'DASHBOARD' ? 'Visão Executiva' :
-                            view === 'STRATEGIC' ? 'Pipeline Comercial' :
-                                view === 'OPERATIONAL' ? (contractIdFilter ? `Tarefas do Contrato` : solutionIdFilter ? `Ações da Solução` : kpiIdFilter ? `Ações do KPI` : 'Tarefas e Prazos') : 'Configurações'}
-                    </h2>
+                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+                        <button
+                            onClick={() => setView('DASHBOARD')}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-bold transition-all ${view === 'DASHBOARD' ? 'bg-white shadow text-blue-700' : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                        >
+                            <LayoutDashboard size={16} /> Visão Executiva
+                        </button>
+                        <button
+                            onClick={() => setView('STRATEGIC')}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-bold transition-all ${view === 'STRATEGIC' ? 'bg-white shadow text-blue-700' : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                        >
+                            <TrendingUp size={16} /> Pipeline
+                        </button>
+                        <button
+                            onClick={() => setView('OPERATIONAL')}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-bold transition-all ${view === 'OPERATIONAL' ? 'bg-white shadow text-blue-700' : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                        >
+                            <List size={16} /> Ações
+                        </button>
+                    </div>
 
-                    {(contractIdFilter || solutionIdFilter || kpiIdFilter) && (
-                        <div className="flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold animate-pulse">
-                            <LinkIcon size={12} />
-                            Filtro Ativo: {contractIdFilter ? 'Contrato' : solutionIdFilter ? 'Solução' : 'KPI'}
-                            <button
-                                onClick={() => window.location.href = '/comercial'} // Hard reset or navigate logic
-                                className="ml-2 hover:text-blue-900"
-                            >
-                                <X size={12} />
-                            </button>
-                        </div>
-                    )}
+
 
                     {/* TIME FILTERS */}
                     {view === 'DASHBOARD' && (
@@ -644,6 +651,25 @@ export const CommercialView: React.FC = () => {
                     ) : null}
                 </div>
             </header>
+
+            {(contractIdFilter || solutionIdFilter || kpiIdFilter) && (
+                <div className="bg-white/50 backdrop-blur-sm border-b border-indigo-100 px-6 py-2 flex items-center shadow-inner">
+                    <div className="flex items-center gap-2 px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg text-xs font-bold animate-fadeIn">
+                        <LinkIcon size={12} />
+                        <span>
+                            Filtro Ativo: {contractIdFilter ? 'Contrato' : solutionIdFilter ? 'Solução' : 'KPI'}
+                        </span>
+                        <div className="h-3 w-px bg-indigo-200 mx-1"></div>
+                        <button
+                            onClick={() => window.location.href = '/comercial'}
+                            className="hover:bg-indigo-100 p-0.5 rounded transition-colors text-indigo-500 hover:text-indigo-800 flex items-center gap-1"
+                        >
+                            <X size={14} />
+                            Limpar
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* CONTENT AREA */}
             <div className="flex-1 overflow-y-auto p-6 relative">

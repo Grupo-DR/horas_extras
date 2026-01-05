@@ -9,6 +9,7 @@ import { Toaster, toast } from 'sonner';
 export const ContractsView: React.FC = () => {
     const [contracts, setContracts] = useState<Contract[]>([]);
     const [isFormOpen, setIsFormOpen] = useState(false);
+    const [editingContract, setEditingContract] = useState<Contract | undefined>(undefined);
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
@@ -21,11 +22,36 @@ export const ContractsView: React.FC = () => {
 
     const handleCreateContract = async (contractData: any) => {
         try {
-            await ContractService.create(contractData);
-            toast.success("Contrato criado com sucesso!");
+            if (editingContract) {
+                await ContractService.update(editingContract.id, contractData);
+                toast.success("Contrato atualizado!");
+            } else {
+                await ContractService.create(contractData);
+                toast.success("Contrato criado com sucesso!");
+            }
+            setIsFormOpen(false);
+            setEditingContract(undefined);
         } catch (error) {
             console.error(error);
-            toast.error("Erro ao criar contrato.");
+            toast.error("Erro ao salvar contrato.");
+        }
+    };
+
+    // CRUD Handlers
+    const handleEdit = (contract: Contract) => {
+        setEditingContract(contract);
+        setIsFormOpen(true);
+    };
+
+    const handleDelete = async (id: string) => {
+        if (window.confirm("ATENÇÃO: Tem certeza que deseja excluir este contrato? Essa ação não pode ser desfeita.")) {
+            try {
+                await ContractService.delete(id);
+                toast.success("Contrato excluído.");
+            } catch (error) {
+                console.error(error);
+                toast.error("Erro ao excluir contrato.");
+            }
         }
     };
 
@@ -68,7 +94,7 @@ export const ContractsView: React.FC = () => {
                         />
                     </div>
                     <button
-                        onClick={() => setIsFormOpen(true)}
+                        onClick={() => { setEditingContract(undefined); setIsFormOpen(true); }}
                         className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-bold shadow hover:bg-blue-700 transition-colors"
                     >
                         <PlusCircle size={18} /> Novo Contrato
@@ -91,6 +117,8 @@ export const ContractsView: React.FC = () => {
                                 key={contract.id}
                                 contract={contract}
                                 onAddMeasurement={handleAddMeasurement}
+                                onEdit={handleEdit}
+                                onDelete={handleDelete}
                             />
                         ))}
                     </div>
@@ -100,8 +128,9 @@ export const ContractsView: React.FC = () => {
             {/* MODALS */}
             <ContractForm
                 isOpen={isFormOpen}
-                onClose={() => setIsFormOpen(false)}
+                onClose={() => { setIsFormOpen(false); setEditingContract(undefined); }}
                 onSave={handleCreateContract}
+                initialData={editingContract}
             />
 
             <Toaster position="top-right" richColors />
