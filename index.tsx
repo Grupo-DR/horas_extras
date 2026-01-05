@@ -8,6 +8,7 @@ import { CommercialView } from './pages/CommercialView';
 import { ContractsView } from './pages/ContractsView';
 import { DataCenterView } from './pages/DataCenterView';
 import { KPIView } from './pages/KPIView';
+import { ActionsView } from './pages/ActionsView';
 
 const App: React.FC = () => {
   return (
@@ -19,6 +20,7 @@ const App: React.FC = () => {
           <Route path="contratos" element={<ContractsView />} />
           <Route path="dados" element={<DataCenterView />} />
           <Route path="kpis" element={<KPIView />} />
+          <Route path="acoes" element={<ActionsView />} />
         </Route>
       </Routes>
     </BrowserRouter>

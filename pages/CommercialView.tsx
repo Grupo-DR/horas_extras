@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Task, User, TaskStatus, HelpChainLevel, HistoryLog, Notification, TaskOutcome, Opportunity, PipelineStage } from '../types';
-import { TaskCard } from '../components/TaskCard';
 import { TaskForm } from '../components/TaskForm';
+
 import { OpportunityForm } from '../components/Pipeline/OpportunityForm';
-import { KanbanBoard } from '../components/KanbanBoard';
+
+// ... (skipping lines, I can't do non-contiguous with replace_file_content easily if they are far apart)
+// Actually I should split this into two calls or use multi_replace.
+// multi_replace failed me before due to context.
+// I will use TWO replace_file_content calls.
+
 import { PipelineBoard } from '../components/Pipeline/PipelineBoard';
 import { EscalationSettings } from '../components/EscalationSettings';
 import { HistoryPanel } from '../components/HistoryPanel';
@@ -66,6 +71,11 @@ const safeData = (v: any) => {
     return v;
 };
 
+// HELPER: Strict String
+const s = (v: any) => typeof v === 'string' ? v : '';
+// HELPER: Strict Number
+const n = (v: any) => typeof v === 'number' ? v : 0;
+
 export const CommercialView: React.FC = () => {
     // --- STATE ---
     const [searchParams] = useSearchParams();
@@ -78,14 +88,7 @@ export const CommercialView: React.FC = () => {
     const currentUser = MOCK_USERS[Math.floor(Math.random() * MOCK_USERS.length)];
 
     // VIEW STATE
-    const [view, setView] = useState<'DASHBOARD' | 'STRATEGIC' | 'OPERATIONAL' | 'SETTINGS'>(
-        (contractIdFilter || solutionIdFilter || kpiIdFilter) ? 'OPERATIONAL' : 'DASHBOARD'
-    );
-
-    // Auto-switch if filter changes
-    useEffect(() => {
-        if (contractIdFilter || solutionIdFilter || kpiIdFilter) setView('OPERATIONAL');
-    }, [contractIdFilter, solutionIdFilter, kpiIdFilter]);
+    const [view, setView] = useState<'DASHBOARD' | 'STRATEGIC' | 'SETTINGS'>('DASHBOARD');
     const [tasks, setTasks] = useState<Task[]>([]);
     // NEW: Lifted Opportunities State
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
@@ -502,30 +505,20 @@ export const CommercialView: React.FC = () => {
             if (op.result === TaskOutcome.WITHDRAWAL) outcomes.withdrawal += val;
         });
 
-        // 5. Collaborators - Optimized with FUZZY MATCHING
-        const collaborators = MOCK_USERS.map(user => {
-            // Logic: Iterate through RELEVANT tasks (time filtered) ONCE
-            // FIX: Robust Fuzzy Matching for Legacy Data (ID, Full Name, First Name, Email)
-            const userTasks = relevantTasks.filter(t => {
-                if (!t.assigneeId) return false;
-                const assignee = t.assigneeId.toLowerCase().trim();
-                const userId = user.id.toLowerCase();
-                const userName = user.name.toLowerCase();
+        // 5. Results by Client (Aggregation)
+        const clientResults = relevantOpportunities.reduce((acc, op) => {
+            const client = s(op.clientName) || 'Não idenficado';
+            if (!acc[client]) acc[client] = 0;
+            acc[client] += n(op.estimatedValue);
+            return acc;
+        }, {} as Record<string, number>);
 
-                // Exact ID Match
-                if (assignee === userId) return true;
+        const clientsChartData = Object.entries(clientResults)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => (b.value as number) - (a.value as number))
+            .slice(0, 5); // Top 5 Clients
 
-                // Name containment (fuzzy)
-                // e.g. assignee="Antonio Augusto" matches user="Antonio Augusto da Silva"
-                if (userName.includes(assignee) || assignee.includes(userName)) return true;
-
-                return false;
-            });
-            const metrics = calculateMetrics(userTasks);
-            return { user, ...metrics };
-        });
-
-        return { strategic, operational, outcomes, collaborators };
+        return { strategic, outcomes, clientsChartData };
     }, [tasks, opportunities, timeFilterType, selectedDate, customRange]);
 
 
@@ -541,16 +534,7 @@ export const CommercialView: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    {/* VIEW TITLE - Removed old view switcher from LEFT, put it here or keep it simple? 
-                        User asked for "Cabeçalho Padrão... igual das outras telas".
-                        Other screens have Title/Subtitle on Left, and Actions on Right.
-                        CommercialView has a View Switcher (Dashboard/Pipeline/Actions).
-                        Let's keep the View Switcher but move it to the Right or Center, or below.
-                        Actually, let's keep it in the "actions" area on the right or just below title if it fits.
-                        But ContractsView header is: Title/Subtitle Left, Search/Button Right.
-                        Let's try to fit the switcher on the Right along with Actions.
-                    */}
-
+                    {/* VIEW SWITCHER */}
                     <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg mr-4">
                         <button
                             onClick={() => setView('DASHBOARD')}
@@ -566,16 +550,7 @@ export const CommercialView: React.FC = () => {
                         >
                             <TrendingUp size={16} /> Pipeline
                         </button>
-                        <button
-                            onClick={() => setView('OPERATIONAL')}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-bold transition-all ${view === 'OPERATIONAL' ? 'bg-white shadow text-blue-700' : 'text-slate-500 hover:text-slate-700'
-                                }`}
-                        >
-                            <List size={16} /> Ações
-                        </button>
                     </div>
-
-
 
                     {/* TIME FILTERS */}
                     {view === 'DASHBOARD' && (
@@ -658,13 +633,6 @@ export const CommercialView: React.FC = () => {
                         >
                             <PlusCircle size={16} /> Nova Oportunidade
                         </button>
-                    ) : view === 'OPERATIONAL' ? (
-                        <button
-                            onClick={() => { setEditingTask(undefined); setIsTaskModalOpen(true); }}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-bold shadow hover:bg-blue-700 transition-colors"
-                        >
-                            <PlusCircle size={16} /> Nova Tarefa
-                        </button>
                     ) : null}
                 </div>
             </header>
@@ -700,102 +668,9 @@ export const CommercialView: React.FC = () => {
                             transition={{ duration: 0.3 }}
                             className="max-w-7xl mx-auto space-y-6"
                         >
-
-                            {/* SPLIT DASHBOARD LAYOUT */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-                                {/* LEFT COLUMN: STRATEGIC (MOTHERS) */}
-                                <div className="space-y-4 border border-slate-300 bg-white rounded-xl p-4 shadow-sm">
-                                    <h3 className="flex items-center gap-2 font-bold text-slate-800 text-lg border-b pb-2">
-                                        <Activity className="text-blue-600" size={20} /> Estratégico (Ações Mãe)
-                                    </h3>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="bg-slate-50 p-4 rounded-xl shadow-sm border-l-4 border-l-slate-400">
-                                            <span className="text-slate-500 text-xs font-bold uppercase">Pendentes</span>
-                                            <p className="text-2xl font-bold">{dashboardStats.strategic.pending}</p>
-                                        </div>
-                                        <div className="bg-slate-50 p-4 rounded-xl shadow-sm border-l-4 border-l-blue-500">
-                                            <span className="text-slate-500 text-xs font-bold uppercase">Em Andamento</span>
-                                            <p className="text-2xl font-bold text-blue-600">{dashboardStats.strategic.inProgress}</p>
-                                        </div>
-                                        <div className="bg-slate-50 p-4 rounded-xl shadow-sm border-l-4 border-l-red-500">
-                                            <span className="text-slate-500 text-xs font-bold uppercase">Atrasadas / Críticas</span>
-                                            <p className="text-2xl font-bold text-red-600">{dashboardStats.strategic.late}</p>
-                                        </div>
-                                        <div className="bg-slate-50 p-4 rounded-xl shadow-sm border-l-4 border-l-green-500">
-                                            <span className="text-slate-500 text-xs font-bold uppercase">Concluídas</span>
-                                            <p className="text-2xl font-bold text-green-600">{dashboardStats.strategic.completed}</p>
-                                        </div>
-                                    </div>
-
-                                    {/* METRICS CARDS */}
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="bg-slate-50 p-4 rounded-xl shadow-sm flex items-center justify-between">
-                                            <div>
-                                                <p className="text-xs text-slate-500 font-bold uppercase">Produtividade</p>
-                                                <p className="text-xl font-bold text-slate-800">{dashboardStats.strategic.productivity}%</p>
-                                            </div>
-                                            <TrendingUp size={24} className="text-green-500" />
-                                        </div>
-                                        <div className="bg-slate-50 p-4 rounded-xl shadow-sm flex items-center justify-between">
-                                            <div>
-                                                <p className="text-xs text-slate-500 font-bold uppercase">Risco Global</p>
-                                                <p className="text-xl font-bold text-red-600">{dashboardStats.strategic.riskRate}%</p>
-                                            </div>
-                                            <AlertTriangle size={24} className="text-red-500" />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* RIGHT COLUMN: OPERATIONAL (CHILDREN) */}
-                                <div className="space-y-4 border border-slate-300 bg-white rounded-xl p-4 shadow-sm">
-                                    <h3 className="flex items-center gap-2 font-bold text-slate-800 text-lg border-b pb-2">
-                                        <List className="text-emerald-600" size={20} /> Operacional (Ações Filhas)
-                                    </h3>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="bg-slate-50 p-4 rounded-xl shadow-sm border-l-4 border-l-slate-400">
-                                            <span className="text-slate-500 text-xs font-bold uppercase">Pendentes</span>
-                                            <p className="text-2xl font-bold">{dashboardStats.operational.pending}</p>
-                                        </div>
-                                        <div className="bg-slate-50 p-4 rounded-xl shadow-sm border-l-4 border-l-blue-500">
-                                            <span className="text-slate-500 text-xs font-bold uppercase">Em Andamento</span>
-                                            <p className="text-2xl font-bold text-blue-600">{dashboardStats.operational.inProgress}</p>
-                                        </div>
-                                        <div className="bg-slate-50 p-4 rounded-xl shadow-sm border-l-4 border-l-red-500">
-                                            <span className="text-slate-500 text-xs font-bold uppercase">Atrasadas</span>
-                                            <p className="text-2xl font-bold text-red-600">{dashboardStats.operational.late}</p>
-                                        </div>
-                                        <div className="bg-slate-50 p-4 rounded-xl shadow-sm border-l-4 border-l-green-500">
-                                            <span className="text-slate-500 text-xs font-bold uppercase">Concluídas</span>
-                                            <p className="text-2xl font-bold text-green-600">{dashboardStats.operational.completed}</p>
-                                        </div>
-                                    </div>
-
-                                    {/* METRICS CARDS */}
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="bg-slate-50 p-4 rounded-xl shadow-sm flex items-center justify-between">
-                                            <div>
-                                                <p className="text-xs text-slate-500 font-bold uppercase">Produtividade</p>
-                                                <p className="text-xl font-bold text-slate-800">{dashboardStats.operational.productivity}%</p>
-                                            </div>
-                                            <TrendingUp size={24} className="text-green-500" />
-                                        </div>
-                                        <div className="bg-slate-50 p-4 rounded-xl shadow-sm flex items-center justify-between">
-                                            <div>
-                                                <p className="text-xs text-slate-500 font-bold uppercase">Gargalos</p>
-                                                <p className="text-xl font-bold text-orange-600">{dashboardStats.operational.riskRate}%</p>
-                                            </div>
-                                            <AlertTriangle size={24} className="text-orange-500" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
+                            {/* SIMPLIFIED DASHBOARD - FINANCIALS ONLY */}
                             {/* FINANCIAL OUTCOME SECTION - WITH SPARKLINES */}
-                            <div className="bg-slate-200 h-px w-full my-6"></div>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
                                 {[
                                     { label: 'Sucesso (Vencemos)', value: dashboardStats.outcomes.success, color: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200', icon: CheckCircle, chartColor: '#16a34a' },
                                     { label: 'Insucesso (Perdemos)', value: dashboardStats.outcomes.failure, color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200', icon: AlertTriangle, chartColor: '#dc2626' },
@@ -855,72 +730,27 @@ export const CommercialView: React.FC = () => {
                                     </div>
                                 </div>
 
-                                {/* STACKED BAR CHART - COLLABORATORS */}
+                                {/* STACKED BAR CHART - CLIENT RESULTS */}
                                 <div className="col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
-                                    <h3 className="font-bold text-slate-700 mb-4">Volume de Tarefas por Colaborador</h3>
+                                    <h3 className="font-bold text-slate-700 mb-4">Top 5 Clientes (Volume Financeiro)</h3>
                                     <div className="flex-1 min-h-[300px]">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <BarChart
-                                                data={dashboardStats.collaborators.map(c => ({
-                                                    name: c.user.name.split(' ')[0], // First name only for compactness
-                                                    Conuídas: c.completed,
-                                                    Pendentes: c.pending,
-                                                    EmAndamento: c.inProgress,
-                                                    Atrasadas: c.late
-                                                }))}
-                                                margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
+                                                data={dashboardStats.clientsChartData}
+                                                layout="vertical"
+                                                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                                             >
-                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
-                                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
-                                                <RechartsTooltip cursor={{ fill: '#f1f5f9' }} />
-                                                <Legend />
-                                                <Bar dataKey="Conuídas" stackId="a" fill={COLORS.success} radius={[0, 0, 4, 4]} />
-                                                <Bar dataKey="EmAndamento" stackId="a" fill={COLORS.study} />
-                                                <Bar dataKey="Pendentes" stackId="a" fill="#94a3b8" />
-                                                <Bar dataKey="Atrasadas" stackId="a" fill={COLORS.failure} radius={[4, 4, 0, 0]} />
+                                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                                                <XAxis type="number" hide />
+                                                <YAxis dataKey="name" type="category" width={100} axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                                                <RechartsTooltip cursor={{ fill: '#f1f5f9' }} formatter={(value: number) => `R$ ${value.toLocaleString()}`} />
+                                                <Bar dataKey="value" fill={COLORS.study} radius={[0, 4, 4, 0]} barSize={20} />
                                             </BarChart>
                                         </ResponsiveContainer>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* COLLABORATOR TABLE */}
-                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                                <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center gap-2">
-                                    <Users size={18} className="text-slate-500" />
-                                    <h3 className="font-bold text-slate-700">Desempenho por Colaborador</h3>
-                                </div>
-                                <table className="w-full text-sm text-left">
-                                    <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b">
-                                        <tr>
-                                            <th className="px-6 py-3">Colaborador</th>
-                                            <th className="px-6 py-3 text-center">Total Ações</th>
-                                            <th className="px-6 py-3 text-center text-blue-600">Em Andamento</th>
-                                            <th className="px-6 py-3 text-center text-red-600">Atrasadas</th>
-                                            <th className="px-6 py-3 text-center text-green-600">Concluídas</th>
-                                            <th className="px-6 py-3 text-center">Produtividade</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {dashboardStats.collaborators.map((col, idx) => (
-                                            <tr key={col.user.id} className="border-b hover:bg-slate-50 transition-colors">
-                                                <td className="px-6 py-4 font-medium text-slate-800">{col.user.name}</td>
-                                                <td className="px-6 py-4 text-center font-bold">{col.total}</td>
-                                                <td className="px-6 py-4 text-center">{col.inProgress}</td>
-                                                <td className="px-6 py-4 text-center font-bold text-red-600">{col.late}</td>
-                                                <td className="px-6 py-4 text-center font-bold text-green-600">{col.completed}</td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <div className="w-full bg-slate-200 rounded-full h-1.5 dark:bg-gray-700 max-w-[100px] mx-auto">
-                                                        <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${col.productivity}%` }}></div>
-                                                    </div>
-                                                    <span className="text-xs text-slate-500 mt-1 block">{col.productivity}%</span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
                         </motion.div>
                     )}
 
@@ -949,36 +779,6 @@ export const CommercialView: React.FC = () => {
                                             setTaskFormMode('QUICK_EDIT');
                                             setIsTaskModalOpen(true);
                                         }}
-                                    />
-                                </div>
-                            </div>
-
-
-                        </motion.div>
-                    )}
-
-                    {/* OPERATIONAL VIEW (CHILDREN) */}
-                    {view === 'OPERATIONAL' && (
-                        <motion.div
-                            key="operational"
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 20 }}
-                            transition={{ duration: 0.3 }}
-                            className="flex-1 h-full overflow-hidden"
-                        >
-                            <div className="h-full bg-slate-100/50 backdrop-blur rounded-xl border border-white/20 shadow-sm flex flex-col overflow-hidden">
-                                <div className="p-4 bg-white/60 border-b border-slate-200 flex justify-between items-center">
-                                    <h3 className="font-bold text-slate-700 flex items-center gap-2 text-lg">
-                                        <List size={20} className="text-blue-600" /> Ações Filhas (Operacional)
-                                    </h3>
-                                </div>
-                                <div className="flex-1 overflow-x-auto overflow-y-hidden p-6">
-                                    <KanbanBoard
-                                        tasks={hierarchyScan.children}
-                                        users={MOCK_USERS}
-                                        onStatusChange={handleStatusChange}
-                                        onEdit={(t) => { setEditingTask(t); setIsTaskModalOpen(true); }}
                                     />
                                 </div>
                             </div>
