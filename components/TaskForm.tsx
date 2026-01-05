@@ -69,7 +69,6 @@ export const TaskForm: React.FC<Props> = ({
         observations: '',
         progress: 0,
         startDate: new Date(),
-        startDate: new Date(),
         endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         parentId: undefined,
         outcome: undefined,
@@ -290,71 +289,7 @@ export const TaskForm: React.FC<Props> = ({
                 )}
 
 
-                {formData.opportunityId && (
-                  <>
-                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-slate-50 border border-slate-200 rounded-lg">
-                      <h3 className="md:col-span-2 text-sm font-bold text-slate-700 flex items-center gap-2">
-                        <Building size={16} /> Dados do Cliente e Proposta
-                      </h3>
 
-                      <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">Nome da Proposta</label>
-                        <input
-                          type="text"
-                          className="w-full p-2 border border-slate-300 rounded text-sm"
-                          value={formData.proposalName || ''}
-                          onChange={(e) => setFormData({ ...formData, proposalName: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">Nome do Cliente</label>
-                        <input
-                          type="text"
-                          className="w-full p-2 border border-slate-300 rounded text-sm"
-                          value={formData.clientName || ''}
-                          onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">Responsável (Contato)</label>
-                        <div className="relative">
-                          <UserIcon size={14} className="absolute left-2.5 top-2.5 text-slate-400" />
-                          <input
-                            type="text"
-                            className="w-full pl-8 p-2 border border-slate-300 rounded text-sm"
-                            value={formData.responsibleName || ''}
-                            onChange={(e) => setFormData({ ...formData, responsibleName: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">Email</label>
-                        <div className="relative">
-                          <Mail size={14} className="absolute left-2.5 top-2.5 text-slate-400" />
-                          <input
-                            type="email"
-                            className="w-full pl-8 p-2 border border-slate-300 rounded text-sm"
-                            value={formData.contactEmail || ''}
-                            onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">Telefone</label>
-                        <div className="relative">
-                          <Phone size={14} className="absolute left-2.5 top-2.5 text-slate-400" />
-                          <input
-                            type="tel"
-                            className="w-full pl-8 p-2 border border-slate-300 rounded text-sm"
-                            value={formData.contactPhone || ''}
-                            onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
 
                 {isChild && (formData.category === 'Prévia' || formData.category === 'Proposta Comercial') && (
                   <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-green-50 border border-green-200 rounded-lg">
