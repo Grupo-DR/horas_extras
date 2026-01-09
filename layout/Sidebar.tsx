@@ -20,13 +20,13 @@ export const Sidebar: React.FC = () => {
                     <img
                         src="/assets/dr-logo.png"
                         alt="DR"
-                        className="h-9 w-auto object-contain"
+                        className="h-7 w-auto object-contain"
                         draggable={false}
                     />
                     <img
                         src="/assets/nexus.png"
                         alt="Nexus"
-                        className="h-6 w-auto object-contain"
+                        className="h-4 w-auto object-contain"
                         draggable={false}
                     />
                 </div>
