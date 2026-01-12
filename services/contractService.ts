@@ -20,6 +20,40 @@ const d = (v: any) => {
     return null;
 };
 
+// PARSER: Golden Template
+export const parseGoldenTemplate = (data: any[][]) => {
+    // 1. Identify Entity (Row 17 -> index 16, Col 7 -> index 6)
+    // Careful with bounds
+    const entityCell = data[16]?.[6] || '';
+    let entity: 'RENTAL' | 'CONSTRUTORA' | null = null;
+
+    const upperEntity = String(entityCell).toUpperCase();
+    if (upperEntity.includes('RENTAL') || upperEntity.includes('DR RENTAL')) entity = 'RENTAL';
+    else if (upperEntity.includes('CONSTRUTORA') || upperEntity.includes('DR CONSTRUTORA')) entity = 'CONSTRUTORA';
+    else {
+        throw new Error("Entidade inválida ou não encontrada. O arquivo deve pertencer explicitamente à 'DR RENTAL' ou 'DR CONSTRUTORA'. Verifique a célula G17.");
+    }
+
+    // 2. Map Items (Start Row 20 -> index 19)
+    const items: any[] = [];
+
+    // We assume data has at least 20 rows
+    for (let i = 19; i < data.length; i++) {
+        const row = data[i];
+        // Stop if row is empty or invalid (basic check)
+        if (!row || !row[4]) continue; // Assume Code (Col 4) is required
+
+        items.push({
+            code: s(row[4]),        // Col 4: ID/Code
+            description: s(row[6]), // Col 6: Description
+            monthValue: n(row[19]), // Col 19: Month Value
+            balance: n(row[20])     // Col 20: Current Balance
+        });
+    }
+
+    return { entity, items };
+};
+
 export const ContractService = {
     // GET ALL REAL-TIME
     getAll: async (): Promise<Contract[]> => {
@@ -53,9 +87,12 @@ export const ContractService = {
                             id: s(m.id),
                             date: d(m.date),
                             value: n(m.value),
-                            description: s(m.description)
+                            description: s(m.description),
+                            entity: m.entity || undefined
                         }))
                         : [],
+
+                    scopeItems: Array.isArray(data.scopeItems) ? data.scopeItems : [], // Map Scope Items
 
                     createdAt: d(data.createdAt),
                     updatedAt: d(data.updatedAt)

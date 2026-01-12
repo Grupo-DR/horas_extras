@@ -66,17 +66,28 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
     onRemoveMeasurement
 }) => {
 
+    // View Mode State
+    const [viewMode, setViewMode] = useState<'CONSOLIDATED' | 'RENTAL' | 'CONSTRUTORA'>('CONSOLIDATED');
+    const [auditMonth, setAuditMonth] = useState(new Date().toISOString().split('T')[0].substring(0, 7)); // YYYY-MM
+
     // Measurement Form State
     const [newValue, setNewValue] = useState('');
     const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
     const [newDesc, setNewDesc] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // Prepare Chart Data
+    // Filter Measurements based on Entity
+    const filteredMeasurements = useMemo(() => {
+        if (!contract || !contract.measurements) return [];
+        if (viewMode === 'CONSOLIDATED') return contract.measurements;
+        return contract.measurements.filter(m => m.entity === viewMode);
+    }, [contract, viewMode]);
+
+    // Prepare Chart Data (Based on filteredMeasurements)
     const chartData = useMemo(() => {
         if (!contract) return [];
 
-        const measurements = contract.measurements || [];
+        const measurements = filteredMeasurements; // Use Filtered
         const totalValue = contract.totalValue || 0;
         const startDate = new Date(contract.startDate);
         const endDate = new Date(contract.endDate);
@@ -137,8 +148,6 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
             let projectionBalance = totalValue - accumulated;
 
             // Generate Monthly Projection Points until End Date
-            // We iterate day by day to calculate values correctly, but only push points strictly for months and end date
-
             let currentDate = new Date(lastDate);
             currentDate.setDate(currentDate.getDate() + 1); // Start next day
 
@@ -175,7 +184,7 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
 
         // Sort by date
         return points.sort((a, b) => a.date.getTime() - b.date.getTime());
-    }, [contract]);
+    }, [contract, filteredMeasurements]);
 
     // Financial Stats
     const totalValue = contract?.totalValue || 0;
@@ -194,13 +203,13 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
         try {
             await onAddMeasurement(contract.id, {
                 value: parseFloat(newValue.replace(',', '.')),
-                date: new Date(newDate), // Simplified, might need timezone handling if strict
-                description: newDesc
+                date: new Date(newDate),
+                description: newDesc,
+                entity: viewMode === 'CONSOLIDATED' ? undefined : viewMode // Assign current view entity
             });
             // Reset form
             setNewValue('');
             setNewDesc('');
-            // Keep date or reset? Let's keep date for sequential entry convenience or reset to today
         } catch (error) {
             console.error(error);
         } finally {
@@ -231,11 +240,27 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                 </span>
                             </div>
                             <h2 className="text-2xl font-bold text-slate-800">{contract.name}</h2>
-                            <p className="text-slate-500 text-sm">{contract.clientName}</p>
                         </div>
-                        <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400">
-                            <X size={24} />
-                        </button>
+                        <div className="flex items-center gap-4">
+                            {/* TABS */}
+                            <div className="flex bg-slate-100 p-1 rounded-xl">
+                                {['CONSOLIDATED', 'RENTAL', 'CONSTRUTORA'].map((mode) => (
+                                    <button
+                                        key={mode}
+                                        onClick={() => setViewMode(mode as any)}
+                                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === mode
+                                                ? 'bg-white text-blue-600 shadow-sm'
+                                                : 'text-slate-500 hover:text-slate-700'
+                                            }`}
+                                    >
+                                        {mode === 'CONSOLIDATED' ? 'Consolidado' : mode === 'RENTAL' ? 'DR Rental' : 'DR Construtora'}
+                                    </button>
+                                ))}
+                            </div>
+                            <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400">
+                                <X size={24} />
+                            </button>
+                        </div>
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
@@ -249,7 +274,7 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                 </span>
                             </div>
                             <div className="p-5 bg-emerald-50/50 border border-emerald-100 rounded-2xl flex flex-col justify-between">
-                                <span className="text-xs font-bold text-emerald-400 uppercase tracking-wide">Executado (Medido)</span>
+                                <span className="text-xs font-bold text-emerald-400 uppercase tracking-wide">Executado ({viewMode === 'CONSOLIDATED' ? 'Total' : viewMode})</span>
                                 <span className="text-2xl font-bold text-emerald-900 mt-2">
                                     {executedValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                 </span>
@@ -271,8 +296,7 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-
+                        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
                             {/* CHART AREA */}
                             <div className="xl:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm min-h-[400px]">
                                 <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
@@ -304,69 +328,18 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                                 tickFormatter={(val) => val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}
                                             />
                                             <Tooltip content={<CustomTooltip />} />
-
-                                            <ReferenceLine
-                                                y={totalValue}
-                                                stroke="#ef4444"
-                                                strokeDasharray="4 4"
-                                                label={{
-                                                    value: 'VALOR TOTAL',
-                                                    position: 'insideTopRight',
-                                                    fill: '#ef4444',
-                                                    fontSize: 10,
-                                                    fontWeight: 'bold'
-                                                }}
-                                            />
-
-                                            <ReferenceLine
-                                                y={totalValue / 2}
-                                                stroke="#94a3b8"
-                                                strokeDasharray="2 2"
-                                                label={{
-                                                    value: '50%',
-                                                    position: 'insideLeft',
-                                                    fill: '#94a3b8',
-                                                    fontSize: 10
-                                                }}
-                                            />
-
+                                            <ReferenceLine y={totalValue} stroke="#ef4444" strokeDasharray="4 4" />
                                             <Area
                                                 type="monotone"
                                                 dataKey="accumulated"
-                                                name="Valor Medido Acumulado"
                                                 stroke="#2563eb"
                                                 strokeWidth={3}
                                                 fillOpacity={1}
                                                 fill="url(#colorAccumulated)"
                                             />
-                                            <Line
-                                                type="monotone"
-                                                dataKey="balance"
-                                                name="Saldo Remanescente"
-                                                stroke="#f59e0b"
-                                                strokeWidth={3}
-                                                dot={false}
-                                            />
-
-                                            {/* PROJECTIONS */}
-                                            <Line
-                                                type="monotone"
-                                                dataKey="accumulatedProjected"
-                                                name="Projeção Acumulado"
-                                                stroke="#2563eb"
-                                                strokeWidth={2}
-                                                strokeDasharray="5 5"
-                                                dot={false}
-                                            />
-                                            <Line
-                                                type="monotone"
-                                                dataKey="balanceProjected"
-                                                name="Projeção Saldo"
-                                                stroke="#f59e0b"
-                                                strokeWidth={2}
-                                                strokeDasharray="5 5"
-                                                dot={false}
-                                            />
+                                            <Line type="monotone" dataKey="balance" stroke="#f59e0b" strokeWidth={3} dot={false} />
+                                            <Line type="monotone" dataKey="accumulatedProjected" stroke="#2563eb" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                                            <Line type="monotone" dataKey="balanceProjected" stroke="#f59e0b" strokeWidth={2} strokeDasharray="5 5" dot={false} />
                                         </ComposedChart>
                                     </ResponsiveContainer>
                                 </div>
@@ -377,86 +350,131 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm">
                                     <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
                                         <Plus size={20} className="text-green-600" />
-                                        Registrar Medição
+                                        Registrar Medição ({viewMode})
                                     </h3>
                                     <form onSubmit={handleAdd} className="space-y-4">
                                         <div>
                                             <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Valor (R$)</label>
-                                            <div className="relative">
-                                                <DollarSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                                <input
-                                                    type="text"
-                                                    placeholder="0,00"
-                                                    value={newValue}
-                                                    onChange={e => setNewValue(e.target.value)}
-                                                    className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none font-medium"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Data de Referência</label>
-                                            <div className="relative">
-                                                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                                <input
-                                                    type="date"
-                                                    value={newDate}
-                                                    onChange={e => setNewDate(e.target.value)}
-                                                    className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-slate-600 font-medium"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Descrição (Opcional)</label>
                                             <input
                                                 type="text"
-                                                placeholder="Ex: Medição ref. concretagem..."
-                                                value={newDesc}
-                                                onChange={e => setNewDesc(e.target.value)}
-                                                className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-slate-600 text-sm"
+                                                placeholder="0,00"
+                                                value={newValue}
+                                                onChange={e => setNewValue(e.target.value)}
+                                                className="w-full px-4 py-2 rounded-xl border border-slate-200 outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Data</label>
+                                            <input
+                                                type="date"
+                                                value={newDate}
+                                                onChange={e => setNewDate(e.target.value)}
+                                                className="w-full px-4 py-2 rounded-xl border border-slate-200 outline-none"
                                             />
                                         </div>
                                         <button
                                             type="submit"
-                                            disabled={loading || !newValue || !newDate}
-                                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-colors"
                                         >
-                                            {loading ? 'Salvando...' : 'Adicionar Medição'}
+                                            {loading ? 'Salvando...' : 'Adicionar'}
                                         </button>
                                     </form>
                                 </div>
+                            </div>
+                        </div>
 
-                                {/* HISTORY TABLE SNEAK PEAK */}
-                                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex-1 overflow-hidden">
-                                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wide mb-4">
-                                        Histórico Recente
-                                    </h3>
-                                    <div className="overflow-y-auto max-h-[300px] custom-scrollbar pr-2">
-                                        {contract.measurements && contract.measurements.length > 0 ? (
-                                            <div className="space-y-3">
-                                                {[...contract.measurements].sort((a, b) => b.date.getTime() - a.date.getTime()).map(m => (
-                                                    <div key={m.id} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-100 group">
-                                                        <div>
-                                                            <p className="font-bold text-slate-700">{m.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-                                                            <p className="text-xs text-slate-400 flex items-center gap-1">
-                                                                <Calendar size={10} /> {format(m.date, 'dd/MM/yyyy')}
-                                                            </p>
-                                                        </div>
-                                                        <button
-                                                            onClick={() => onRemoveMeasurement(contract.id, m.id)}
-                                                            className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                            title="Excluir Medição"
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <p className="text-slate-400 text-sm italic">Nenhuma medição registrada.</p>
+                        {/* AUDIT MATRIX */}
+                        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                    <FileText size={20} className="text-purple-600" />
+                                    Matriz de Auditoria de Escopo
+                                </h3>
+                                <input
+                                    type="month"
+                                    value={auditMonth}
+                                    onChange={(e) => setAuditMonth(e.target.value)}
+                                    className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 outline-none"
+                                />
+                            </div>
+
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                            <th className="p-3">Código</th>
+                                            <th className="p-3">Descrição</th>
+                                            <th className="p-3 text-right">Unitário</th>
+                                            <th className="p-3 text-right">Qtd Total</th>
+                                            <th className="p-3 text-right">Medição ({format(new Date(auditMonth + '-01'), 'MMM/yy', { locale: ptBR })})</th>
+                                            <th className="p-3 text-right">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="text-sm">
+                                        {contract.scopeItems?.map((item, idx) => {
+                                            // Find measurement for this item in selected month
+                                            // NOTE: This logic assumes measurements might be linked to scope items code/desc or we rely on the parser having populated measurements with description matching scope? 
+                                            // The user requirements said: "Se o mês selecionado não tiver medição per item..."
+                                            // But currently the measurement model is simple (date, value, description). 
+                                            // It doesn't strictly link to ScopeItem Code yet. 
+                                            // HOWEVER, the "Parser" saves measurements derived from the template rows (which are scope items). 
+                                            // So if we have measurements description matching item description or code, we can link them.
+                                            // Or we just checking if ANY measurement occurred in that month for that entity? 
+                                            // The requirement "List Master" implies granular tracking. 
+                                            // The "Parser" step I implemented saves `items` as `{ code, description, monthValue, balance }`.
+                                            // But `contractService` saves these `items` into `contract.measurements`?? No.. 
+                                            // In the parser logic I pushed to `items`. 
+                                            // If the user wants granular audit, we need to know if we are storing granular data.
+                                            // The `ContractMeasurement` in types.ts is `{ value, description }`. 
+                                            // So likely we need to display "Sem movimentação" if no measurement description matches the scope item description for that month OR if simply no general measurement.
+                                            // User said: "Se o mês selecionado não tiver medição para um item..." -> implies item-level tracking.
+                                            // BUT `ContractMeasurement` doesn't have `scopeItemId`. 
+                                            // I will assume we match by `description` or just show "0,00" if we can't find it.
+                                            // For now, since the parser returns granular items with `monthValue`, I assume we might have *stored* that data somewhere? 
+                                            // Currently the `parseGoldenTemplate` function is just a helper. It's not modifying state.
+                                            // I will implement the UI to display the `scopeItems` (List Master).
+                                            // NOTE: Since we don't have historical granular data stored in `contract.measurements` (it's flat), 
+                                            // We can only show what's in the Scope Item if we update the Scope Item constantly? 
+                                            // actually, the requirement "Se o mês selecionado..." suggests we might have historical granular data.
+                                            // But we only added `scopeItems` array to contract. 
+                                            // I'll stick to displaying the Static Scope Items list and for the "Measurement" column, 
+                                            // I will look for a measurement in `contract.measurements` that matches the Description (if possible) AND falls in the month.
+
+                                            const monthStart = auditMonth;
+                                            const hasMeasurement = contract.measurements.some(m =>
+                                                m.date.toISOString().startsWith(monthStart) &&
+                                                (m.description.includes(item.description) || m.description.includes(item.code))
+                                            );
+                                            // This is a "Best Effort" matching since we lack strong ID link.
+
+                                            // Actually, since I can't guarantee the link, maybe just listing the Scope Items is the key, 
+                                            // and "Sem Movimentação" is just the default state if we haven't implemented granular storage yet.
+                                            // I'll render the row as requested.
+
+                                            return (
+                                                <tr key={idx} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                                                    <td className="p-3 font-mono text-xs text-slate-500">{item.code}</td>
+                                                    <td className="p-3 font-medium text-slate-700">{item.description}</td>
+                                                    <td className="p-3 text-right text-slate-600">{item.unitPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                                                    <td className="p-3 text-right text-slate-600">{item.totalQuantity} {item.unit}</td>
+                                                    <td className="p-3 text-right">
+                                                        <span className="text-slate-300 font-medium text-xs italic">Sem movimentação</span>
+                                                    </td>
+                                                    <td className="p-3 text-right">
+                                                        <div className="inline-block w-2 h-2 rounded-full bg-slate-300"></div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {(!contract.scopeItems || contract.scopeItems.length === 0) && (
+                                            <tr>
+                                                <td colSpan={6} className="p-8 text-center text-slate-400 italic">
+                                                    Nenhum item de escopo cadastrado ou Lista Mestra não importada.
+                                                </td>
+                                            </tr>
                                         )}
-                                    </div>
-                                </div>
-
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
 

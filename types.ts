@@ -149,11 +149,25 @@ export enum ContractStatus {
   SUSPENDED = 'SUSPENDED'
 }
 
+export enum ContractMeasurementEntity {
+  RENTAL = 'RENTAL',
+  CONSTRUTORA = 'CONSTRUTORA'
+}
+
 export interface ContractMeasurement {
   id: string;
   date: Date;
   value: number;
   description: string;
+  entity?: ContractMeasurementEntity | 'RENTAL' | 'CONSTRUTORA'; // Flexible for now
+}
+
+export interface ScopeItem {
+  code: string;
+  description: string;
+  unit: string;
+  unitPrice: number;
+  totalQuantity: number;
 }
 
 export interface Contract {
@@ -165,6 +179,7 @@ export interface Contract {
   startDate: Date;
   endDate: Date;
   measurements: ContractMeasurement[];
+  scopeItems?: ScopeItem[]; // Lista Mestra
   adjustments?: { type: 'ADITIVO' | 'REAJUSTE'; date: Date; value: number; newEndDate?: Date }[]; // NEW
   status: ContractStatus;
 
