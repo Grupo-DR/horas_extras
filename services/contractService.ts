@@ -1,6 +1,11 @@
 import { db } from './firebaseConfig';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, orderBy, Timestamp, arrayUnion } from 'firebase/firestore';
 import { Contract, ContractMeasurement, ContractStatus } from '../types';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+// GEMINI CONFIG
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const genAI = new GoogleGenerativeAI(API_KEY || '');
 
 // COLLECTION REF
 const COLLECTION_NAME = 'contracts';
@@ -9,7 +14,7 @@ const COLLECTION_NAME = 'contracts';
 const n = (v: any) => (typeof v === 'number' && !isNaN(v) ? v : 0);
 const s = (v: any) => (typeof v === 'string' ? v : '');
 const d = (v: any) => {
-    if (!v) return null; // FIX: Don't default to today
+    if (!v) return null;
     if (v instanceof Timestamp) return v.toDate();
     if (v && typeof v.toDate === 'function') return v.toDate();
     if (v instanceof Date) return v;
@@ -19,6 +24,72 @@ const d = (v: any) => {
     }
     return null;
 };
+
+// AI PARSER SERVICE
+export const parseBMWithAI = async (csvContent: string) => {
+    if (!API_KEY) throw new Error("Chave da API Gemini não configurada (VITE_GEMINI_API_KEY).");
+
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    const prompt = `
+        Você é um assistente de engenharia civil da DR Construtora. Sua tarefa é ler o conteúdo de um CSV de medição e extrair dados estruturados em JSON.
+        
+        CSV BRUTO:
+        ${csvContent.substring(0, 30000)} // Limit context if needed
+
+        Retorne APENAS um objeto JSON com esta estrutura (sem markdown):
+        {
+            "entity": "RENTAL" | "CONSTRUTORA" (Identifique no texto),
+            "period": "DD/MM/YYYY" (Data final do período identificado),
+            "items": [
+                {
+                    "code": "string",
+                    "description": "string",
+                    "monthValue": number (Valor medido neste boletim/mês. Ignore colunas vazias. Se zero, use 0),
+                    "balance": number (Saldo a medir),
+                    "executionPercentage": number
+                }
+            ]
+        }
+        
+        Regras:
+        1. Ignore linhas de cabeçalho irrelevantes.
+        2. O valor medido costuma estar próximo à descrição.
+        3. Se encontrar 'DR RENTAL', entity = 'RENTAL'.
+        4. Se encontrar 'DR CONSTRUTORA', entity = 'CONSTRUTORA'.
+    `;
+
+    try {
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+
+        // Clean markdown code blocks if present
+        const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        const data = JSON.parse(jsonStr);
+
+        // Validate Date
+        let periodDate: Date | null = null;
+        if (data.period) {
+            const [day, month, year] = data.period.split('/');
+            periodDate = new Date(`${year}-${month}-${day}`);
+        }
+
+        return { ...data, periodDate };
+
+    } catch (error: any) {
+        console.error("AI Parse Error:", error);
+        throw new Error("Falha no processamento inteligente: " + error.message);
+    }
+};
+
+// LEGACY PARSER (Kept for fallback/reference if needed, but AI is primary now)
+export const parseGoldenTemplateLegacy = (data: any[][]) => {
+    // ... (Old logic can be kept or removed. Overwriting "parseGoldenTemplate" name or creating new export)
+    // For now, I will rename the exported AI function to be used intentionally.
+    return {};
+};
+
 
 // PARSER: Golden Template
 export const parseGoldenTemplate = (data: any[][]) => {
