@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, DollarSign, Plus, Trash2, TrendingUp, FileText, PieChart } from 'lucide-react';
+import { X, Calendar, DollarSign, Plus, Trash2, TrendingUp, FileText, Upload } from 'lucide-react';
 import { Contract, ContractMeasurement } from '../types';
+import * as XLSX from 'xlsx';
+import { parseGoldenTemplate } from '../services/contractService';
 import {
     LineChart,
     Line,
@@ -217,6 +219,57 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
         }
     };
 
+    // File Upload Handler
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setLoading(true);
+        try {
+            const data = await new Promise<any[][]>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const bstr = evt.target?.result;
+                        const wb = XLSX.read(bstr, { type: 'binary' });
+                        const wsname = wb.SheetNames[0];
+                        const ws = wb.Sheets[wsname];
+                        const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+                        resolve(jsonData);
+                    } catch (err) {
+                        reject(err);
+                    }
+                };
+                reader.onerror = (err) => reject(err);
+                reader.readAsBinaryString(file);
+            });
+
+            const { entity, items } = parseGoldenTemplate(data);
+            const totalMonthValue = items.reduce((acc: number, item: any) => acc + (item.monthValue || 0), 0);
+
+            if (totalMonthValue === 0) {
+                alert("Aviso: O boletim validado não contém valores medidos neste mês (Total = 0).");
+            }
+
+            setNewValue(totalMonthValue.toFixed(2).replace('.', ','));
+            setNewDesc(`Boletim Importado via Excel (${entity})`);
+
+            if (viewMode !== 'CONSOLIDATED' && viewMode !== entity) {
+                alert(`Atenção: O arquivo é da ${entity}, mas você está na aba ${viewMode}. Recomendado trocar de aba ou o sistema registrará como ${viewMode} (se forçar).`);
+                setViewMode(entity as any);
+            } else if (viewMode === 'CONSOLIDATED') {
+                setViewMode(entity as any);
+            }
+
+        } catch (error: any) {
+            console.error(error);
+            alert(`Erro na importação: ${error.message}`);
+        } finally {
+            setLoading(false);
+            e.target.value = '';
+        }
+    };
+
     if (!isOpen || !contract) return null;
 
     return (
@@ -249,8 +302,8 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                         key={mode}
                                         onClick={() => setViewMode(mode as any)}
                                         className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === mode
-                                                ? 'bg-white text-blue-600 shadow-sm'
-                                                : 'text-slate-500 hover:text-slate-700'
+                                            ? 'bg-white text-blue-600 shadow-sm'
+                                            : 'text-slate-500 hover:text-slate-700'
                                             }`}
                                     >
                                         {mode === 'CONSOLIDATED' ? 'Consolidado' : mode === 'RENTAL' ? 'DR Rental' : 'DR Construtora'}
@@ -352,6 +405,31 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                         <Plus size={20} className="text-green-600" />
                                         Registrar Medição ({viewMode})
                                     </h3>
+
+                                    {/* UPLOAD INPUT */}
+                                    <div className="mb-6 border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center bg-white hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer relative group">
+                                        <input
+                                            type="file"
+                                            className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                                            onChange={handleFileUpload}
+                                            accept=".csv, .xls, .xlsx"
+                                            disabled={loading}
+                                        />
+                                        {loading ? (
+                                            <div className="flex flex-col items-center animate-pulse">
+                                                <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"></div>
+                                                <span className="text-xs font-bold text-blue-500">Processando planilha...</span>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className="p-2 bg-blue-100 rounded-full mb-2 group-hover:scale-110 transition-transform">
+                                                    <Upload size={20} className="text-blue-600" />
+                                                </div>
+                                                <span className="text-xs font-bold text-slate-600">Importar Boletim (Excel/CSV)</span>
+                                                <span className="text-[10px] text-slate-400 uppercase mt-1">Template DR Construtora</span>
+                                            </>
+                                        )}
+                                    </div>
                                     <form onSubmit={handleAdd} className="space-y-4">
                                         <div>
                                             <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Valor (R$)</label>
