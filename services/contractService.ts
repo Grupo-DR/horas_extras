@@ -22,21 +22,39 @@ const d = (v: any) => {
 
 // PARSER: Golden Template
 export const parseGoldenTemplate = (data: any[][]) => {
-    // 1. Metadata (Header Row 17 -> index 16)
-    // Entity: Col 7 -> index 6 (G17)
-    const entityCell = data[16]?.[6] || '';
+    // 1. Dynamic Entity Identification (Search G15-G20 -> Indices 14-19, Col 6)
     let entity: 'RENTAL' | 'CONSTRUTORA' | null = null;
+    let foundEntityRowIndex = -1;
 
-    // Looser check: includes + trim
-    const upperEntity = String(entityCell).toUpperCase().trim();
-    if (upperEntity.includes('RENTAL')) entity = 'RENTAL';
-    else if (upperEntity.includes('CONSTRUTORA')) entity = 'CONSTRUTORA';
-    else {
-        throw new Error(`Entidade não identificada na célula G17. Conteúdo encontrado: "${entityCell}". Esperado: "RENTAL" ou "CONSTRUTORA".`);
+    // Search range for Entity
+    const searchStart = 14;
+    const searchEnd = Math.min(data.length, 25);
+
+    for (let r = searchStart; r < searchEnd; r++) {
+        const cellVal = String(data[r]?.[6] || '').toUpperCase().trim();
+        if (cellVal.includes('RENTAL')) {
+            entity = 'RENTAL';
+            foundEntityRowIndex = r;
+            break;
+        }
+        if (cellVal.includes('CONSTRUTORA')) {
+            entity = 'CONSTRUTORA';
+            foundEntityRowIndex = r;
+            break;
+        }
     }
 
-    // Period: Col 19 -> index 18 (S17) e.g. "16/12/2024 a 20/01/2025"
-    const periodCell = data[16]?.[18];
+    if (!entity) {
+        throw new Error("Entidade não encontrada entre as linhas 15 e 25 (Coluna G). Verifique o cabeçalho.");
+    }
+
+    // 2. Metadata (Strictly Row 18 -> Index 17 as per request)
+    // Contrato: E18 (Index 17, Col 4)
+    // Period: S18 (Index 17, Col 18)
+    // Note: User said "Valor da entidade esta na Linha 18", so metadata line is likely 18 (index 17).
+    const headerRowIndex = 17;
+    const periodCell = data[headerRowIndex]?.[18]; // S18 -> Col 19 -> Index 18
+
     let periodDate: Date | null = null;
     if (periodCell && typeof periodCell === 'string') {
         const parts = periodCell.split(' a ');
@@ -45,38 +63,33 @@ export const parseGoldenTemplate = (data: any[][]) => {
             const dateStr = parts[1].trim();
             const [day, month, year] = dateStr.split('/');
             if (day && month && year) {
-                // Construct Date: YYYY-MM-DD for consistency
                 periodDate = new Date(`${year}-${month}-${day}`);
-                // Verify validity
                 if (isNaN(periodDate.getTime())) periodDate = null;
             }
         }
     }
 
-    // 2. Map Items (Start Row 20 -> index 19)
+    // 3. Map Items (Start Row 21 -> Index 20)
     const items: any[] = [];
 
-    for (let i = 19; i < data.length; i++) {
+    for (let i = 20; i < data.length; i++) {
         const row = data[i];
 
-        // Validation: Ignore if Code (Col 5 -> index 4) is empty
+        // Validation: Ignore if Code (Col E -> Index 4) is empty
         if (!row || !row[4]) continue;
 
-        // Extract Values with strict mapping
-        const code = String(row[4]); // Col 5 -> index 4
-        // Description check: Previous assumption was OK, usually nearby.
-        // User didn't override Description column, keeping row[6] (Col 7). 
-        // If Description is missing in Col 7, we might need to look at Col 6.
-        // Let's stick to row[6] for now.
+        // Extract Values with strict mapping V3
+        const code = String(row[4]).trim();          // Col E -> Index 4
+        const description = String(row[6] || '').trim(); // Col G -> Index 6
 
         // Values
-        const monthValue = typeof row[17] === 'number' ? row[17] : 0; // Col 18 -> index 17
-        const balance = typeof row[20] === 'number' ? row[20] : 0;    // Col 21 -> index 20
-        const executionPercentage = typeof row[21] === 'number' ? row[21] : 0; // Col 22 -> index 21
+        const monthValue = typeof row[17] === 'number' ? row[17] : 0; // Col R -> Index 17
+        const balance = typeof row[20] === 'number' ? row[20] : 0;    // Col U -> Index 20
+        const executionPercentage = typeof row[21] === 'number' ? row[21] : 0; // Col V -> Index 21
 
         items.push({
             code,
-            description: row[6],
+            description,
             monthValue,
             balance,
             executionPercentage,
