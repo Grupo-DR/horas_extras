@@ -22,64 +22,68 @@ const d = (v: any) => {
 
 // PARSER: Golden Template
 export const parseGoldenTemplate = (data: any[][]) => {
-    // 1. Dynamic Entity Identification (Search G15-G20 -> Indices 14-19, Col 6)
+    // 1. Anchor Search: Find "Contratada" in Col G (Index 6)
+    // Scan first 30 rows
+    let anchorRowIndex = -1;
+    const searchLimit = Math.min(data.length, 30);
+
+    for (let r = 0; r < searchLimit; r++) {
+        const cell = String(data[r]?.[6] || '').trim(); // Col G -> Index 6
+        if (cell === 'Contratada') {
+            anchorRowIndex = r;
+            break;
+        }
+    }
+
+    if (anchorRowIndex === -1) {
+        throw new Error("Erro: Arquivo fora do padrão DR Construtora. Palavra chave 'Contratada' não encontrada na Coluna G.");
+    }
+
+    // 2. Metadata: Found on Anchor Row + 1 (The line below "Contratada")
+    const metaRowIndex = anchorRowIndex + 1;
+    const metaRow = data[metaRowIndex];
+
+    if (!metaRow) throw new Error("Erro: Arquivo incompleto (Linha de metadados não existe).");
+
+    // Entity: Col G (Index 6) on Meta Row
+    const entityCell = String(metaRow[6] || '').toUpperCase().trim();
     let entity: 'RENTAL' | 'CONSTRUTORA' | null = null;
-    let foundEntityRowIndex = -1;
 
-    // Search range for Entity
-    const searchStart = 14;
-    const searchEnd = Math.min(data.length, 25);
-
-    for (let r = searchStart; r < searchEnd; r++) {
-        const cellVal = String(data[r]?.[6] || '').toUpperCase().trim();
-        if (cellVal.includes('RENTAL')) {
-            entity = 'RENTAL';
-            foundEntityRowIndex = r;
-            break;
-        }
-        if (cellVal.includes('CONSTRUTORA')) {
-            entity = 'CONSTRUTORA';
-            foundEntityRowIndex = r;
-            break;
-        }
+    if (entityCell.includes('RENTAL')) entity = 'RENTAL';
+    else if (entityCell.includes('CONSTRUTORA')) entity = 'CONSTRUTORA';
+    else {
+        throw new Error(`Entidade não identificada na célula G${metaRowIndex + 1}. Valor: "${entityCell}".`);
     }
 
-    if (!entity) {
-        throw new Error("Entidade não encontrada entre as linhas 15 e 25 (Coluna G). Verifique o cabeçalho.");
-    }
-
-    // 2. Metadata (Strictly Row 18 -> Index 17 as per request)
-    // Contrato: E18 (Index 17, Col 4)
-    // Period: S18 (Index 17, Col 18)
-    // Note: User said "Valor da entidade esta na Linha 18", so metadata line is likely 18 (index 17).
-    const headerRowIndex = 17;
-    const periodCell = data[headerRowIndex]?.[18]; // S18 -> Col 19 -> Index 18
-
+    // Period: Col S (Index 18) on Meta Row
+    const periodCell = metaRow[18];
     let periodDate: Date | null = null;
+
     if (periodCell && typeof periodCell === 'string') {
         const parts = periodCell.split(' a ');
         if (parts.length > 1) {
-            // Parse "20/01/2025" -> Date
             const dateStr = parts[1].trim();
             const [day, month, year] = dateStr.split('/');
             if (day && month && year) {
+                // Adjust year if 2 digits? usually 4 in system. Assuming YYYY from previous context.
+                // System uses generic 'new Date' parsing usually but manual is safer here.
                 periodDate = new Date(`${year}-${month}-${day}`);
                 if (isNaN(periodDate.getTime())) periodDate = null;
             }
         }
     }
 
-    // 3. Map Items (Start Row 21 -> Index 20)
+    // 3. Map Items: Start Anchor Row + 3
+    const startDataRow = anchorRowIndex + 3;
     const items: any[] = [];
 
-    for (let i = 20; i < data.length; i++) {
+    for (let i = startDataRow; i < data.length; i++) {
         const row = data[i];
 
         // Validation: Ignore if Code (Col E -> Index 4) is empty
         if (!row || !row[4]) continue;
 
-        // Extract Values with strict mapping V3
-        const code = String(row[4]).trim();          // Col E -> Index 4
+        const code = String(row[4]).trim();
         const description = String(row[6] || '').trim(); // Col G -> Index 6
 
         // Values
