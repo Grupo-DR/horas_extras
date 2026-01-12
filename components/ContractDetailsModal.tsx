@@ -77,6 +77,7 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
     const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
     const [newDesc, setNewDesc] = useState('');
     const [loading, setLoading] = useState(false);
+    const [parsedItems, setParsedItems] = useState<any[]>([]); // New State for Audit Preview
 
     // Filter Measurements based on Entity
     const filteredMeasurements = useMemo(() => {
@@ -85,23 +86,21 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
         return contract.measurements.filter(m => m.entity === viewMode);
     }, [contract, viewMode]);
 
-    // Prepare Chart Data (Based on filteredMeasurements)
+    // Prepare Chart Data
     const chartData = useMemo(() => {
         if (!contract) return [];
 
-        const measurements = filteredMeasurements; // Use Filtered
+        const measurements = filteredMeasurements;
         const totalValue = contract.totalValue || 0;
         const startDate = new Date(contract.startDate);
         const endDate = new Date(contract.endDate);
-        // Sort measurements by date
         const sorted = [...measurements].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-        // Create data points starting with the contract start date
         const points = [
             {
                 date: startDate,
                 shortDate: format(startDate, 'dd/MM/yy'),
-                monthYear: format(startDate, 'MMM yy', { locale: ptBR }),
+                monthYear: format(startDate, 'MMM/yy', { locale: ptBR }),
                 value: 0,
                 accumulated: 0,
                 balance: totalValue,
@@ -114,17 +113,20 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
 
         let accumulated = 0;
         let lastDate = startDate;
+        let validMonthsCount = 0;
+        let totalMeasured = 0;
 
-        // Process Real Data
         sorted.forEach(m => {
             const mDate = new Date(m.date);
             accumulated += m.value;
             lastDate = mDate;
+            validMonthsCount++;
+            totalMeasured += m.value;
 
             points.push({
                 date: mDate,
                 shortDate: format(mDate, 'dd/MM/yy'),
-                monthYear: format(mDate, 'MMM yy', { locale: ptBR }),
+                monthYear: format(mDate, 'MMM/yy', { locale: ptBR }), // Format: Jan/25
                 value: m.value,
                 accumulated: accumulated,
                 balance: totalValue - accumulated,
@@ -135,56 +137,46 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
             });
         });
 
-        // Calculate Rate and Projections
+        // Projection: Simple Average Trend
         if (sorted.length > 0 && totalValue > 0) {
-            const daysElapsed = Math.max(1, Math.ceil((lastDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
-            const dailyRate = accumulated / daysElapsed;
+            const avgMonthly = totalMeasured / validMonthsCount; // Average of Col 18 equivalent
 
-            // Start projection from the last real point to ensure continuity
             const lastPoint = points[points.length - 1];
-            // Initialize projection values at the convergence point
             lastPoint.accumulatedProjected = lastPoint.accumulated;
             lastPoint.balanceProjected = lastPoint.balance;
 
             let projectionAccumulated = accumulated;
             let projectionBalance = totalValue - accumulated;
 
-            // Generate Monthly Projection Points until End Date
             let currentDate = new Date(lastDate);
-            currentDate.setDate(currentDate.getDate() + 1); // Start next day
-
-            let lastPushedMonth = lastDate.getMonth();
+            currentDate.setMonth(currentDate.getMonth() + 1); // Jump monthly
 
             while (currentDate <= endDate) {
-                const daysInFuture = Math.ceil((currentDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
-                projectionAccumulated = accumulated + (dailyRate * daysInFuture);
-                projectionBalance = (totalValue - accumulated) - (dailyRate * daysInFuture);
+                projectionAccumulated += avgMonthly;
+                projectionBalance -= avgMonthly;
 
-                const currentMonth = currentDate.getMonth();
-                const isNewMonth = currentMonth !== lastPushedMonth;
-                const isFinal = currentDate.getTime() === endDate.getTime();
+                // Cap at Total Value / 0 Balance
+                if (projectionBalance < 0) projectionBalance = 0;
+                if (projectionAccumulated > totalValue) projectionAccumulated = totalValue;
 
-                if (isNewMonth || isFinal) {
-                    points.push({
-                        date: new Date(currentDate),
-                        shortDate: format(currentDate, 'dd/MM/yy'),
-                        monthYear: format(currentDate, 'MMM yy', { locale: ptBR }),
-                        value: 0,
-                        accumulated: null, // null removes from real line
-                        balance: null,
-                        accumulatedProjected: projectionAccumulated,
-                        balanceProjected: projectionBalance,
-                        isProjection: true,
-                        description: 'Projeção'
-                    });
-                    lastPushedMonth = currentMonth;
-                }
+                points.push({
+                    date: new Date(currentDate),
+                    shortDate: format(currentDate, 'dd/MM/yy'),
+                    monthYear: format(currentDate, 'MMM/yy', { locale: ptBR }),
+                    value: 0,
+                    accumulated: null,
+                    balance: null,
+                    accumulatedProjected: projectionAccumulated,
+                    balanceProjected: projectionBalance,
+                    isProjection: true,
+                    description: 'Projeção (Média)'
+                });
 
-                currentDate.setDate(currentDate.getDate() + 1);
+                if (projectionBalance <= 0) break; // Stop if completed
+                currentDate.setMonth(currentDate.getMonth() + 1);
             }
         }
 
-        // Sort by date
         return points.sort((a, b) => a.date.getTime() - b.date.getTime());
     }, [contract, filteredMeasurements]);
 
@@ -245,6 +237,8 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
             });
 
             const { entity, items } = parseGoldenTemplate(data);
+            setParsedItems(items); // Store for Audit Matrix Preview
+
             const totalMonthValue = items.reduce((acc: number, item: any) => acc + (item.monthValue || 0), 0);
 
             if (totalMonthValue === 0) {
@@ -406,8 +400,7 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                         Registrar Medição ({viewMode})
                                     </h3>
 
-                                    {/* UPLOAD INPUT */}
-                                    <div className="mb-6 border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center bg-white hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer relative group">
+                                    <div className="mb-6 border-2 border-dashed border-blue-300 bg-blue-50/30 rounded-xl p-6 flex flex-col items-center justify-center hover:border-blue-500 hover:bg-blue-50 transition-all cursor-pointer relative group shadow-sm">
                                         <input
                                             type="file"
                                             className="absolute inset-0 opacity-0 cursor-pointer z-10"
@@ -417,16 +410,16 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                         />
                                         {loading ? (
                                             <div className="flex flex-col items-center animate-pulse">
-                                                <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"></div>
-                                                <span className="text-xs font-bold text-blue-500">Processando planilha...</span>
+                                                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+                                                <span className="text-sm font-bold text-blue-600">Processando planilha...</span>
                                             </div>
                                         ) : (
                                             <>
-                                                <div className="p-2 bg-blue-100 rounded-full mb-2 group-hover:scale-110 transition-transform">
-                                                    <Upload size={20} className="text-blue-600" />
+                                                <div className="p-3 bg-white shadow-md rounded-full mb-3 group-hover:scale-110 transition-transform">
+                                                    <Upload size={24} className="text-blue-600" />
                                                 </div>
-                                                <span className="text-xs font-bold text-slate-600">Importar Boletim (Excel/CSV)</span>
-                                                <span className="text-[10px] text-slate-400 uppercase mt-1">Template DR Construtora</span>
+                                                <span className="text-sm font-bold text-slate-700">Clique para Importar Boletim</span>
+                                                <span className="text-xs text-slate-500 mt-1 text-center max-w-[200px]">Suporta Excel (.xlsx) no padrão DR Construtora</span>
                                             </>
                                         )}
                                     </div>
@@ -478,68 +471,62 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
 
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr className="border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                            <th className="p-3">Código</th>
-                                            <th className="p-3">Descrição</th>
-                                            <th className="p-3 text-right">Unitário</th>
-                                            <th className="p-3 text-right">Qtd Total</th>
-                                            <th className="p-3 text-right">Medição ({format(new Date(auditMonth + '-01'), 'MMM/yy', { locale: ptBR })})</th>
-                                            <th className="p-3 text-right">Status</th>
+                                    <thead className="bg-slate-50 sticky top-0 z-10">
+                                        <tr className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                            <th className="p-3 border-b border-slate-100">Código</th>
+                                            <th className="p-3 border-b border-slate-100">Descrição</th>
+                                            <th className="p-3 border-b border-slate-100 text-right">Unitário</th>
+                                            <th className="p-3 border-b border-slate-100 text-right">Qtd Total</th>
+                                            <th className="p-3 border-b border-slate-100 text-right">
+                                                Medição {parsedItems.length > 0 ? '(Preview)' : `(${format(new Date(auditMonth + '-01'), 'MMM/yy', { locale: ptBR })})`}
+                                            </th>
+                                            <th className="p-3 border-b border-slate-100 text-right">Status</th>
                                         </tr>
                                     </thead>
                                     <tbody className="text-sm">
                                         {contract.scopeItems?.map((item, idx) => {
-                                            // Find measurement for this item in selected month
-                                            // NOTE: This logic assumes measurements might be linked to scope items code/desc or we rely on the parser having populated measurements with description matching scope? 
-                                            // The user requirements said: "Se o mês selecionado não tiver medição per item..."
-                                            // But currently the measurement model is simple (date, value, description). 
-                                            // It doesn't strictly link to ScopeItem Code yet. 
-                                            // HOWEVER, the "Parser" saves measurements derived from the template rows (which are scope items). 
-                                            // So if we have measurements description matching item description or code, we can link them.
-                                            // Or we just checking if ANY measurement occurred in that month for that entity? 
-                                            // The requirement "List Master" implies granular tracking. 
-                                            // The "Parser" step I implemented saves `items` as `{ code, description, monthValue, balance }`.
-                                            // But `contractService` saves these `items` into `contract.measurements`?? No.. 
-                                            // In the parser logic I pushed to `items`. 
-                                            // If the user wants granular audit, we need to know if we are storing granular data.
-                                            // The `ContractMeasurement` in types.ts is `{ value, description }`. 
-                                            // So likely we need to display "Sem movimentação" if no measurement description matches the scope item description for that month OR if simply no general measurement.
-                                            // User said: "Se o mês selecionado não tiver medição para um item..." -> implies item-level tracking.
-                                            // BUT `ContractMeasurement` doesn't have `scopeItemId`. 
-                                            // I will assume we match by `description` or just show "0,00" if we can't find it.
-                                            // For now, since the parser returns granular items with `monthValue`, I assume we might have *stored* that data somewhere? 
-                                            // Currently the `parseGoldenTemplate` function is just a helper. It's not modifying state.
-                                            // I will implement the UI to display the `scopeItems` (List Master).
-                                            // NOTE: Since we don't have historical granular data stored in `contract.measurements` (it's flat), 
-                                            // We can only show what's in the Scope Item if we update the Scope Item constantly? 
-                                            // actually, the requirement "Se o mês selecionado..." suggests we might have historical granular data.
-                                            // But we only added `scopeItems` array to contract. 
-                                            // I'll stick to displaying the Static Scope Items list and for the "Measurement" column, 
-                                            // I will look for a measurement in `contract.measurements` that matches the Description (if possible) AND falls in the month.
+                                            // Determine data source: Parsed Items (Preview) OR Historical Measurements
+                                            let displayValue = 0;
+                                            let hasActivity = false;
+                                            const isPreview = parsedItems.length > 0;
 
-                                            const monthStart = auditMonth;
-                                            const hasMeasurement = contract.measurements.some(m =>
-                                                m.date.toISOString().startsWith(monthStart) &&
-                                                (m.description.includes(item.description) || m.description.includes(item.code))
-                                            );
-                                            // This is a "Best Effort" matching since we lack strong ID link.
+                                            if (isPreview) {
+                                                // Preview Mode: Match with parsed items
+                                                const parsedItem = parsedItems.find(p => p.code === item.code || (item.code && p.code && String(p.code).trim() === String(item.code).trim()));
+                                                if (parsedItem) {
+                                                    displayValue = parsedItem.monthValue;
+                                                    hasActivity = displayValue > 0;
+                                                }
+                                            } else {
+                                                // Historical Mode (Existing Logic - approximate matching)
+                                                // NOTE: As discussed, strict linking requires ID. We do best effort here.
+                                                // If we have aggregated measurements, we can't easily break down per item unless stored.
+                                                // Showing 0 for now as "Sem Movimentação" default if no granular data available.
+                                            }
 
-                                            // Actually, since I can't guarantee the link, maybe just listing the Scope Items is the key, 
-                                            // and "Sem Movimentação" is just the default state if we haven't implemented granular storage yet.
-                                            // I'll render the row as requested.
+                                            // Styling for "Missing" or "Zero" items
+                                            const isZero = displayValue === 0;
+                                            const rowClass = isZero ? 'bg-slate-50 opacity-60 grayscale' : 'bg-white font-medium text-slate-700';
 
                                             return (
-                                                <tr key={idx} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                                                <tr key={idx} className={`border-b border-slate-100 transition-colors ${rowClass}`}>
                                                     <td className="p-3 font-mono text-xs text-slate-500">{item.code}</td>
-                                                    <td className="p-3 font-medium text-slate-700">{item.description}</td>
-                                                    <td className="p-3 text-right text-slate-600">{item.unitPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                                                    <td className="p-3 text-right text-slate-600">{item.totalQuantity} {item.unit}</td>
-                                                    <td className="p-3 text-right">
-                                                        <span className="text-slate-300 font-medium text-xs italic">Sem movimentação</span>
+                                                    <td className="p-3">{item.description}</td>
+                                                    <td className="p-3 text-right text-slate-500">{item.unitPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                                                    <td className="p-3 text-right text-slate-500">{item.totalQuantity} {item.unit}</td>
+                                                    <td className="p-3 text-right relative group">
+                                                        <span className={isZero ? 'text-slate-400' : 'text-emerald-600 font-bold'}>
+                                                            {displayValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                        </span>
+                                                        {/* Tooltip for Pending Items */}
+                                                        {isZero && (
+                                                            <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block w-48 p-2 bg-slate-800 text-white text-xs rounded-lg shadow-xl z-50">
+                                                                Item pendente de avanço físico
+                                                            </div>
+                                                        )}
                                                     </td>
                                                     <td className="p-3 text-right">
-                                                        <div className="inline-block w-2 h-2 rounded-full bg-slate-300"></div>
+                                                        <div className={`inline-block w-2.5 h-2.5 rounded-full ${hasActivity ? 'bg-emerald-500 shadow-sm shadow-emerald-200' : 'bg-slate-300'}`}></div>
                                                     </td>
                                                 </tr>
                                             );

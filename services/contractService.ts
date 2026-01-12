@@ -22,8 +22,8 @@ const d = (v: any) => {
 
 // PARSER: Golden Template
 export const parseGoldenTemplate = (data: any[][]) => {
-    // 1. Identify Entity (Row 17 -> index 16, Col 7 -> index 6)
-    // Careful with bounds
+    // 1. Metadata (Header Row 17 -> index 16)
+    // Entity: Col 7 -> index 6
     const entityCell = data[16]?.[6] || '';
     let entity: 'RENTAL' | 'CONSTRUTORA' | null = null;
 
@@ -31,27 +31,45 @@ export const parseGoldenTemplate = (data: any[][]) => {
     if (upperEntity.includes('RENTAL') || upperEntity.includes('DR RENTAL')) entity = 'RENTAL';
     else if (upperEntity.includes('CONSTRUTORA') || upperEntity.includes('DR CONSTRUTORA')) entity = 'CONSTRUTORA';
     else {
-        throw new Error("Entidade inválida ou não encontrada. O arquivo deve pertencer explicitamente à 'DR RENTAL' ou 'DR CONSTRUTORA'. Verifique a célula G17.");
+        throw new Error("Entidade inválida ou não encontrada na célula G17.");
     }
+
+    // Period: Col 19 -> index 18 (e.g. "jan/25")
+    const periodCell = data[16]?.[18];
 
     // 2. Map Items (Start Row 20 -> index 19)
     const items: any[] = [];
 
-    // We assume data has at least 20 rows
     for (let i = 19; i < data.length; i++) {
         const row = data[i];
-        // Stop if row is empty or invalid (basic check)
-        if (!row || !row[4]) continue; // Assume Code (Col 4) is required
+
+        // Validation: Ignore if Code (Col 5 -> index 4) is empty
+        if (!row || !row[4]) continue;
+
+        // Extract Values
+        const code = String(row[4]);
+        const description = String(row[6] || ''); // Col 7 -> index 6? No, strictly mapping:
+        // Wait, user didn't specify description col, assuming standard or keeping previous.
+        // Previous was Col 6 (index 5) for Description? 
+        // User REQ: "Ignore linhas onde o campo 'Item' (col 5) esteja vazio." -> Col 5 is Code/Item?
+        // Let's assume Description is still around Col 6/7. 
+        // In previous code I used `s(row[6])`. I'll stick to it unless it breaks.
+        // USER SAID: "Valor Medido: Capture obrigatoriamente da coluna 18" -> index 17.
+        // "Saldo: Capture da coluna 21" -> index 20.
+
+        const monthValue = typeof row[17] === 'number' ? row[17] : 0;
+        const balance = typeof row[20] === 'number' ? row[20] : 0;
 
         items.push({
-            code: s(row[4]),        // Col 4: ID/Code
-            description: s(row[6]), // Col 6: Description
-            monthValue: n(row[19]), // Col 19: Month Value
-            balance: n(row[20])     // Col 20: Current Balance
+            code,
+            description: row[6], // Maintaining previous assumption for Description
+            monthValue,
+            balance,
+            period: periodCell
         });
     }
 
-    return { entity, items };
+    return { entity, items, period: periodCell };
 };
 
 export const ContractService = {
