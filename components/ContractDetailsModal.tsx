@@ -236,7 +236,7 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                 reader.readAsBinaryString(file);
             });
 
-            const { entity, items } = parseGoldenTemplate(data);
+            const { entity, items, periodDate } = parseGoldenTemplate(data);
             setParsedItems(items); // Store for Audit Matrix Preview
 
             const totalMonthValue = items.reduce((acc: number, item: any) => acc + (item.monthValue || 0), 0);
@@ -246,7 +246,18 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
             }
 
             setNewValue(totalMonthValue.toFixed(2).replace('.', ','));
+
+            // Auto-fill Description
             setNewDesc(`Boletim Importado via Excel (${entity})`);
+
+            // Auto-fill Date if found
+            if (periodDate) {
+                // Format to YYYY-MM-DD for input[type="date"]
+                const yyyy = periodDate.getFullYear();
+                const mm = String(periodDate.getMonth() + 1).padStart(2, '0');
+                const dd = String(periodDate.getDate()).padStart(2, '0');
+                setNewDate(`${yyyy}-${mm}-${dd}`);
+            }
 
             if (viewMode !== 'CONSOLIDATED' && viewMode !== entity) {
                 alert(`Atenção: O arquivo é da ${entity}, mas você está na aba ${viewMode}. Recomendado trocar de aba ou o sistema registrará como ${viewMode} (se forçar).`);
