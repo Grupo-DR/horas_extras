@@ -1,5 +1,5 @@
 import { db } from './firebaseConfig';
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, Timestamp, arrayUnion } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, Timestamp, arrayUnion, getDoc } from 'firebase/firestore';
 import { KPI, KPIHistory } from '../types';
 
 const COLLECTION_NAME = 'kpis';
@@ -96,7 +96,7 @@ export const KPIService = {
         };
 
         // 2. Read to determine if we need to update currentValue
-        const snap = await import('firebase/firestore').then(mod => mod.getDoc(docRef));
+        const snap = await getDoc(docRef);
 
         if (!snap.exists()) {
             console.error("KPI Document not found for ID:", kpiId);

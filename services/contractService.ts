@@ -1,5 +1,5 @@
 import { db } from './firebaseConfig';
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, orderBy, Timestamp, arrayUnion } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, orderBy, Timestamp, arrayUnion, getDoc } from 'firebase/firestore';
 import { Contract, ContractMeasurement, ContractStatus } from '../types';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
@@ -292,7 +292,7 @@ export const ContractService = {
         const docRef = doc(db, COLLECTION_NAME, contractId);
 
         // 1. Get current doc
-        const snap = await import('firebase/firestore').then(mod => mod.getDoc(docRef));
+        const snap = await getDoc(docRef);
         if (!snap.exists()) throw new Error("Contrato não encontrado");
 
         const data = snap.data();
