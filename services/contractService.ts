@@ -159,6 +159,9 @@ export const ContractService = {
         };
 
         // 3. Run Transaction
+        console.log("Saving Measurement to Subcollection:", measurementDocRef.path);
+        console.log("Full Data Payload (Audit Matrix Size):", fullMeasurementData.auditMatrix?.length);
+
         await runTransaction(db, async (transaction) => {
             const contractDoc = await transaction.get(contractRef);
             if (!contractDoc.exists()) {
@@ -219,6 +222,7 @@ export const ContractService = {
         const q = query(subColRef, orderBy('date', 'desc'));
 
         const snap = await getDocs(q);
+        console.log(`Fetched ${snap.size} measurements from subcollection: ${subColRef.path}`);
 
         return snap.docs.map(doc => {
             const data = doc.data();
