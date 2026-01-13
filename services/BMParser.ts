@@ -47,22 +47,29 @@ const parseNumber = (val: any): number => {
     return parseFloat(s) || 0;
 };
 
-// --- SIMPLIFIED PARSER CLASS ---
+// --- PATTERN-BASED PARSER CLASS ---
 export class BMParser {
 
-    // Helper: Detect Header Row
-    static looksLikeHeader(row: any[]): boolean {
+    /**
+     * Checks if a row looks like a valid line item based on content pattern.
+     * Criteria:
+     * 1. Col 0 matches Item Code Regex (1.1, 1.2.3, etc)
+     * 2. Col 1 has text length > 5 (Description)
+     * 3. At least one valid number in typical value columns (optional but good for strictness)
+     */
+    static looksLikeItem(row: any[]): boolean {
         if (!Array.isArray(row)) return false;
 
-        // Convert to safe simple text array
-        const textRow = row.map(c => safeText(c));
+        const valCode = safeText(row[0]);
+        const valDesc = safeText(row[1]);
 
-        // Must contain "item" AND "descri..."
-        // This is the anchor.
-        const hasItem = textRow.some(t => t === 'item' || t.includes('item') || t === 'codigo' || t === 'cod');
-        const hasDesc = textRow.some(t => t.includes('descr') || t.includes('discrim'));
+        // 1. Code Pattern
+        if (!/^\d+(\.\d+)*$/.test(valCode)) return false;
 
-        return hasItem && hasDesc;
+        // 2. Description Pattern
+        if (valDesc.length <= 5) return false;
+
+        return true;
     }
 
     // Main Parse Function
@@ -71,122 +78,112 @@ export class BMParser {
         let warnings: string[] = [];
         let confidence = 1.0;
         let usedAI = false;
-        let foundHeader = -1;
+        let tableStartIndex = -1;
 
-        // 1. Scan for Header (Limit to first 50 rows)
-        const limit = Math.min(grid.length || 0, 50);
+        // 1. Detect Table Start via Pattern Streak
+        // We look for 3 consecutive rows that satisfy looksLikeItem
 
-        for (let r = 0; r < limit; r++) {
-            if (this.looksLikeHeader(grid[r])) {
-                foundHeader = r;
+        const limit = Math.min(grid.length || 0, 100);
+
+        for (let r = 0; r < limit - 2; r++) {
+            const r1 = grid[r];
+            const r2 = grid[r + 1];
+            const r3 = grid[r + 2];
+
+            if (this.looksLikeItem(r1) && this.looksLikeItem(r2) && this.looksLikeItem(r3)) {
+                tableStartIndex = r; // Found the first line of the table
                 break;
             }
         }
 
-        if (foundHeader !== -1) {
-            // 2. Extract Items directly below header
-            // "Pragmatic" Mapping:
-            // Assuming standard layout based on user feedback
-            // Code usually @ 0 or first non-empty
-            // Desc usually @ 1 or second non-empty
+        if (tableStartIndex !== -1) {
+            // 2. Extract Items starting from detected index
+            // Assuming fixed columns based on "Known Standard" since headers are unreliable
+            const colCode = 0;
+            const colDesc = 1;
+            const colVal = 17;
+            const colBal = 20;
+            const colExec = 21;
 
-            // Let's refine the indices based on the HEADER row if possible, else fallback to fixed
-            const headerRow = grid[foundHeader].map(c => safeText(c));
-
-            // Dynamic check, but default to known indices if confusing
-            let colCode = headerRow.findIndex(t => t === 'item' || t === 'codigo');
-            let colDesc = headerRow.findIndex(t => t.includes('descr'));
-
-            // Fallbacks if detection slightly off but header was "found" due to loose match
-            if (colCode === -1) colCode = 0; // Default
-            if (colDesc === -1) colDesc = 1; // Default
-
-            // Values are trickier. User said: 17, 20, 21. Let's try to map, else use those.
-            let colVal = headerRow.findIndex(t => t.includes('valor medido') || t.includes('medicao'));
-            let colBal = headerRow.findIndex(t => t.includes('saldo'));
-            let colExec = headerRow.findIndex(t => t.includes('%') || t.includes('exec'));
-
-            // Fallback to "Standard" Legacy indices if not clear
-            if (colVal === -1) colVal = 17;
-            if (colBal === -1) colBal = 20;
-            if (colExec === -1) colExec = 21;
-
-            // Iterate Rows
-            for (let r = foundHeader + 1; r < grid.length; r++) {
+            for (let r = tableStartIndex; r < grid.length; r++) {
                 const row = grid[r];
                 if (!Array.isArray(row)) continue;
 
-                // Stop condition: Empty Code AND Description usually means end of table or page break
-                // But we should tolerate a few empty lines. Let's strictly check valid items.
+                const valCode = row[colCode];
+                const valDesc = row[colDesc];
 
-                const valCode = row[colCode]; // Raw value
-                const valDesc = row[colDesc]; // Raw value
+                // Stop condition: Pattern Break
+                // If a line completely deviates (e.g. empty code, short desc) it might be a subtotal or footer.
+                // However, be tolerant of ONE odd line? No, user wants simple "Read until break".
 
-                // Skip completely empty lines
-                if (!valCode && !valDesc) continue;
+                if (!this.looksLikeItem(row)) {
+                    // Check if it's just a slight deviation or end of table
+                    // Use loose check: if code is empty, break.
+                    if (!safeText(valCode)) break;
+                }
 
                 const txtCode = safeText(valCode);
                 const txtDesc = safeText(valDesc);
 
-                // Check "Is this a line item?" 
-                // Regex: Starts with digit, dots allowed (1.1, 1.2.3, 10)
                 if (/^\d+(\.\d+)*$/.test(txtCode)) {
-
                     // Safe Access for data
-                    const rawVal = Array.isArray(row) && colVal < row.length ? row[colVal] : 0;
-                    const rawBal = Array.isArray(row) && colBal < row.length ? row[colBal] : 0;
-                    const rawExec = Array.isArray(row) && colExec < row.length ? row[colExec] : 0;
+                    const getVal = (idx: number) => (idx < row.length ? row[idx] : 0);
 
                     items.push({
                         code: txtCode,
                         description: txtDesc || 'Sem Descrição',
-                        monthValue: parseNumber(rawVal),
-                        balance: parseNumber(rawBal),
-                        executionPercentage: parseNumber(rawExec)
+                        monthValue: parseNumber(getVal(colVal)),
+                        balance: parseNumber(getVal(colBal)),
+                        executionPercentage: parseNumber(getVal(colExec))
                     });
                 }
             }
         } else {
-            confidence = 0.4;
-            warnings.push("Tabela não identificada (Cabeçalho 'Item/Descrição' não encontrado).");
+            confidence = 0.2;
+            warnings.push("Tabela não identificada (Padrão visual de itens não encontrado).");
         }
 
-        // 3. AI Fallback (ONLY if extraction failed)
+        // 3. AI Fallback (ONLY if zero items)
         if (items.length === 0) {
-            console.warn("BMParser: Extraction failed. Attempting AI Fallback...");
+            console.warn("BMParser: Zero items found. Attempting AI Fallback...");
+
             if (API_KEY) {
                 try {
                     const aiResult = await this.parseWithAI(grid);
                     if (aiResult.items.length > 0) {
                         items = aiResult.items;
                         usedAI = true;
-                        confidence = 0.8;
-                        warnings.push("Itens extraídos via IA.");
+                        confidence = 0.7; // AI is fallback, so confidence is medium
+                        warnings.push("Itens extraídos via IA (verificar precisão).");
                     } else {
-                        warnings.push("IA não encontrou itens.");
-                        confidence = 0;
+                        warnings.push("IA não encontrou itens válidos.");
+                        confidence = 0; // Fail
                     }
                 } catch (e) {
-                    warnings.push("IA Falhou: " + (e as Error).message);
+                    // Catch 404/Quota/etc WITHOUT THROWING
+                    const msg = (e as Error).message || 'Erro desconhecido';
+                    warnings.push(`Falha na IA: ${msg}`);
+                    confidence = 0;
                 }
             } else {
-                warnings.push("IA não configurada.");
+                warnings.push("IA não configurada (API Key ausente).");
             }
         }
 
         return {
-            entity: null, // Keep simple, UI can handle generic
+            entity: null,
             items,
-            periodDate: null, // Keep simple
+            periodDate: null,
             warnings,
             confidence,
             usedAI
         };
     }
 
-    // AI Helper (Kept for fallback)
+    // AI Helper
     static async parseWithAI(grid: any[][]): Promise<ParsedBM> {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        // Use 'gemini-pro' which is standard stable model, flash might be causing 404s for some keys
+        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
         if (!Array.isArray(grid)) return { entity: null, items: [], periodDate: null, warnings: [], confidence: 0, usedAI: true };
 
@@ -194,15 +191,22 @@ export class BMParser {
         const csvContent = grid.slice(0, 100).map(row => Array.isArray(row) ? row.join('|') : '').join('\n');
 
         const prompt = `
-            Você é um leitor de tabelas. Extraia os itens desta medição de obra.
-            Colunas típicas: Item, Descrição, Valor Medido, Saldo, %.
+            Aja como um engenheiro analisando uma planilha de medição.
+            Identifique a tabela de itens e extraia os dados.
+            
+            Colunas importantes (aproximadas):
+            - Código (Ex: 1.1, 2.3.4)
+            - Descrição
+            - Valor Medido (Dinheiro)
+            - Saldo (Dinheiro)
+            - % Execução
             
             CSV:
-            ${csvContent.substring(0, 20000)}
+            ${csvContent.substring(0, 25000)}
 
-            Responda JSON:
+            Retorne APENAS JSON:
             {
-                "items": [{ "code": "1.1", "description": "Example", "monthValue": 100.00, "balance": 500.00, "executionPercentage": 10 }]
+                "items": [{ "code": "1.1", "description": "...", "monthValue": 0, "balance": 0, "executionPercentage": 0 }]
             }
         `;
 
@@ -217,7 +221,7 @@ export class BMParser {
             monthValue: parseNumber(i.monthValue),
             balance: parseNumber(i.balance),
             executionPercentage: parseNumber(i.executionPercentage)
-        }));
+        })).filter((i: ParsedItem) => i.code && i.code !== 'null');
 
         return {
             entity: null,
