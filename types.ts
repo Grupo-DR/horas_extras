@@ -157,38 +157,46 @@ export enum ContractMeasurementEntity {
 // --- AUDIT TYPES ---
 
 export interface ScopeAuditItem {
-  item: string; // "1.1", "2.1"
-  codigoVLI: string | null;
-  descricao: string;
-  acumuladoAnterior: number;
-  doMes: number;
-  totalAcumulado: number;
-  previstoContrato: number;
-  saldo: number;
+  codeVLI: string; // Código de serviço conforme LC116
+  description: string; // Descrição do serviço/item
+  prevAccumulated: number; // Valor financeiro acumulado até ao mês anterior
+  currentMonth: number; // Valor financeiro da medição atual - "Do Mês"
+  totalAccumulated: number; // Soma do anterior com o atual
+  plannedContract: number; // Valor total previsto em contrato para aquele item
+  balance: number; // Saldo restante por executar no item
 }
 
 export interface ContractMeasurement {
   id: string; // Unique ID (e.g. generated or period-based)
 
   // Temporal
-  date: Date;
-  period: string; // "YYYY-MM"
+  period: string; // Ex: "01/10/2024 a 31/10/2024"
+  date: Date; // Data de referência da medição
+
+  // Contract Metadata
+  contractorName: string; // Nome da entidade contratada
+  contractNo: string; // Número do contrato para validação
+
+  /**
+   * Regra de negócio: Derivado de uma busca parcial (string match) no campo contractorName.
+   * Se contém "RENTAL", classificar como tal.
+   */
+  entityType: 'RENTAL' | 'CONSTRUTORA';
 
   // Financials
-  measurementValue: number;
-  accumulatedValue?: number; // Snapshot of accumulated at that time
-  contractBalance?: number; // Snapshot of balance at that time
+  contractTotalValue: number; // Valor total global do contrato na data da medição
+  measurementValue: number; // Valor da medição atual (soma dos currentMonth da auditMatrix)
+  contractBalance: number; // Saldo global remanescente do contrato
 
   // Metadata
   description: string;
-  entity?: ContractMeasurementEntity | 'RENTAL' | 'CONSTRUTORA';
   sourceFileName?: string;
   importedAt?: Date;
   confidence?: number;
   warnings?: string[];
 
   // Detailed Audit
-  scopeMatrix?: ScopeAuditItem[];
+  auditMatrix: ScopeAuditItem[]; // Array contendo o detalhamento de escopo
 }
 
 export interface ScopeItem {
