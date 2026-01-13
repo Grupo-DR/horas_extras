@@ -1,7 +1,8 @@
 import { db } from './firebaseConfig';
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, Timestamp, arrayUnion, getDoc } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, Timestamp, arrayUnion, getDoc, getDocs, setDoc } from 'firebase/firestore';
 import { Contract, ContractMeasurement, ContractStatus } from '../types';
 import { BMParser, ParsedBM } from './BMParser';
+import { format } from 'date-fns';
 
 // COLLECTION REF
 const COLLECTION_NAME = 'contracts';
@@ -54,9 +55,14 @@ export const ContractService = {
                         ? data.measurements.map((m: any) => ({
                             id: s(m.id),
                             date: d(m.date),
-                            value: n(m.value),
+                            measurementValue: n(m.value || m.measurementValue), // Support legacy 'value'
                             description: s(m.description),
-                            entity: m.entity || undefined
+                            entity: m.entity || undefined,
+                            period: m.period || format(d(m.date) || new Date(), 'yyyy-MM'),
+                            // Defaults for optional fields
+                            accumulatedValue: n(m.accumulatedValue),
+                            contractBalance: n(m.contractBalance),
+                            scopeMatrix: []
                         }))
                         : [],
 
@@ -110,40 +116,121 @@ export const ContractService = {
         await deleteDoc(doc(db, COLLECTION_NAME, id));
     },
 
-    // ADD MEASUREMENT (ATOMIC)
-    addMeasurement: async (contractId: string, measurement: Omit<ContractMeasurement, 'id'>) => {
-        const docRef = doc(db, COLLECTION_NAME, contractId);
 
-        const newId = Math.random().toString(36).substr(2, 9);
 
-        const newMeasurement = {
+    // --- HISTORY MANAGEMENT ---
+
+    // ADD MEASUREMENT (HISTORY MODE)
+    // Saves to subcollection: contracts/{id}/measurements/{period}
+    // Also updates the main contract document's consolidated list for quick access
+    addMeasurementHistory: async (contractId: string, measurement: Omit<ContractMeasurement, 'id'>) => {
+        const contractRef = doc(db, COLLECTION_NAME, contractId);
+
+        // 1. Prepare Full Object
+        const newId = measurement.period || Math.random().toString(36).substr(2, 9);
+        const measurementDate = measurement.date instanceof Date ? measurement.date : new Date(measurement.date);
+
+        const fullMeasurement = {
+            ...measurement,
             id: newId,
-            date: Timestamp.fromDate(measurement.date),
-            value: Number(measurement.value),
-            description: String(measurement.description)
+            date: Timestamp.fromDate(measurementDate),
+            importedAt: Timestamp.now(),
+
+            // Ensure numerics
+            measurementValue: n(measurement.measurementValue),
+            accumulatedValue: n(measurement.accumulatedValue),
+            contractBalance: n(measurement.contractBalance),
+
+            // Clean Scope Matrix (Sanitize for Firestore)
+            scopeMatrix: (measurement.scopeMatrix || []).map(item => ({
+                item: s(item.item),
+                codigoVLI: s(item.codigoVLI),
+                descricao: s(item.descricao),
+                acumuladoAnterior: n(item.acumuladoAnterior),
+                doMes: n(item.doMes),
+                totalAcumulado: n(item.totalAcumulado),
+                previstoContrato: n(item.previstoContrato),
+                saldo: n(item.saldo)
+            }))
         };
 
-        await updateDoc(docRef, {
-            measurements: arrayUnion(newMeasurement),
-            updatedAt: Timestamp.now()
+        // 2. Save to Subcollection: contracts/{id}/measurements/{period}
+        // Using setDoc to enforce "One Measurement per Period" rule (id = period)
+        const subColRef = collection(contractRef, 'measurements');
+        const docRef = doc(subColRef, newId); // ID is Period "YYYY-MM"
+
+        // We use setDoc with merge: true to allow updating same period, 
+        // OR without merge to strictly overwrite (which fits "Versioned Audit" requirement)
+        await setDoc(docRef, fullMeasurement);
+
+        // 3. Update Main Contract Array (Consolidated View)
+        // We persist a lighter version in the main doc for charts/cards
+        const lightMeasurement = {
+            id: newId,
+            date: Timestamp.fromDate(measurementDate),
+            value: n(measurement.measurementValue),
+            description: s(measurement.description),
+            entity: measurement.entity,
+            period: measurement.period
+        };
+
+        // We need to check if it exists in array to replace or add
+        // Since arrayUnion doesn't replace, we fetch-filter-save
+        const snap = await getDoc(contractRef);
+        if (snap.exists()) {
+            const data = snap.data();
+            let currentList = Array.isArray(data.measurements) ? data.measurements : [];
+
+            // Remove existing for same period
+            currentList = currentList.filter((m: any) => m.period !== measurement.period);
+
+            // Add new
+            currentList.push(lightMeasurement);
+
+            await updateDoc(contractRef, {
+                measurements: currentList,
+                updatedAt: Timestamp.now()
+            });
+        }
+    },
+
+    // GET HISTORY (Full Audit Data)
+    getMeasurementHistory: async (contractId: string): Promise<ContractMeasurement[]> => {
+        const subColRef = collection(db, COLLECTION_NAME, contractId, 'measurements');
+        const q = query(subColRef, orderBy('date', 'desc'));
+
+        const snap = await getDocs(q);
+
+        return snap.docs.map(doc => {
+            const data = doc.data();
+            return {
+                ...data,
+                id: doc.id,
+                date: d(data.date),
+                importedAt: d(data.importedAt),
+                // Rehydrate dates if needed
+            } as ContractMeasurement;
         });
     },
 
-    // REMOVE MEASUREMENT
+    // REMOVE MEASUREMENT (Both History and Consolidated)
     removeMeasurement: async (contractId: string, measurementId: string) => {
-        const docRef = doc(db, COLLECTION_NAME, contractId);
+        const contractRef = doc(db, COLLECTION_NAME, contractId);
 
-        const snap = await getDoc(docRef);
-        if (!snap.exists()) throw new Error("Contrato não encontrado");
+        // 1. Delete from Subcollection
+        await deleteDoc(doc(contractRef, 'measurements', measurementId));
 
-        const data = snap.data();
-        const measurements = Array.isArray(data.measurements) ? data.measurements : [];
+        // 2. Remove from Main Array
+        const snap = await getDoc(contractRef);
+        if (snap.exists()) {
+            const data = snap.data();
+            const measurements = Array.isArray(data.measurements) ? data.measurements : [];
+            const updated = measurements.filter((m: any) => m.id !== measurementId && m.period !== measurementId);
 
-        const updatedMeasurements = measurements.filter((m: any) => m.id !== measurementId);
-
-        await updateDoc(docRef, {
-            measurements: updatedMeasurements,
-            updatedAt: Timestamp.now()
-        });
+            await updateDoc(contractRef, {
+                measurements: updated,
+                updatedAt: Timestamp.now()
+            });
+        }
     }
 };

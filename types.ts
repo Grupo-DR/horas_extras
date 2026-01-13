@@ -154,12 +154,41 @@ export enum ContractMeasurementEntity {
   CONSTRUTORA = 'CONSTRUTORA'
 }
 
+// --- AUDIT TYPES ---
+
+export interface ScopeAuditItem {
+  item: string; // "1.1", "2.1"
+  codigoVLI: string | null;
+  descricao: string;
+  acumuladoAnterior: number;
+  doMes: number;
+  totalAcumulado: number;
+  previstoContrato: number;
+  saldo: number;
+}
+
 export interface ContractMeasurement {
-  id: string;
+  id: string; // Unique ID (e.g. generated or period-based)
+
+  // Temporal
   date: Date;
-  value: number;
+  period: string; // "YYYY-MM"
+
+  // Financials
+  measurementValue: number;
+  accumulatedValue?: number; // Snapshot of accumulated at that time
+  contractBalance?: number; // Snapshot of balance at that time
+
+  // Metadata
   description: string;
-  entity?: ContractMeasurementEntity | 'RENTAL' | 'CONSTRUTORA'; // Flexible for now
+  entity?: ContractMeasurementEntity | 'RENTAL' | 'CONSTRUTORA';
+  sourceFileName?: string;
+  importedAt?: Date;
+  confidence?: number;
+  warnings?: string[];
+
+  // Detailed Audit
+  scopeMatrix?: ScopeAuditItem[];
 }
 
 export interface ScopeItem {

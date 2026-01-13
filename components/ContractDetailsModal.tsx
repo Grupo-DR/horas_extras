@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, DollarSign, Plus, Trash2, TrendingUp, FileText, Upload } from 'lucide-react';
 import { Contract, ContractMeasurement } from '../types';
 import * as XLSX from 'xlsx';
-import { parseBM } from '../services/contractService';
+import { parseBM, ContractService } from '../services/contractService';
 import { toast } from 'sonner';
 import {
     LineChart,
@@ -79,6 +79,33 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
     const [newDesc, setNewDesc] = useState('');
     const [loading, setLoading] = useState(false);
     const [parsedItems, setParsedItems] = useState<any[]>([]); // New State for Audit Preview
+    const [history, setHistory] = useState<ContractMeasurement[]>([]);
+
+    // Load History on Open
+    React.useEffect(() => {
+        if (isOpen && contract) {
+            ContractService.getMeasurementHistory(contract.id).then(setHistory);
+        }
+    }, [isOpen, contract]);
+
+    // Active Matrix Data: Preview OR Selected Month History OR Empty
+    const activeAuditData = useMemo(() => {
+        if (parsedItems.length > 0) return parsedItems; // Preview takes precedence
+
+        // Find history for selected month
+        const hist = history.find(h => h.period === auditMonth);
+        if (hist && hist.scopeMatrix) {
+            // Map ScopeAuditItem to generic structure for display
+            return hist.scopeMatrix.map(s => ({
+                code: s.item,
+                description: s.descricao,
+                monthValue: s.doMes,
+                unitPrice: 0,
+                totalQuantity: 0
+            }));
+        }
+        return [];
+    }, [parsedItems, history, auditMonth]);
 
     // Filter Measurements based on Entity
     const filteredMeasurements = useMemo(() => {
@@ -196,17 +223,49 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
 
         setLoading(true);
         try {
-            await onAddMeasurement(contract.id, {
-                value: parseFloat(newValue.replace(',', '.')),
+            const period = newDate.substring(0, 7); // YYYY-MM
+
+            // Construct full measurement object for history
+            const measurementData = {
                 date: new Date(newDate),
+                period: period,
+                measurementValue: parseFloat(newValue.replace(',', '.')),
                 description: newDesc,
-                entity: viewMode === 'CONSOLIDATED' ? undefined : viewMode // Assign current view entity
+                entity: viewMode === 'CONSOLIDATED' ? undefined : viewMode,
+
+                // If we have parsed items from the import, use them
+                scopeMatrix: parsedItems.length > 0 ? parsedItems.map(p => ({
+                    item: p.code,
+                    codigoVLI: null,
+                    descricao: p.description,
+                    acumuladoAnterior: 0, // Would need calculation from previous
+                    doMes: p.monthValue,
+                    totalAcumulado: p.balance ? (contract.totalValue - p.balance) : 0, // Approximate
+                    previstoContrato: 0,
+                    saldo: p.balance
+                })) : [],
+
+                accumulatedValue: (contract.measurements?.reduce((acc, m) => acc + m.measurementValue, 0) || 0) + parseFloat(newValue.replace(',', '.')),
+                contractBalance: contract.totalValue - ((contract.measurements?.reduce((acc, m) => acc + m.measurementValue, 0) || 0) + parseFloat(newValue.replace(',', '.')))
+            };
+
+            await ContractService.addMeasurementHistory(contract.id, measurementData);
+
+            toast.success("Medição salva com sucesso!", {
+                description: `Período: ${period}`
             });
+
             // Reset form
             setNewValue('');
             setNewDesc('');
-        } catch (error) {
+            setParsedItems([]); // Clear preview
+
+            // Refresh History (Optional: separate load logic)
+            // loadHistory(); 
+
+        } catch (error: any) {
             console.error(error);
+            toast.error("Erro ao salvar medição: " + error.message);
         } finally {
             setLoading(false);
         }
@@ -527,20 +586,14 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                             // Determine data source: Parsed Items (Preview) OR Historical Measurements
                                             let displayValue = 0;
                                             let hasActivity = false;
-                                            const isPreview = parsedItems.length > 0;
 
-                                            if (isPreview) {
-                                                // Preview Mode: Match with parsed items
-                                                const parsedItem = parsedItems.find(p => p.code === item.code || (item.code && p.code && String(p.code).trim() === String(item.code).trim()));
-                                                if (parsedItem) {
-                                                    displayValue = parsedItem.monthValue;
-                                                    hasActivity = displayValue > 0;
-                                                }
-                                            } else {
-                                                // Historical Mode (Existing Logic - approximate matching)
-                                                // NOTE: As discussed, strict linking requires ID. We do best effort here.
-                                                // If we have aggregated measurements, we can't easily break down per item unless stored.
-                                                // Showing 0 for now as "Sem Movimentação" default if no granular data available.
+                                            // Look up in active data (Preview or History)
+                                            // Logic: Find item with matching code
+                                            const match = activeAuditData.find((p: any) => p.code === item.code || (item.code && p.code && String(p.code).trim() === String(item.code).trim()));
+
+                                            if (match) {
+                                                displayValue = match.monthValue || match.doMes || 0;
+                                                hasActivity = displayValue > 0;
                                             }
 
                                             // Styling for "Missing" or "Zero" items
