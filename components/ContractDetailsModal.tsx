@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, DollarSign, Plus, Trash2, TrendingUp, FileText, Upload } from 'lucide-react';
 import { Contract, ContractMeasurement } from '../types';
 import * as XLSX from 'xlsx';
-import { parseGoldenTemplate } from '../services/contractService';
+import { parseBM } from '../services/contractService';
 import {
     LineChart,
     Line,
@@ -237,7 +237,7 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
             });
 
             // PARSER UPDATE: Now Async & Robust
-            const { entity, items, periodDate, warnings, confidence } = await parseGoldenTemplate(data);
+            const { entity, items, periodDate, warnings, confidence, usedAI } = await parseBM(data);
 
             // UX: Handle Warnings
             if (warnings && warnings.length > 0) {
@@ -252,6 +252,11 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                     console.warn(msg);
                     // If sonner is available, I will use it. I need to add import first.
                 }
+            }
+
+            if (usedAI) {
+                // Ideally use toast here, but console fallback for now as well
+                console.info("Processamento inteligente (IA) foi utilizado para este arquivo.");
             }
 
             setParsedItems(items); // Store for Audit Matrix Preview

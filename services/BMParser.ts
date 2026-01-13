@@ -20,6 +20,7 @@ export interface ParsedBM {
     periodDate: Date | null;
     warnings: string[];
     confidence: number;
+    usedAI: boolean;
 }
 
 interface GridCell {
@@ -74,6 +75,7 @@ export class BMParser {
         let confidence = 1.0;
         let entity: ParsedBM['entity'] = null;
         let periodDate: Date | null = null;
+        let usedAI = false;
 
         try {
             // STEP A: Detect Entity (Robust)
@@ -84,7 +86,7 @@ export class BMParser {
                 const candidates = [
                     grid[entityCell.r + 1]?.[entityCell.c], // Below (common)
                     grid[entityCell.r]?.[entityCell.c + 1], // Right
-                    grid[entityCell.r + 1]?.[6] // Fixed legacy spot?
+                    grid[entityCell.r + 1]?.[6] // Fixed legacy spot check, but safely accessed
                 ];
 
                 const foundText = candidates.map(c => String(c || '').toUpperCase()).join(' ');
@@ -93,7 +95,7 @@ export class BMParser {
                 else if (foundText.includes('CONSTRUTORA')) entity = 'CONSTRUTORA';
                 else warnings.push("Entidade não identificada com certeza (assumindo visualização atual).");
             } else {
-                warnings.push("Campo 'Contratada' não encontrado explicitamente.");
+                warnings.push("Entidade não detectada explicitamente.");
                 confidence -= 0.1;
             }
 
@@ -151,46 +153,62 @@ export class BMParser {
                         // Heuristic for values if columns not found
                         // Often values are at the end. index 17, 20, 21 in Legacy.
                         // We rely on map if found, else fallback to legacy indices if they look like numbers
+                        // But we must NOT crash if index out of bounds
 
-                        const valIdx = colMap.val !== -1 ? colMap.val : 17;
-                        const balIdx = colMap.bal !== -1 ? colMap.bal : 20;
-                        const execIdx = colMap.exec !== -1 ? colMap.exec : 21;
+                        const getVal = (idx: number, fallback: number) => {
+                            if (idx !== -1 && idx < row.length) return row[idx];
+                            if (fallback < row.length) return row[fallback];
+                            return 0;
+                        }
+
+                        const valIdx = colMap.val;
+                        const balIdx = colMap.bal;
+                        const execIdx = colMap.exec;
 
                         items.push({
                             code,
                             description: desc,
-                            monthValue: parseNumber(row[valIdx]),
-                            balance: parseNumber(row[balIdx]),
-                            executionPercentage: parseNumber(row[execIdx])
+                            monthValue: parseNumber(getVal(valIdx, 17)),
+                            balance: parseNumber(getVal(balIdx, 20)),
+                            executionPercentage: parseNumber(getVal(execIdx, 21))
                         });
                     }
                 }
             }
 
-            // STEP D: AI FALLBACK check
-            if (items.length === 0 || confidence < 0.6) {
-                console.warn("Confidence low, attempting AI fallback...");
+            // STEP D: AI FALLBACK Trigger
+            // Trigger if: No items found OR confidence low OR layout header missing
+            if (items.length === 0 || confidence < 0.6 || headerRowIndex === -1) {
+                console.warn("BMParser: Triggering AI Fallback (Conf: " + confidence + ", Items: " + items.length + ")");
+
                 if (API_KEY) {
                     try {
                         const aiResult = await this.parseWithAI(grid);
+
+                        // Only override if AI actually found items
                         if (aiResult.items.length > 0) {
                             items = aiResult.items;
                             if (aiResult.entity) entity = aiResult.entity;
                             if (aiResult.periodDate) periodDate = aiResult.periodDate;
-                            warnings.push("Dados extraídos via IA (verificar precisão).");
-                            // Clear critical warnings since we have data
-                            confidence = 0.8;
+
+                            warnings.push("Dados extraídos com auxílio de IA (verificar precisão).");
+                            usedAI = true;
+                            // Reset confidence to a "warning" level but acceptable
+                            confidence = Math.max(confidence, 0.7);
+                        } else {
+                            warnings.push("IA não encontrou itens válidos.");
                         }
                     } catch (e) {
                         warnings.push("Falha no fallback de IA: " + (e as Error).message);
                     }
                 } else {
-                    warnings.push("IA não configurada para fallback.");
+                    warnings.push("IA não configurada para fallback (Chave de API ausente).");
                 }
             }
 
         } catch (error) {
-            warnings.push("Erro interno no parser: " + (error as Error).message);
+            // CATCH-ALL: Ensure we never throw
+            warnings.push("Erro interno não fatal no parser: " + (error as Error).message);
             confidence = 0;
         }
 
@@ -199,32 +217,35 @@ export class BMParser {
             items,
             periodDate,
             warnings,
-            confidence
+            confidence,
+            usedAI
         };
     }
 
-    // 3. AI Helper (Converted from contractService)
+    // 3. AI Helper
     static async parseWithAI(grid: any[][]): Promise<ParsedBM> {
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-        // Compact Grid to CSV
-        const csvContent = grid.slice(0, 100).map(row => row.join('|')).join('\n'); // Limit to 100 rows
+        // Compact Grid to CSV (First 100 rows is usually enough)
+        const csvContent = grid.slice(0, 100).map(row => row.join('|')).join('\n');
 
         const prompt = `
-            Atue como especialista em Engenharia. Analise este CSV de medição de obras.
-            Extraia:
-            1. Entidade ('RENTAL' ou 'CONSTRUTORA')
-            2. Data/Periodo
-            3. Itens (Codigo, Descricao, Valor Medido Mês, Saldo, Percentual Execucao)
+            Você é um parser de engenharia. Analise este CSV de um Boletim de Medição.
             
+            Entradas variadas. Nem sempre tem "Contratada" na coluna G.
+            Procure por:
+            1. Entidade ('RENTAL' ou 'CONSTRUTORA')
+            2. Data/Periodo de medição
+            3. TABELA DE ITENS (Codigo, Descricao, Valor Medido, Saldo, % Execuçao)
+
             CSV:
             ${csvContent.substring(0, 30000)}
 
-            Responda JSON puro:
+            Responda EXCLUSIVAMENTE este JSON:
             {
-                "entity": "RENTAL" | "CONSTRUTORA",
-                "period": "DD/MM/YYYY",
-                "items": [{ "code": "", "description": "", "monthValue": 0, "balance": 0, "executionPercentage": 0 }]
+                "entity": "RENTAL" | "CONSTRUTORA" | null,
+                "period": "DD/MM/YYYY" | null,
+                "items": [{ "code": "string", "description": "string", "monthValue": number, "balance": number, "executionPercentage": number }]
             }
         `;
 
@@ -233,19 +254,22 @@ export class BMParser {
         const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
         const data = JSON.parse(jsonStr);
 
-        // Map to Types
+        // Map to Types safely
         const items = (data.items || []).map((i: any) => ({
-            code: String(i.code),
-            description: String(i.description),
+            code: String(i.code || ''),
+            description: String(i.description || ''),
             monthValue: parseNumber(i.monthValue),
             balance: parseNumber(i.balance),
             executionPercentage: parseNumber(i.executionPercentage)
-        }));
+        })).filter((i: ParsedItem) => i.code && i.code !== 'null'); // Filter garbage
 
         let periodDate = null;
         if (data.period) {
             const parts = data.period.split('/');
-            if (parts.length === 3) periodDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+            if (parts.length === 3) {
+                const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+                if (!isNaN(d.getTime())) periodDate = d;
+            }
         }
 
         return {
@@ -253,7 +277,8 @@ export class BMParser {
             items,
             periodDate,
             warnings: [],
-            confidence: 0.9
+            confidence: 0.85,
+            usedAI: true
         };
     }
 }
