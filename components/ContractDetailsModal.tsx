@@ -124,7 +124,7 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
             // Find measurement for this month (approximate by period)
             const measurement = sortedHistory.find(m => m.period === periodStr || format(new Date(m.date), 'yyyy-MM') === periodStr);
 
-            const monthValue = measurement ? measurement.measurementValue : 0;
+            const monthValue = measurement ? (measurement.value || (measurement as any).measurementValue) : 0;
             if (measurement) {
                 // If measurement has real audit total, use it, else accumulate
                 // Using the specific measurement total if reliable, else drift can occur.
@@ -142,7 +142,7 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                 plannedAccumulated: currentDate <= endDate ? plannedAccum : contract.totalValue,
                 accumulated: measurement ? realAccum : (currentDate < new Date() ? realAccum : null), // Don't plot zero for future
                 monthValue: monthValue,
-                description: measurement?.description
+                description: measurement ? `Medição ${measurement.period}` : '' // Schema changed, description removed from type but maybe present in legacy
             });
 
             currentDate.setMonth(currentDate.getMonth() + 1);
@@ -263,11 +263,11 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm font-bold text-slate-700">{activeMeasurement?.period || '-'}</span>
                                     <span className="text-sm font-mono text-slate-500">
-                                        {activeMeasurement?.measurementValue?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || '-'}
+                                        {(activeMeasurement?.value || (activeMeasurement as any)?.measurementValue)?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || '-'}
                                     </span>
                                 </div>
                                 <div className="text-[10px] text-slate-400 mt-1 truncate">
-                                    {activeMeasurement?.description || 'Nenhuma medição registrada'}
+                                    {`Medição ${activeMeasurement?.period || ''}`}
                                 </div>
                             </div>
                         </div>
@@ -425,8 +425,8 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                     <div
                                         key={m.id}
                                         className={`p-4 rounded-xl border transition-all cursor-pointer group ${(selectedMeasurementId === m.id || (!selectedMeasurementId && m.id === history[0].id))
-                                                ? 'bg-white border-blue-500 shadow-md ring-1 ring-blue-500'
-                                                : 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-sm'
+                                            ? 'bg-white border-blue-500 shadow-md ring-1 ring-blue-500'
+                                            : 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-sm'
                                             }`}
                                         onClick={() => setSelectedMeasurementId(m.id)}
                                     >
@@ -446,7 +446,7 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                             </button>
                                         </div>
                                         <p className="font-bold text-slate-800 mb-1">
-                                            {m.measurementValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                            {(m.value || (m as any).measurementValue).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                         </p>
                                         <div className="flex items-center gap-1 text-[10px] text-slate-400">
                                             <BadgeCheck size={10} className="text-blue-500" />

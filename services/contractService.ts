@@ -59,8 +59,8 @@ export const ContractService = {
                         ? data.measurements.map((m: any) => ({
                             id: s(m.id),
                             date: d(m.date),
-                            measurementValue: n(m.measurementValue || m.value), // Support legacy
-                            description: s(m.description),
+                            value: n(m.value || m.measurementValue), // Support legacy
+                            description: m.description || `Medição ${m.period}`, // Fallback description
                             period: m.period || format(d(m.date) || new Date(), 'yyyy-MM'),
                             // We don't load the full matrix here to keep it light
                             auditMatrix: []
@@ -124,11 +124,8 @@ export const ContractService = {
         // 2. Sanitize Measurement Data
         const measurementDate = toTimestamp(measurement.date);
 
-        // Entity Logic Override: If contractorName contains RENTAL, force RENTAL
-        let entityType = measurement.entityType;
-        if (measurement.contractorName && measurement.contractorName.toUpperCase().includes('RENTAL')) {
-            entityType = 'RENTAL';
-        }
+        // Entity Logic Override is now handled by BMParser, trusting the measurement object.
+        const entityType = measurement.entityType;
 
         const fullMeasurementData = {
             ...measurement,
@@ -138,7 +135,7 @@ export const ContractService = {
             importedAt: Timestamp.now(),
 
             // Ensure numerics
-            measurementValue: n(measurement.measurementValue),
+            value: n(measurement.value),
             contractTotalValue: n(measurement.contractTotalValue),
             contractBalance: n(measurement.contractBalance),
 
@@ -175,7 +172,7 @@ export const ContractService = {
             // If we are uploading out of order, this might be tricky, but let's assume chronological for now 
             // or simply that "Last Uploaded = Best Source of Truth" for these header fields.
 
-            const totalAccumulated = n(measurement.measurementValue) + (n(contractData.totalAccumulated) || 0); // Warning: This assumes simple addition, might double count if re-uploading.
+            const totalAccumulated = n(measurement.value) + (n(contractData.totalAccumulated) || 0);
             // Better approach for 'totalAccumulated':
             // Use the sum of 'totalAccumulated' from the Audit Matrix? Or trust the 'valor_medicao' + 'acumulado_anterior' (if available)?
             // Let's trust the AI extracted 'saldo_contratual' and 'valor_medicao'. 
@@ -188,53 +185,52 @@ export const ContractService = {
             currentMeasurements = currentMeasurements.filter((m: any) => m.period !== measurement.period);
 
             // Add lightweight version
-            currentMeasurements.push({
-                id: measurementId,
+            id: measurementId,
                 period: measurement.period,
-                date: measurementDate,
-                measurementValue: n(measurement.measurementValue),
-                description: s(measurement.description),
-                entityType: entityType
-            });
-
-            // Sort by date descending
-            currentMeasurements.sort((a: any, b: any) => b.date.toMillis() - a.date.toMillis());
-
-            // WRITE SUBCOLLECTION
-            transaction.set(measurementDocRef, fullMeasurementData);
-
-            // UPDATE PARENT
-            transaction.update(contractRef, {
-                measurements: currentMeasurements,
-                lastMeasurementDate: measurementDate,
-                lastMeasurementValue: n(measurement.measurementValue),
-                // We update the balance to what the measurement says it is (Source of Truth)
-                currentBalance: n(measurement.contractBalance),
-                // We update total accumulated to what the measurement implies (Total Contract - Balance) 
-                // This is more robust than summing incrementally.
-                totalAccumulated: n(measurement.contractTotalValue) - n(measurement.contractBalance),
-                updatedAt: Timestamp.now()
-            });
+                    date: measurementDate,
+                        value: n(measurement.value),
+                            description: `Medição ${measurement.period}`,
+                                entityType: entityType
         });
+
+        // Sort by date descending
+        currentMeasurements.sort((a: any, b: any) => b.date.toMillis() - a.date.toMillis());
+
+        // WRITE SUBCOLLECTION
+        transaction.set(measurementDocRef, fullMeasurementData);
+
+        // UPDATE PARENT
+        transaction.update(contractRef, {
+            measurements: currentMeasurements,
+            lastMeasurementDate: measurementDate,
+            lastMeasurementValue: n(measurement.value),
+            // We update the balance to what the measurement says it is (Source of Truth)
+            currentBalance: n(measurement.contractBalance),
+            // We update total accumulated to what the measurement implies (Total Contract - Balance) 
+            // This is more robust than summing incrementally.
+            totalAccumulated: n(measurement.contractTotalValue) - n(measurement.contractBalance),
+            updatedAt: Timestamp.now()
+        });
+    });
     },
 
-    // GET HISTORY (Full Audit Data)
-    getMeasurementHistory: async (contractId: string): Promise<ContractMeasurement[]> => {
-        const subColRef = collection(db, COLLECTION_NAME, contractId, 'measurements');
-        const q = query(subColRef, orderBy('date', 'desc'));
+// GET HISTORY (Full Audit Data)
+getMeasurementHistory: async (contractId: string): Promise<ContractMeasurement[]> => {
+    const subColRef = collection(db, COLLECTION_NAME, contractId, 'measurements');
+    const q = query(subColRef, orderBy('date', 'desc'));
 
-        const snap = await getDocs(q);
+    const snap = await getDocs(q);
 
-        return snap.docs.map(doc => {
-            const data = doc.data();
-            return {
-                ...data,
-                id: doc.id,
-                date: d(data.date),
-                importedAt: d(data.importedAt),
-            } as ContractMeasurement;
-        });
-    },
+    return snap.docs.map(doc => {
+        const data = doc.data();
+        return {
+            ...data,
+            id: doc.id,
+            date: d(data.date),
+            importedAt: d(data.importedAt),
+        } as ContractMeasurement;
+    });
+},
 
     // REMOVE MEASUREMENT
     removeMeasurement: async (contractId: string, measurementId: string) => {
