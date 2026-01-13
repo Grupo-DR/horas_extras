@@ -278,15 +278,27 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
 
         setLoading(true);
         try {
+            console.group("[BM] Upload");
+            console.log("File:", file.name, file.size, file.type);
+
             const data = await new Promise<any[][]>((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = (evt) => {
                     try {
                         const bstr = evt.target?.result;
                         const wb = XLSX.read(bstr, { type: 'binary' });
+
+                        console.log("Sheets:", wb.SheetNames);
                         const wsname = wb.SheetNames[0];
+                        console.log("Using sheet:", wsname);
+
                         const ws = wb.Sheets[wsname];
                         const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+
+                        console.log("Grid size:", jsonData.length, "rows");
+                        console.log("Row[0..5]:", jsonData.slice(0, 6));
+                        console.log("Row[20..30]:", jsonData.slice(20, 31));
+
                         resolve(jsonData);
                     } catch (err) {
                         reject(err);
@@ -296,8 +308,20 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                 reader.readAsBinaryString(file);
             });
 
+            console.groupEnd();
+
             // PARSER UPDATE: Now Async & Robust
-            const { entity, items, periodDate, warnings, confidence, usedAI } = await parseBM(data);
+            const parsed = await parseBM(data);
+            const { entity, items, periodDate, warnings, confidence, usedAI } = parsed;
+
+            console.group("[BM] Parsed Result");
+            console.log("entity:", entity);
+            console.log("periodDate:", periodDate);
+            console.log("confidence:", confidence);
+            console.log("warnings:", warnings);
+            console.log("items count:", items?.length ?? 0);
+            console.table((items ?? []).slice(0, 10)); // Top 10
+            console.groupEnd();
 
             // UX: Handle Warnings
             if (warnings && warnings.length > 0) {
