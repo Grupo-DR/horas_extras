@@ -174,6 +174,14 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
 
     if (!isOpen || !contract) return null;
 
+    // Refresh function
+    const refreshHistory = async () => {
+        if (contract) {
+            const data = await ContractService.getMeasurementHistory(contract.id);
+            setHistory(data);
+        }
+    };
+
     return (
         <AnimatePresence>
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 md:p-6 text-slate-800">
@@ -470,6 +478,10 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                     onClose={() => setIsMeasurementFormOpen(false)}
                     onSave={async (measurement) => {
                         await onAddMeasurement(contract.id, measurement);
+                        toast.success("Medição salva com sucesso!");
+                        setIsMeasurementFormOpen(false);
+                        // FORCE REFRESH HERE
+                        await refreshHistory();
                     }}
                     contractName={contract.name}
                 />
