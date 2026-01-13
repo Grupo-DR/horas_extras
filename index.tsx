@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './index.css';
 
 import { MainLayout } from './layout/MainLayout';
+import { Toaster } from 'sonner';
 
 // Lazy Load Pages
 const CommercialView = React.lazy(() => import('./pages/CommercialView').then(module => ({ default: module.CommercialView })));
@@ -24,6 +25,7 @@ const LoadingFallback = () => (
 const App: React.FC = () => {
   return (
     <BrowserRouter>
+      <Toaster position="top-right" richColors />
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
           <Route path="/" element={<MainLayout />}>

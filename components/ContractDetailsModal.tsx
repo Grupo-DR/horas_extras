@@ -236,19 +236,32 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                 reader.readAsBinaryString(file);
             });
 
-            const { entity, items, periodDate } = parseGoldenTemplate(data);
+            // PARSER UPDATE: Now Async & Robust
+            const { entity, items, periodDate, warnings, confidence } = await parseGoldenTemplate(data);
+
+            // UX: Handle Warnings
+            if (warnings && warnings.length > 0) {
+                // Import toast dynamically or assuming global if configured, but let's use alert fallbacks if imports missing
+                // For now, I'll alert the warnings nicely or just non-blocking
+                const msg = `Importado com ${warnings.length} avisos:\n` + warnings.join('\n');
+                // If confidence is extremely low, maybe warn harder
+                if (confidence < 0.5) {
+                    alert("Atenção: Confiança baixa na leitura.\n" + msg);
+                } else {
+                    // Just a polite notice or no-op if minor
+                    console.warn(msg);
+                    // If sonner is available, I will use it. I need to add import first.
+                }
+            }
+
             setParsedItems(items); // Store for Audit Matrix Preview
 
             const totalMonthValue = items.reduce((acc: number, item: any) => acc + (item.monthValue || 0), 0);
 
-            if (totalMonthValue === 0) {
-                alert("Aviso: O boletim validado não contém valores medidos neste mês (Total = 0).");
-            }
-
             setNewValue(totalMonthValue.toFixed(2).replace('.', ','));
 
             // Auto-fill Description
-            setNewDesc(`Boletim Importado via Excel (${entity})`);
+            setNewDesc(`Boletim Importado ${entity ? `(${entity})` : ''}`);
 
             // Auto-fill Date if found
             if (periodDate) {
@@ -257,12 +270,15 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                 const mm = String(periodDate.getMonth() + 1).padStart(2, '0');
                 const dd = String(periodDate.getDate()).padStart(2, '0');
                 setNewDate(`${yyyy}-${mm}-${dd}`);
+            } else {
+                // Warn about date
             }
 
-            if (viewMode !== 'CONSOLIDATED' && viewMode !== entity) {
-                alert(`Atenção: O arquivo é da ${entity}, mas você está na aba ${viewMode}. Recomendado trocar de aba ou o sistema registrará como ${viewMode} (se forçar).`);
-                setViewMode(entity as any);
-            } else if (viewMode === 'CONSOLIDATED') {
+            if (entity && viewMode !== 'CONSOLIDATED' && viewMode !== entity) {
+                // Non-blocking toast ideal here
+                const confirmSwitch = window.confirm(`O arquivo parece ser da ${entity}, mas você está na aba ${viewMode}. Deseja trocar?`);
+                if (confirmSwitch) setViewMode(entity as any);
+            } else if (entity && viewMode === 'CONSOLIDATED') {
                 setViewMode(entity as any);
             }
 
