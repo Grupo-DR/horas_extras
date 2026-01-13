@@ -125,7 +125,8 @@ export const ContractService = {
         const contractRef = doc(db, COLLECTION_NAME, contractId);
 
         // 1. Prepare Measurement ID (Period-based)
-        const measurementId = measurement.period;
+        // CRITICAL FIX: Replace slashes with dashes to prevent nested subcollections
+        const measurementId = measurement.period.replace(/\//g, '-').replace(/\s+/g, '');
         const measurementDocRef = doc(collection(contractRef, 'measurements'), measurementId);
 
         // 2. Sanitize Measurement Data
@@ -244,7 +245,9 @@ export const ContractService = {
             if (!contractDoc.exists()) throw new Error("Contrato não encontrado");
 
             // 1. Delete from Subcollection
-            const measureDocRef = doc(contractRef, 'measurements', measurementId);
+            // Ensure we look for the sanitized ID
+            const safeId = measurementId.includes('/') ? measurementId.replace(/\//g, '-').replace(/\s+/g, '') : measurementId;
+            const measureDocRef = doc(contractRef, 'measurements', safeId);
             transaction.delete(measureDocRef);
 
             // 2. Remove from Main Array
