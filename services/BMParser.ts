@@ -23,17 +23,10 @@ export interface ParsedBM {
     usedAI: boolean;
 }
 
-interface GridCell {
-    r: number;
-    c: number;
-    value: any;
-}
-
 // --- UTILS ---
-// CRITICAL: Safe Text Normalization
 const safeText = (value: any): string => {
     return String(value ?? '')
-        .normalize('NFD')
+        .normalize('NFD') // Remove accents
         .replace(/[\u0300-\u036f]/g, '')
         .toLowerCase()
         .trim();
@@ -48,229 +41,168 @@ const parseNumber = (val: any): number => {
 
     // PT-BR format check: 1.234,56
     if (s.includes(',') && s.includes('.')) {
-        // Assume dot is thousand, comma is decimal
         return parseFloat(s.replace(/\./g, '').replace(',', '.'));
     }
     if (s.includes(',')) return parseFloat(s.replace(',', '.'));
     return parseFloat(s) || 0;
 };
 
-// --- CLASS ---
+// --- SIMPLIFIED PARSER CLASS ---
 export class BMParser {
 
-    // 1. Generic Finder
-    static findLabelInGrid(grid: any[][], labels: string[]): GridCell | null {
-        // Structural Check
-        if (!Array.isArray(grid)) return null;
+    // Helper: Detect Header Row
+    static looksLikeHeader(row: any[]): boolean {
+        if (!Array.isArray(row)) return false;
 
-        const normalizedLabels = labels.map(l => safeText(l));
+        // Convert to safe simple text array
+        const textRow = row.map(c => safeText(c));
 
-        // Scan limited range for performance (e.g. first 50 rows)
-        const maxR = Math.min(grid.length, 50);
+        // Must contain "item" AND "descri..."
+        // This is the anchor.
+        const hasItem = textRow.some(t => t === 'item' || t.includes('item') || t === 'codigo' || t === 'cod');
+        const hasDesc = textRow.some(t => t.includes('descr') || t.includes('discrim'));
 
-        for (let r = 0; r < maxR; r++) {
-            const row = grid[r];
-            if (!Array.isArray(row)) continue;
-
-            for (let c = 0; c < row.length; c++) {
-                const cellVal = safeText(row[c]);
-                if (normalizedLabels.some(l => cellVal.includes(l))) {
-                    return { r, c, value: row[c] };
-                }
-            }
-        }
-        return null;
+        return hasItem && hasDesc;
     }
 
-    // 2. Main Parse Function
+    // Main Parse Function
     static async parse(grid: any[][]): Promise<ParsedBM> {
-        const warnings: string[] = [];
         let items: ParsedItem[] = [];
+        let warnings: string[] = [];
         let confidence = 1.0;
-        let entity: ParsedBM['entity'] = null;
-        let periodDate: Date | null = null;
         let usedAI = false;
+        let foundHeader = -1;
 
-        try {
-            if (!Array.isArray(grid)) {
-                warnings.push("Estrutura de arquivo inválida (não é uma tabela).");
-                confidence = 0;
-                // Return immediately to avoid complications, but structural checks below usually handle it
+        // 1. Scan for Header (Limit to first 50 rows)
+        const limit = Math.min(grid.length || 0, 50);
+
+        for (let r = 0; r < limit; r++) {
+            if (this.looksLikeHeader(grid[r])) {
+                foundHeader = r;
+                break;
             }
+        }
 
-            // STEP A: Detect Entity (Robust)
-            const entityCell = this.findLabelInGrid(grid, ['contratada', 'fornecedor', 'prestador']);
-            if (entityCell) {
-                // Usually the entity name is adjacent (below or right)
-                // Let's look at neighboring cells (R+1, C) or (R, C+1)
-                const candidates = [
-                    grid[entityCell.r + 1]?.[entityCell.c], // Below (common)
-                    grid[entityCell.r]?.[entityCell.c + 1], // Right
-                    grid[entityCell.r + 1]?.[6] // Fixed legacy spot check, but safely accessed
-                ];
+        if (foundHeader !== -1) {
+            // 2. Extract Items directly below header
+            // "Pragmatic" Mapping:
+            // Assuming standard layout based on user feedback
+            // Code usually @ 0 or first non-empty
+            // Desc usually @ 1 or second non-empty
 
-                const foundText = candidates.map(c => safeText(c).toUpperCase()).join(' ');
+            // Let's refine the indices based on the HEADER row if possible, else fallback to fixed
+            const headerRow = grid[foundHeader].map(c => safeText(c));
 
-                if (foundText.includes('RENTAL')) entity = 'RENTAL';
-                else if (foundText.includes('CONSTRUTORA')) entity = 'CONSTRUTORA';
-                else warnings.push("Entidade não identificada com certeza (assumindo visualização atual).");
-            } else {
-                warnings.push("Entidade não detectada explicitamente.");
-                confidence -= 0.1;
-            }
+            // Dynamic check, but default to known indices if confusing
+            let colCode = headerRow.findIndex(t => t === 'item' || t === 'codigo');
+            let colDesc = headerRow.findIndex(t => t.includes('descr'));
 
-            // STEP B: Detect Period
-            const periodCell = this.findLabelInGrid(grid, ['periodo', 'competencia', 'data', 'medicao']);
-            if (periodCell && Array.isArray(grid[periodCell.r])) {
-                // Try to extract date from that row
-                const rowText = grid[periodCell.r].map(c => safeText(c)).join(' ');
-                // Simple regex for DD/MM/AAAA
-                const dateMatch = rowText.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-                if (dateMatch) {
-                    periodDate = new Date(`${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`);
-                }
-            }
+            // Fallbacks if detection slightly off but header was "found" due to loose match
+            if (colCode === -1) colCode = 0; // Default
+            if (colDesc === -1) colDesc = 1; // Default
 
-            // STEP C: Locate Table Headers
-            // We look for a row containing "ITEM" AND "DESCRIÇÃO"
-            let headerRowIndex = -1;
-            let colMap = { item: -1, desc: -1, val: -1, bal: -1, exec: -1 };
+            // Values are trickier. User said: 17, 20, 21. Let's try to map, else use those.
+            let colVal = headerRow.findIndex(t => t.includes('valor medido') || t.includes('medicao'));
+            let colBal = headerRow.findIndex(t => t.includes('saldo'));
+            let colExec = headerRow.findIndex(t => t.includes('%') || t.includes('exec'));
 
-            for (let r = 0; r < Math.min(grid.length, 50); r++) {
+            // Fallback to "Standard" Legacy indices if not clear
+            if (colVal === -1) colVal = 17;
+            if (colBal === -1) colBal = 20;
+            if (colExec === -1) colExec = 21;
+
+            // Iterate Rows
+            for (let r = foundHeader + 1; r < grid.length; r++) {
                 const row = grid[r];
                 if (!Array.isArray(row)) continue;
 
-                const safeRow = row.map(c => safeText(c));
+                // Stop condition: Empty Code AND Description usually means end of table or page break
+                // But we should tolerate a few empty lines. Let's strictly check valid items.
 
-                const itemIdx = safeRow.findIndex(c => c === 'item' || c === 'codigo' || c === 'item nº');
-                const descIdx = safeRow.findIndex(c => c.includes('descricao') || c.includes('discriminacao'));
+                const valCode = row[colCode]; // Raw value
+                const valDesc = row[colDesc]; // Raw value
 
-                if (itemIdx !== -1 && descIdx !== -1) {
-                    headerRowIndex = r;
-                    colMap.item = itemIdx;
-                    colMap.desc = descIdx;
+                // Skip completely empty lines
+                if (!valCode && !valDesc) continue;
 
-                    // Find values relative to this
-                    colMap.val = safeRow.findIndex(c => c.includes('valor medido') || c.includes('medicao') || c === 'total');
-                    colMap.bal = safeRow.findIndex(c => c.includes('saldo'));
-                    colMap.exec = safeRow.findIndex(c => c.includes('%') || c.includes('exec'));
-                    break;
+                const txtCode = safeText(valCode);
+                const txtDesc = safeText(valDesc);
+
+                // Check "Is this a line item?" 
+                // Regex: Starts with digit, dots allowed (1.1, 1.2.3, 10)
+                if (/^\d+(\.\d+)*$/.test(txtCode)) {
+
+                    // Safe Access for data
+                    const rawVal = Array.isArray(row) && colVal < row.length ? row[colVal] : 0;
+                    const rawBal = Array.isArray(row) && colBal < row.length ? row[colBal] : 0;
+                    const rawExec = Array.isArray(row) && colExec < row.length ? row[colExec] : 0;
+
+                    items.push({
+                        code: txtCode,
+                        description: txtDesc || 'Sem Descrição',
+                        monthValue: parseNumber(rawVal),
+                        balance: parseNumber(rawBal),
+                        executionPercentage: parseNumber(rawExec)
+                    });
                 }
             }
+        } else {
+            confidence = 0.4;
+            warnings.push("Tabela não identificada (Cabeçalho 'Item/Descrição' não encontrado).");
+        }
 
-            if (headerRowIndex === -1) {
-                warnings.push("Cabeçalho da tabela não detectado via heurística.");
-                confidence -= 0.5;
+        // 3. AI Fallback (ONLY if extraction failed)
+        if (items.length === 0) {
+            console.warn("BMParser: Extraction failed. Attempting AI Fallback...");
+            if (API_KEY) {
+                try {
+                    const aiResult = await this.parseWithAI(grid);
+                    if (aiResult.items.length > 0) {
+                        items = aiResult.items;
+                        usedAI = true;
+                        confidence = 0.8;
+                        warnings.push("Itens extraídos via IA.");
+                    } else {
+                        warnings.push("IA não encontrou itens.");
+                        confidence = 0;
+                    }
+                } catch (e) {
+                    warnings.push("IA Falhou: " + (e as Error).message);
+                }
             } else {
-                // EXTRACT ITEMS
-                for (let r = headerRowIndex + 1; r < grid.length; r++) {
-                    const row = grid[r];
-                    if (!Array.isArray(row)) continue; // Safe Check
-
-                    const code = safeText(row[colMap.item]);
-                    const desc = safeText(row[colMap.desc]);
-
-                    // Valid item usually has a code like 1.1 or 3.0
-                    if (code && desc && /^\d+(\.\d+)*$/.test(code)) {
-
-                        // Heuristic for values if columns not found
-                        // Often values are at the end. index 17, 20, 21 in Legacy.
-                        // We rely on map if found, else fallback to legacy indices if they look like numbers
-                        // But we must NOT crash if index out of bounds
-
-                        const getVal = (idx: number, fallback: number) => {
-                            if (idx !== -1 && idx < row.length) return row[idx];
-                            if (fallback < row.length) return row[fallback];
-                            return 0;
-                        }
-
-                        const valIdx = colMap.val;
-                        const balIdx = colMap.bal;
-                        const execIdx = colMap.exec;
-
-                        items.push({
-                            code,
-                            description: desc,
-                            monthValue: parseNumber(getVal(valIdx, 17)),
-                            balance: parseNumber(getVal(balIdx, 20)),
-                            executionPercentage: parseNumber(getVal(execIdx, 21))
-                        });
-                    }
-                }
+                warnings.push("IA não configurada.");
             }
-
-            // STEP D: AI FALLBACK Trigger
-            // Trigger if: No items found OR confidence low OR layout header missing
-            if (items.length === 0 || confidence < 0.6 || headerRowIndex === -1) {
-                console.warn("BMParser: Triggering AI Fallback (Conf: " + confidence + ", Items: " + items.length + ")");
-
-                if (API_KEY) {
-                    try {
-                        const aiResult = await this.parseWithAI(grid);
-
-                        // Only override if AI actually found items
-                        if (aiResult.items.length > 0) {
-                            items = aiResult.items;
-                            if (aiResult.entity) entity = aiResult.entity;
-                            if (aiResult.periodDate) periodDate = aiResult.periodDate;
-
-                            warnings.push("Dados extraídos com auxílio de IA (verificar precisão).");
-                            usedAI = true;
-                            // Reset confidence to a "warning" level but acceptable
-                            confidence = Math.max(confidence, 0.7);
-                        } else {
-                            warnings.push("IA não encontrou itens válidos.");
-                        }
-                    } catch (e) {
-                        warnings.push("Falha no fallback de IA: " + (e as Error).message);
-                    }
-                } else {
-                    warnings.push("IA não configurada para fallback (Chave de API ausente).");
-                }
-            }
-
-        } catch (error) {
-            // CATCH-ALL: Ensure we never throw
-            warnings.push("Erro interno não fatal no parser: " + (error as Error).message);
-            confidence = 0;
         }
 
         return {
-            entity,
+            entity: null, // Keep simple, UI can handle generic
             items,
-            periodDate,
+            periodDate: null, // Keep simple
             warnings,
             confidence,
             usedAI
         };
     }
 
-    // 3. AI Helper
+    // AI Helper (Kept for fallback)
     static async parseWithAI(grid: any[][]): Promise<ParsedBM> {
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         if (!Array.isArray(grid)) return { entity: null, items: [], periodDate: null, warnings: [], confidence: 0, usedAI: true };
 
-        // Compact Grid to CSV (First 100 rows is usually enough)
+        // Compact CSV
         const csvContent = grid.slice(0, 100).map(row => Array.isArray(row) ? row.join('|') : '').join('\n');
 
         const prompt = `
-            Você é um parser de engenharia. Analise este CSV de um Boletim de Medição.
+            Você é um leitor de tabelas. Extraia os itens desta medição de obra.
+            Colunas típicas: Item, Descrição, Valor Medido, Saldo, %.
             
-            Entradas variadas. Nem sempre tem "Contratada" na coluna G.
-            Procure por:
-            1. Entidade ('RENTAL' ou 'CONSTRUTORA')
-            2. Data/Periodo de medição
-            3. TABELA DE ITENS (Codigo, Descricao, Valor Medido, Saldo, % Execuçao)
-
             CSV:
-            ${csvContent.substring(0, 30000)}
+            ${csvContent.substring(0, 20000)}
 
-            Responda EXCLUSIVAMENTE este JSON:
+            Responda JSON:
             {
-                "entity": "RENTAL" | "CONSTRUTORA" | null,
-                "period": "DD/MM/YYYY" | null,
-                "items": [{ "code": "string", "description": "string", "monthValue": number, "balance": number, "executionPercentage": number }]
+                "items": [{ "code": "1.1", "description": "Example", "monthValue": 100.00, "balance": 500.00, "executionPercentage": 10 }]
             }
         `;
 
@@ -279,30 +211,20 @@ export class BMParser {
         const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
         const data = JSON.parse(jsonStr);
 
-        // Map to Types safely
         const items = (data.items || []).map((i: any) => ({
             code: safeText(i.code),
             description: safeText(i.description),
             monthValue: parseNumber(i.monthValue),
             balance: parseNumber(i.balance),
             executionPercentage: parseNumber(i.executionPercentage)
-        })).filter((i: ParsedItem) => i.code && i.code !== 'null'); // Filter garbage
-
-        let periodDate = null;
-        if (data.period) {
-            const parts = String(data.period).split('/');
-            if (parts.length === 3) {
-                const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-                if (!isNaN(d.getTime())) periodDate = d;
-            }
-        }
+        }));
 
         return {
-            entity: data.entity,
+            entity: null,
             items,
-            periodDate,
+            periodDate: null,
             warnings: [],
-            confidence: 0.85,
+            confidence: 0.8,
             usedAI: true
         };
     }

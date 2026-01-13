@@ -4,6 +4,7 @@ import { X, Calendar, DollarSign, Plus, Trash2, TrendingUp, FileText, Upload } f
 import { Contract, ContractMeasurement } from '../types';
 import * as XLSX from 'xlsx';
 import { parseBM } from '../services/contractService';
+import { toast } from 'sonner';
 import {
     LineChart,
     Line,
@@ -241,22 +242,28 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
 
             // UX: Handle Warnings
             if (warnings && warnings.length > 0) {
-                // Import toast dynamically or assuming global if configured, but let's use alert fallbacks if imports missing
-                // For now, I'll alert the warnings nicely or just non-blocking
                 const msg = `Importado com ${warnings.length} avisos:\n` + warnings.join('\n');
-                // If confidence is extremely low, maybe warn harder
+
+                // If confidence is extremely low, likely garbage
                 if (confidence < 0.5) {
-                    alert("Atenção: Confiança baixa na leitura.\n" + msg);
+                    toast.error("Atenção: Leitura com baixa confiança.", {
+                        description: "Verifique se o arquivo segue o padrão ou se os dados foram extraídos corretamente.\n" + warnings.join('\n'),
+                        duration: 8000
+                    });
                 } else {
-                    // Just a polite notice or no-op if minor
-                    console.warn(msg);
-                    // If sonner is available, I will use it. I need to add import first.
+                    toast.warning("Importação concluída com avisos", {
+                        description: warnings.join('\n'),
+                        duration: 5000
+                    });
                 }
+            } else {
+                toast.success("Importação realizada com sucesso!");
             }
 
             if (usedAI) {
-                // Ideally use toast here, but console fallback for now as well
-                console.info("Processamento inteligente (IA) foi utilizado para este arquivo.");
+                toast.info("Importação via IA Inteligente", {
+                    description: "O sistema detectou um layout incomum e utilizou IA para extrair os dados. Verifique a precisão."
+                });
             }
 
             setParsedItems(items); // Store for Audit Matrix Preview
@@ -289,7 +296,7 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
 
         } catch (error: any) {
             console.error(error);
-            alert(`Erro na importação: ${error.message}`);
+            toast.error(`Falha na importação: ${error.message}`);
         } finally {
             setLoading(false);
             e.target.value = '';
