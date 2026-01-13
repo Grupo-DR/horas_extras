@@ -1,7 +1,6 @@
 import { db } from './firebaseConfig';
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, Timestamp, arrayUnion, getDoc, getDocs, setDoc, runTransaction } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, Timestamp, getDocs, runTransaction } from 'firebase/firestore';
 import { Contract, ContractMeasurement, ContractStatus } from '../types';
-import { BMParser, ParsedBM } from './BMParser';
 import { format } from 'date-fns';
 
 // COLLECTION REF
@@ -59,9 +58,17 @@ export const ContractService = {
                         ? data.measurements.map((m: any) => ({
                             id: s(m.id),
                             date: d(m.date),
-                            value: n(m.value || m.measurementValue), // Support legacy
-                            description: m.description || `Medição ${m.period}`, // Fallback description
                             period: m.period || format(d(m.date) || new Date(), 'yyyy-MM'),
+                            value: n(m.value || m.measurementValue), // Support legacy
+
+                            // Mandatory fields with defaults/fallbacks for Type Compatibility
+                            contractor: s(m.contractor || m.contractorName || 'N/A'),
+                            entityType: (m.entityType === 'RENTAL' || (m.contractorName && m.contractorName.toUpperCase().includes('RENTAL'))) ? 'RENTAL' : 'CONSTRUTORA',
+                            contractTotalValue: n(m.contractTotalValue),
+                            contractBalance: n(m.contractBalance),
+                            status: m.status || 'PROCESSADO',
+                            importedAt: d(m.importedAt) || new Date(),
+
                             // We don't load the full matrix here to keep it light
                             auditMatrix: []
                         }))
@@ -161,23 +168,8 @@ export const ContractService = {
             const contractData = contractDoc.data();
 
             // Calculate Global Totals for Parent Doc
-            // Note: measurement.totalAccumulated is specific to items, we need a global "Total Executed so far"
-            // Start with what we have in the measurement object or calculate from matrix?
-            // The AI provides 'valor_medicao' (current month). 
-            // We need 'Total Accumulated' for the contract. 
-            // PROPOSAL: Use the 'contractTotalValue' - 'contractBalance' from the measurement logic as 'Total Accumulated'?
-            // No, the safest is: Last Accumulated = Sum of all 'measurements' values? 
-            // But we might be re-uploading an old one.
-            // Simplified Logic as requested: Update Parent with THIS measurement's snapshot data.
-            // If we are uploading out of order, this might be tricky, but let's assume chronological for now 
-            // or simply that "Last Uploaded = Best Source of Truth" for these header fields.
-
+            // We update "totalAccumulated" based on the measurement data for consistency
             const totalAccumulated = n(measurement.value) + (n(contractData.totalAccumulated) || 0);
-            // Better approach for 'totalAccumulated':
-            // Use the sum of 'totalAccumulated' from the Audit Matrix? Or trust the 'valor_medicao' + 'acumulado_anterior' (if available)?
-            // Let's trust the AI extracted 'saldo_contratual' and 'valor_medicao'. 
-            // Actually, the user asked to update "totalAccumulated: Soma do anterior + atual". 
-            // Let's stick to updating the metadata based on the NEWEST measurement provided.
 
             // Update consolidated list
             let currentMeasurements = Array.isArray(contractData.measurements) ? contractData.measurements : [];
@@ -185,52 +177,59 @@ export const ContractService = {
             currentMeasurements = currentMeasurements.filter((m: any) => m.period !== measurement.period);
 
             // Add lightweight version
-            id: measurementId,
+            currentMeasurements.push({
+                id: measurementId,
                 period: measurement.period,
-                    date: measurementDate,
-                        value: n(measurement.value),
-                            description: `Medição ${measurement.period}`,
-                                entityType: entityType
+                date: measurementDate,
+                value: n(measurement.value),
+                entityType: entityType,
+                // Add mandatory fields for the lightweight array too, to match ContractMeasurement
+                contractor: s(measurement.contractor),
+                contractTotalValue: n(measurement.contractTotalValue),
+                contractBalance: n(measurement.contractBalance),
+                status: measurement.status || 'PROCESSADO',
+                importedAt: Timestamp.now(),
+                auditMatrix: [] // Empty for lightweight
+            });
+
+            // Sort by date descending
+            currentMeasurements.sort((a: any, b: any) => b.date.toMillis() - a.date.toMillis());
+
+            // WRITE SUBCOLLECTION
+            transaction.set(measurementDocRef, fullMeasurementData);
+
+            // UPDATE PARENT
+            transaction.update(contractRef, {
+                measurements: currentMeasurements,
+                lastMeasurementDate: measurementDate,
+                lastMeasurementValue: n(measurement.value),
+                // We update the balance to what the measurement says it is (Source of Truth)
+                currentBalance: n(measurement.contractBalance),
+                // We update total accumulated to what the measurement implies (Total Contract - Balance) 
+                // This is more robust than summing incrementally.
+                totalAccumulated: n(measurement.contractTotalValue) - n(measurement.contractBalance),
+                updatedAt: Timestamp.now()
+            });
         });
-
-        // Sort by date descending
-        currentMeasurements.sort((a: any, b: any) => b.date.toMillis() - a.date.toMillis());
-
-        // WRITE SUBCOLLECTION
-        transaction.set(measurementDocRef, fullMeasurementData);
-
-        // UPDATE PARENT
-        transaction.update(contractRef, {
-            measurements: currentMeasurements,
-            lastMeasurementDate: measurementDate,
-            lastMeasurementValue: n(measurement.value),
-            // We update the balance to what the measurement says it is (Source of Truth)
-            currentBalance: n(measurement.contractBalance),
-            // We update total accumulated to what the measurement implies (Total Contract - Balance) 
-            // This is more robust than summing incrementally.
-            totalAccumulated: n(measurement.contractTotalValue) - n(measurement.contractBalance),
-            updatedAt: Timestamp.now()
-        });
-    });
     },
 
-// GET HISTORY (Full Audit Data)
-getMeasurementHistory: async (contractId: string): Promise<ContractMeasurement[]> => {
-    const subColRef = collection(db, COLLECTION_NAME, contractId, 'measurements');
-    const q = query(subColRef, orderBy('date', 'desc'));
+    // GET HISTORY (Full Audit Data)
+    getMeasurementHistory: async (contractId: string): Promise<ContractMeasurement[]> => {
+        const subColRef = collection(db, COLLECTION_NAME, contractId, 'measurements');
+        const q = query(subColRef, orderBy('date', 'desc'));
 
-    const snap = await getDocs(q);
+        const snap = await getDocs(q);
 
-    return snap.docs.map(doc => {
-        const data = doc.data();
-        return {
-            ...data,
-            id: doc.id,
-            date: d(data.date),
-            importedAt: d(data.importedAt),
-        } as ContractMeasurement;
-    });
-},
+        return snap.docs.map(doc => {
+            const data = doc.data();
+            return {
+                ...data,
+                id: doc.id,
+                date: d(data.date),
+                importedAt: d(data.importedAt),
+            } as ContractMeasurement;
+        });
+    },
 
     // REMOVE MEASUREMENT
     removeMeasurement: async (contractId: string, measurementId: string) => {
