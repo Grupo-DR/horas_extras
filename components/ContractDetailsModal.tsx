@@ -103,50 +103,85 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
         const endDate = new Date(contract.endDate);
         const totalDurationMonths = (endDate.getFullYear() - startDate.getFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth());
 
-        // Base Planned Curve (Linear for now, or use specific curve logic if available)
+        // Base Planned Curve (Linear)
         const plannedMonthlyRate = contract.totalValue / (totalDurationMonths || 1);
 
-        // Generate Time Points
         const points = [];
         let currentDate = new Date(startDate);
+        // Normalize start date to first of month for cleaner iteration
+        currentDate.setDate(1);
+
         let plannedAccum = 0;
-        let realAccum = 0;
 
-        // Iterate monthly from start to end (or to last measurement)
-        // We can limit x-axis to max(endDate, lastMeasurementDate)
-        const maxDate = sortedHistory.length > 0 && new Date(sortedHistory[sortedHistory.length - 1].date) > endDate
-            ? new Date(sortedHistory[sortedHistory.length - 1].date)
-            : endDate;
+        // Track the last valid accumulated value to carry forward for months without measurements (up to today)
+        let lastRealAccum = 0;
+        let hasStartedMeasuring = false;
 
-        while (currentDate <= maxDate || sortedHistory.some(m => new Date(m.date) > currentDate)) {
-            const periodStr = format(currentDate, 'yyyy-MM');
+        // Determine the cutoff date for the chart
+        // We plot up to the end of the contract OR the latest measurement, whichever is later
+        // But for "Realizado", we only plot up to TODAY (or the last measurement date if future)
+        const lastMeasurementDate = sortedHistory.length > 0 ? new Date(sortedHistory[sortedHistory.length - 1].date) : new Date();
+        const maxDate = lastMeasurementDate > endDate ? lastMeasurementDate : endDate;
+        const today = new Date();
 
-            // Find measurement for this month (approximate by period)
-            const measurement = sortedHistory.find(m => m.period === periodStr || format(new Date(m.date), 'yyyy-MM') === periodStr);
+        while (currentDate <= maxDate || (points.length > 0 && points.length < totalDurationMonths + 12)) {
+            const currentYear = currentDate.getFullYear();
+            const currentMonth = currentDate.getMonth();
+
+            // Find measurement for this specific month (Robust Date Check)
+            // We ignore the 'period' string and check the actual Date object
+            const measurement = sortedHistory.find(m => {
+                const mDate = new Date(m.date);
+                return mDate.getFullYear() === currentYear && mDate.getMonth() === currentMonth;
+            });
 
             const monthValue = measurement ? (measurement.value || (measurement as any).measurementValue) : 0;
+
+            // Calculate Accumulated Value
+            // STRATEGY: Use the "State of Truth" from the measurement (Total - Balance) if available.
+            // This is safer than summing increments.
+            let realAccum = lastRealAccum;
+
             if (measurement) {
-                // If measurement has real audit total, use it, else accumulate
-                // Using the specific measurement total if reliable, else drift can occur.
-                // Let's trust measurement.contractTotalValue - measurement.contractBalance ? 
-                // Or just accumulate monthly values.
-                realAccum += monthValue;
+                hasStartedMeasuring = true;
+                // If we have a measurement, its state is the truth.
+                // We assume measurement.contractTotalValue and measurement.contractBalance are accurate snapshot at that time.
+                // Fallback: If those fields are missing (legacy), we add the monthly value to the previous accumulator.
+                if (measurement.contractTotalValue !== undefined && measurement.contractBalance !== undefined) {
+                    realAccum = measurement.contractTotalValue - measurement.contractBalance;
+                } else {
+                    realAccum += monthValue;
+                }
+                lastRealAccum = realAccum;
             }
 
+            // Planned Accumulation (Linear)
             plannedAccum += plannedMonthlyRate;
             if (plannedAccum > contract.totalValue) plannedAccum = contract.totalValue;
+
+            // Deciding when to show null (to stop the line) vs value
+            // We show the real line IF:
+            // 1. We have a measurement this month OR
+            // 2. We are in the past (before today) AND we have started measuring at some point (so we show the flat line carry-forward)
+            // 3. We do NOT show it for future months (unless a future measurement exists)
+
+            const isFuture = currentDate > today && currentDate.getMonth() !== today.getMonth();
+            const shouldShowReal = measurement || (!isFuture && currentDate <= today);
 
             points.push({
                 date: new Date(currentDate),
                 monthStr: format(currentDate, 'MMM/yy', { locale: ptBR }),
                 plannedAccumulated: currentDate <= endDate ? plannedAccum : contract.totalValue,
-                accumulated: measurement ? realAccum : (currentDate < new Date() ? realAccum : null), // Don't plot zero for future
+                accumulated: shouldShowReal ? realAccum : null,
                 monthValue: monthValue,
-                description: measurement ? `Medição ${measurement.period}` : '' // Schema changed, description removed from type but maybe present in legacy
+                description: measurement ? `Medição ${measurement.period}` : ''
             });
 
+            // Iterate
             currentDate.setMonth(currentDate.getMonth() + 1);
-            if (points.length > 60) break; // Safety break
+
+            // Safety break to prevent infinite loops in edge cases
+            if (points.length > 120) break;
         }
 
         return points;
