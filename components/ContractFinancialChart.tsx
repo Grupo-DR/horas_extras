@@ -10,7 +10,8 @@ import {
     Area,
     Line,
     ReferenceLine,
-    Label
+    Label,
+    Legend
 } from 'recharts';
 import { Contract } from '../types';
 import { generateFinancialTimeline } from '../services/contractAnalytics';
@@ -83,6 +84,26 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export const ContractFinancialChart: React.FC<Props> = ({ contract }) => {
     const data = useMemo(() => generateFinancialTimeline(contract), [contract]);
 
+    // Calculate Domains for Independent Scaling
+    const { maxMonthly, maxTotal } = useMemo(() => {
+        if (!data || data.length === 0) return { maxMonthly: 0, maxTotal: 0 };
+
+        let mm = 0;
+        let mt = 0;
+
+        data.forEach(d => {
+            if (d.measuredMonthly > mm) mm = d.measuredMonthly;
+            if (d.contractValue > mt) mt = d.contractValue;
+            if (d.accumulated > mt) mt = d.accumulated;
+        });
+
+        // Apply Coefficients
+        return {
+            maxMonthly: mm * 1.3 || 1000, // +30% breathing room
+            maxTotal: mt * 1.05 || 1000   // +5% breathing room
+        };
+    }, [data]);
+
     if (!data || data.length === 0) return (
         <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
             <Calendar size={48} className="mb-2" />
@@ -93,7 +114,7 @@ export const ContractFinancialChart: React.FC<Props> = ({ contract }) => {
     return (
         <div className="w-full h-full min-h-[350px]">
             <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={data} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
+                <ComposedChart data={data} margin={{ top: 20, right: 0, left: 0, bottom: 0 }}>
                     <defs>
                         <linearGradient id="colorAccum" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
@@ -112,23 +133,33 @@ export const ContractFinancialChart: React.FC<Props> = ({ contract }) => {
                         interval="preserveStartEnd"
                     />
 
+                    {/* LEFT AXIS: TOTALS (Lines) */}
                     <YAxis
                         yAxisId="left"
+                        orientation="left"
+                        domain={[0, maxTotal]}
                         axisLine={false}
                         tickLine={false}
                         tick={{ fill: '#64748b', fontSize: 11 }}
                         tickFormatter={(val) => `R$${(val / 1000).toFixed(0)}k`}
+                        width={60}
                     />
 
-                    {/* Right Axis for Monthly Bars (Optional, usually better to share scale if relatable, but bar is small) 
-                        For financial evolution, sharing the axis is better to see proportion of monthly vs total.
-                        So we skip a secondary YAxis unless bars are too small. Contract evolution usually implies Bar is small part of Total. 
-                        Let's use left axis for all for true scale.
-                    */}
+                    {/* RIGHT AXIS: MONTHLY (Bars) */}
+                    <YAxis
+                        yAxisId="right"
+                        orientation="right"
+                        domain={[0, maxMonthly]}
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#93c5fd', fontSize: 11 }} // Light blue to match bars
+                        tickFormatter={(val) => `R$${(val / 1000).toFixed(0)}k`}
+                        width={60}
+                    />
 
                     <Tooltip content={<CustomTooltip />} />
 
-                    {/* 1. Contract Ceiling (Step Line) */}
+                    {/* 1. Contract Ceiling (Step Line) -> LEFT */}
                     <Line
                         yAxisId="left"
                         type="stepAfter"
@@ -138,19 +169,21 @@ export const ContractFinancialChart: React.FC<Props> = ({ contract }) => {
                         strokeWidth={2}
                         dot={false}
                         activeDot={false}
+                        name="Teto Contratual"
                     />
 
-                    {/* 2. Monthly Bars */}
+                    {/* 2. Monthly Bars -> RIGHT */}
                     <Bar
-                        yAxisId="left"
+                        yAxisId="right"
                         dataKey="measuredMonthly"
                         fill="#93c5fd"
                         radius={[4, 4, 0, 0]}
                         opacity={0.8}
                         maxBarSize={50}
+                        name="Medição Mensal"
                     />
 
-                    {/* 3. Accumulated (Area) */}
+                    {/* 3. Accumulated (Area) -> LEFT */}
                     <Area
                         yAxisId="left"
                         type="monotone"
@@ -158,11 +191,10 @@ export const ContractFinancialChart: React.FC<Props> = ({ contract }) => {
                         stroke="#2563eb"
                         fill="url(#colorAccum)"
                         strokeWidth={3}
+                        name="Acumulado"
                     />
 
-                    {/* 4. Balance (Decaying Line) - Optional, can clutter. 
-                         Let's keep it but make it subtle (Slate/Red)
-                     */}
+                    {/* 4. Balance -> LEFT */}
                     <Line
                         yAxisId="left"
                         type="monotone"
@@ -171,9 +203,10 @@ export const ContractFinancialChart: React.FC<Props> = ({ contract }) => {
                         strokeWidth={2}
                         dot={false}
                         opacity={0.5}
+                        name="Saldo"
                     />
 
-                    {/* 5. Event Markers */}
+                    {/* 5. Event Markers -> LEFT (Relevant to Ceiling) */}
                     {data.map((entry, index) => {
                         if (entry.events && entry.events.length > 0) {
                             return (
@@ -193,11 +226,17 @@ export const ContractFinancialChart: React.FC<Props> = ({ contract }) => {
                                         offset={10}
                                     />
                                 </ReferenceLine>
-                            )
+                            );
                         }
                         return null;
                     })}
 
+                    <Legend
+                        verticalAlign="top"
+                        height={36}
+                        iconType="circle"
+                        wrapperStyle={{ fontSize: '11px', fontWeight: 600, color: '#64748b' }}
+                    />
                 </ComposedChart>
             </ResponsiveContainer>
         </div>

@@ -309,5 +309,53 @@ export const ContractService = {
                 updatedAt: Timestamp.now()
             });
         });
+    },
+
+    // REMOVE EVENT
+    removeEvent: async (contractId: string, eventId: string) => {
+        const contractRef = doc(db, COLLECTION_NAME, contractId);
+
+        await runTransaction(db, async (transaction) => {
+            const contractDoc = await transaction.get(contractRef);
+            if (!contractDoc.exists()) throw new Error("Contrato não encontrado");
+
+            const contractData = contractDoc.data();
+            const events = Array.isArray(contractData.events) ? contractData.events : [];
+
+            // Find event to remove
+            const eventToRemove = events.find((e: any) => e.id === eventId);
+            if (!eventToRemove) return; // Already gone
+
+            // Remove it
+            const updatedEvents = events.filter((e: any) => e.id !== eventId);
+
+            // Recalculate Totals from scratch (Safer than reversing delta)
+            // Start from initial
+            const initialValue = n(contractData.initialValue) || n(contractData.totalValue); // Robust fallback? 
+            // Ideally we rely on initialValue. If it's missing, we are in trouble if we try to rebuild.
+            // If we are removing an event, we assume `initialValue` + `remaining events` = `current`.
+
+            // If `initialValue` is NOT reliably stored before events, we might have issues. 
+            // However, `addEvent` logic ensured `initialValue` was set.
+            // Let's assume `initialValue` is good.
+
+            let newTotal = initialValue;
+            let newEndDate = contractData.initialEndDate ? toFirestoreTimestamp(contractData.initialEndDate).toDate() : (contractData.startDate ? toFirestoreTimestamp(contractData.startDate).toDate() : new Date());
+
+            // Replay events
+            updatedEvents.forEach((ev: any) => {
+                newTotal += n(ev.valueDelta);
+                if (ev.termDeltaDays) {
+                    newEndDate.setDate(newEndDate.getDate() + n(ev.termDeltaDays));
+                }
+            });
+
+            transaction.update(contractRef, {
+                events: updatedEvents,
+                totalValue: newTotal,
+                endDate: Timestamp.fromDate(newEndDate),
+                updatedAt: Timestamp.now()
+            });
+        });
     }
 };

@@ -419,6 +419,57 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
 
                         {/* RIGHT: History Sidebar (1/3) */}
                         <div className="w-full md:w-80 bg-slate-50 border-l border-slate-200 p-6 overflow-y-auto custom-scrollbar flex flex-col gap-4">
+
+                            {/* EVENT HISTORY */}
+                            <div className="mb-4">
+                                <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wide mb-3 flex items-center justify-between">
+                                    Eventos Contratuais
+                                    <span className="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-full">{contract.events?.length || 0}</span>
+                                </h3>
+                                <div className="space-y-2">
+                                    {(contract.events || []).length === 0 ? (
+                                        <p className="text-xs text-slate-400 italic">Nenhum aditivo ou reajuste.</p>
+                                    ) : (
+                                        [...contract.events].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(event => (
+                                            <div key={event.id} className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm group hover:border-amber-300 transition-colors">
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <span className="text-[10px] font-bold text-amber-700 uppercase bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">
+                                                        {event.type.replace('ADITIVO_', 'ADIT. ')}
+                                                    </span>
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (window.confirm("Remover este evento? O valor do contrato será recalculado.")) {
+                                                                await ContractService.removeEvent(contract.id, event.id);
+                                                                toast.success("Evento removido.");
+                                                            }
+                                                        }}
+                                                        className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <Trash2 size={12} />
+                                                    </button>
+                                                </div>
+                                                <div className="flex justify-between text-xs mb-1">
+                                                    <span className="text-slate-500 font-medium">{format(new Date(event.date), 'dd/MM/yy')}</span>
+                                                    <span className={`font-mono font-bold ${event.valueDelta >= 0 ? 'text-slate-700' : 'text-red-500'}`}>
+                                                        {event.valueDelta !== 0 ? event.valueDelta.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
+                                                    </span>
+                                                </div>
+                                                {event.termDeltaDays !== 0 && (
+                                                    <div className="text-[10px] text-blue-600 font-semibold mb-1">
+                                                        +{event.termDeltaDays} dias de prazo
+                                                    </div>
+                                                )}
+                                                <p className="text-[10px] text-slate-400 line-clamp-2 leading-tight" title={event.description}>
+                                                    {event.description}
+                                                </p>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+
+                            <hr className="border-slate-200" />
+
                             <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wide mb-2">Histórico de Medições</h3>
 
                             {history.length === 0 ? (
