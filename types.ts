@@ -143,6 +143,25 @@ export enum AppModule {
 
 // --- CONTRACT TYPES ---
 
+export enum ContractEventType {
+  ADITIVO_PRAZO = 'ADITIVO_PRAZO',
+  ADITIVO_VALOR = 'ADITIVO_VALOR',
+  ADITIVO_MISTO = 'ADITIVO_MISTO',
+  REAJUSTE = 'REAJUSTE'
+}
+
+export interface ContractEvent {
+  id: string;
+  contractId: string;
+  date: Date;
+  type: ContractEventType;
+  valueDelta: number;
+  termDeltaDays: number;
+  description: string;
+  createdAt: Date;
+  createdBy: string;
+}
+
 export enum ContractStatus {
   ACTIVE = 'ACTIVE',
   FINISHED = 'FINISHED',
@@ -193,12 +212,22 @@ export interface Contract {
   name: string;
   siteName: string; // Nome da Obra
   clientName: string;
+  // Legacy/Active Fields (Primary Source for List Views)
   totalValue: number;
   startDate: Date;
   endDate: Date;
+
+  // Evolution Events Support
+  initialValue: number;
+  initialEndDate: Date;
+
+  // Current Status (Calculated/Cached)
+  currentValue: number;
+  currentEndDate: Date;
+
   measurements: ContractMeasurement[];
-  scopeItems?: ScopeItem[]; // Lista Mestra
-  adjustments?: { type: 'ADITIVO' | 'REAJUSTE'; date: Date; value: number; newEndDate?: Date }[]; // NEW
+  events: ContractEvent[];      // New: Additives & Readjustments
+  scopeItems?: ScopeItem[];     // Master List
   status: ContractStatus;
 
   // Timestamps for Metadata

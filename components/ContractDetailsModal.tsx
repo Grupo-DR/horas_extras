@@ -5,21 +5,12 @@ import { Contract, ContractMeasurement, ScopeAuditItem } from '../types';
 import { ContractService } from '../services/contractService';
 import { toast } from 'sonner';
 import {
-    LineChart,
-    Line,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-    ReferenceLine,
-    Area,
-    ComposedChart,
     Bar
 } from 'recharts';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { MeasurementForm } from './MeasurementForm';
+import { ContractFinancialChart } from './ContractFinancialChart';
 
 interface ContractDetailsModalProps {
     isOpen: boolean;
@@ -328,46 +319,8 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                     <Activity size={20} className="text-blue-600" />
                                     Curva de Evolução Financeira
                                 </h3>
-                                <div className="h-[320px] w-full">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <ComposedChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                                            <defs>
-                                                <linearGradient id="colorPlanned" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.1} />
-                                                    <stop offset="95%" stopColor="#94a3b8" stopOpacity={0} />
-                                                </linearGradient>
-                                                <linearGradient id="colorReal" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
-                                                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
-                                                </linearGradient>
-                                            </defs>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                            <XAxis
-                                                dataKey="monthStr"
-                                                axisLine={false}
-                                                tickLine={false}
-                                                tick={{ fill: '#64748b', fontSize: 11 }}
-                                                dy={10}
-                                            />
-                                            <YAxis
-                                                axisLine={false}
-                                                tickLine={false}
-                                                tick={{ fill: '#64748b', fontSize: 11 }}
-                                                tickFormatter={(val) => `R$${(val / 1000).toFixed(0)}k`}
-                                            />
-                                            <Tooltip content={<CustomTooltip />} />
-                                            <ReferenceLine y={totalValue} stroke="#ef4444" strokeDasharray="4 4" label={{ value: 'Teto', fill: '#ef4444', fontSize: 10, position: 'insideTopRight' }} />
-
-                                            {/* Bars for Monthly Value */}
-                                            <Bar dataKey="monthValue" fill="#60a5fa" radius={[4, 4, 0, 0]} maxBarSize={40} opacity={0.5} />
-
-                                            {/* Area for Planned Accum */}
-                                            <Area type="monotone" dataKey="plannedAccumulated" stroke="#94a3b8" strokeDasharray="5 5" fill="url(#colorPlanned)" strokeWidth={2} />
-
-                                            {/* Line for Real Accum */}
-                                            <Line type="monotone" dataKey="accumulated" stroke="#2563eb" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 6 }} />
-                                        </ComposedChart>
-                                    </ResponsiveContainer>
+                                <div className="h-[400px] w-full">
+                                    <ContractFinancialChart contract={contract} />
                                 </div>
                             </div>
 
