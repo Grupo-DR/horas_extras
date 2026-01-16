@@ -11,6 +11,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { MeasurementForm } from './MeasurementForm';
 import { ContractFinancialChart } from './ContractFinancialChart';
+import { ContractEventForm } from './ContractEventForm';
 
 interface ContractDetailsModalProps {
     isOpen: boolean;
@@ -67,6 +68,7 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
 }) => {
 
     const [isMeasurementFormOpen, setIsMeasurementFormOpen] = useState(false);
+    const [isEventFormOpen, setIsEventFormOpen] = useState(false);
     const [history, setHistory] = useState<ContractMeasurement[]>([]);
     const [selectedMeasurementId, setSelectedMeasurementId] = useState<string | null>(null);
 
@@ -239,6 +241,13 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                     className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-600/20 transition-all transform hover:scale-105 active:scale-95"
                                 >
                                     <Plus size={18} /> Nova Medição
+                                </button>
+                                <button
+                                    onClick={() => setIsEventFormOpen(true)}
+                                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold transition-colors flex items-center gap-2"
+                                    title="Adicionar Aditivo ou Reajuste"
+                                >
+                                    <TrendingUp size={18} /> Aditivo
                                 </button>
                                 <button onClick={onClose} className="p-2.5 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-red-500">
                                     <X size={24} />
@@ -472,6 +481,19 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                         await refreshHistory();
                     }}
                     contractName={contract.name}
+                />
+
+                <ContractEventForm
+                    isOpen={isEventFormOpen}
+                    onClose={() => setIsEventFormOpen(false)}
+                    onSave={async (event) => {
+                        await ContractService.addEvent(contract.id, event);
+                        toast.success("Evento registrado com sucesso!");
+                        // We might need to trigger a parent refresh of the contract object itself
+                        // For now closing will suffice as the realtime listener in parent view should update the contract prop?
+                        // Actually, ContractDetailsModal receives `detailsContract` from parent which is updated via realtime.
+                        // So just closing is enough.
+                    }}
                 />
             </div>
         </AnimatePresence>

@@ -60,6 +60,16 @@ export const ContractService = {
                     // Scope Items (Master List)
                     scopeItems: Array.isArray(data.scopeItems) ? data.scopeItems : [],
 
+                    // Evolution Events
+                    events: Array.isArray(data.events) ? data.events.map((e: any) => ({
+                        ...e,
+                        date: safeDateParse(e.date) || new Date(),
+                        createdAt: safeDateParse(e.createdAt) || new Date()
+                    })) : [],
+
+                    initialValue: n(data.initialValue) || n(data.totalValue), // Fallback
+                    initialEndDate: safeDateParse(data.initialEndDate) || safeDateParse(data.endDate),
+
                     createdAt: safeDateParse(data.createdAt),
                     updatedAt: safeDateParse(data.updatedAt)
                 } as Contract;
@@ -240,6 +250,62 @@ export const ContractService = {
 
             transaction.update(contractRef, {
                 measurements: updated,
+                updatedAt: Timestamp.now()
+            });
+        });
+    },
+
+    // ADD EVENT (Additive/Readjustment)
+    addEvent: async (contractId: string, event: any) => {
+        const contractRef = doc(db, COLLECTION_NAME, contractId);
+
+        await runTransaction(db, async (transaction) => {
+            const contractDoc = await transaction.get(contractRef);
+            if (!contractDoc.exists()) throw new Error("Contrato não encontrado");
+
+            const contractData = contractDoc.data();
+
+            // 1. Prepare Event Object
+            const newEvent = {
+                id: crypto.randomUUID(),
+                ...event,
+                date: toFirestoreTimestamp(event.date),
+                createdAt: Timestamp.now(),
+                createdBy: 'SYSTEM' // TODO: Replace with actual user ID
+            };
+
+            // 2. Calculate New Contract State
+            // If initialValue is missing, assume current totalValue was the initial
+            const currentTotal = n(contractData.totalValue);
+            const initialValue = n(contractData.initialValue) || currentTotal;
+            const currentEndDate = contractData.endDate ? toFirestoreTimestamp(contractData.endDate).toDate() : new Date();
+            const initialEndDate = contractData.initialEndDate ? toFirestoreTimestamp(contractData.initialEndDate).toDate() : currentEndDate;
+
+            // Apply Deltas
+            const newTotalValue = currentTotal + n(event.valueDelta);
+
+            const newEndDate = new Date(currentEndDate);
+            if (event.termDeltaDays) {
+                newEndDate.setDate(newEndDate.getDate() + n(event.termDeltaDays));
+            }
+
+            // 3. Update Contract
+            // We append to the events array
+            const currentEvents = Array.isArray(contractData.events) ? contractData.events : [];
+            currentEvents.push(newEvent);
+
+            // Sort events by date just in case
+            // currentEvents.sort(...) - usually better to sort on read or just append
+
+            transaction.update(contractRef, {
+                events: currentEvents,
+                totalValue: newTotalValue, // Active Value
+                endDate: Timestamp.fromDate(newEndDate), // Active End Date
+
+                // Ensure Initial fields are populated if they weren't
+                initialValue: initialValue,
+                initialEndDate: Timestamp.fromDate(initialEndDate),
+
                 updatedAt: Timestamp.now()
             });
         });
