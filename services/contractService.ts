@@ -2,6 +2,7 @@ import { db } from './firebaseConfig';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, Timestamp, getDocs, runTransaction } from 'firebase/firestore';
 import { Contract, ContractMeasurement, ContractStatus } from '../types';
 import { format } from 'date-fns';
+import { safeDateParse, toFirestoreTimestamp } from '../utils/dateUtils';
 
 // COLLECTION REF
 const COLLECTION_NAME = 'contracts';
@@ -9,25 +10,7 @@ const COLLECTION_NAME = 'contracts';
 // HELPER: Sanitization Shield
 const n = (v: any) => (typeof v === 'number' && !isNaN(v) ? v : 0);
 const s = (v: any) => (typeof v === 'string' ? v : '');
-const d = (v: any) => {
-    if (!v) return null;
-    if (v instanceof Timestamp) return v.toDate();
-    if (v && typeof v.toDate === 'function') return v.toDate();
-    if (v instanceof Date) return v;
-    if (typeof v === 'string') {
-        const parsed = new Date(v);
-        return isNaN(parsed.getTime()) ? null : parsed;
-    }
-    return null;
-};
-
-// HELPER: Timestamp Conversion
-const toTimestamp = (date: Date | Timestamp | string | undefined): Timestamp => {
-    if (date instanceof Timestamp) return date;
-    if (date instanceof Date) return Timestamp.fromDate(date);
-    if (typeof date === 'string') return Timestamp.fromDate(new Date(date));
-    return Timestamp.now();
-};
+// d() helper is replaced by safeDateParse usage below
 
 export const ContractService = {
     // GET ALL REAL-TIME
@@ -49,16 +32,16 @@ export const ContractService = {
                     siteName: s(data.siteName),
                     clientName: s(data.clientName),
                     totalValue: n(data.totalValue),
-                    startDate: d(data.startDate),
-                    endDate: d(data.endDate),
+                    startDate: safeDateParse(data.startDate) || new Date(), // Fallback to now if critical
+                    endDate: safeDateParse(data.endDate) || new Date(),
                     status: data.status || ContractStatus.ACTIVE,
 
                     // Consolidated Measurement Data (From Parent Doc)
                     measurements: Array.isArray(data.measurements)
                         ? data.measurements.map((m: any) => ({
                             id: s(m.id),
-                            date: d(m.date),
-                            period: m.period || format(d(m.date) || new Date(), 'yyyy-MM'),
+                            date: safeDateParse(m.date) || new Date(),
+                            period: m.period || format(safeDateParse(m.date) || new Date(), 'yyyy-MM'),
                             value: n(m.value || m.measurementValue), // Support legacy
 
                             // Mandatory fields with defaults/fallbacks for Type Compatibility
@@ -67,7 +50,7 @@ export const ContractService = {
                             contractTotalValue: n(m.contractTotalValue),
                             contractBalance: n(m.contractBalance),
                             status: m.status || 'PROCESSADO',
-                            importedAt: d(m.importedAt) || new Date(),
+                            importedAt: safeDateParse(m.importedAt) || new Date(),
 
                             // We don't load the full matrix here to keep it light
                             auditMatrix: []
@@ -77,8 +60,8 @@ export const ContractService = {
                     // Scope Items (Master List)
                     scopeItems: Array.isArray(data.scopeItems) ? data.scopeItems : [],
 
-                    createdAt: d(data.createdAt),
-                    updatedAt: d(data.updatedAt)
+                    createdAt: safeDateParse(data.createdAt),
+                    updatedAt: safeDateParse(data.updatedAt)
                 } as Contract;
             });
 
@@ -90,8 +73,8 @@ export const ContractService = {
     create: async (contract: Omit<Contract, 'id'>) => {
         const cleanData = {
             ...contract,
-            startDate: Timestamp.fromDate(contract.startDate),
-            endDate: Timestamp.fromDate(contract.endDate),
+            startDate: toFirestoreTimestamp(contract.startDate) || Timestamp.now(),
+            endDate: toFirestoreTimestamp(contract.endDate) || Timestamp.now(),
             measurements: [],
             createdAt: Timestamp.now(),
             updatedAt: Timestamp.now()
@@ -106,8 +89,8 @@ export const ContractService = {
     update: async (id: string, updates: Partial<Contract>) => {
         const cleanUpdates: any = { ...updates, updatedAt: Timestamp.now() };
 
-        if (updates.startDate) cleanUpdates.startDate = Timestamp.fromDate(updates.startDate);
-        if (updates.endDate) cleanUpdates.endDate = Timestamp.fromDate(updates.endDate);
+        if (updates.startDate) cleanUpdates.startDate = toFirestoreTimestamp(updates.startDate);
+        if (updates.endDate) cleanUpdates.endDate = toFirestoreTimestamp(updates.endDate);
 
         const docRef = doc(db, COLLECTION_NAME, id);
         await updateDoc(docRef, cleanUpdates);
@@ -130,7 +113,7 @@ export const ContractService = {
         const measurementDocRef = doc(collection(contractRef, 'measurements'), measurementId);
 
         // 2. Sanitize Measurement Data
-        const measurementDate = toTimestamp(measurement.date);
+        const measurementDate = toFirestoreTimestamp(measurement.date) || Timestamp.now();
 
         // Entity Logic Override is now handled by BMParser, trusting the measurement object.
         const entityType = measurement.entityType;
@@ -230,8 +213,8 @@ export const ContractService = {
             return {
                 ...data,
                 id: doc.id,
-                date: d(data.date),
-                importedAt: d(data.importedAt),
+                date: safeDateParse(data.date) || new Date(),
+                importedAt: safeDateParse(data.importedAt) || new Date(),
             } as ContractMeasurement;
         });
     },
