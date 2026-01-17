@@ -90,7 +90,7 @@ export const LoginPage: React.FC = () => {
             {/* 1. LAYER - BACKGROUND VIDEO (LOOP) */}
             {/* 1. LAYER - BACKGROUND VIDEO (ONCE) */}
             <video
-                className="absolute top-0 left-0 w-full h-full object-cover opacity-60 z-0"
+                className="absolute top-0 left-0 w-full h-full object-cover opacity-60 z-0 scale-105"
                 autoPlay
                 muted
                 playsInline
@@ -105,14 +105,16 @@ export const LoginPage: React.FC = () => {
                     }`}
             >
                 {/* Tech Widget Container */}
-                <div className="flex flex-col items-center w-full px-4">
-                    <video
-                        ref={loadingVideoRef}
-                        className="w-full max-w-xl object-contain"
-                        muted
-                        playsInline
-                        src={nexusLoadingVideo}
-                    />
+                <div className="flex flex-col items-center w-full px-4 text-center">
+                    <div className="rounded-2xl overflow-hidden w-full max-w-xl">
+                        <video
+                            ref={loadingVideoRef}
+                            className="w-full object-contain scale-110"
+                            muted
+                            playsInline
+                            src={nexusLoadingVideo}
+                        />
+                    </div>
 
                     <div className="mt-8 flex flex-col items-center gap-4">
                         <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
