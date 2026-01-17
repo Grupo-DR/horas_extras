@@ -5,6 +5,9 @@ import './index.css';
 
 import { MainLayout } from './layout/MainLayout';
 import { Toaster } from 'sonner';
+import { AuthProvider } from './contexts/AuthContext';
+import { PrivateRoute } from './components/PrivateRoute';
+import { LoginPage } from './pages/LoginPage';
 
 // Lazy Load Pages
 const CommercialView = React.lazy(() => import('./pages/CommercialView').then(module => ({ default: module.CommercialView })));
@@ -33,26 +36,34 @@ const App: React.FC = () => {
   return (
     <BrowserRouter>
       <Toaster position="top-right" richColors />
-      <Suspense fallback={<LoadingFallback />}>
-        <Routes>
-          <Route path="/" element={<MainLayout />}>
-            <Route index element={<Navigate to="/comercial" replace />} />
-            <Route path="comercial" element={<CommercialView />} />
-            <Route path="contratos" element={<ContractsView />} />
-            <Route path="dados" element={<DataCenterView />} />
-            <Route path="kpis" element={<KPIView />} />
-            <Route path="acoes" element={<ActionsView />} />
+      <AuthProvider>
+        <Suspense fallback={<LoadingFallback />}>
+          <Routes>
+            {/* PUBLIC */}
+            <Route path="/login" element={<LoginPage />} />
 
-            {/* CRM Module */}
-            <Route path="crm" element={<Navigate to="/crm/dashboard" replace />} />
-            <Route path="crm/dashboard" element={<RelationshipDashboard />} />
-            <Route path="crm/clients" element={<ClientsView />} />
-            <Route path="crm/clients/:id" element={<ClientDetailsView />} />
-            <Route path="crm/contacts" element={<ContactsView />} />
-            <Route path="crm/contacts/:id" element={<ContactDetailsView />} />
-          </Route>
-        </Routes>
-      </Suspense>
+            {/* PRIVATE */}
+            <Route element={<PrivateRoute />}>
+              <Route path="/" element={<MainLayout />}>
+                <Route index element={<Navigate to="/comercial" replace />} />
+                <Route path="comercial" element={<CommercialView />} />
+                <Route path="contratos" element={<ContractsView />} />
+                <Route path="dados" element={<DataCenterView />} />
+                <Route path="kpis" element={<KPIView />} />
+                <Route path="acoes" element={<ActionsView />} />
+
+                {/* CRM Module */}
+                <Route path="crm" element={<Navigate to="/crm/dashboard" replace />} />
+                <Route path="crm/dashboard" element={<RelationshipDashboard />} />
+                <Route path="crm/clients" element={<ClientsView />} />
+                <Route path="crm/clients/:id" element={<ClientDetailsView />} />
+                <Route path="crm/contacts" element={<ContactsView />} />
+                <Route path="crm/contacts/:id" element={<ContactDetailsView />} />
+              </Route>
+            </Route>
+          </Routes>
+        </Suspense>
+      </AuthProvider>
     </BrowserRouter>
   );
 };
