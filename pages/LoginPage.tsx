@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Play } from 'lucide-react';
+import { Play, Loader2 } from 'lucide-react';
 import loginBgVideo from '../src/assets/login-bg.mp4';
 import nexusLoadingVideo from '../src/assets/loading-nexus.mp4';
 
@@ -88,10 +88,10 @@ export const LoginPage: React.FC = () => {
         <div className="relative w-full h-screen overflow-hidden bg-black font-sans text-white">
 
             {/* 1. LAYER - BACKGROUND VIDEO (LOOP) */}
+            {/* 1. LAYER - BACKGROUND VIDEO (ONCE) */}
             <video
                 className="absolute top-0 left-0 w-full h-full object-cover opacity-60 z-0"
                 autoPlay
-                loop
                 muted
                 playsInline
                 src={loginBgVideo}
@@ -99,17 +99,28 @@ export const LoginPage: React.FC = () => {
             />
 
             {/* 2. LAYER - LOADING VIDEO OVERLAY (CINEMATIC) */}
+            {/* 2. LAYER - LOADING WIDGET OVERLAY */}
             <div
-                className={`absolute inset-0 z-50 bg-black flex items-center justify-center transition-opacity duration-700 ${showLoadingVideo ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                className={`fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center transition-opacity duration-700 ${showLoadingVideo ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
                     }`}
             >
-                <video
-                    ref={loadingVideoRef}
-                    className="w-full h-full object-cover"
-                    muted // Muted needed for autoplay policy usually, but we forced play() in JS
-                    playsInline
-                    src={nexusLoadingVideo}
-                />
+                {/* Tech Widget Container */}
+                <div className="flex flex-col items-center">
+                    <video
+                        ref={loadingVideoRef}
+                        className="w-40 h-40 object-contain rounded-2xl shadow-[0_0_30px_rgba(59,130,246,0.3)] bg-black"
+                        muted
+                        playsInline
+                        src={nexusLoadingVideo}
+                    />
+
+                    <div className="mt-8 flex flex-col items-center gap-4">
+                        <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
+                        <span className="text-sm font-medium text-slate-400 animate-pulse tracking-wide">
+                            Carregando Ambiente...
+                        </span>
+                    </div>
+                </div>
             </div>
 
             {/* 3. LAYER - LOGIN FORM */}
