@@ -7,6 +7,7 @@ import { MainLayout } from './layout/MainLayout';
 import { Toaster } from 'sonner';
 import { AuthProvider } from './contexts/AuthContext';
 import { PrivateRoute } from './components/PrivateRoute';
+import { RequireAdmin } from './components/RequireAdmin';
 import { LoginPage } from './pages/LoginPage';
 
 // Lazy Load Pages
@@ -22,6 +23,9 @@ const ClientsView = React.lazy(() => import('./pages/crm/ClientsView').then(modu
 const ClientDetailsView = React.lazy(() => import('./pages/crm/ClientDetailsView').then(module => ({ default: module.ClientDetailsView })));
 const ContactsView = React.lazy(() => import('./pages/crm/ContactsView').then(module => ({ default: module.ContactsView })));
 const ContactDetailsView = React.lazy(() => import('./pages/crm/ContactDetailsView').then(module => ({ default: module.ContactDetailsView })));
+
+// Config Pages
+const TeamSettings = React.lazy(() => import('./pages/config/TeamSettings').then(module => ({ default: module.TeamSettings })));
 
 const LoadingFallback = () => (
   <div className="flex h-screen w-full items-center justify-center bg-slate-50">
@@ -59,6 +63,16 @@ const App: React.FC = () => {
                 <Route path="crm/clients/:id" element={<ClientDetailsView />} />
                 <Route path="crm/contacts" element={<ContactsView />} />
                 <Route path="crm/contacts/:id" element={<ContactDetailsView />} />
+
+                {/* Config Module (Admin Only) */}
+                <Route
+                  path="config/equipe"
+                  element={
+                    <RequireAdmin>
+                      <TeamSettings />
+                    </RequireAdmin>
+                  }
+                />
               </Route>
             </Route>
           </Routes>
