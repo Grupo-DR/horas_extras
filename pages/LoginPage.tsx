@@ -101,22 +101,22 @@ export const LoginPage: React.FC = () => {
             {/* 2. LAYER - LOADING VIDEO OVERLAY (CINEMATIC) */}
             {/* 2. LAYER - LOADING WIDGET OVERLAY */}
             <div
-                className={`fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center transition-opacity duration-700 ${showLoadingVideo ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                className={`fixed inset-0 z-50 bg-white flex flex-col items-center justify-center transition-opacity duration-700 ${showLoadingVideo ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
                     }`}
             >
                 {/* Tech Widget Container */}
-                <div className="flex flex-col items-center">
+                <div className="flex flex-col items-center w-full px-4">
                     <video
                         ref={loadingVideoRef}
-                        className="w-40 h-40 object-contain rounded-2xl shadow-[0_0_30px_rgba(59,130,246,0.3)] bg-black"
+                        className="w-full max-w-xl object-contain"
                         muted
                         playsInline
                         src={nexusLoadingVideo}
                     />
 
                     <div className="mt-8 flex flex-col items-center gap-4">
-                        <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
-                        <span className="text-sm font-medium text-slate-400 animate-pulse tracking-wide">
+                        <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
+                        <span className="text-sm font-medium text-slate-600 animate-pulse tracking-wide">
                             Carregando Ambiente...
                         </span>
                     </div>
