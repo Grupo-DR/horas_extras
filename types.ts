@@ -291,3 +291,80 @@ export interface KPI {
 
   updatedAt?: Date;
 }
+
+// --- CRM (RELATIONSHIP MANAGEMENT) TYPES ---
+
+export interface Client {
+  id: string;
+  name: string;
+  document?: string; // CNPJ
+  industry?: string;
+  status: 'ATIVA' | 'INATIVA' | 'PROSPECT'; // Status cadastral simples
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export type InteractionType = 'REUNIAO' | 'LIGACAO' | 'VISITA' | 'EMAIL' | 'WHATSAPP';
+
+export interface UserSummary {
+  id: string;
+  name: string;
+  email?: string;
+  avatar?: string;
+}
+
+export interface Interaction {
+  id: string;
+  clientId: string;
+  contactId?: string;
+  bidId?: string;
+  type: InteractionType;
+  title: string;
+  date: Date;
+  notes: string;
+  nextSteps?: string;
+  tags?: string[];
+  createdBy: UserSummary;
+  createdAt: Date;
+}
+
+export type ContactProfile = 'CHAVE' | 'OCASIONAL' | 'SILENCIOSA';
+
+export interface ClientContact {
+  id: string;
+  clientId: string;
+  name: string;
+  role: string;
+  email?: string;
+  phone?: string;
+  isActive: boolean;
+  // Campos calculados no frontend (não persistidos)
+  analytics?: {
+    profile: ContactProfile;
+    lastInteraction: Date | null;
+    totalInteractions90d: number;
+    daysSinceLastInteraction: number;
+  };
+}
+
+export interface Bid {
+  id: string;
+  clientId: string;
+  title: string;
+  date: Date; // Data do convite/recebimento
+  status: 'ABERTA' | 'EM_ANDAMENTO' | 'DECLINADA' | 'PERDIDA' | 'VENCIDA';
+  value?: number;
+  description?: string;
+  opportunityId?: string; // Link para Pipeline
+  createdAt?: Date;
+}
+
+export interface ClientHealthMetrics {
+  score: number;
+  status: 'ATIVA' | 'ATENCAO' | 'EM_RISCO' | 'PERDIDA';
+  lastInteraction: Date | null;
+  lastBid: Date | null;
+  silenceDays: number;
+  activeContacts90d: number;
+  bidTrend: 'CRESCENTE' | 'ESTAVEL' | 'CAINDO' | 'ZEROU';
+}

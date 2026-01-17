@@ -13,6 +13,13 @@ const DataCenterView = React.lazy(() => import('./pages/DataCenterView').then(mo
 const KPIView = React.lazy(() => import('./pages/KPIView').then(module => ({ default: module.KPIView })));
 const ActionsView = React.lazy(() => import('./pages/ActionsView').then(module => ({ default: module.ActionsView })));
 
+// CRM Pages
+const RelationshipDashboard = React.lazy(() => import('./pages/crm/RelationshipDashboard').then(module => ({ default: module.RelationshipDashboard })));
+const ClientsView = React.lazy(() => import('./pages/crm/ClientsView').then(module => ({ default: module.ClientsView })));
+const ClientDetailsView = React.lazy(() => import('./pages/crm/ClientDetailsView').then(module => ({ default: module.ClientDetailsView })));
+const ContactsView = React.lazy(() => import('./pages/crm/ContactsView').then(module => ({ default: module.ContactsView })));
+const ContactDetailsView = React.lazy(() => import('./pages/crm/ContactDetailsView').then(module => ({ default: module.ContactDetailsView })));
+
 const LoadingFallback = () => (
   <div className="flex h-screen w-full items-center justify-center bg-slate-50">
     <div className="flex flex-col items-center gap-2">
@@ -35,6 +42,14 @@ const App: React.FC = () => {
             <Route path="dados" element={<DataCenterView />} />
             <Route path="kpis" element={<KPIView />} />
             <Route path="acoes" element={<ActionsView />} />
+
+            {/* CRM Module */}
+            <Route path="crm" element={<Navigate to="/crm/dashboard" replace />} />
+            <Route path="crm/dashboard" element={<RelationshipDashboard />} />
+            <Route path="crm/clients" element={<ClientsView />} />
+            <Route path="crm/clients/:id" element={<ClientDetailsView />} />
+            <Route path="crm/contacts" element={<ContactsView />} />
+            <Route path="crm/contacts/:id" element={<ContactDetailsView />} />
           </Route>
         </Routes>
       </Suspense>

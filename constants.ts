@@ -10,3 +10,11 @@ export const OFFICIAL_USERS: User[] = [
     { id: 'u7', name: 'Fabiana Fernandes', role: 'Analista Comercial Jr', email: 'fabiana.fernandes@grupodr.com.br' },
     { id: 'u8', name: 'Clara Santos', role: 'Jovem Aprendiz', email: 'clara.santos@grupodr.com.br' },
 ];
+
+export const CRM_SILENCE = {
+    CONTACT_DAYS: 45,
+    CLIENT_INTERACTION_DAYS: 60,
+    CLIENT_BID_DAYS: 120,
+    WINDOW_CONTACT_ACTIVE_DAYS: 90,
+    WINDOW_TREND_MONTHS: 6,
+};
