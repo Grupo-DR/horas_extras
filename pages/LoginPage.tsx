@@ -69,7 +69,7 @@ export const LoginPage: React.FC = () => {
 
     const handleVideoLoad = (e: React.SyntheticEvent<HTMLVideoElement>) => {
         const video = e.currentTarget;
-        const targetDuration = 600; // 10 minutes (600 seconds)
+        const targetDuration = 60; // 10 minutes (600 seconds)
 
         // Calculate needed playback rate: current_duration / target_duration
         // Example: 30s video / 600s target = 0.05x speed
@@ -79,7 +79,7 @@ export const LoginPage: React.FC = () => {
         // 0.0625 is often a safe lower bound (1/16x speed).
         // If the calculation demands lower, we clamp it to the minimum safe value 
         // and accept that it won't be exactly 10 min, but close enough without breaking.
-        const safeRate = Math.max(rate, 0.0625);
+        const safeRate = Math.max(rate, 0.625);
 
         video.playbackRate = safeRate;
     };
