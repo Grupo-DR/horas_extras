@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { X, Save } from 'lucide-react';
 
 import { OFFICIAL_USERS } from '../../constants';
+import { useCrm } from '../../contexts/CrmContext';
 
 // Removed local MOCK_USERS_FALLBACK definition
 
@@ -19,34 +20,24 @@ interface OpportunityFormProps {
 }
 
 export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, linkedTasks = [], onClose, onSave, onDelete }) => {
+    // CRM Context Integration
+    const { clients, getContactsByClientId } = useCrm();
+
     const [formData, setFormData] = useState<Partial<Opportunity>>({
         clientName: '',
+        clientId: '', // New field for relation
         title: '',
         estimatedValue: 0,
         deadline: undefined,
-        responsibleId: '', // Default empty
+        responsibleId: '', // Default empty (now refers to Contact ID)
         priority: 'MÉDIA', // Default value
         ...initialData // Override with initial if present
     });
 
     const [loading, setLoading] = useState(false);
-    const [users, setUsers] = useState<User[]>(OFFICIAL_USERS);
 
-    useEffect(() => {
-        const loadUsers = async () => {
-            try {
-                const data = await UserService.getAll();
-                // Only override if we actually got data back
-                if (data && data.length > 0) {
-                    setUsers(data);
-                }
-            } catch (e) {
-                console.error("Error loading users from DB (using defaults)", e);
-                // No need to set fallback, it's already initial state
-            }
-        }
-        loadUsers();
-    }, []);
+    // Dynamic Filter: Get contacts for selected client
+    const availableContacts = formData.clientId ? getContactsByClientId(formData.clientId) : [];
 
 
     // Convert Date object to YYYY-MM-DD for input
@@ -84,15 +75,19 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, l
                 toast.success("Oportunidade atualizada!");
             } else {
                 // Create (Validation happens in Service)
+                // Find contact name from available contacts
+                const contact = availableContacts.find(c => c.id === dataToSave.responsibleId);
+
                 await OpportunityService.create({
                     title: dataToSave.title || 'Nova Oportunidade',
                     clientName: dataToSave.clientName!,
+                    clientId: dataToSave.clientId, // Pass ID for relation
                     estimatedValue: Number(dataToSave.estimatedValue) || 0,
                     responsibleId: dataToSave.responsibleId!,
-                    responsibleName: users.find(u => u.id === dataToSave.responsibleId)?.name || 'N/A',
+                    responsibleName: contact?.name || 'N/A', // Use linked contact name
                     deadline: new Date(dataToSave.deadline!),
                     priority: dataToSave.priority || 'MÉDIA'
-                });
+                } as any); // Casting as any for now since OpportunityService might need update
                 toast.success("Oportunidade criada com sucesso!");
             }
             onSave(); // Reload parent
@@ -136,31 +131,49 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, l
                                 />
                             </div>
 
-                            {/* Client */}
+                            {/* Client (Dynamic from CRM) */}
                             <div>
                                 <label className="block text-sm font-medium text-slate-600 mb-1">Cliente</label>
-                                <input
-                                    required
-                                    type="text"
-                                    value={formData.clientName}
-                                    onChange={e => setFormData({ ...formData, clientName: e.target.value })}
-                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                    placeholder="Nome do Cliente"
-                                />
-                            </div>
-
-                            {/* Responsible */}
-                            <div>
-                                <label className="block text-sm font-medium text-slate-600 mb-1">Responsável</label>
                                 <select
                                     required
-                                    value={formData.responsibleId}
-                                    onChange={e => setFormData({ ...formData, responsibleId: e.target.value })}
+                                    value={formData.clientId || ''} // Use clientId instead of clientName
+                                    onChange={e => {
+                                        const selectedClient = clients.find(c => c.id === e.target.value);
+                                        setFormData({
+                                            ...formData,
+                                            clientId: e.target.value,
+                                            clientName: selectedClient?.corporateName || '',
+                                            responsibleId: '' // Reset contact when client changes
+                                        });
+                                    }}
                                     className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                 >
-                                    <option value="">Selecione o responsável</option>
-                                    {users.map(u => (
-                                        <option key={u.id} value={u.id}>{u.name}</option>
+                                    <option value="">Selecione a empresa...</option>
+                                    {clients.map(client => (
+                                        <option key={client.id} value={client.id}>
+                                            {client.tradeName || client.corporateName}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Responsible (Filtered by Client) */}
+                            <div>
+                                <label className="block text-sm font-medium text-slate-600 mb-1">Responsável (Contato)</label>
+                                <select
+                                    required
+                                    disabled={!formData.clientId}
+                                    value={formData.responsibleId}
+                                    onChange={e => setFormData({ ...formData, responsibleId: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-100 disabled:text-slate-400"
+                                >
+                                    <option value="">
+                                        {formData.clientId ? 'Selecione o contato...' : 'Selecione uma empresa primeiro'}
+                                    </option>
+                                    {availableContacts.map(contact => (
+                                        <option key={contact.id} value={contact.id}>
+                                            {contact.name} - {contact.role}
+                                        </option>
                                     ))}
                                 </select>
                             </div>

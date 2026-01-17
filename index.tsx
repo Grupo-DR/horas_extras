@@ -6,6 +6,7 @@ import './index.css';
 import { MainLayout } from './layout/MainLayout';
 import { Toaster } from 'sonner';
 import { AuthProvider } from './contexts/AuthContext';
+import { CrmProvider } from './contexts/CrmContext';
 import { PrivateRoute } from './components/PrivateRoute';
 import { RequireAdmin } from './components/RequireAdmin';
 import { LoginPage } from './pages/LoginPage';
@@ -41,42 +42,44 @@ const App: React.FC = () => {
     <BrowserRouter>
       <Toaster position="top-right" richColors />
       <AuthProvider>
-        <Suspense fallback={<LoadingFallback />}>
-          <Routes>
-            {/* PUBLIC */}
-            <Route path="/login" element={<LoginPage />} />
+        <CrmProvider>
+          <Suspense fallback={<LoadingFallback />}>
+            <Routes>
+              {/* PUBLIC */}
+              <Route path="/login" element={<LoginPage />} />
 
-            {/* PRIVATE */}
-            <Route element={<PrivateRoute />}>
-              <Route path="/" element={<MainLayout />}>
-                <Route index element={<Navigate to="/comercial" replace />} />
-                <Route path="comercial" element={<CommercialView />} />
-                <Route path="contratos" element={<ContractsView />} />
-                <Route path="dados" element={<DataCenterView />} />
-                <Route path="kpis" element={<KPIView />} />
-                <Route path="acoes" element={<ActionsView />} />
+              {/* PRIVATE */}
+              <Route element={<PrivateRoute />}>
+                <Route path="/" element={<MainLayout />}>
+                  <Route index element={<Navigate to="/comercial" replace />} />
+                  <Route path="comercial" element={<CommercialView />} />
+                  <Route path="contratos" element={<ContractsView />} />
+                  <Route path="dados" element={<DataCenterView />} />
+                  <Route path="kpis" element={<KPIView />} />
+                  <Route path="acoes" element={<ActionsView />} />
 
-                {/* CRM Module */}
-                <Route path="crm" element={<Navigate to="/crm/dashboard" replace />} />
-                <Route path="crm/dashboard" element={<RelationshipDashboard />} />
-                <Route path="crm/clients" element={<ClientsView />} />
-                <Route path="crm/clients/:id" element={<ClientDetailsView />} />
-                <Route path="crm/contacts" element={<ContactsView />} />
-                <Route path="crm/contacts/:id" element={<ContactDetailsView />} />
+                  {/* CRM Module */}
+                  <Route path="crm" element={<Navigate to="/crm/dashboard" replace />} />
+                  <Route path="crm/dashboard" element={<RelationshipDashboard />} />
+                  <Route path="crm/clients" element={<ClientsView />} />
+                  <Route path="crm/clients/:id" element={<ClientDetailsView />} />
+                  <Route path="crm/contacts" element={<ContactsView />} />
+                  <Route path="crm/contacts/:id" element={<ContactDetailsView />} />
 
-                {/* Config Module (Admin Only) */}
-                <Route
-                  path="config/equipe"
-                  element={
-                    <RequireAdmin>
-                      <TeamSettings />
-                    </RequireAdmin>
-                  }
-                />
+                  {/* Config Module (Admin Only) */}
+                  <Route
+                    path="config/equipe"
+                    element={
+                      <RequireAdmin>
+                        <TeamSettings />
+                      </RequireAdmin>
+                    }
+                  />
+                </Route>
               </Route>
-            </Route>
-          </Routes>
-        </Suspense>
+            </Routes>
+          </Suspense>
+        </CrmProvider>
       </AuthProvider>
     </BrowserRouter>
   );

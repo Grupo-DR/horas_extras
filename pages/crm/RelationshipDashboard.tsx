@@ -72,7 +72,25 @@ export const RelationshipDashboard: React.FC = () => {
 
     return (
         <div className="p-6 bg-slate-50 min-h-screen">
-            <h1 className="text-2xl font-bold text-slate-800 mb-6">Visão Geral de Relacionamento</h1>
+            {/* Header with Title and Actions */}
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold text-slate-800">Gestão de Relacionamentos Comerciais</h1>
+
+                <div className="flex gap-3">
+                    <button className="flex items-center gap-2 bg-white text-slate-600 px-4 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors font-medium text-sm shadow-sm"
+                        onClick={() => { /* Open New Contact Modal (Future) */ alert("Novo Contato (Em Breve)"); }}
+                    >
+                        <Users size={18} />
+                        Novo Contato
+                    </button>
+                    <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-bold text-sm shadow-sm"
+                        onClick={() => { /* Open New Client Modal (Future) */ alert("Nova Empresa (Em Breve)"); }}
+                    >
+                        <Building2 size={18} />
+                        Nova Empresa
+                    </button>
+                </div>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
