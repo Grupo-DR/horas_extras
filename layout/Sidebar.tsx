@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FileText, Database, BarChart, Settings, CheckSquare } from 'lucide-react';
+import { LayoutDashboard, FileText, Database, BarChart, Settings, CheckSquare, Users } from 'lucide-react';
 import { AppModule } from '../types';
 
 export const Sidebar: React.FC = () => {
@@ -9,7 +9,8 @@ export const Sidebar: React.FC = () => {
         { module: AppModule.CONTRACTS, label: 'Contratos', icon: FileText, path: '/contratos' },
         { module: AppModule.DATA_CENTER, label: 'Dados', icon: Database, path: '/dados' },
         { module: AppModule.KPI, label: 'KPIs', icon: BarChart, path: '/kpis' },
-        { module: 'ACTIONS', label: 'Ações', icon: CheckSquare, path: '/acoes' }, // New Module
+        { module: 'ACTIONS', label: 'Ações', icon: CheckSquare, path: '/acoes' },
+        { module: 'CRM', label: 'Relacionamento', icon: Users, path: '/crm' }, // New Module
     ];
 
     return (
