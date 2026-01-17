@@ -3,6 +3,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Play } from 'lucide-react';
+import loginBgVideo from '../src/assets/login-bg.mp4';
+import nexusLoadingVideo from '../src/assets/loading-nexus.mp4';
 
 export const LoginPage: React.FC = () => {
     const { login } = useAuth();
@@ -33,7 +35,7 @@ export const LoginPage: React.FC = () => {
             // 2. Play Loading Video from 0
             if (loadingVideoRef.current) {
                 loadingVideoRef.current.currentTime = 0;
-                await loadingVideoRef.current.play();
+                loadingVideoRef.current.play().catch(err => console.error("Video play error:", err));
             }
 
             // 3. Wait for Video Duration (4000ms as requested)
@@ -75,7 +77,7 @@ export const LoginPage: React.FC = () => {
                 loop
                 muted
                 playsInline
-                src="/assets/login-bg.mp4"
+                src={loginBgVideo}
             />
 
             {/* 2. LAYER - LOADING VIDEO OVERLAY (CINEMATIC) */}
@@ -88,7 +90,7 @@ export const LoginPage: React.FC = () => {
                     className="w-full h-full object-cover"
                     muted // Muted needed for autoplay policy usually, but we forced play() in JS
                     playsInline
-                    src="/assets/loading-nexus.mp4"
+                    src={nexusLoadingVideo}
                 />
             </div>
 
