@@ -1,225 +1,215 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Client, Interaction, Bid, ClientContact } from '../../types';
-import { ClientService } from '../../services/clientService';
-import { InteractionService } from '../../services/interactionService';
-import { BidService } from '../../services/bidService';
-import { ClientContactService } from '../../services/clientContactService';
-import { calculateClientHealth } from '../../domain/relationshipAnalytics';
-import { InteractionTimeline } from '../../components/crm/InteractionTimeline';
-import { InteractionFormModal } from '../../components/crm/InteractionFormModal';
-import { ContactCard } from '../../components/crm/ContactCard';
-import { ArrowLeft, Building2, Calendar, FileText, Plus, Users } from 'lucide-react';
+import { useCrm } from '../../contexts/CrmContext';
+import { getClientHealth } from '../../src/lib/crm-analytics';
+import { Building2, ArrowLeft, Mail, Phone, Users, Plus, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
+import { TimelineItem } from '../../components/crm/TimelineItem';
+import { ContactModal } from '../../components/crm/ContactModal';
+// import { InteractionModal } from '../../components/crm/InteractionModal'; // Future
+// import { UserAvatar } from '../../components/ui/UserAvatar'; // Can be used for contacts
 
 export const ClientDetailsView: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { clients, contacts, interactions, removeContact } = useCrm();
+    const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'TIMELINE'>('TIMELINE');
+    const [showContactModal, setShowContactModal] = useState(false);
+    // const [showInteractionModal, setShowInteractionModal] = useState(false);
 
-    // Data
-    const [client, setClient] = useState<Client | null>(null);
-    const [interactions, setInteractions] = useState<Interaction[]>([]);
-    const [bids, setBids] = useState<Bid[]>([]);
-    const [contacts, setContacts] = useState<ClientContact[]>([]);
+    const client = clients.find(c => c.id === id);
 
-    // States
-    const [activeTab, setActiveTab] = useState<'RESUMO' | 'CONCORRENCIAS' | 'PESSOAS' | 'INTERACOES'>('RESUMO');
-    const [modalOpen, setModalOpen] = useState(false);
+    // Derived Data
+    const clientContacts = contacts.filter(c => c.clientId === id);
+    const clientInteractions = interactions
+        .filter(i => i.clientId === id)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    // Fetch
-    useEffect(() => {
-        if (!id) return;
-
-        const unsubClient = ClientService.subscribeById(id, setClient);
-        const unsubInteractions = InteractionService.subscribeByClient(id, setInteractions);
-        const unsubBids = BidService.subscribeByClient(id, setBids);
-        const unsubContacts = ClientContactService.subscribeByClient(id, setContacts);
-
-        return () => {
-            unsubClient();
-            unsubInteractions();
-            unsubBids();
-            unsubContacts();
-        };
-    }, [id]);
-
-    // Analytics
-    const metrics = useMemo(() => {
-        return calculateClientHealth(interactions, bids, contacts);
-    }, [interactions, bids, contacts]);
+    const health = useMemo(() => {
+        if (!client) return null;
+        return getClientHealth(client, interactions, []);
+    }, [client, interactions]);
 
     if (!client) {
-        return <div className="p-8 text-center text-slate-500">Carregando detalhes do cliente...</div>;
+        return <div className="p-10 text-center">Empresa não encontrada.</div>;
     }
 
     return (
         <div className="min-h-screen bg-slate-50">
-            {/* Header */}
+            {/* TOP BAR / HEADER */}
             <div className="bg-white border-b border-slate-200">
-                <div className="p-6 max-w-7xl mx-auto">
+                <div className="max-w-5xl mx-auto px-6 py-6">
                     <button
-                        onClick={() => navigate('/crm/clients')}
-                        className="flex items-center gap-2 text-sm text-slate-500 hover:text-blue-600 mb-4 transition-colors"
+                        onClick={() => navigate(-1)}
+                        className="flex items-center gap-1 text-slate-400 hover:text-slate-600 text-sm font-medium mb-4 transition-colors"
                     >
-                        <ArrowLeft className="w-4 h-4" />
-                        Voltar para Carteira
+                        <ArrowLeft size={16} /> Voltar para Dashboard
                     </button>
 
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+                    <div className="flex justify-between items-start">
                         <div className="flex items-start gap-4">
-                            <div className="bg-slate-100 p-4 rounded-xl text-slate-600">
-                                <Building2 className="w-8 h-8" />
+                            <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
+                                <Building2 size={32} />
                             </div>
                             <div>
-                                <h1 className="text-2xl font-bold text-slate-800">{client.name}</h1>
-                                <p className="text-slate-500 flex items-center gap-2 mt-1">
-                                    {client.industry || 'Setor não informado'} •
-                                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${metrics.status === 'ATIVA' ? 'bg-green-100 text-green-700' :
-                                            metrics.status === 'ATENCAO' ? 'bg-yellow-100 text-yellow-700' :
-                                                'bg-red-100 text-red-700'
-                                        }`}>
-                                        {metrics.status}
+                                <h1 className="text-2xl font-bold text-slate-800">{client.tradeName}</h1>
+                                <p className="text-slate-500">{client.corporateName}</p>
+                                <div className="flex items-center gap-3 mt-2">
+                                    <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">
+                                        {client.segment || 'Geral'}
                                     </span>
-                                </p>
+                                    <span className="text-xs text-slate-400">CNPJ: {client.cnpj}</span>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => setModalOpen(true)}
-                                className="px-5 py-2.5 bg-blue-600 text-white rounded-lg flex items-center gap-2 font-medium hover:bg-blue-700 shadow-sm transition-colors"
-                            >
-                                <Plus className="w-4 h-4" />
-                                Registrar Interação
-                            </button>
-                        </div>
+                        {/* Health Status Badge */}
+                        {health && (
+                            <div className={`px-4 py-2 rounded-lg border flex flex-col items-end ${health.status === 'RISCO' ? 'bg-red-50 border-red-100 text-red-700' :
+                                    health.status === 'ATENÇÃO' ? 'bg-orange-50 border-orange-100 text-orange-700' :
+                                        'bg-emerald-50 border-emerald-100 text-emerald-700'
+                                }`}>
+                                <div className="flex items-center gap-2 font-bold text-sm">
+                                    {health.status === 'RISCO' && <AlertTriangle size={16} />}
+                                    {health.status === 'ATENÇÃO' && <Clock size={16} />}
+                                    {health.status === 'ATIVO' && <CheckCircle size={16} />}
+                                    {health.status}
+                                </div>
+                                <span className="text-xs opacity-80">{health.daysSilence} dias sem contato</span>
+                            </div>
+                        )}
                     </div>
+                </div>
 
-                    {/* Tabs */}
-                    <div className="flex items-center gap-6 mt-8 overflow-x-auto">
-                        {[
-                            { id: 'RESUMO', label: 'Resumo', icon: FileText },
-                            { id: 'CONCORRENCIAS', label: 'Concorrências', icon: Calendar },
-                            { id: 'PESSOAS', label: 'Pessoas', icon: Users },
-                            { id: 'INTERACOES', label: 'Interações', icon: FileText },
-                        ].map((tab) => {
-                            const Icon = tab.icon;
-                            const isActive = activeTab === tab.id;
-                            return (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id as any)}
-                                    className={`flex items-center gap-2 pb-3 px-1 border-b-2 transition-all whitespace-nowrap ${isActive
-                                            ? 'border-blue-600 text-blue-600 font-medium'
-                                            : 'border-transparent text-slate-500 hover:text-slate-700'
-                                        }`}
-                                >
-                                    <Icon className="w-4 h-4" />
-                                    {tab.label}
-                                </button>
-                            );
-                        })}
-                    </div>
+                {/* TABS */}
+                <div className="max-w-5xl mx-auto px-6 flex gap-6 mt-4">
+                    <button
+                        onClick={() => setActiveTab('TIMELINE')}
+                        className={`pb-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'TIMELINE'
+                                ? 'border-blue-600 text-blue-600'
+                                : 'border-transparent text-slate-500 hover:text-slate-700'
+                            }`}
+                    >
+                        Timeline & Histórico
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('OVERVIEW')}
+                        className={`pb-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'OVERVIEW'
+                                ? 'border-blue-600 text-blue-600'
+                                : 'border-transparent text-slate-500 hover:text-slate-700'
+                            }`}
+                    >
+                        Pessoas de Contato <span className="text-xs bg-slate-100 px-2 py-0.5 rounded-full ml-1 text-slate-500">{clientContacts.length}</span>
+                    </button>
                 </div>
             </div>
 
-            {/* Content */}
-            <div className="p-6 max-w-7xl mx-auto">
+            {/* CONTENT AREA */}
+            <div className="max-w-5xl mx-auto px-6 py-8">
 
-                {activeTab === 'RESUMO' && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* Summary Cards */}
-                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                            <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">Relacionamento</h3>
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-slate-600">Score</span>
-                                    <span className="text-2xl font-bold text-slate-800">{metrics.score}/100</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-slate-600">Tendência</span>
-                                    <span className="font-medium text-slate-700">{metrics.bidTrend}</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-slate-600">Dias sem contato</span>
-                                    <span className={metrics.silenceDays > 60 ? 'text-red-600 font-bold' : 'text-slate-700'}>
-                                        {metrics.silenceDays === 999 ? '-' : metrics.silenceDays}
-                                    </span>
-                                </div>
-                            </div>
+                {/* TAB 1: OVERVIEW / CONTACTS */}
+                {activeTab === 'OVERVIEW' && (
+                    <div>
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="font-bold text-slate-700">Pessoas Chave</h3>
+                            <button
+                                onClick={() => setShowContactModal(true)}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-sm transition-colors"
+                            >
+                                <Plus size={16} /> Novo Contato
+                            </button>
                         </div>
 
-                        {/* Upcoming / Recent Activity */}
-                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm md:col-span-2">
-                            <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">Últimas Interações</h3>
-                            {/* Mini Timeline (Limit 3) */}
-                            <div className="bg-slate-50 rounded-lg p-4 h-[180px] overflow-y-auto">
-                                <InteractionTimeline clientId={id} className="scale-90 origin-top-left" />
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {activeTab === 'CONCORRENCIAS' && (
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold text-slate-800">Histórico de Bids/Convites</h3>
-                        </div>
-                        {bids.length === 0 ? (
-                            <div className="p-8 text-center text-slate-400 bg-white rounded-xl border">Nenhuma concorrência registrada.</div>
-                        ) : (
-                            <div className="grid gap-4">
-                                {bids.map(bid => (
-                                    <div key={bid.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
-                                        <div>
-                                            <h4 className="font-bold text-slate-800">{bid.title}</h4>
-                                            <p className="text-xs text-slate-500">{new Date(bid.date).toLocaleDateString('pt-BR')} • {bid.status}</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {clientContacts.map(contact => (
+                                <div key={contact.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-blue-200 transition-all group">
+                                    <div className="flex items-start gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold">
+                                            {contact.name.charAt(0)}
                                         </div>
-                                        <div className="text-sm font-medium">
-                                            {bid.value ? `R$ ${bid.value.toLocaleString('pt-BR')}` : '-'}
+                                        <div>
+                                            <h4 className="font-bold text-slate-800 text-sm">{contact.name}</h4>
+                                            <p className="text-xs text-blue-600 font-medium">{contact.role}</p>
                                         </div>
                                     </div>
+                                    <div className="mt-4 space-y-2 text-sm text-slate-500">
+                                        <div className="flex items-center gap-2">
+                                            <Mail size={14} />
+                                            <span className="truncate">{contact.email}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Phone size={14} />
+                                            <span className="truncate">{contact.phone}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            {clientContacts.length === 0 && (
+                                <div className="col-span-full py-12 text-center text-slate-400 bg-white rounded-xl border border-dashed border-slate-200">
+                                    Sem contatos cadastrados.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* TAB 2: TIMELINE */}
+                {activeTab === 'TIMELINE' && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-2">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="font-bold text-slate-700">Linha do Tempo</h3>
+                                <button
+                                    // onClick={() => setShowInteractionModal(true)} 
+                                    className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-colors"
+                                >
+                                    <Plus size={16} /> Registrar Interação
+                                </button>
+                            </div>
+
+                            <div className="space-y-0">
+                                {clientInteractions.map(interaction => (
+                                    <TimelineItem key={interaction.id} interaction={interaction} />
                                 ))}
+                                {clientInteractions.length === 0 && (
+                                    <div className="py-12 text-center text-slate-400 bg-white rounded-xl border border-dashed border-slate-200">
+                                        Nenhuma interação registrada.
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
-                )}
+                        </div>
 
-                {activeTab === 'PESSOAS' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        {contacts.map(contact => (
-                            <ContactCard
-                                key={contact.id}
-                                contact={contact}
-                                onRegisterInteraction={() => {
-                                    // Open modal locked to this contact? -> TODO: Pass contactId to modal
-                                    setModalOpen(true);
-                                }}
-                            />
-                        ))}
-                        {contacts.length === 0 && (
-                            <div className="col-span-2 p-8 text-center text-slate-400 bg-white rounded-xl border">
-                                Nenhuma pessoa de contato cadastrada.
+                        {/* SIDEBAR RIGHT: INFO OR STATS */}
+                        <div>
+                            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm sticky top-6">
+                                <h4 className="font-bold text-slate-800 mb-4 text-sm uppercase tracking-wide">Resumo de Engajamento</h4>
+                                <div className="space-y-4">
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-slate-500">Total Interações</span>
+                                        <span className="font-bold text-slate-800">{clientInteractions.length}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-slate-500">Última</span>
+                                        <span className="font-bold text-slate-800">
+                                            {health?.daysSilence === 999 ? 'N/A' : `${health?.daysSilence} dias atrás`}
+                                        </span>
+                                    </div>
+                                    <div className="h-px bg-slate-100 my-2" />
+                                    {/* Placeholder for future specific stats */}
+                                    <p className="text-xs text-slate-400 italic">
+                                        Métricas de engajamento em desenvolvimento.
+                                    </p>
+                                </div>
                             </div>
-                        )}
-                    </div>
-                )}
-
-                {activeTab === 'INTERACOES' && (
-                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                        <InteractionTimeline clientId={id} />
+                        </div>
                     </div>
                 )}
 
             </div>
 
-            {/* Interaction Modal */}
-            {modalOpen && id && (
-                <InteractionFormModal
-                    isOpen={modalOpen}
-                    onClose={() => setModalOpen(false)}
-                    clientId={id}
-                />
-            )}
+            {/* Modals */}
+            <ContactModal isOpen={showContactModal} onClose={() => setShowContactModal(false)} />
+            {/* InteractionModal Component Coming Soon */}
+
         </div>
     );
 };
