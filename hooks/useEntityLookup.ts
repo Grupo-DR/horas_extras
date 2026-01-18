@@ -1,12 +1,15 @@
-import { OFFICIAL_USERS } from '../constants';
-import { useCrm } from '../contexts/CrmContext';
+import { useCallback } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { User } from '../types';
 
 export const useEntityLookup = () => {
-    const { clients, contacts } = useCrm();
+    const { users } = useAuth();
 
-    const getInternalUser = (id: string) => OFFICIAL_USERS.find(u => u.id === id);
-    const getClient = (id: string) => clients.find(c => c.id === id);
-    const getContact = (id: string) => contacts.find(c => c.id === id);
+    const getInternalUser = useCallback((id: string): User | undefined => {
+        return users.find(u => u.id === id);
+    }, [users]);
 
-    return { getInternalUser, getClient, getContact };
+    return {
+        getInternalUser
+    };
 };

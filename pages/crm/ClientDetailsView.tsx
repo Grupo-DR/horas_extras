@@ -1,215 +1,181 @@
-import React, { useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { useCrm } from '../../contexts/CrmContext';
 import { getClientHealth } from '../../src/lib/crm-analytics';
-import { Building2, ArrowLeft, Mail, Phone, Users, Plus, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import { TimelineItem } from '../../components/crm/TimelineItem';
-import { ContactModal } from '../../components/crm/ContactModal';
-// import { InteractionModal } from '../../components/crm/InteractionModal'; // Future
-// import { UserAvatar } from '../../components/ui/UserAvatar'; // Can be used for contacts
+import { Plus, Building2, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { UserAvatar } from '../../components/ui/UserAvatar'; // Assumindo componente
 
 export const ClientDetailsView: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const navigate = useNavigate();
-    const { clients, contacts, interactions, removeContact } = useCrm();
-    const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'TIMELINE'>('TIMELINE');
-    const [showContactModal, setShowContactModal] = useState(false);
-    // const [showInteractionModal, setShowInteractionModal] = useState(false);
+    // @ts-ignore
+    const { clients, interactions, contacts, opportunities, addInteraction } = useCrm();
+    const [activeTab, setActiveTab] = useState<'overview' | 'timeline'>('timeline');
 
     const client = clients.find(c => c.id === id);
 
-    // Derived Data
-    const clientContacts = contacts.filter(c => c.clientId === id);
+    if (!client) return <div className="p-8 text-center text-slate-500">Cliente não encontrado.</div>;
+
+    // Analytics Local
+    // @ts-ignore
+    const health = getClientHealth(client, interactions, opportunities || []);
+
+    // Interações Ordenadas
     const clientInteractions = interactions
-        .filter(i => i.clientId === id)
+        .filter(i => i.clientId === client.id)
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    const health = useMemo(() => {
-        if (!client) return null;
-        return getClientHealth(client, interactions, []);
-    }, [client, interactions]);
+    const clientContacts = contacts.filter(c => c.clientId === client.id);
 
-    if (!client) {
-        return <div className="p-10 text-center">Empresa não encontrada.</div>;
-    }
+    const getHealthBadge = () => {
+        switch (health.status) {
+            case 'RISK':
+                return <span className="flex items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-sm font-medium text-red-700"><AlertTriangle className="h-4 w-4" /> Risco ({health.daysSilence}d)</span>;
+            case 'ATTENTION':
+                return <span className="flex items-center gap-1 rounded-full bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-800"><AlertTriangle className="h-4 w-4" /> Atenção ({health.daysSilence}d)</span>;
+            default:
+                return <span className="flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-700"><CheckCircle2 className="h-4 w-4" /> Ativo</span>;
+        }
+    };
 
     return (
-        <div className="min-h-screen bg-slate-50">
-            {/* TOP BAR / HEADER */}
-            <div className="bg-white border-b border-slate-200">
-                <div className="max-w-5xl mx-auto px-6 py-6">
-                    <button
-                        onClick={() => navigate(-1)}
-                        className="flex items-center gap-1 text-slate-400 hover:text-slate-600 text-sm font-medium mb-4 transition-colors"
-                    >
-                        <ArrowLeft size={16} /> Voltar para Dashboard
-                    </button>
+        <div className="max-w-5xl mx-auto space-y-6">
 
-                    <div className="flex justify-between items-start">
-                        <div className="flex items-start gap-4">
-                            <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
-                                <Building2 size={32} />
-                            </div>
-                            <div>
-                                <h1 className="text-2xl font-bold text-slate-800">{client.tradeName}</h1>
-                                <p className="text-slate-500">{client.corporateName}</p>
-                                <div className="flex items-center gap-3 mt-2">
-                                    <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">
-                                        {client.segment || 'Geral'}
-                                    </span>
-                                    <span className="text-xs text-slate-400">CNPJ: {client.cnpj}</span>
-                                </div>
-                            </div>
+            {/* HEADER DO CLIENTE */}
+            <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-4">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-slate-100 border border-slate-200">
+                        <Building2 className="h-8 w-8 text-slate-400" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-900">{client.tradeName}</h1>
+                        <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
+                            <span className="bg-slate-100 px-2 py-0.5 rounded text-xs font-medium">{client.segment || 'Geral'}</span>
+                            <span>•</span>
+                            <span>CNPJ: {client.cnpj}</span>
                         </div>
-
-                        {/* Health Status Badge */}
-                        {health && (
-                            <div className={`px-4 py-2 rounded-lg border flex flex-col items-end ${health.status === 'RISCO' ? 'bg-red-50 border-red-100 text-red-700' :
-                                    health.status === 'ATENÇÃO' ? 'bg-orange-50 border-orange-100 text-orange-700' :
-                                        'bg-emerald-50 border-emerald-100 text-emerald-700'
-                                }`}>
-                                <div className="flex items-center gap-2 font-bold text-sm">
-                                    {health.status === 'RISCO' && <AlertTriangle size={16} />}
-                                    {health.status === 'ATENÇÃO' && <Clock size={16} />}
-                                    {health.status === 'ATIVO' && <CheckCircle size={16} />}
-                                    {health.status}
-                                </div>
-                                <span className="text-xs opacity-80">{health.daysSilence} dias sem contato</span>
-                            </div>
-                        )}
                     </div>
                 </div>
-
-                {/* TABS */}
-                <div className="max-w-5xl mx-auto px-6 flex gap-6 mt-4">
+                <div className="flex flex-col items-end gap-3">
+                    {getHealthBadge()}
                     <button
-                        onClick={() => setActiveTab('TIMELINE')}
-                        className={`pb-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'TIMELINE'
-                                ? 'border-blue-600 text-blue-600'
-                                : 'border-transparent text-slate-500 hover:text-slate-700'
-                            }`}
+                        // TODO: Integrar modal de nova interação aqui
+                        onClick={() => console.log('Abrir modal interação')}
+                        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition shadow-sm hover:shadow"
                     >
-                        Timeline & Histórico
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('OVERVIEW')}
-                        className={`pb-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'OVERVIEW'
-                                ? 'border-blue-600 text-blue-600'
-                                : 'border-transparent text-slate-500 hover:text-slate-700'
-                            }`}
-                    >
-                        Pessoas de Contato <span className="text-xs bg-slate-100 px-2 py-0.5 rounded-full ml-1 text-slate-500">{clientContacts.length}</span>
+                        Registrar Interação
                     </button>
                 </div>
             </div>
 
-            {/* CONTENT AREA */}
-            <div className="max-w-5xl mx-auto px-6 py-8">
+            {/* ÁREA DE CONTEÚDO */}
+            <div className="flex gap-6 flex-col lg:flex-row">
 
-                {/* TAB 1: OVERVIEW / CONTACTS */}
-                {activeTab === 'OVERVIEW' && (
-                    <div>
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="font-bold text-slate-700">Pessoas Chave</h3>
+                {/* COLUNA PRINCIPAL */}
+                <div className="flex-1 space-y-6">
+                    {/* Navegação de Abas */}
+                    <div className="border-b border-slate-200">
+                        <nav className="-mb-px flex gap-6">
                             <button
-                                onClick={() => setShowContactModal(true)}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-sm transition-colors"
+                                onClick={() => setActiveTab('timeline')}
+                                className={`pb-4 text-sm font-medium transition border-b-2 ${activeTab === 'timeline' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
                             >
-                                <Plus size={16} /> Novo Contato
+                                Histórico de Relacionamento
                             </button>
-                        </div>
+                            <button
+                                onClick={() => setActiveTab('overview')}
+                                className={`pb-4 text-sm font-medium transition border-b-2 ${activeTab === 'overview' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
+                            >
+                                Pessoas de Contato ({clientContacts.length})
+                            </button>
+                        </nav>
+                    </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {clientContacts.map(contact => (
-                                <div key={contact.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-blue-200 transition-all group">
-                                    <div className="flex items-start gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold">
-                                            {contact.name.charAt(0)}
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-slate-800 text-sm">{contact.name}</h4>
-                                            <p className="text-xs text-blue-600 font-medium">{contact.role}</p>
-                                        </div>
+                    {activeTab === 'timeline' && (
+                        <div className="bg-white rounded-xl border border-slate-200 p-6 min-h-[400px]">
+                            {clientInteractions.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-16 text-slate-400 text-center">
+                                    <div className="bg-slate-50 p-4 rounded-full mb-3">
+                                        <CheckCircle2 className="h-8 w-8 text-slate-300" />
                                     </div>
-                                    <div className="mt-4 space-y-2 text-sm text-slate-500">
-                                        <div className="flex items-center gap-2">
-                                            <Mail size={14} />
-                                            <span className="truncate">{contact.email}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Phone size={14} />
-                                            <span className="truncate">{contact.phone}</span>
-                                        </div>
-                                    </div>
+                                    <p className="font-medium">Nenhuma interação registrada.</p>
+                                    <p className="text-sm mt-1">Registre o primeiro contato para iniciar o histórico.</p>
                                 </div>
-                            ))}
-                            {clientContacts.length === 0 && (
-                                <div className="col-span-full py-12 text-center text-slate-400 bg-white rounded-xl border border-dashed border-slate-200">
-                                    Sem contatos cadastrados.
+                            ) : (
+                                <div className="pl-2">
+                                    {clientInteractions.map((interaction, idx) => (
+                                        <TimelineItem
+                                            key={interaction.id}
+                                            interaction={interaction}
+                                            isLast={idx === clientInteractions.length - 1}
+                                        />
+                                    ))}
                                 </div>
                             )}
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {/* TAB 2: TIMELINE */}
-                {activeTab === 'TIMELINE' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <div className="lg:col-span-2">
-                            <div className="flex justify-between items-center mb-6">
-                                <h3 className="font-bold text-slate-700">Linha do Tempo</h3>
-                                <button
-                                    // onClick={() => setShowInteractionModal(true)} 
-                                    className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-colors"
-                                >
-                                    <Plus size={16} /> Registrar Interação
-                                </button>
-                            </div>
-
-                            <div className="space-y-0">
-                                {clientInteractions.map(interaction => (
-                                    <TimelineItem key={interaction.id} interaction={interaction} />
-                                ))}
-                                {clientInteractions.length === 0 && (
-                                    <div className="py-12 text-center text-slate-400 bg-white rounded-xl border border-dashed border-slate-200">
-                                        Nenhuma interação registrada.
+                    {activeTab === 'overview' && (
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            {clientContacts.map(contact => (
+                                <div key={contact.id} className="flex items-center gap-3 rounded-lg border border-slate-200 p-4 bg-white hover:border-blue-200 transition-colors group">
+                                    <UserAvatar user={{ name: contact.name }} size="md" />
+                                    <div>
+                                        <p className="font-semibold text-slate-900 group-hover:text-blue-700 transition-colors">{contact.name}</p>
+                                        <p className="text-xs text-slate-500 font-medium">{contact.role}</p>
+                                        <p className="text-xs text-slate-400 mt-1">{contact.email}</p>
                                     </div>
-                                )}
-                            </div>
+                                </div>
+                            ))}
+
+                            {/* Botão Adicionar Contato */}
+                            <button className="flex h-full min-h-[88px] items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:border-slate-400 transition hover:text-blue-600">
+                                <Plus className="h-4 w-4 mr-2" /> Adicionar Contato
+                            </button>
                         </div>
+                    )}
+                </div>
 
-                        {/* SIDEBAR RIGHT: INFO OR STATS */}
-                        <div>
-                            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm sticky top-6">
-                                <h4 className="font-bold text-slate-800 mb-4 text-sm uppercase tracking-wide">Resumo de Engajamento</h4>
-                                <div className="space-y-4">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-slate-500">Total Interações</span>
-                                        <span className="font-bold text-slate-800">{clientInteractions.length}</span>
-                                    </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-slate-500">Última</span>
-                                        <span className="font-bold text-slate-800">
-                                            {health?.daysSilence === 999 ? 'N/A' : `${health?.daysSilence} dias atrás`}
-                                        </span>
-                                    </div>
-                                    <div className="h-px bg-slate-100 my-2" />
-                                    {/* Placeholder for future specific stats */}
-                                    <p className="text-xs text-slate-400 italic">
-                                        Métricas de engajamento em desenvolvimento.
-                                    </p>
+                {/* COLUNA LATERAL (KPIs Rápidos) */}
+                <div className="w-full lg:w-80 shrink-0 space-y-6">
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 sticky top-6">
+                        <h4 className="font-semibold text-slate-900 mb-4 border-b border-slate-100 pb-2">Saúde da Conta</h4>
+                        <div className="space-y-4">
+                            <div>
+                                <div className="flex justify-between text-sm mb-1">
+                                    <span className="text-slate-500">Score de Relacionamento</span>
+                                    <span className="font-medium text-slate-900">{health.score}/100</span>
+                                </div>
+                                <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                                    <div
+                                        className={`h-2 rounded-full transition-all duration-500 ${health.score > 70 ? 'bg-green-500' : health.score > 40 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                                        style={{ width: `${health.score}%` }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-3 pt-2">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-slate-500">Última Interação</span>
+                                    <span className="font-medium text-slate-900">{health.daysSilence} dias atrás</span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-slate-500">Contatos Ativos</span>
+                                    <span className="font-medium text-slate-900">{clientContacts.length}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-slate-500">Oportunidades</span>
+                                    <span className="font-medium text-slate-900">
+                                        {/* @ts-ignore */}
+                                        {opportunities ? opportunities.filter(o => o.clientId === client.id).length : 0}
+                                    </span>
                                 </div>
                             </div>
                         </div>
                     </div>
-                )}
+                </div>
 
             </div>
-
-            {/* Modals */}
-            <ContactModal isOpen={showContactModal} onClose={() => setShowContactModal(false)} />
-            {/* InteractionModal Component Coming Soon */}
-
         </div>
     );
 };

@@ -1,68 +1,65 @@
-import { differenceInDays, parseISO, isValid } from 'date-fns';
-import { Client, Interaction, Bid } from '../../types';
+import { differenceInDays, parseISO, subDays, isAfter } from 'date-fns';
+import { Client, Interaction, Opportunity } from '../../types';
+import { CRM_SILENCE } from '../../constants';
 
-export type HealthStatus = 'RISCO' | 'ATENÇÃO' | 'ATIVO';
+export type HealthStatus = 'ACTIVE' | 'ATTENTION' | 'RISK';
 
-export interface ClientHealth {
+interface ClientHealth {
     status: HealthStatus;
     daysSilence: number;
-    lastInteractionDate: Date | null;
+    lastInteractionDate: string | null;
+    score: number; // 0 a 100
 }
 
 /**
- * Calculates days since a given date
+ * Calcula dias corridos desde uma data
  */
-export const getDaysSince = (dateInput: string | Date | undefined | null): number => {
-    if (!dateInput) return 999; // Infinite silence if no date
-
-    let date: Date;
-    if (typeof dateInput === 'string') {
-        date = parseISO(dateInput);
-    } else {
-        date = dateInput;
-    }
-
-    if (!isValid(date)) return 999;
-
-    return differenceInDays(new Date(), date);
+export const getDaysSince = (dateString?: string | null): number => {
+    if (!dateString) return 999;
+    return differenceInDays(new Date(), parseISO(dateString));
 };
 
 /**
- * Determines the health of a client based on interactions and bids
- * Rules:
- * > 60 days: RISCO (Red)
- * > 30 days: ATENÇÃO (Yellow)
- * <= 30 days: ATIVO (Green)
+ * Calcula a saúde do cliente baseada nas regras do constants.ts
  */
 export const getClientHealth = (
     client: Client,
     interactions: Interaction[],
-    bids: Bid[] = [] // Optional for now
+    bids: Opportunity[]
 ): ClientHealth => {
-    // Filter interactions for this client
+    // Filtra interações deste cliente e ordena por data (mais recente primeiro)
     const clientInteractions = interactions
-        .filter(i => i.clientId === client.id)
+        .filter((i) => i.clientId === client.id)
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    const lastInteraction = clientInteractions.length > 0 ? clientInteractions[0] : null;
-    const lastDate = lastInteraction ? lastInteraction.date : null;
-
-    // Logic could also include Bids (e.g. if there is a recent bid, maybe they are active)
-    // For now, adhering strictly to the requested Silence Logic based on Last Interaction.
+    const lastInteraction = clientInteractions[0];
+    // Fallback: se nunca interagiu, usa a data de criação do cliente
+    const lastDate = lastInteraction ? lastInteraction.date : client.createdAt;
 
     const daysSilence = getDaysSince(lastDate);
 
-    let status: HealthStatus = 'ATIVO';
+    let status: HealthStatus = 'ACTIVE';
 
-    if (daysSilence > 60) {
-        status = 'RISCO';
-    } else if (daysSilence > 30) {
-        status = 'ATENÇÃO';
-    }
+    // Regras de Silêncio
+    if (daysSilence > CRM_SILENCE.CLIENT_INTERACTION_DAYS) status = 'RISK'; // > 60 dias
+    else if (daysSilence > CRM_SILENCE.CLIENT_INTERACTION_DAYS / 2) status = 'ATTENTION'; // > 30 dias
+
+    // Score simples (MVP): 100 pontos menos 1 ponto por dia de silêncio
+    const score = Math.max(0, 100 - daysSilence);
 
     return {
         status,
         daysSilence,
-        lastInteractionDate: lastDate
+        lastInteractionDate: lastInteraction ? lastInteraction.date : null,
+        score
     };
+};
+
+/**
+ * Helper para KPIs: Verifica se interação ocorreu na janela de dias (ex: 7 dias)
+ */
+export const isInteractionRecent = (interaction: Interaction, days = 7) => {
+    const date = parseISO(interaction.date);
+    const boundary = subDays(new Date(), days);
+    return isAfter(date, boundary);
 };
