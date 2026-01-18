@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Client, Contact } from '../types/crm';
+import { ClientService } from '../services/clientService';
+import { ContactService } from '../services/contactService';
 
 interface CrmContextData {
     clients: Client[];
@@ -15,38 +17,78 @@ interface CrmContextData {
 const CrmContext = createContext<CrmContextData>({} as CrmContextData);
 
 export const CrmProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    // Data Initialization - Mock Data for Production/Final Implementation Phase
-    const [clients, setClients] = useState<Client[]>([
-        { id: 'c1', corporateName: 'Vale S.A.', tradeName: 'Vale', cnpj: '33.592.510/0001-54', createdAt: new Date().toISOString() },
-        { id: 'c2', corporateName: 'Rumo Logística S.A.', tradeName: 'Rumo', cnpj: '02.387.241/0001-60', createdAt: new Date().toISOString() },
-        { id: 'c3', corporateName: 'MRS Logística S.A.', tradeName: 'MRS', cnpj: '01.427.036/0001-59', createdAt: new Date().toISOString() }
-    ]);
+    // State
+    const [clients, setClients] = useState<Client[]>([]);
+    const [contacts, setContacts] = useState<Contact[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const [contacts, setContacts] = useState<Contact[]>([
-        { id: 'p1', clientId: 'c1', name: 'Roberto (Vale)', email: 'roberto@vale.com', role: 'Gerente de Projetos', phone: '99999-9999', active: true },
-        { id: 'p2', clientId: 'c1', name: 'Ana (Vale)', email: 'ana.souza@vale.com', role: 'Coord. Engenharia', phone: '98888-8888', active: true },
-        { id: 'p3', clientId: 'c2', name: 'Carlos (Rumo)', email: 'carlos@rumo.com', role: 'Diretor Operacional', phone: '97777-7777', active: true },
-        { id: 'p4', clientId: 'c3', name: 'Fernanda (MRS)', email: 'fernanda@mrs.com', role: 'Gerente Compras', phone: '96666-6666', active: true },
-    ]);
+    // Initial Fetch
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [fetchedClients, fetchedContacts] = await Promise.all([
+                    ClientService.getAll(),
+                    ContactService.getAll()
+                ]);
+                setClients(fetchedClients);
+                setContacts(fetchedContacts);
+            } catch (error) {
+                console.error("Failed to fetch CRM data:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    const addClient = (clientData: Omit<Client, 'id'>) => {
-        const newClient = { ...clientData, id: crypto.randomUUID() };
-        setClients(prev => [...prev, newClient]);
+        fetchData();
+    }, []);
+
+    const addClient = async (clientData: Omit<Client, 'id'>) => {
+        try {
+            const id = await ClientService.create(clientData);
+            const newClient = { ...clientData, id, createdAt: new Date().toISOString() };
+            setClients(prev => [...prev, newClient]);
+        } catch (error) {
+            console.error("Error adding client:", error);
+            throw error;
+        }
     };
 
-    const addContact = (contactData: Omit<Contact, 'id'>) => {
-        const newContact = { ...contactData, id: crypto.randomUUID() };
-        setContacts(prev => [...prev, newContact]);
+    const addContact = async (contactData: Omit<Contact, 'id'>) => {
+        try {
+            const id = await ContactService.create(contactData);
+            const newContact = { ...contactData, id };
+            setContacts(prev => [...prev, newContact]);
+        } catch (error) {
+            console.error("Error adding contact:", error);
+            throw error;
+        }
     };
 
-    const removeClient = (id: string) => {
-        setClients(prev => prev.filter(c => c.id !== id));
-        // Cascading delete: Remove contacts associated with this client
-        setContacts(prev => prev.filter(c => c.clientId !== id));
+    const removeClient = async (id: string) => {
+        try {
+            await ClientService.delete(id);
+            setClients(prev => prev.filter(c => c.id !== id));
+
+            // Cascading delete for contacts locally (Firestore doesn't auto-cascade unless configured via Cloud Functions)
+            // Ideally should query and delete contacts from Firestore too.
+            // For now, we update local state.
+            setContacts(prev => prev.filter(c => c.clientId !== id));
+
+            // Note: In production, consider a batch delete of contacts where clientId == id
+        } catch (error) {
+            console.error("Error removing client:", error);
+            throw error;
+        }
     };
 
-    const removeContact = (id: string) => {
-        setContacts(prev => prev.filter(c => c.id !== id));
+    const removeContact = async (id: string) => {
+        try {
+            await ContactService.delete(id);
+            setContacts(prev => prev.filter(c => c.id !== id));
+        } catch (error) {
+            console.error("Error removing contact:", error);
+            throw error;
+        }
     };
 
     const getContactsByClientId = (clientId: string) => {
