@@ -15,9 +15,19 @@ interface CrmContextData {
 const CrmContext = createContext<CrmContextData>({} as CrmContextData);
 
 export const CrmProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    // Data Initialization - Empty for Production/Final Implementation
-    const [clients, setClients] = useState<Client[]>([]);
-    const [contacts, setContacts] = useState<Contact[]>([]);
+    // Data Initialization - Mock Data for Production/Final Implementation Phase
+    const [clients, setClients] = useState<Client[]>([
+        { id: 'c1', corporateName: 'Vale S.A.', tradeName: 'Vale', cnpj: '33.592.510/0001-54', createdAt: new Date().toISOString() },
+        { id: 'c2', corporateName: 'Rumo Logística S.A.', tradeName: 'Rumo', cnpj: '02.387.241/0001-60', createdAt: new Date().toISOString() },
+        { id: 'c3', corporateName: 'MRS Logística S.A.', tradeName: 'MRS', cnpj: '01.427.036/0001-59', createdAt: new Date().toISOString() }
+    ]);
+
+    const [contacts, setContacts] = useState<Contact[]>([
+        { id: 'p1', clientId: 'c1', name: 'Roberto (Vale)', email: 'roberto@vale.com', role: 'Gerente de Projetos', phone: '99999-9999', active: true },
+        { id: 'p2', clientId: 'c1', name: 'Ana (Vale)', email: 'ana.souza@vale.com', role: 'Coord. Engenharia', phone: '98888-8888', active: true },
+        { id: 'p3', clientId: 'c2', name: 'Carlos (Rumo)', email: 'carlos@rumo.com', role: 'Diretor Operacional', phone: '97777-7777', active: true },
+        { id: 'p4', clientId: 'c3', name: 'Fernanda (MRS)', email: 'fernanda@mrs.com', role: 'Gerente Compras', phone: '96666-6666', active: true },
+    ]);
 
     const addClient = (clientData: Omit<Client, 'id'>) => {
         const newClient = { ...clientData, id: crypto.randomUUID() };

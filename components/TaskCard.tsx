@@ -3,27 +3,30 @@ import { Task, TaskStatus, User, TaskOutcome } from '../types';
 import { Clock, AlertCircle, MoreHorizontal, User as UserIcon, Tag, Building, DollarSign, Target, Link, Award, Trash2 } from 'lucide-react';
 import { isPast, differenceInDays, format, isValid } from 'date-fns';
 
+import { useEntityLookup } from '../hooks/useEntityLookup';
+import { UserAvatar } from './ui/UserAvatar';
+
 interface Props {
   task: Task;
-  assignee?: User;
-  childTasks?: Task[]; // Children of this task
+  assignee?: User; // Can be kept for compatibility but preferred is lookup
+  childTasks?: Task[];
   onEdit: (task: Task) => void;
   onStatusChange: (id: string, status: TaskStatus) => void;
   onDelete?: (id: string) => void;
   simple?: boolean;
 }
 
-export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onEdit, onStatusChange, onDelete, simple = false }) => {
+export const TaskCard: React.FC<Props> = ({ task, childTasks = [], onEdit, onStatusChange, onDelete, simple = false }) => {
+  const { getInternalUser } = useEntityLookup();
+
+  // Resolve Internal Responsible
+  const responsibleUser = getInternalUser(task.assigneeId) || getInternalUser(task.responsibleId || '');
 
   // SAFE DATE CHECKS
   const safeEndDate = isValid(task.endDate) ? task.endDate : new Date();
   const daysLeft = differenceInDays(safeEndDate, new Date());
   const isOverdue = isPast(safeEndDate) && task.status !== TaskStatus.COMPLETED;
   const isMother = !task.parentId;
-
-  // Helpers to get values from children
-  // Helpers to get values from children
-  // REMOVED CATEGORY LOOKUPS (previa, proposta)
 
   // Status Counts for Mother Card
   const childStats = useMemo(() => {
@@ -37,19 +40,6 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
   }, [childTasks, isMother]);
 
   const formatBRL = (val?: number) => val ? val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-';
-
-  const displayResponsible = useMemo(() => {
-    // FIX: Fallback to assigneeId (Name) if User lookup fails
-    return assignee ? assignee.name : (typeof task.assigneeId === 'string' ? task.assigneeId : 'N/A');
-  }, [assignee, task.assigneeId]);
-
-  // FIX: Separate Logic for Client Contact
-  const clientContactName = useMemo(() => {
-    if (task.responsibleName && task.responsibleName.trim() !== '') {
-      return task.responsibleName;
-    }
-    return null;
-  }, [task.responsibleName]);
 
   const statusColor = useMemo(() => {
     switch (task.status) {
@@ -90,7 +80,7 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
 
   return (
     <div
-      onClick={() => onEdit && onEdit(task)} // NEW: Click to Edit
+      onClick={() => onEdit && onEdit(task)}
       className={`
       relative p-4 rounded-xl border border-slate-200 shadow-sm bg-white
       hover:shadow-md transition-all cursor-pointer group
@@ -216,10 +206,9 @@ export const TaskCard: React.FC<Props> = ({ task, assignee, childTasks = [], onE
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500 border border-white shadow-sm ring-1 ring-slate-200">
-              {displayResponsible.charAt(0)}
+            <div title={responsibleUser ? responsibleUser.name : 'Sem responsável'}>
+              <UserAvatar user={responsibleUser} size="sm" showName={true} />
             </div>
-            <span className="text-xs font-medium text-slate-500 max-w-[80px] truncate">{displayResponsible.split(' ')[0]}</span>
           </div>
 
           <div className="flex items-center gap-3 text-xs">
