@@ -78,8 +78,15 @@ export interface Opportunity {
   pipelineStage: PipelineStage;
   probability: number; // Represents % Execution now
   status: OpportunityStatus;
-  responsibleId: string;
-  responsibleName?: string; // NEW: Denormalized for display
+
+  // External Relations (Client Side)
+  contactId: string; // Was responsibleId (Pessoa do Cliente)
+  contactName?: string; // Denormalized Contact Name
+
+  // Internal Relations (DR Side)
+  ownerId: string; // NEW: Responsável Interno (User ID)
+  ownerName?: string; // Denormalized (Optional)
+
   deadline: Date;
   priority?: 'BAIXA' | 'MÉDIA' | 'ALTA'; // NEW: Priority Field
   createdAt: Date;

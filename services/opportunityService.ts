@@ -47,6 +47,11 @@ export const OpportunityService = {
             status: OpportunityStatus.ATIVA,
             createdAt: new Date(),
             updatedAt: new Date(),
+
+            // Ensure compatibility if not passed (though Form should pass it)
+            contactId: data.contactId || '',
+            ownerId: data.ownerId || '',
+            contactName: data.contactName || '',
         };
 
         const docRef = await addDoc(collection(db, OPPORTUNITIES_COLLECTION), newOpportunity);
@@ -88,23 +93,23 @@ export const OpportunityService = {
                 // Apply Sanitization
                 title: safeStr(data.title),
                 clientName: safeStr(data.clientName),
-                responsibleId: safeStr(data.responsibleId),
                 estimatedValue: safeNum(data.estimatedValue),
+
+                // New Fields
+                contactId: safeStr(data.contactId || data.responsibleId), // Fallback for migration
+                ownerId: safeStr(data.ownerId),
+                contactName: safeStr(data.contactName || data.responsibleName),
 
                 deadline: safeDate(data.deadline),
                 createdAt: safeDate(data.createdAt),
                 updatedAt: safeDate(data.updatedAt),
                 submissionDate: data.submissionDate ? safeDate(data.submissionDate) : undefined,
 
-                // Fallback Logic for Responsible Name
-                responsibleName: (() => {
-                    const rId = safeStr(data.responsibleId);
-                    // 1. Check if ID exists in OFFICIAL_USERS
-                    const match = OFFICIAL_USERS.find(u => u.id === rId);
-                    if (match) return match.name;
-
-                    // 2. If not a known ID, assume it's a legacy Name or fallback
-                    return rId || 'N/A';
+                // Fallback Logic for Owners (Optional denormalization check)
+                ownerName: (() => {
+                    const oId = safeStr(data.ownerId);
+                    const match = OFFICIAL_USERS.find(u => u.id === oId);
+                    return match ? match.name : (data.ownerName || 'N/A');
                 })(),
             } as Opportunity;
         });
@@ -177,7 +182,7 @@ export const OpportunityService = {
                 description: `Tarefa gerada automaticamente para a etapa ${getStageLabel(targetStage)}.`,
                 opportunityId: opportunityId,
                 stageAtCreation: targetStage,
-                assigneeId: currentOpp.responsibleId || 'SYSTEM',
+                assigneeId: currentOpp.ownerId || 'SYSTEM',
                 status: TaskStatus.PENDING,
                 priority: 'MEDIO',
                 startDate: new Date(),

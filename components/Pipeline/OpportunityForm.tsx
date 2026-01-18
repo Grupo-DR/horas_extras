@@ -8,6 +8,7 @@ import { X, Save } from 'lucide-react';
 
 import { OFFICIAL_USERS } from '../../constants';
 import { useCrm } from '../../contexts/CrmContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Removed local MOCK_USERS_FALLBACK definition
 
@@ -22,6 +23,7 @@ interface OpportunityFormProps {
 export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, linkedTasks = [], onClose, onSave, onDelete }) => {
     // CRM Context Integration
     const { clients, getContactsByClientId } = useCrm();
+    const { users } = useAuth();
 
     const [formData, setFormData] = useState<Partial<Opportunity>>({
         clientName: '',
@@ -29,7 +31,8 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, l
         title: '',
         estimatedValue: 0,
         deadline: undefined,
-        responsibleId: '', // Default empty (now refers to Contact ID)
+        contactId: '', // Default empty (Contact Person)
+        ownerId: '',   // Default empty (Internal DR User)
         priority: 'MÉDIA', // Default value
         ...initialData // Override with initial if present
     });
@@ -76,15 +79,23 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, l
             } else {
                 // Create (Validation happens in Service)
                 // Find contact name from available contacts
-                const contact = availableContacts.find(c => c.id === dataToSave.responsibleId);
+                const contact = availableContacts.find(c => c.id === dataToSave.contactId);
+                const owner = users.find(u => u.id === dataToSave.ownerId);
 
                 await OpportunityService.create({
                     title: dataToSave.title || 'Nova Oportunidade',
                     clientName: dataToSave.clientName!,
                     clientId: dataToSave.clientId, // Pass ID for relation
                     estimatedValue: Number(dataToSave.estimatedValue) || 0,
-                    responsibleId: dataToSave.responsibleId!,
-                    responsibleName: contact?.name || 'N/A', // Use linked contact name
+
+                    // Contact
+                    contactId: dataToSave.contactId!,
+                    contactName: contact?.name || 'N/A',
+
+                    // Internal Owner
+                    ownerId: dataToSave.ownerId!,
+                    ownerName: owner?.name || 'N/A',
+
                     deadline: new Date(dataToSave.deadline!),
                     priority: dataToSave.priority || 'MÉDIA'
                 } as any); // Casting as any for now since OpportunityService might need update
@@ -143,7 +154,7 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, l
                                             ...formData,
                                             clientId: e.target.value,
                                             clientName: selectedClient?.corporateName || '',
-                                            responsibleId: '' // Reset contact when client changes
+                                            contactId: '' // Reset contact when client changes
                                         });
                                     }}
                                     className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
@@ -157,14 +168,14 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, l
                                 </select>
                             </div>
 
-                            {/* Responsible (Filtered by Client) */}
+                            {/* Responsible (Contact - External) */}
                             <div>
-                                <label className="block text-sm font-medium text-slate-600 mb-1">Responsável (Contato)</label>
+                                <label className="block text-sm font-medium text-slate-600 mb-1">Contato do Cliente</label>
                                 <select
                                     required
                                     disabled={!formData.clientId}
-                                    value={formData.responsibleId}
-                                    onChange={e => setFormData({ ...formData, responsibleId: e.target.value })}
+                                    value={formData.contactId || ''}
+                                    onChange={e => setFormData({ ...formData, contactId: e.target.value })}
                                     className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-100 disabled:text-slate-400"
                                 >
                                     <option value="">
@@ -173,6 +184,24 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, l
                                     {availableContacts.map(contact => (
                                         <option key={contact.id} value={contact.id}>
                                             {contact.name} - {contact.role}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Internal Owner (DR Team) */}
+                            <div>
+                                <label className="block text-sm font-medium text-slate-600 mb-1">Responsável Interno (DR)</label>
+                                <select
+                                    required
+                                    value={formData.ownerId || ''}
+                                    onChange={e => setFormData({ ...formData, ownerId: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                >
+                                    <option value="">Selecione o responsável...</option>
+                                    {users.map(u => (
+                                        <option key={u.id} value={u.id}>
+                                            {u.name}
                                         </option>
                                     ))}
                                 </select>
