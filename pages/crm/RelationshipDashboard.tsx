@@ -4,21 +4,21 @@ import { calculateClientHealth } from '../../domain/relationshipAnalytics';
 import { format, parseISO } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, TrendingUp, Users, CalendarOff, ArrowRight, CheckCircle2 } from 'lucide-react';
-import { isInteractionRecent } from '../../src/lib/crm-analytics'; // Temporary: Keep helper or inline it? Better to inline or find replacement.
+
 // Actually, let's inline isInteractionRecent logic or keep it if we can't delete file yet.
 // Logic was: interaction.date > subDays(now, 7).
 import { subDays, isAfter } from 'date-fns';
 
 export const RelationshipDashboard: React.FC = () => {
     // @ts-ignore
-    const { clients, interactions, opportunities, clientContacts } = useCrm(); // Expecting clientContacts
+    const { clients, interactions, bids, clientContacts } = useCrm(); // Expecting clientContacts
     const navigate = useNavigate();
 
     // Processamento de Dados (Analytics em Tempo Real)
     const clientHealths = clients.map(client => {
         // Pre-filter data for this client
         const clientInteractions = interactions.filter((i: any) => i.clientId === client.id);
-        const clientBids = (opportunities || []).filter((o: any) => o.clientId === client.id);
+        const clientBids = (bids || []).filter((o: any) => o.clientId === client.id);
         const contacts = (clientContacts || []).filter((c: any) => c.clientId === client.id);
 
         const health = calculateClientHealth(clientInteractions, clientBids, contacts);

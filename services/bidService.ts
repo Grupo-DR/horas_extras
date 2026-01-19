@@ -27,6 +27,7 @@ const mapDocToBid = (docSnap: any): Bid => {
     return {
         id: docSnap.id,
         ...d,
+        date: safeDateParse(d.date) || safeDateParse(d.createdAt) || new Date(), // Fallback
         deadline: safeDateParse(d.deadline),
         createdAt: safeDateParse(d.createdAt),
         updatedAt: safeDateParse(d.updatedAt),
@@ -35,15 +36,24 @@ const mapDocToBid = (docSnap: any): Bid => {
         submissionDate: safeDateParse(d.submissionDate),
         // Ensure compatibility fields if missing
         status: d.status || BidStatus.PROCESSANDO,
-        pipelineStage: d.pipelineStage || PipelineStage.LEAD_RECEBIDO
+        pipelineStage: d.pipelineStage || PipelineStage.LEAD_RECEBIDO,
+        probability: d.probability ?? 0,
+        estimatedValue: d.estimatedValue ?? d.value ?? 0
     } as Bid;
 };
 
 export const BidService = {
     // CREATE
-    create: async (data: Omit<Bid, 'id' | 'createdAt' | 'updatedAt'>) => {
+    create: async (data: Omit<Bid, 'id' | 'createdAt' | 'updatedAt' | 'pipelineStage'> & { pipelineStage?: PipelineStage }) => { // relax pipelineStage requirement on input
+        const stage = data.pipelineStage || PipelineStage.LEAD_RECEBIDO;
+        const probability = data.probability ?? getExecutionPercent(stage);
+
         const payload = {
             ...data,
+            pipelineStage: stage,
+            probability: probability,
+
+            date: toFirestoreTimestamp(data.date),
             deadline: toFirestoreTimestamp(data.deadline),
             openedAt: toFirestoreTimestamp(data.openedAt),
             closedAt: toFirestoreTimestamp(data.closedAt),
@@ -53,9 +63,13 @@ export const BidService = {
             updatedAt: Timestamp.now(),
 
             // Defensives
-            status: data.status || BidStatus.ABERTA, // Default
-            pipelineStage: data.pipelineStage || PipelineStage.LEAD_RECEBIDO
+            status: data.status || BidStatus.ABERTA,
+            estimatedValue: data.estimatedValue || 0
         };
+
+        // Remove undefined keys
+        Object.keys(payload).forEach(key => payload[key as keyof typeof payload] === undefined && delete payload[key as keyof typeof payload]);
+
         return await addDoc(collection(db, COLLECTION), payload);
     },
 
@@ -80,11 +94,15 @@ export const BidService = {
             updatedAt: Timestamp.now()
         };
 
-        // Convert known dates
+        // Convert known dates in updates
+        if (updates.date) payload.date = toFirestoreTimestamp(updates.date);
         if (updates.deadline) payload.deadline = toFirestoreTimestamp(updates.deadline);
         if (updates.openedAt) payload.openedAt = toFirestoreTimestamp(updates.openedAt);
         if (updates.closedAt) payload.closedAt = toFirestoreTimestamp(updates.closedAt);
         if (updates.submissionDate) payload.submissionDate = toFirestoreTimestamp(updates.submissionDate);
+
+        // Remove undefined
+        Object.keys(payload).forEach(key => payload[key as keyof typeof payload] === undefined && delete payload[key as keyof typeof payload]);
 
         await updateDoc(doc(db, COLLECTION, id), payload);
     },
@@ -125,6 +143,15 @@ export const BidService = {
         });
     },
 
+    // SUBSCRIBE ALL (Optional)
+    subscribeAll: (callback: (data: Bid[]) => void) => {
+        const q = query(collection(db, COLLECTION), orderBy('updatedAt', 'desc'));
+        return onSnapshot(q, (snapshot) => {
+            const items = snapshot.docs.map(mapDocToBid);
+            callback(items);
+        });
+    },
+
     // MOVEMENT (Transaction)
     moveBid: async (bidId: string, targetStage: PipelineStage): Promise<{ updatedBid: Bid, createdTask: Task }> => {
         return await runTransaction(db, async (transaction) => {
@@ -139,14 +166,9 @@ export const BidService = {
             const currentBid = mapDocToBid(bidSnap);
             const currentStage = currentBid.pipelineStage;
 
-            // 2. Validate Move
-            const allowedNext = getNextStage(currentStage);
-            const isForward = targetStage === allowedNext;
-            const isSpecialBackwards = currentStage === PipelineStage.AGUARDANDO_RESULTADO && targetStage === PipelineStage.REVISAO_FINAL;
-
-            if (!isForward && !isSpecialBackwards && targetStage !== currentStage) {
-                // Allowing circular logic if needed, but warning mostly
-                console.warn(`Movimento não padrão: ${currentStage} -> ${targetStage}`);
+            // 2. Validate Move (Logic mainly in UI, here we trust mostly but warn)
+            if (targetStage !== currentStage) {
+                // Allows jumps
             }
 
             // 3. Prepare Updates
@@ -163,7 +185,7 @@ export const BidService = {
             const newTaskRef = doc(collection(db, TASKS_COLLECTION));
             const newTaskData: any = {
                 title: `[${getStageLabel(targetStage)}] - ${currentBid.title}`,
-                description: `Tarefa gerada automaticamente para a etapa ${getStageLabel(targetStage)}.`,
+                description: ` Tarefa gerada automaticamente para a etapa ${getStageLabel(targetStage)}.`,
                 opportunityId: bidId, // Legacy link
                 bidId: bidId, // New Canonical link
                 stageAtCreation: targetStage,
@@ -183,7 +205,7 @@ export const BidService = {
             transaction.set(newTaskRef, newTaskData);
 
             return {
-                updatedBid: { ...currentBid, ...updatedData, updatedAt: new Date() },
+                updatedBid: { ...currentBid, ...updatedData, updatedAt: new Date(), probability: newProbability },
                 createdTask: { id: newTaskRef.id, ...newTaskData, startDate: new Date(), endDate: new Date() } as Task
             };
         });

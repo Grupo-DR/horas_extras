@@ -9,7 +9,7 @@ import { UserAvatar } from '../../components/ui/UserAvatar'; // Assumindo compon
 export const ClientDetailsView: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     // @ts-ignore
-    const { clients, interactions, contacts, opportunities, addInteraction } = useCrm();
+    const { clients, interactions, contacts, bids, addInteraction } = useCrm();
     const [activeTab, setActiveTab] = useState<'overview' | 'timeline'>('timeline');
 
     const client = clients.find((c: any) => c.id === id);
@@ -22,7 +22,7 @@ export const ClientDetailsView: React.FC = () => {
         .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     // @ts-ignore
-    const clientBids = (opportunities || []).filter(o => o.clientId === client.id);
+    const clientBids = (bids || []).filter(o => o.clientId === client.id);
     const clientContacts = contacts.filter((c: any) => c.clientId === client.id);
 
     // Analytics Domain
@@ -170,7 +170,7 @@ export const ClientDetailsView: React.FC = () => {
                                     <span className="text-slate-500">Oportunidades</span>
                                     <span className="font-medium text-slate-900">
                                         {/* @ts-ignore */}
-                                        {opportunities ? opportunities.filter(o => o.clientId === client.id).length : 0}
+                                        {bids ? bids.filter(o => o.clientId === client.id).length : 0}
                                     </span>
                                 </div>
                             </div>

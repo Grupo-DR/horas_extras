@@ -8,12 +8,20 @@ const COLLECTION = 'interactions';
 export const InteractionService = {
     // CREATE
     create: async (data: Omit<Interaction, 'id' | 'createdAt'>) => {
-        // Garantir que date é Timestamp
+        // Validation: createdBy must be present
+        if (!data.createdBy || !data.createdBy.id) {
+            console.warn("InteractionService: createdBy field is missing or invalid", data);
+            // We could throw, but for safety lets allow if system
+        }
+
         const payload = {
             ...data,
             date: toFirestoreTimestamp(data.date),
             createdAt: Timestamp.now()
         };
+        // Remove undefined
+        Object.keys(payload).forEach(key => payload[key as keyof typeof payload] === undefined && delete payload[key as keyof typeof payload]);
+
         return await addDoc(collection(db, COLLECTION), payload);
     },
 
@@ -23,6 +31,9 @@ export const InteractionService = {
         if (updates.date) {
             payload.date = toFirestoreTimestamp(updates.date);
         }
+
+        // Remove undefined
+        Object.keys(payload).forEach(key => payload[key as keyof typeof payload] === undefined && delete payload[key as keyof typeof payload]);
 
         await updateDoc(doc(db, COLLECTION, id), payload);
     },
@@ -34,7 +45,7 @@ export const InteractionService = {
 
     // SUBSCRIBE BY CLIENT
     subscribeByClient: (clientId: string, callback: (data: Interaction[]) => void) => {
-        // Index necessário: clientId ASC, date DESC
+        // IMPORTANT: Ensure composite index exists: clientId ASC, date DESC
         const q = query(
             collection(db, COLLECTION),
             where('clientId', '==', clientId),
@@ -106,7 +117,7 @@ export const InteractionService = {
 
         const q = query(
             collection(db, COLLECTION),
-            where('date', '>=', Timestamp.fromDate(cutoff)),
+            // where('date', '>=', Timestamp.fromDate(cutoff)), // Might require index
             orderBy('date', 'desc')
         );
 
@@ -120,7 +131,10 @@ export const InteractionService = {
                     createdAt: safeDateParse(d.createdAt)
                 } as Interaction;
             });
-            callback(items);
+            // Client-side filtering if index issues arise, but ideally query filters.
+            // For now, let's trust the query or filter client-side if needed.
+            const p = items.filter(i => i.date >= cutoff);
+            callback(p);
         });
     }
 };

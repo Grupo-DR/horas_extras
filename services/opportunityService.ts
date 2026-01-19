@@ -11,30 +11,33 @@ const OPPORTUNITIES_COLLECTION = 'opportunities';
  * Compatibility Service Wrapper
  * Redirects all writes to BidService (Canonical).
  * Reads from BidService, but falls back to 'opportunities' collection if empty.
+ * @deprecated Use BidService directly.
  */
 export const OpportunityService = {
 
     /**
      * Creates a new Opportunity -> redirected to BidService.create
      */
-    async create(data: Omit<Opportunity, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'pipelineStage' | 'probability'>): Promise<string> {
+    async create(data: Omit<Opportunity, 'id' | 'createdAt' | 'updatedAt' | 'date' | 'probability'> & { date: any }): Promise<string> {
         // Adapt fields if necessary
+        // In legacy, we might have different fields. BidService handles the canonical ones.
+        // Legacy Opportunity didn't have 'date', but new Bid needs 'date'.
+        // If data.date doesn't exist, we use current date.
+
         const bidPayload = {
             ...data,
             title: data.title,
-            clientId: data.clientName, // Store clientName in clientId temporarily if ID not available? 
-            // WAIT: The original create received clientName, not clientId?
-            // Refactor Note: The original code used data.clientName. 
-            // We must ensure we have a valid clientId or keep string. 
-            // Bid types.ts says clientId: string, clientName: string.
-            // We pass data as is, assuming it matches 'Bid' shape mostly.
-            clientId: data.clientName, // Quick fix for legacy calls that might not pass ID. 
-            // Ideally UI passes ID. We'll trust the payload has what's needed or strictly needed fields.
+            clientId: data.clientName || 'LEGACY_UNKNOWN', // Ideally real ID
+
+            // Map legacy 'responsibleId' to 'ownerId' if needed, but data usually has ownerId
             contactId: data.contactId || '',
             ownerId: data.ownerId || '',
+
+            date: data.date ? new Date(data.date) : new Date(),
         };
 
-        const docRef = await BidService.create(bidPayload as any);
+        // @ts-ignore
+        const docRef = await BidService.create(bidPayload);
         return docRef.id;
     },
 
@@ -80,6 +83,12 @@ export const OpportunityService = {
                 createdAt: safeDate(data.createdAt),
                 updatedAt: safeDate(data.updatedAt),
                 submissionDate: data.submissionDate ? safeDate(data.submissionDate) : undefined,
+
+                // Fields required by Bid (alias)
+                date: safeDate(data.createdAt), // Map createdAt to date for legacy
+                pipelineStage: data.pipelineStage,
+                status: data.status,
+                probability: safeNum(data.probability),
 
                 // Owner Name Fallback
                 ownerName: (() => {

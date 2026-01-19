@@ -1,21 +1,20 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Client, ClientContact, Bid, Interaction } from '../types';
 import { ClientService } from '../services/clientService';
-import { ContactService } from '../services/contactService';
+import { ClientContactService } from '../services/clientContactService'; // Canonical
 import { BidService } from '../services/bidService';
 import { InteractionService } from '../services/interactionService';
-import { where } from 'firebase/firestore'; // Import needed if using query directly, but services handle it.
 
 interface CrmContextData {
     clients: Client[];
     contacts: ClientContact[];
     bids: Bid[]; // Canonical "bids"
-    opportunities: Bid[]; // Alias for backward compatibility
-    interactions: Interaction[];
+
+    interactions: Interaction[]; // Global recent
     loading: boolean;
 
     addClient: (client: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
-    addContact: (contact: Omit<ClientContact, 'id'>) => Promise<void>;
+    addContact: (contact: Omit<ClientContact, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
     addInteraction: (data: Omit<Interaction, 'id' | 'createdAt'>) => Promise<void>;
     removeClient: (id: string) => Promise<void>;
     removeContact: (id: string) => Promise<void>;
@@ -41,28 +40,37 @@ export const CrmProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const fetchData = async () => {
             setLoading(true);
             try {
-                // Parallel fetching
-                const [fetchedClients, fetchedContacts, fetchedBids, fetchedRecents] = await Promise.all([
+                // Initialize Subscriptions or simple Fetch
+                // For simplicity and stability, we fetch all once or stick to Promise.all
+                // But subscription is better. Converting to Promise-based for initial load.
+
+                const [fetchedClients, fetchedContacts, fetchedBids] = await Promise.all([
                     ClientService.getAll(),
-                    ContactService.getAll(),
-                    BidService.getAll(),
-                    // For global context, maybe we fetch only recent interactions or all?
-                    // Fetching ALL interactions might be heavy. 
-                    // For now, let's fetch recent global interactions (e.g., last 6 months) for dashboard.
-                    // Or iterate client-by-client if needed.
-                    // Start with "Recent Global" for the dashboard view.
-                    new Promise<Interaction[]>(resolve => {
-                        const unsubscribe = InteractionService.subscribeRecentGlobal(6, (data) => {
-                            resolve(data);
-                            unsubscribe(); // One-off fetch for now to match Promise.all pattern
-                        });
-                    })
+                    ClientContactService.getAll(),
+                    BidService.getAll()
                 ]);
+
+                // Interactions: fetch recent global (e.g., 6 months)
+                // We'll use a promise wrapper around the subscription for the first load
+                const fetchedRecents = await new Promise<Interaction[]>(resolve => {
+                    const unsubscribe = InteractionService.subscribeRecentGlobal(6, (data) => {
+                        resolve(data);
+                        unsubscribe();
+                    });
+                });
 
                 setClients(fetchedClients);
                 setContacts(fetchedContacts);
                 setBids(fetchedBids);
                 setInteractions(fetchedRecents);
+
+                // Setup realtime listeners? 
+                // Creating full realtime context for everything might be heavy.
+                // Let's rely on refreshTrigger for now, or components subscribing individually.
+                // However, the requirement implies "Context consolidado".
+                // If we want detailed lists to update automatically, we should use subscriptions.
+                // But let's check current architecture. It used getAll().
+                // We will stick to getAll() + manual refresh for stability unless requested otherwise.
 
             } catch (error) {
                 console.error("Failed to fetch CRM data:", error);
@@ -78,21 +86,18 @@ export const CrmProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const addClient = async (clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
         try {
-            // @ts-ignore - Validating omitted fields later if needed
-            const id = await ClientService.create(clientData);
-            const newClient = { ...clientData, id, createdAt: new Date() } as Client;
-            setClients(prev => [...prev, newClient]);
+            await ClientService.create(clientData);
+            refresh();
         } catch (error) {
             console.error("Error adding client:", error);
             throw error;
         }
     };
 
-    const addContact = async (contactData: Omit<ClientContact, 'id'>) => {
+    const addContact = async (contactData: Omit<ClientContact, 'id' | 'createdAt' | 'updatedAt'>) => {
         try {
-            const id = await ContactService.create(contactData);
-            const newContact = { ...contactData, id } as ClientContact;
-            setContacts(prev => [...prev, newContact]);
+            await ClientContactService.create(contactData);
+            refresh();
         } catch (error) {
             console.error("Error adding contact:", error);
             throw error;
@@ -102,7 +107,7 @@ export const CrmProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const addInteraction = async (data: Omit<Interaction, 'id' | 'createdAt'>) => {
         try {
             await InteractionService.create(data);
-            refresh(); // Simple refresh for now
+            refresh();
         } catch (error) {
             console.error("Error adding interaction:", error);
             throw error;
@@ -122,7 +127,7 @@ export const CrmProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const removeContact = async (id: string) => {
         try {
-            await ContactService.delete(id);
+            await ClientContactService.delete(id);
             setContacts(prev => prev.filter(c => c.id !== id));
         } catch (error) {
             console.error("Error removing contact:", error);
@@ -139,7 +144,7 @@ export const CrmProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             clients,
             contacts,
             bids,
-            opportunities: bids, // Alias
+
             interactions,
             loading,
             addClient,

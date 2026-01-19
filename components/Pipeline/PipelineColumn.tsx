@@ -1,11 +1,11 @@
 
 import React from 'react';
-import { Opportunity, PipelineStage } from '../../types';
-import { OpportunityCard } from './OpportunityCard';
+import { Bid, PipelineStage } from '../../types';
+import { BidCard } from './BidCard';
 
 interface PipelineColumnProps {
     stage: PipelineStage;
-    opportunities: Opportunity[];
+    bids: Bid[];
     onDrop: (e: React.DragEvent, stage: PipelineStage) => void;
     onDragOver: (e: React.DragEvent) => void;
     onCardClick: (id: string) => void;
@@ -14,13 +14,13 @@ interface PipelineColumnProps {
 
 export const PipelineColumn: React.FC<PipelineColumnProps> = ({
     stage,
-    opportunities,
+    bids,
     onDrop,
     onDragOver,
     onCardClick,
-    onDelete // NEW
+    onDelete
 }) => {
-    const totalValue = opportunities.reduce((sum, op) => sum + op.estimatedValue, 0);
+    const totalValue = bids.reduce((sum, op) => sum + (op.estimatedValue || 0), 0);
 
     // Helper to get formatted stage name
     const formatStageName = (stage: string) => {
@@ -40,7 +40,7 @@ export const PipelineColumn: React.FC<PipelineColumnProps> = ({
                         {formatStageName(stage)}
                     </h3>
                     <span className="bg-slate-200 text-slate-600 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                        {opportunities.length}
+                        {bids.length}
                     </span>
                 </div>
                 <div className="text-right">
@@ -52,17 +52,17 @@ export const PipelineColumn: React.FC<PipelineColumnProps> = ({
 
             {/* Cards Container */}
             <div className="flex-1 overflow-y-auto p-2 space-y-2 min-h-[150px]">
-                {opportunities.map((op) => (
-                    <OpportunityCard
+                {bids.map((op) => (
+                    <BidCard
                         key={op.id}
-                        opportunity={op}
-                        onDragStart={(e, id) => e.dataTransfer.setData('opportunityId', id)}
+                        bid={op}
+                        onDragStart={(e, id) => e.dataTransfer.setData('bidId', id)}
                         onClick={onCardClick}
                         onDelete={onDelete}
                     />
                 ))}
 
-                {opportunities.length === 0 && (
+                {bids.length === 0 && (
                     <div className="h-full flex items-center justify-center text-slate-300 text-xs italic border-2 border-dashed border-slate-100 rounded-lg">
                         Arraste aqui
                     </div>

@@ -594,6 +594,24 @@ export const CommercialView: React.FC = () => {
         }
     };
 
+    // NEW: Migration Handler
+    const handleMigration = async () => {
+        if (!window.confirm("ATENÇÃO: Isso irá migrar oportunidades antigas para o novo formato 'Bids'.\nRecomendado executar apenas uma vez.\n\nDeseja continuar?")) return;
+
+        const toastId = toast.loading("Migrando dados...");
+        try {
+            const result = await migrateOpportunitiesToBidsOnce();
+            toast.success(`Migração concluída!\nMigrados: ${result.migratedCount}\nPulados: ${result.skippedCount}\nErros: ${result.errorsCount}`, {
+                id: toastId,
+                duration: 5000
+            });
+            refresh(); // Refresh context
+        } catch (error) {
+            console.error(error);
+            toast.error("Falha na migração. Verifique o console.", { id: toastId });
+        }
+    };
+
     return (
         <div className="flex h-full w-full flex-col overflow-hidden">
             {/* HEADER */}
@@ -688,6 +706,15 @@ export const CommercialView: React.FC = () => {
                 </div>
 
                 <div className="flex actions gap-3">
+                    {/* MIGRATION BUTTON - TEMP */}
+                    <button
+                        onClick={handleMigration}
+                        className="p-2 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-full transition-colors"
+                        title="Migrar Dados Legacy (Admin)"
+                    >
+                        <Database size={20} />
+                    </button>
+
                     <button
                         onClick={() => setIsHistoryOpen(true)}
                         className="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors relative"

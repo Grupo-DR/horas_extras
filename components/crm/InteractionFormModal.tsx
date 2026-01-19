@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Calendar, CheckCircle, Tag } from 'lucide-react';
-import { InteractionType } from '../../types';
+import { Interaction, InteractionType } from '../../types';
 import { InteractionService } from '../../services/interactionService';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'sonner';
@@ -8,9 +8,10 @@ import { toast } from 'sonner';
 interface InteractionFormModalProps {
     isOpen: boolean;
     onClose: () => void;
-    clientId: string;
+    clientId?: string;
     contactId?: string;
     bidId?: string;
+    initialData?: Interaction; // For Edit Mode
     onSuccess?: () => void;
 }
 
@@ -28,18 +29,43 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
     clientId,
     contactId,
     bidId,
+    initialData,
     onSuccess
 }) => {
-    const { user } = useAuth(); // Use Auth Context
+    const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         type: 'REUNIAO' as InteractionType,
         title: '',
-        date: new Date().toISOString().slice(0, 16), // datetime-local format
+        date: new Date().toISOString().slice(0, 16),
         notes: '',
         nextSteps: '',
         tags: ''
     });
+
+    // Populate form on open/change
+    useEffect(() => {
+        if (isOpen && initialData) {
+            setFormData({
+                type: initialData.type,
+                title: initialData.title,
+                date: new Date(initialData.date).toISOString().slice(0, 16),
+                notes: initialData.notes,
+                nextSteps: initialData.nextSteps || '',
+                tags: initialData.tags ? initialData.tags.join(', ') : ''
+            });
+        } else if (isOpen && !initialData) {
+            // Reset if new
+            setFormData({
+                type: 'REUNIAO',
+                title: '',
+                date: new Date().toISOString().slice(0, 16),
+                notes: '',
+                nextSteps: '',
+                tags: ''
+            });
+        }
+    }, [isOpen, initialData]);
 
     if (!isOpen) return null;
 
@@ -51,8 +77,9 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
             return;
         }
 
-        if (!clientId) {
-            toast.error('Erro: Cliente não identificado.');
+        // Logic Check: Either we have IDs OR we are editing (so we have initialData)
+        if (!clientId && !initialData) {
+            toast.error('Erro: Contexto não identificado (Cliente/Bid/Contato).');
             return;
         }
 
@@ -60,27 +87,37 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
             setLoading(true);
             const tagsArray = formData.tags.split(',').map(t => t.trim()).filter(Boolean);
 
-            await InteractionService.create({
-                clientId,
-                contactId,
-                bidId,
+            const payloadBase = {
                 type: formData.type,
                 title: formData.title,
                 date: new Date(formData.date),
                 notes: formData.notes,
                 nextSteps: formData.nextSteps || undefined,
                 tags: tagsArray,
-                createdBy: {
-                    id: user.uid, // Use UID from AuthContext
-                    name: user.displayName || user.email || 'Usuário',
-                    email: user.email || ''
-                }
-            });
+            };
 
-            toast.success('Interação registrada com sucesso!');
+            if (initialData?.id) {
+                // UPDATE
+                await InteractionService.update(initialData.id, payloadBase);
+                toast.success('Interação atualizada!');
+            } else {
+                // CREATE
+                await InteractionService.create({
+                    ...payloadBase,
+                    clientId: clientId!,
+                    contactId,
+                    bidId,
+                    createdBy: {
+                        id: user.uid,
+                        name: user.displayName || user.email || 'Usuário',
+                        email: user.email || ''
+                    }
+                });
+                toast.success('Interação registrada!');
+            }
+
             if (onSuccess) onSuccess();
             onClose();
-            setFormData({ ...formData, title: '', notes: '', nextSteps: '', tags: '' });
 
         } catch (error) {
             console.error(error);
@@ -102,7 +139,7 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
             <div className="relative w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl ring-1 ring-gray-200 animate-in fade-in zoom-in-95 duration-200">
                 <div className="flex items-center justify-between mb-6 border-b pb-4">
                     <h3 className="text-xl font-bold text-slate-800">
-                        Registrar Interação
+                        {initialData ? 'Editar Interação' : 'Registrar Interação'}
                     </h3>
                     <button onClick={onClose} className="p-1 rounded-full hover:bg-slate-100 text-slate-500 transition-colors">
                         <X className="w-5 h-5" />
@@ -214,7 +251,7 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
                             disabled={loading}
                             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-all disabled:opacity-50 flex items-center gap-2"
                         >
-                            {loading ? 'Salvando...' : 'Registrar Interação'}
+                            {loading ? 'Salvando...' : 'Salvar Interação'}
                         </button>
                     </div>
 

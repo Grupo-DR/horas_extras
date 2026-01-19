@@ -69,7 +69,7 @@ export enum BidStatus {
   EM_ANDAMENTO = 'EM_ANDAMENTO',
   DECLINADA = 'DECLINADA',
   PERDIDA = 'PERDIDA',
-  VENCIDA = 'VENCIDA', // Won
+  VENCIDA = 'VENCIDA',
   CANCELADA = 'CANCELADA'
 }
 
@@ -82,46 +82,55 @@ export enum OpportunityStatus {
 }
 
 export interface Bid {
+  // Core Identifiers
   id: string;
   clientId: string;
-  clientName: string; // Denormalized for lists
+  clientName?: string; // Denormalized for lists/legacy support
+
+  // Basic Info
   title: string;
+  description?: string;
 
   // Pipeline & Status
   pipelineStage: PipelineStage;
   status: BidStatus | OpportunityStatus; // Compatibility union
   probability: number;
+  priority?: 'BAIXA' | 'MÉDIA' | 'ALTA';
 
   // Values & Dates
-  estimatedValue: number;
-  deadline: Date;
-  openedAt?: Date; // Data do convite/recebimento
+  estimatedValue?: number; // Canonically 'estimatedValue' OR 'value'. Let's stick to estimatedValue as per request 3.4
+  value?: number; // Keep for compatibility if needed, but prefer estimatedValue
+
+  date: Date; // Data do convite/entrada
+  deadline?: Date; // Prazo limite
+  openedAt?: Date; // Same as date usually?
   closedAt?: Date;
   submissionDate?: Date;
 
   // Relations
-  contactId: string;
+  contactId?: string;
   contactName?: string;
-  ownerId: string;
+  ownerId?: string;
   ownerName?: string;
 
-  // Validation & Details
-  description?: string;
-  scopeSummary?: string;
+  // Outcome
   decision?: 'GO' | 'NO_GO';
   result?: TaskOutcome;
+
+  // Details
+  scopeSummary?: string;
   preliminaryValue?: number;
   technicalAttachments?: string[];
   proposalVersion?: string;
   finalChecklistDone?: boolean;
-  priority?: 'BAIXA' | 'MÉDIA' | 'ALTA';
 
   // Meta
   createdAt: Date;
   updatedAt: Date;
 
-  // Legacy fields to be removed eventually
-  opportunityId?: string;
+  // Legacy fields
+  legacyOpportunityId?: string;
+  opportunityId?: string; // Also legacy
 }
 
 /**
@@ -328,12 +337,19 @@ export interface KPI {
 
 export interface Client {
   id: string;
-  name: string;
-  document?: string; // CNPJ
-  industry?: string;
+  corporateName: string; // Razão Social
+  tradeName: string; // Nome Fantasia
+  cnpj: string;
+  segment?: string;
   status: 'ATIVA' | 'INATIVA' | 'PROSPECT';
-  createdAt?: Date;
-  updatedAt?: Date;
+
+  // Legacy fields to optionally support or map
+  name?: string; // Alias for tradeName?
+  document?: string; // Alias for CNPJ?
+  industry?: string; // Alias for segment?
+
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export type InteractionType = 'REUNIAO' | 'LIGACAO' | 'VISITA' | 'EMAIL' | 'WHATSAPP';
@@ -370,6 +386,10 @@ export interface ClientContact {
   email?: string;
   phone?: string;
   isActive: boolean;
+
+  createdAt: Date;
+  updatedAt: Date;
+
   // Campos calculados no frontend (não persistidos)
   analytics?: {
     profile: ContactProfile;
