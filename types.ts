@@ -63,6 +63,17 @@ export enum PipelineStage {
   RESULTADO = 'RESULTADO'
 }
 
+export enum BidStatus {
+  PROCESSANDO = 'PROCESSANDO', // Generic active status
+  ABERTA = 'ABERTA',
+  EM_ANDAMENTO = 'EM_ANDAMENTO',
+  DECLINADA = 'DECLINADA',
+  PERDIDA = 'PERDIDA',
+  VENCIDA = 'VENCIDA', // Won
+  CANCELADA = 'CANCELADA'
+}
+
+// Deprecated alias for backward compatibility until code is fully cleaned
 export enum OpportunityStatus {
   ATIVA = 'ATIVA',
   GANHA = 'GANHA',
@@ -70,39 +81,53 @@ export enum OpportunityStatus {
   CANCELADA = 'CANCELADA'
 }
 
-export interface Opportunity {
+export interface Bid {
   id: string;
+  clientId: string;
+  clientName: string; // Denormalized for lists
   title: string;
-  clientName: string;
-  estimatedValue: number;
+
+  // Pipeline & Status
   pipelineStage: PipelineStage;
-  probability: number; // Represents % Execution now
-  status: OpportunityStatus;
+  status: BidStatus | OpportunityStatus; // Compatibility union
+  probability: number;
 
-  // External Relations (Client Side)
-  contactId: string; // Was responsibleId (Pessoa do Cliente)
-  contactName?: string; // Denormalized Contact Name
-
-  // Internal Relations (DR Side)
-  ownerId: string; // NEW: Responsável Interno (User ID)
-  ownerName?: string; // Denormalized (Optional)
-
+  // Values & Dates
+  estimatedValue: number;
   deadline: Date;
-  priority?: 'BAIXA' | 'MÉDIA' | 'ALTA'; // NEW: Priority Field
-  createdAt: Date;
-  updatedAt: Date;
+  openedAt?: Date; // Data do convite/recebimento
+  closedAt?: Date;
+  submissionDate?: Date;
 
-  // Specific Data for Validation Stages (Optional now mainly)
+  // Relations
+  contactId: string;
+  contactName?: string;
+  ownerId: string;
+  ownerName?: string;
+
+  // Validation & Details
   description?: string;
   scopeSummary?: string;
   decision?: 'GO' | 'NO_GO';
-  result?: TaskOutcome; // NEW: Replaces Decision usage in UI
+  result?: TaskOutcome;
   preliminaryValue?: number;
   technicalAttachments?: string[];
   proposalVersion?: string;
   finalChecklistDone?: boolean;
-  submissionDate?: Date;
+  priority?: 'BAIXA' | 'MÉDIA' | 'ALTA';
+
+  // Meta
+  createdAt: Date;
+  updatedAt: Date;
+
+  // Legacy fields to be removed eventually
+  opportunityId?: string;
 }
+
+/**
+ * @deprecated Use Bid instead. This is a compatibility alias.
+ */
+export type Opportunity = Bid;
 
 export type ModuleCategory = 'COMERCIAL' | 'CONTRATOS' | 'DADOS' | 'KPI' | 'GERAL';
 
@@ -115,21 +140,22 @@ export interface Task {
   startDate: Date;
   endDate: Date;
   observations: string;
-  priority: 'BAIXO' | 'MEDIO' | 'ALTO'; // Changed to Portuguese as requested
+  priority: 'BAIXO' | 'MEDIO' | 'ALTO';
   category?: string;
-  moduleCategory: ModuleCategory; // NEW: Field for robust filtering
+  moduleCategory: ModuleCategory;
   progress: number;
 
-  // Link to Opportunity & Automation
-  opportunityId?: string;
-  contractId?: string; // NEW: Link to Contract Module
-  solutionId?: string; // NEW: Link to Data Solution
-  kpiId?: string; // NEW: Link to KPI
+  // Link to Opportunity/Bid & Automation
+  opportunityId?: string; // KEEP for compatibility, points to Bid.id
+  bidId?: string; // Canonical reference
+  contractId?: string;
+  solutionId?: string;
+  kpiId?: string;
   stageAtCreation?: PipelineStage;
   needsDetails?: boolean;
   outcome?: TaskOutcome;
 
-  // Legacy / Compatibility Fields (may be deprecated or mapped)
+  // Legacy / Compatibility Fields
   parentId?: string;
   value?: number;
   interestScore?: number;
@@ -138,7 +164,6 @@ export interface Task {
   responsibleName?: string;
   contactEmail?: string;
   contactPhone?: string;
-
 }
 
 export enum AppModule {
@@ -245,10 +270,10 @@ export interface Contract {
 export interface DataSolution {
   id: string;
   name: string;
-  stakeholders: string[]; // List of names
+  stakeholders: string[];
   deadline: Date;
-  responsibleId: string; // Link to user
-  responsibleName?: string; // Display cache
+  responsibleId: string;
+  responsibleName?: string;
   status: 'ACTIVE' | 'COMPLETED' | 'ON_HOLD' | 'TODO' | 'REVIEW';
 
   description?: string;
@@ -262,20 +287,20 @@ export interface DataSolution {
     equipe: string[];
     entregas: string[];
     premissas: string[];
-    manutencao: string[]; // Grupos de Entrega / Manutenção? User spec: "Entregas, Premissas, Manutenção"
+    manutencao: string[];
     riscos: string[];
     cronograma: string[];
     custo: string[];
-    contractId?: string; // NEW
-    startDate?: Date;   // NEW
-    endDate?: Date;     // NEW
+    contractId?: string;
+    startDate?: Date;
+    endDate?: Date;
   };
   createdAt?: Date;
   updatedAt?: Date;
 }
 
 export interface KPIHistory {
-  date?: Date; // Deprecated: Kept for backward compatibility if needed, or remove if migration is forced
+  date?: Date;
   referenceDate: Date;
   value: number;
   updatedBy: string;
@@ -285,7 +310,7 @@ export interface KPI {
   id: string;
   name: string;
   description: string;
-  unit: 'R$' | '%' | 'N' | 'BRL'; // Currency, Percentage, Number
+  unit: 'R$' | '%' | 'N' | 'BRL';
   targetValue: number;
   currentValue: number;
   responsibleId: string;
@@ -306,7 +331,7 @@ export interface Client {
   name: string;
   document?: string; // CNPJ
   industry?: string;
-  status: 'ATIVA' | 'INATIVA' | 'PROSPECT'; // Status cadastral simples
+  status: 'ATIVA' | 'INATIVA' | 'PROSPECT';
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -352,18 +377,6 @@ export interface ClientContact {
     totalInteractions90d: number;
     daysSinceLastInteraction: number;
   };
-}
-
-export interface Bid {
-  id: string;
-  clientId: string;
-  title: string;
-  date: Date; // Data do convite/recebimento
-  status: 'ABERTA' | 'EM_ANDAMENTO' | 'DECLINADA' | 'PERDIDA' | 'VENCIDA';
-  value?: number;
-  description?: string;
-  opportunityId?: string; // Link para Pipeline
-  createdAt?: Date;
 }
 
 export interface ClientHealthMetrics {

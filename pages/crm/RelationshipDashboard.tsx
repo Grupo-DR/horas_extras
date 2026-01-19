@@ -1,25 +1,40 @@
 import React from 'react';
 import { useCrm } from '../../contexts/CrmContext';
-import { getClientHealth, isInteractionRecent } from '../../src/lib/crm-analytics';
+import { calculateClientHealth } from '../../domain/relationshipAnalytics';
 import { format, parseISO } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, TrendingUp, Users, CalendarOff, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { isInteractionRecent } from '../../src/lib/crm-analytics'; // Temporary: Keep helper or inline it? Better to inline or find replacement.
+// Actually, let's inline isInteractionRecent logic or keep it if we can't delete file yet.
+// Logic was: interaction.date > subDays(now, 7).
+import { subDays, isAfter } from 'date-fns';
 
 export const RelationshipDashboard: React.FC = () => {
     // @ts-ignore
-    const { clients, interactions, opportunities } = useCrm();
+    const { clients, interactions, opportunities, clientContacts } = useCrm(); // Expecting clientContacts
     const navigate = useNavigate();
 
     // Processamento de Dados (Analytics em Tempo Real)
     const clientHealths = clients.map(client => {
-        // @ts-ignore
-        const health = getClientHealth(client, interactions, opportunities || []);
+        // Pre-filter data for this client
+        const clientInteractions = interactions.filter((i: any) => i.clientId === client.id);
+        const clientBids = (opportunities || []).filter((o: any) => o.clientId === client.id);
+        const contacts = (clientContacts || []).filter((c: any) => c.clientId === client.id);
+
+        const health = calculateClientHealth(clientInteractions, clientBids, contacts);
         return { client, ...health };
     });
 
     // Filtros de Risco
-    const clientsInRisk = clientHealths.filter(c => c.status === 'RISK');
-    const recentInteractionsCount = interactions.filter(i => isInteractionRecent(i, 7)).length;
+    // 'EM_RISCO' is the new 'RISK'. Also maybe 'PERDIDA'?
+    const clientsInRisk = clientHealths.filter(c => c.status === 'EM_RISCO' || c.status === 'PERDIDA');
+
+    // Inline "isInteractionRecent" logic (7 days)
+    const cutoff7d = subDays(new Date(), 7);
+    const recentInteractionsCount = interactions.filter((i: any) => {
+        const date = typeof i.date === 'string' ? parseISO(i.date) : i.date;
+        return isAfter(date, cutoff7d);
+    }).length;
 
     return (
         <div className="space-y-6">
@@ -100,17 +115,17 @@ export const RelationshipDashboard: React.FC = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                clientsInRisk.map(({ client, daysSilence, lastInteractionDate }) => (
+                                clientsInRisk.map(({ client, silenceDays, lastInteraction }) => (
                                     <tr key={client.id} className="hover:bg-slate-50 transition-colors">
                                         <td className="px-6 py-4 font-medium text-slate-900">{client.tradeName}</td>
                                         <td className="px-6 py-4 text-slate-500">
-                                            {lastInteractionDate
-                                                ? format(parseISO(lastInteractionDate), 'dd/MM/yyyy')
+                                            {lastInteraction
+                                                ? format(lastInteraction, 'dd/MM/yyyy')
                                                 : 'Nunca contatado'}
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">
-                                                {daysSilence} dias
+                                                {silenceDays} dias
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Calendar, CheckCircle, Tag } from 'lucide-react';
 import { InteractionType } from '../../types';
 import { InteractionService } from '../../services/interactionService';
-import { OFFICIAL_USERS } from '../../constants';
+import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'sonner';
 
 interface InteractionFormModalProps {
@@ -30,6 +30,7 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
     bidId,
     onSuccess
 }) => {
+    const { user } = useAuth(); // Use Auth Context
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         type: 'REUNIAO' as InteractionType,
@@ -42,11 +43,14 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
 
     if (!isOpen) return null;
 
-    // Mock Current User
-    const currentUser = OFFICIAL_USERS[0] || { id: 'sys', name: 'Sistema', email: 'system@grupodr.com.br' };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!user) {
+            toast.error('Erro de permissão: Usuário não autenticado.');
+            return;
+        }
+
         if (!clientId) {
             toast.error('Erro: Cliente não identificado.');
             return;
@@ -67,9 +71,9 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
                 nextSteps: formData.nextSteps || undefined,
                 tags: tagsArray,
                 createdBy: {
-                    id: currentUser.id,
-                    name: currentUser.name,
-                    email: currentUser.email
+                    id: user.uid, // Use UID from AuthContext
+                    name: user.displayName || user.email || 'Usuário',
+                    email: user.email || ''
                 }
             });
 
@@ -115,8 +119,8 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
                                 type="button"
                                 onClick={() => setFormData({ ...formData, type: t.type })}
                                 className={`flex flex-col items-center justify-center p-2 rounded-lg border transition-all ${formData.type === t.type
-                                        ? 'bg-blue-50 border-blue-500 text-blue-700 ring-1 ring-blue-500 shadow-sm'
-                                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                    ? 'bg-blue-50 border-blue-500 text-blue-700 ring-1 ring-blue-500 shadow-sm'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                                     }`}
                             >
                                 <span className="text-xl mb-1">{t.icon}</span>

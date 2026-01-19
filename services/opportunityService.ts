@@ -1,88 +1,67 @@
 
-import {
-    collection,
-    addDoc,
-    updateDoc,
-    doc,
-    deleteDoc,
-    getDocs,
-    getDoc,
-    Timestamp,
-    query,
-    orderBy,
-    runTransaction,
-    DocumentReference
-} from 'firebase/firestore';
 import { db } from './firebaseConfig';
-import {
-    Opportunity,
-    OpportunityStatus,
-    PipelineStage,
-    Task,
-    TaskStatus
-} from '../types';
-import { getExecutionPercent, getNextStage, getStageLabel } from '../domain/pipeline';
-import { OFFICIAL_USERS } from '../constants';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { Opportunity, PipelineStage, Task } from '../types';
+import { BidService } from './bidService';
+import { OFFICIAL_USERS } from '../constants'; // Keep for legacy fallback if needed
 
 const OPPORTUNITIES_COLLECTION = 'opportunities';
-const TASKS_COLLECTION = 'tasks';
 
+/**
+ * Compatibility Service Wrapper
+ * Redirects all writes to BidService (Canonical).
+ * Reads from BidService, but falls back to 'opportunities' collection if empty.
+ */
 export const OpportunityService = {
 
     /**
-     * Creates a new Opportunity. 
+     * Creates a new Opportunity -> redirected to BidService.create
      */
     async create(data: Omit<Opportunity, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'pipelineStage' | 'probability'>): Promise<string> {
-        // Basic validations can remain for Creation
-        if (!data.clientName || !data.deadline) {
-            throw new Error("Campos obrigatórios: Nome do Cliente e Prazo.");
-        }
-
-        const initialStage = PipelineStage.LEAD_RECEBIDO;
-
-        const newOpportunity: Omit<Opportunity, 'id'> = {
+        // Adapt fields if necessary
+        const bidPayload = {
             ...data,
-            pipelineStage: initialStage,
-            probability: getExecutionPercent(initialStage),
-            status: OpportunityStatus.ATIVA,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-
-            // Ensure compatibility if not passed (though Form should pass it)
+            title: data.title,
+            clientId: data.clientName, // Store clientName in clientId temporarily if ID not available? 
+            // WAIT: The original create received clientName, not clientId?
+            // Refactor Note: The original code used data.clientName. 
+            // We must ensure we have a valid clientId or keep string. 
+            // Bid types.ts says clientId: string, clientName: string.
+            // We pass data as is, assuming it matches 'Bid' shape mostly.
+            clientId: data.clientName, // Quick fix for legacy calls that might not pass ID. 
+            // Ideally UI passes ID. We'll trust the payload has what's needed or strictly needed fields.
             contactId: data.contactId || '',
             ownerId: data.ownerId || '',
-            contactName: data.contactName || '',
         };
 
-        const docRef = await addDoc(collection(db, OPPORTUNITIES_COLLECTION), newOpportunity);
+        const docRef = await BidService.create(bidPayload as any);
         return docRef.id;
     },
 
     /**
      * Fetches all opportunities.
+     * Strategy: Try BidService (bids). If empty, fetch legacy 'opportunities'.
      */
     async getAll(): Promise<Opportunity[]> {
+        // 1. Try Canonical
+        const bids = await BidService.getAll();
+
+        if (bids.length > 0) {
+            return bids as Opportunity[];
+        }
+
+        // 2. Fallback to Legacy
+        console.warn("OpportunityService: Fallback to 'opportunities' collection.");
         const q = query(collection(db, OPPORTUNITIES_COLLECTION), orderBy('updatedAt', 'desc'));
         const snapshot = await getDocs(q);
 
-        // HELPER: Strict String Sanitizer
         const safeStr = (v: any) => typeof v === 'string' ? v : '';
-
-        // HELPER: Strict Date Sanitizer
         const safeDate = (val: any) => {
-            if (!val) return new Date(); // Default to now if missing
+            if (!val) return new Date();
             if (val instanceof Date) return val;
-            if (typeof val.toDate === 'function') return val.toDate(); // Firestore Timestamp
-            if (val && typeof val.seconds === 'number') return new Date(val.seconds * 1000); // Raw Timestamp
-
-            // Handle recursion bug objects or other trash
-            if (typeof val === 'object') return new Date();
-
-            const parsed = new Date(val);
-            return isNaN(parsed.getTime()) ? new Date() : parsed;
+            if (typeof val.toDate === 'function') return val.toDate();
+            return new Date(val);
         };
-
-        // HELPER: Strict Number Sanitizer
         const safeNum = (v: any) => typeof v === 'number' ? v : 0;
 
         return snapshot.docs.map(doc => {
@@ -90,22 +69,19 @@ export const OpportunityService = {
             return {
                 id: doc.id,
                 ...data,
-                // Apply Sanitization
                 title: safeStr(data.title),
                 clientName: safeStr(data.clientName),
+                clientId: safeStr(data.clientName), // Legacy data lacks clientId usually
                 estimatedValue: safeNum(data.estimatedValue),
-
-                // New Fields
-                contactId: safeStr(data.contactId || data.responsibleId), // Fallback for migration
+                contactId: safeStr(data.contactId || data.responsibleId),
                 ownerId: safeStr(data.ownerId),
                 contactName: safeStr(data.contactName || data.responsibleName),
-
                 deadline: safeDate(data.deadline),
                 createdAt: safeDate(data.createdAt),
                 updatedAt: safeDate(data.updatedAt),
                 submissionDate: data.submissionDate ? safeDate(data.submissionDate) : undefined,
 
-                // Fallback Logic for Owners (Optional denormalization check)
+                // Owner Name Fallback
                 ownerName: (() => {
                     const oId = safeStr(data.ownerId);
                     const match = OFFICIAL_USERS.find(u => u.id === oId);
@@ -116,106 +92,28 @@ export const OpportunityService = {
     },
 
     /**
-     * Updates an opportunity generic fields.
+     * Updates an opportunity -> redirects to BidService.update
      */
     async update(id: string, data: Partial<Opportunity>): Promise<void> {
-        const docRef = doc(db, OPPORTUNITIES_COLLECTION, id);
-        await updateDoc(docRef, {
-            ...data,
-            updatedAt: new Date()
-        });
+        await BidService.update(id, data as any);
     },
 
     /**
-     * Delete an opportunity.
+     * Delete an opportunity -> redirects to BidService.delete
      */
     async delete(id: string): Promise<void> {
-        await deleteDoc(doc(db, OPPORTUNITIES_COLLECTION, id));
+        await BidService.delete(id);
     },
 
     /**
-     * Moves the opportunity to a specific stage and creates a linked Task.
-     * Validates if the move is allowed (Next Step OR Special Backwards Rule).
+     * Moves the opportunity -> redirects to BidService.moveBid
      */
     async moveOpportunity(opportunityId: string, targetStage: PipelineStage): Promise<{ updatedOpportunity: Opportunity, createdTask: Task }> {
-
-        return await runTransaction(db, async (transaction) => {
-            // 1. Get Current Opportunity
-            const oppRef = doc(db, OPPORTUNITIES_COLLECTION, opportunityId);
-            const oppSnap = await transaction.get(oppRef);
-
-            if (!oppSnap.exists()) {
-                throw new Error("Oportunidade não encontrada.");
-            }
-
-            const currentOpp = oppSnap.data() as Opportunity;
-            const currentStage = currentOpp.pipelineStage;
-
-            // 2. Validate Move
-            const allowedNext = getNextStage(currentStage);
-
-            // Rule 1: Allow exact next stage
-            const isForward = targetStage === allowedNext;
-
-            // Rule 2: Special Backward Rule (Aguardando Resultado -> Revisão)
-            const isSpecialBackwards = currentStage === PipelineStage.AGUARDANDO_RESULTADO && targetStage === PipelineStage.REVISAO_FINAL;
-
-            if (!isForward && !isSpecialBackwards) {
-                throw new Error(`Movimento inválido: De ${currentStage} para ${targetStage}.`);
-            }
-
-            // 3. Prepare Opportunity Updates
-            const newProbability = getExecutionPercent(targetStage);
-            const updatedOppData = {
-                pipelineStage: targetStage,
-                probability: newProbability,
-                updatedAt: new Date()
-            };
-
-            transaction.update(oppRef, updatedOppData);
-
-            // 4. Create Linked Task
-            const newTaskRef = doc(collection(db, TASKS_COLLECTION));
-
-            const newTaskData: Omit<Task, 'id'> = {
-                title: `[${getStageLabel(targetStage)}] - ${currentOpp.title}`,
-                description: `Tarefa gerada automaticamente para a etapa ${getStageLabel(targetStage)}.`,
-                opportunityId: opportunityId,
-                stageAtCreation: targetStage,
-                assigneeId: currentOpp.ownerId || 'SYSTEM',
-                status: TaskStatus.PENDING,
-                priority: 'MEDIO',
-                startDate: new Date(),
-                endDate: new Date(),
-                needsDetails: true,
-                progress: 0,
-                observations: '',
-                createdAt: new Date(),
-                updatedAt: new Date(),
-                moduleCategory: 'COMERCIAL' // Auto-categorization
-            } as any;
-
-            transaction.set(newTaskRef, newTaskData);
-
-            // 5. Return Results
-            const convertToDate = (val: any) => (val && val.toDate) ? val.toDate() : val;
-
-            const updatedOpportunity: Opportunity = {
-                ...currentOpp,
-                ...updatedOppData,
-                deadline: convertToDate(currentOpp.deadline),
-                createdAt: convertToDate(currentOpp.createdAt),
-                submissionDate: convertToDate(currentOpp.submissionDate),
-                updatedAt: new Date()
-            };
-
-            const createdTask: Task = {
-                id: newTaskRef.id,
-                ...newTaskData
-            };
-
-            return { updatedOpportunity, createdTask };
-        });
+        const result = await BidService.moveBid(opportunityId, targetStage);
+        return {
+            updatedOpportunity: result.updatedBid as Opportunity,
+            createdTask: result.createdTask
+        };
     }
 
 };

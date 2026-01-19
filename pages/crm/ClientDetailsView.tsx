@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useCrm } from '../../contexts/CrmContext';
-import { getClientHealth } from '../../src/lib/crm-analytics';
+import { calculateClientHealth } from '../../domain/relationshipAnalytics';
 import { TimelineItem } from '../../components/crm/TimelineItem';
-import { Plus, Building2, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Plus, Building2, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react'; // Added XCircle
 import { UserAvatar } from '../../components/ui/UserAvatar'; // Assumindo componente
 
 export const ClientDetailsView: React.FC = () => {
@@ -12,29 +12,32 @@ export const ClientDetailsView: React.FC = () => {
     const { clients, interactions, contacts, opportunities, addInteraction } = useCrm();
     const [activeTab, setActiveTab] = useState<'overview' | 'timeline'>('timeline');
 
-    const client = clients.find(c => c.id === id);
+    const client = clients.find((c: any) => c.id === id);
 
     if (!client) return <div className="p-8 text-center text-slate-500">Cliente não encontrado.</div>;
 
-    // Analytics Local
-    // @ts-ignore
-    const health = getClientHealth(client, interactions, opportunities || []);
-
-    // Interações Ordenadas
+    // Filter Data for this Client
     const clientInteractions = interactions
-        .filter(i => i.clientId === client.id)
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        .filter((i: any) => i.clientId === client.id)
+        .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    const clientContacts = contacts.filter(c => c.clientId === client.id);
+    // @ts-ignore
+    const clientBids = (opportunities || []).filter(o => o.clientId === client.id);
+    const clientContacts = contacts.filter((c: any) => c.clientId === client.id);
+
+    // Analytics Domain
+    const health = calculateClientHealth(clientInteractions, clientBids, clientContacts);
 
     const getHealthBadge = () => {
         switch (health.status) {
-            case 'RISK':
-                return <span className="flex items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-sm font-medium text-red-700"><AlertTriangle className="h-4 w-4" /> Risco ({health.daysSilence}d)</span>;
-            case 'ATTENTION':
-                return <span className="flex items-center gap-1 rounded-full bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-800"><AlertTriangle className="h-4 w-4" /> Atenção ({health.daysSilence}d)</span>;
+            case 'EM_RISCO':
+                return <span className="flex items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-sm font-medium text-red-700"><AlertTriangle className="h-4 w-4" /> Risco ({health.silenceDays}d)</span>;
+            case 'PERDIDA':
+                return <span className="flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700"><XCircle className="h-4 w-4" /> Perdida ({health.silenceDays}d)</span>;
+            case 'ATENCAO':
+                return <span className="flex items-center gap-1 rounded-full bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-800"><AlertTriangle className="h-4 w-4" /> Atenção ({health.silenceDays}d)</span>;
             default:
-                return <span className="flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-700"><CheckCircle2 className="h-4 w-4" /> Ativo</span>;
+                return <span className="flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-700"><CheckCircle2 className="h-4 w-4" /> Ativa</span>;
         }
     };
 
@@ -157,7 +160,7 @@ export const ClientDetailsView: React.FC = () => {
                             <div className="space-y-3 pt-2">
                                 <div className="flex items-center justify-between text-sm">
                                     <span className="text-slate-500">Última Interação</span>
-                                    <span className="font-medium text-slate-900">{health.daysSilence} dias atrás</span>
+                                    <span className="font-medium text-slate-900">{health.silenceDays} dias atrás</span>
                                 </div>
                                 <div className="flex items-center justify-between text-sm">
                                     <span className="text-slate-500">Contatos Ativos</span>

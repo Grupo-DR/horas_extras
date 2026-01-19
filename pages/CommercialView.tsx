@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Task, User, TaskStatus, HelpChainLevel, HistoryLog, Notification, TaskOutcome, Opportunity, PipelineStage } from '../types';
+import { Task, User, TaskStatus, HelpChainLevel, HistoryLog, Notification, TaskOutcome, Bid, PipelineStage } from '../types';
 import { TaskForm } from '../components/TaskForm';
 import { OpportunityForm } from '../components/Pipeline/OpportunityForm';
 
@@ -8,13 +8,16 @@ import { EscalationSettings } from '../components/EscalationSettings';
 import { HistoryPanel } from '../components/HistoryPanel';
 import { Layout, LayoutDashboard, PlusCircle, Filter, Bell, Bot, Settings, LogOut, Columns, List, TrendingUp, AlertTriangle, CheckCircle, Calendar, DollarSign, Activity, Users, ChevronDown, Link as LinkIcon, X, FileText, Target } from 'lucide-react';
 import { draftEscalationEmail, draftWelcomeEmail } from '../services/geminiService';
-import { OpportunityService } from '../services/opportunityService';
+import { BidService } from '../services/bidService';
+// OpportunityService removed as we use CrmContext/BidService now
 import { UserService } from '../services/userService';
 import { isPast, format, startOfYear, isWithinInterval, startOfMonth, endOfMonth, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, LineChart, Line } from 'recharts';
 import { Toaster, toast } from 'sonner';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useCrm } from '../contexts/CrmContext';
+import { migrateOpportunitiesToBidsOnce } from '../utils/migrationUtils';
 
 // THEME COLORS
 const COLORS = {
@@ -82,14 +85,15 @@ export const CommercialView: React.FC = () => {
     const solutionIdFilter = searchParams.get('solutionId');
     const kpiIdFilter = searchParams.get('kpiId');
 
+    // CRM Context Integration
+    const { bids: opportunities, refresh } = useCrm(); // Aliasing bids to opportunities to minimize refactor
+
     // MOCK LOGIN for now
     const currentUser = MOCK_USERS[Math.floor(Math.random() * MOCK_USERS.length)];
 
     // VIEW STATE
     const [view, setView] = useState<'DASHBOARD' | 'STRATEGIC' | 'SETTINGS'>('DASHBOARD');
     const [tasks, setTasks] = useState<Task[]>([]);
-    // NEW: Lifted Opportunities State
-    const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
 
     // FIREBASE SYNC TASKS
     useEffect(() => {
@@ -154,28 +158,6 @@ export const CommercialView: React.FC = () => {
         return () => unsubscribe();
     }, []);
 
-    // NEW: FETCH OPPORTUNITIES
-    const fetchOpportunities = async () => {
-        try {
-            const data = await OpportunityService.getAll();
-
-            // DOUBLE CHECK: Extra Layer of Sanitation before State
-            // Helper s() duplicated here for safety in this scope or define globally
-            const s = (v: any) => typeof v === 'string' ? v : '';
-
-            const sanitizedData = data.map(op => ({
-                ...op,
-                title: s(op.title),
-                clientName: s(op.clientName),
-            }));
-
-            setOpportunities(sanitizedData);
-        } catch (e) {
-            console.error("Error fetching opportunities", e);
-            toast.error("Erro ao carregar pipeline.");
-        }
-    };
-
     // NEW: User State
     const [users, setUsers] = useState<User[]>([]);
 
@@ -191,13 +173,6 @@ export const CommercialView: React.FC = () => {
         loadUsers();
     }, []);
 
-    useEffect(() => {
-        const load = async () => {
-            await fetchOpportunities();
-        };
-        load();
-    }, []);
-
     const [helpChain, setHelpChain] = useState<HelpChainLevel[]>(INITIAL_CHAIN);
     // currentUser state lifted to top
     const [logs, setLogs] = useState<HistoryLog[]>([]);
@@ -209,7 +184,7 @@ export const CommercialView: React.FC = () => {
     const [taskFormMode, setTaskFormMode] = useState<'FULL' | 'QUICK_EDIT'>('FULL'); // NEW State
     // NEW OPPORTUNITY STATE
     const [isOpportunityModalOpen, setIsOpportunityModalOpen] = useState(false);
-    const [editingOpportunity, setEditingOpportunity] = useState<Opportunity | undefined>(undefined);
+    const [editingOpportunity, setEditingOpportunity] = useState<Bid | undefined>(undefined);
 
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
@@ -562,7 +537,7 @@ export const CommercialView: React.FC = () => {
         });
 
 
-        const clientsAnalysisData = Object.values(clientResults).sort((a, b) => b.success - a.success);
+        const clientsAnalysisData = (Object.values(clientResults) as any[]).sort((a, b) => b.success - a.success);
 
         // 6. Conversion Rate & Pipeline Totals
         // Conversion Rate = (Success Count / Total Opportunities) * 100
@@ -588,14 +563,15 @@ export const CommercialView: React.FC = () => {
 
 
 
-    // NEW: Delete Opportunity
+    // NEW: Delete Opportunity (Using BidService / OpportunityService)
     const handleDeleteOpportunity = async (id: string) => {
         if (window.confirm("ATENÇÃO: Tem certeza que deseja excluir esta oportunidade permanentemente?")) {
             try {
-                await OpportunityService.delete(id);
+                // Use BidService directly
+                await BidService.delete(id);
                 toast.success("Oportunidade excluída com sucesso.");
-                // Refresh list
-                await fetchOpportunities();
+                // Refresh list using context
+                refresh();
             } catch (error) {
                 console.error("Erro ao excluir oportunidade:", error);
                 toast.error("Erro ao excluir oportunidade.");
@@ -1041,13 +1017,12 @@ export const CommercialView: React.FC = () => {
                             <div className="flex-1 overflow-hidden">
                                 <PipelineBoard
                                     opportunities={opportunities} // NEW: Pass down
-                                    refreshOpportunities={fetchOpportunities} // NEW: Pass down refresh
+                                    refreshOpportunities={refresh}
                                     onEditOpportunity={(op) => { setEditingOpportunity(op); setIsOpportunityModalOpen(true); }}
                                     onDeleteOpportunity={handleDeleteOpportunity}
-                                    onTaskCreated={(task) => {
-                                        setEditingTask(task);
-                                        setTaskFormMode('QUICK_EDIT');
-                                        setIsTaskModalOpen(true);
+                                    onTaskCreated={(newTask) => {
+                                        setTasks(prev => [...prev, newTask]);
+                                        toast.success("Ação criada a partir do pipeline!");
                                     }}
                                 />
                             </div>
@@ -1055,12 +1030,40 @@ export const CommercialView: React.FC = () => {
                     </div>
                 )}
 
+
                 {/* SETTINGS VIEW */}
                 {view === 'SETTINGS' && (
                     <div
-                        className="max-w-4xl mx-auto"
+                        className="max-w-4xl mx-auto space-y-8"
                     >
                         <EscalationSettings chain={helpChain} onSave={setHelpChain} />
+
+                        {/* MIGRATION TOOL (Admin) */}
+                        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+                            <h3 className="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
+                                <AlertTriangle className="text-yellow-500" /> Ferramentas de Migração
+                            </h3>
+                            <p className="text-sm text-slate-500 mb-4">
+                                Use esta ferramenta para migrar dados legados ("Opportunities") para a nova estrutura unificada ("Bids").
+                                A operação é segura e não duplica dados já migrados.
+                            </p>
+                            <button
+                                onClick={async () => {
+                                    if (confirm("Deseja iniciar a migração de dados? Isso pode levar alguns instantes.")) {
+                                        try {
+                                            const result = await migrateOpportunitiesToBidsOnce();
+                                            alert(`Migração Concluída!\nMigrados: ${result.migratedCount}\nPulados: ${result.skippedCount}\nErros: ${result.errorsCount}`);
+                                            refresh(); // Refresh context
+                                        } catch (e) {
+                                            alert("Erro na migração: " + e);
+                                        }
+                                    }
+                                }}
+                                className="px-4 py-2 bg-slate-800 text-white font-bold rounded-lg hover:bg-slate-900 transition-colors"
+                            >
+                                Executar Migração (Opportunities -&gt; Bids)
+                            </button>
+                        </div>
                     </div>
                 )}
             </div >
@@ -1071,7 +1074,7 @@ export const CommercialView: React.FC = () => {
                     initialData={editingOpportunity}
                     linkedTasks={tasks.filter(t => t.opportunityId === editingOpportunity?.id)}
                     onClose={() => { setIsOpportunityModalOpen(false); setEditingOpportunity(undefined); }}
-                    onSave={fetchOpportunities}
+                    onSave={refresh}
                     onDelete={handleDeleteOpportunity}
                 />
             )}

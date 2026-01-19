@@ -1,23 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { PipelineStage, Opportunity, Task } from '../../types'; // Added Task
-import { OpportunityService } from '../../services/opportunityService';
+import { PipelineStage, Bid, Task } from '../../types';
+import { BidService } from '../../services/bidService';
 import { PipelineColumn } from './PipelineColumn';
 import { toast } from 'sonner';
-import { getNextStage, getPipelineStages } from '../../domain/pipeline'; // Import Domain
+import { getNextStage, getPipelineStages } from '../../domain/pipeline';
 
 interface PipelineBoardProps {
-    opportunities: Opportunity[]; // NEW
-    refreshOpportunities: () => void; // NEW
-    onEditOpportunity?: (opportunity: Opportunity) => void;
-    onDeleteOpportunity?: (id: string) => void; // NEW
+    opportunities: Bid[]; // Using Canonical Type
+    refreshOpportunities: () => void;
+    onEditOpportunity?: (opportunity: Bid) => void;
+    onDeleteOpportunity?: (id: string) => void;
     onTaskCreated?: (task: Task) => void;
 }
 
 export const PipelineBoard: React.FC<PipelineBoardProps> = ({ opportunities, refreshOpportunities, onEditOpportunity, onDeleteOpportunity, onTaskCreated }) => {
-    // REMOVED: Internal state and fetching
-
-
-
 
     // Filter Opportunities by Stage and Sort by Priority
     const getOpportunitiesByStage = (stage: PipelineStage) => {
@@ -61,9 +57,9 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({ opportunities, ref
 
         // Logic for Advancing (or Moving Back)
         try {
-            const { updatedOpportunity, createdTask } = await OpportunityService.moveOpportunity(opportunity.id, targetStage);
+            // Use BidService directly
+            const { updatedBid, createdTask } = await BidService.moveBid(opportunity.id, targetStage);
 
-            // Update Local State
             // Update Parent State
             refreshOpportunities();
 
@@ -88,8 +84,6 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({ opportunities, ref
         }
     };
 
-
-
     const stages = getPipelineStages();
 
     return (
@@ -100,7 +94,7 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({ opportunities, ref
                         <PipelineColumn
                             key={stage}
                             stage={stage}
-                            opportunities={getOpportunitiesByStage(stage)}
+                            opportunities={getOpportunitiesByStage(stage)} // Prop name kept for compatibility with Column component
                             onDrop={handleDrop}
                             onDragOver={handleDragOver}
                             onCardClick={handleCardClick}

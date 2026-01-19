@@ -12,7 +12,7 @@ export const OFFICIAL_USERS: User[] = [
 ];
 
 export const CRM_SILENCE = {
-    CONTACT_DAYS: 45,
+    CONTACT_DAYS: 30, // Updated to 30 as per plan
     CLIENT_INTERACTION_DAYS: 60,
     CLIENT_BID_DAYS: 120,
     WINDOW_CONTACT_ACTIVE_DAYS: 90,

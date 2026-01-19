@@ -8,7 +8,7 @@ import {
     where
 } from 'firebase/firestore';
 import { db } from './firebaseConfig';
-import { Contact } from '../types/crm';
+import { ClientContact as Contact } from '../types';
 
 const COLLECTION_NAME = 'contacts';
 
