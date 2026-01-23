@@ -1112,7 +1112,7 @@ export const CommercialView: React.FC = () => {
             {isOpportunityModalOpen && (
                 <OpportunityForm
                     initialData={editingOpportunity}
-                    linkedTasks={tasks.filter(t => t.opportunityId === editingOpportunity?.id)}
+                    linkedTasks={(tasks || []).filter(t => t.opportunityId === editingOpportunity?.id)}
                     onClose={() => { setIsOpportunityModalOpen(false); setEditingOpportunity(undefined); }}
                     onSuccess={refresh}
                 />
@@ -1126,8 +1126,8 @@ export const CommercialView: React.FC = () => {
                 )}
                 users={users}
                 availableParents={[
-                    ...tasks.filter(t => !t.parentId && !t.opportunityId).map(t => ({ ...t, id: String(t.id), title: String(t.title), clientName: String(t.clientName || '') })),
-                    ...opportunities.map(op => {
+                    ...(tasks || []).filter(t => !t.parentId && !t.opportunityId).map(t => ({ ...t, id: String(t.id), title: String(t.title), clientName: String(t.clientName || '') })),
+                    ...(opportunities || []).map(op => {
                         // Safe conversion inside map to prevent crash
                         const opId = typeof op.id === 'string' ? op.id : 'invalid-id';
                         const opTitle = typeof op.title === 'string' ? op.title : 'Sem Título';
