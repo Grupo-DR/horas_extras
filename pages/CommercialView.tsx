@@ -79,7 +79,7 @@ export const CommercialView: React.FC = () => {
     const kpiIdFilter = searchParams.get('kpiId');
 
     // CRM Context Integration
-    const { bids: opportunities, refresh } = useCrm(); // Aliasing bids to opportunities to minimize refactor
+    const { bids: opportunities = [], refresh } = useCrm(); // Aliasing bids to opportunities to minimize refactor
     const { user: currentUser } = useAuth(); // REAL USER
 
     // --- NEW IMPORT MODAL STATE ---
