@@ -25,9 +25,21 @@ export const LocalBMParser = {
         for (let i = 1; i <= doc.numPages; i++) {
             const page = await doc.getPage(i);
             const textContent = await page.getTextContent();
-            // Join with space, but maybe we can be smarter about layout (future)
-            // Using a special separator to debug layout
-            const pageText = textContent.items.map((item: any) => item.str).join(' ');
+
+            // Layout reconstruction: Group by Y coordinate (lines)
+            const lines: Record<number, string[]> = {};
+
+            for (const item of textContent.items as any[]) {
+                // Round Y to avoid float jitter (e.g. 100.0001 vs 100.0002)
+                const y = Math.round(item.transform[5]);
+                if (!lines[y]) lines[y] = [];
+                lines[y].push(item.str);
+            }
+
+            // Sort by Y (PDF Y is usually bottom-up, so higher Y is top of page)
+            const sortedYs = Object.keys(lines).map(Number).sort((a, b) => b - a);
+
+            const pageText = sortedYs.map(y => lines[y].join(' ')).join('\n');
             fullText += `\n--- PAGE ${i} ---\n` + pageText;
         }
 
@@ -83,13 +95,14 @@ export const LocalBMParser = {
                 fields.entityType = 'CONSTRUTORA';
             }
 
+            // --- AUDIT MATRIX EXTRACTION (Heuristic) ---
+            fields.auditMatrix = this.extractAuditMatrix(text);
         } else if (type === 'RDO') {
-            // --- RDO EXTRACTION LOGIC ---
-
+            // ... existing RDO logic
             // DATA: "Data: 11/09/2025"
             const dateMatch = text.match(/Data[\s\n.:]*([0-9]{2}\/[0-9]{2}\/[0-9]{4})/i);
             if (dateMatch) fields.date = dateMatch[1];
-
+            // ... (rest of RDO)
             // OBRA / LOCAL
             const siteMatch = text.match(/Obra[\s\n.:]*([^\n]+)/i);
             if (siteMatch) fields.siteName = siteMatch[1].trim();
@@ -103,7 +116,20 @@ export const LocalBMParser = {
             type,
             rawText: text,
             fields,
-            confidence: 0.5 // Placeholder
+            confidence: fields.auditMatrix?.length > 0 ? 0.9 : 0.5
         };
+    },
+
+    extractAuditMatrix(text: string): any[] {
+        const matrix: any[] = [];
+        // Strategy: detected lines that start with a code VLI (usually numbers like 1032, 2.1, etc)
+        // AND contain currency values.
+
+        // 1. Split into lines (pdfjs returns text joined by spaces mostly, but our loop added newlines contextually?
+        // Wait, our parsePDF joined pages with \n, but inside page joined items with ' '.
+        // We might lost line breaks within the page! 
+        // FIX: The current parsePDF implementation joins everything with ' '. This DESTROYS table structure.
+        // We must fix parsePDF to preserve lines first.
+        return matrix;
     }
 };
