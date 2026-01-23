@@ -68,7 +68,15 @@ const safeData = (v: any) => {
 // HELPER: Strict String
 const s = (v: any) => typeof v === 'string' ? v : '';
 // HELPER: Strict Number
-const n = (v: any) => typeof v === 'number' ? v : 0;
+// HELPER: Strict Number (Enhanced)
+const n = (v: any) => {
+    if (typeof v === 'number') return isNaN(v) ? 0 : v;
+    if (typeof v === 'string') {
+        const parsed = parseFloat(v.replace(/[^\d.-]/g, '')); // Strip currency symbols if present
+        return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+};
 
 export const CommercialView: React.FC = () => {
     // --- STATE ---
