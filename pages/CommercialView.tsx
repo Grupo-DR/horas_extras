@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { DocumentImportModal } from '../components/DocumentImportModal';
 import { Task, User, TaskStatus, HelpChainLevel, HistoryLog, Notification, TaskOutcome, Bid, PipelineStage } from '../types';
 import { TaskForm } from '../components/TaskForm';
 import { OpportunityForm } from '../components/Pipeline/OpportunityForm'; // Import OpportunityForm
@@ -6,8 +7,8 @@ import { OpportunityForm } from '../components/Pipeline/OpportunityForm'; // Imp
 import { PipelineBoard } from '../components/Pipeline/PipelineBoard';
 import { EscalationSettings } from '../components/EscalationSettings';
 import { HistoryPanel } from '../components/HistoryPanel';
-import { Layout, LayoutDashboard, PlusCircle, Filter, Bell, Bot, Settings, LogOut, Columns, List, TrendingUp, AlertTriangle, CheckCircle, Calendar, DollarSign, Activity, Users, ChevronDown, Link as LinkIcon, X, FileText, Target, Database } from 'lucide-react';
-import { draftEscalationEmail, draftWelcomeEmail } from '../services/geminiService';
+import { Layout, LayoutDashboard, PlusCircle, Filter, Bell, Bot, Settings, LogOut, Columns, List, TrendingUp, AlertTriangle, CheckCircle, Calendar, DollarSign, Activity, Users, ChevronDown, Link as LinkIcon, X, FileText, Target, Database, Upload } from 'lucide-react';
+// import { draftEscalationEmail, draftWelcomeEmail } from '../services/geminiService'; // REMOVED
 import { BidService } from '../services/bidService';
 // OpportunityService removed as we use CrmContext/BidService now
 import { UserService } from '../services/userService';
@@ -80,6 +81,22 @@ export const CommercialView: React.FC = () => {
     // CRM Context Integration
     const { bids: opportunities, refresh } = useCrm(); // Aliasing bids to opportunities to minimize refactor
     const { user: currentUser } = useAuth(); // REAL USER
+
+    // --- NEW IMPORT MODAL STATE ---
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+    const handleImportData = (data: any) => {
+        console.log("Imported Data:", data);
+        if (data.documentType === 'BM') {
+            // Logic to create Contract Measurement or update Contract
+            // For now, simpler alerting as full integration is separate task
+            toast.success(`Medição do Contrato ${data.contractId || '?'} recebida!`, { description: `Valor: ${data.value}` });
+        } else if (data.documentType === 'RDO') {
+            // Logic to create RDO
+            toast.success(`RDO Importado! Data: ${data.date}`, { description: `Obra: ${data.siteName}` });
+        }
+        setIsImportModalOpen(false);
+    };
 
     // VIEW STATE
     const [view, setView] = useState<'DASHBOARD' | 'STRATEGIC' | 'SETTINGS'>('DASHBOARD');
@@ -246,25 +263,13 @@ export const CommercialView: React.FC = () => {
 
                 addLog(docRef.id, 'Tarefa Criada');
 
-                // --- GEMINI WELCOME EMAIL TRIGGER ---
+                // --- GEMINI WELCOME EMAIL REMOVED ---
+                /* 
                 const assigneeName = users.find(u => u.id === finalDocData.assigneeId)?.name || 'Colaborador';
-                const assigneeEmail = users.find(u => u.id === finalDocData.assigneeId)?.email || 'admin';
+                // ... logic removed as per user request
+                */
 
-                // Create full Task object for the function
-                const taskForEmail = { ...finalDocData, id: docRef.id } as Task;
-
-                // Async call - does not block UI
-                draftWelcomeEmail(taskForEmail, assigneeName).then(emailContent => {
-                    addNotification({
-                        taskId: docRef.id,
-                        taskTitle: finalDocData.title as string,
-                        type: 'START',
-                        recipient: assigneeEmail,
-                        subject: `Nova Tarefa Atribuída: ${finalDocData.title}`,
-                        content: emailContent
-                    });
-                    toast.info("Rascunho de e-mail gerado com sucesso!", { description: "Verifique o painel de notificações." });
-                });
+                toast.success("Tarefa criada com sucesso!");
 
                 toast.success("Tarefa criada com sucesso!");
             }
@@ -695,7 +700,17 @@ export const CommercialView: React.FC = () => {
                     )}
                 </div>
 
+
                 <div className="flex actions gap-3">
+                    {/* IMPORT BUTTON */}
+                    <button
+                        onClick={() => setIsImportModalOpen(true)}
+                        className="p-2 text-slate-500 hover:bg-blue-50 hover:text-blue-600 rounded-full transition-colors"
+                        title="Importar Medição ou RDO (PDF)"
+                    >
+                        <Upload size={20} />
+                    </button>
+
                     {/* MIGRATION BUTTON - TEMP */}
                     <button
                         onClick={handleMigration}
@@ -744,6 +759,12 @@ export const CommercialView: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            <DocumentImportModal
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
+                onImport={handleImportData}
+            />
 
             {/* CONTENT AREA */}
             <div className="flex-1 overflow-y-auto p-6 relative">

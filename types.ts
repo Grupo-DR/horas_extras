@@ -5,12 +5,18 @@ export enum TaskStatus {
   LATE = 'LATE',             // Atrasado
 }
 
-export interface User {
+/**
+ * @deprecated Use User from types/auth instead.
+ */
+export interface LegacyUser {
   id: string;
   name: string;
   role: string;
   email: string;
 }
+
+// Re-export User from the auth source of truth
+export type { User } from './types/auth';
 
 export interface HelpChainLevel {
   level: number;
@@ -36,7 +42,7 @@ export interface Notification {
   type: 'START' | 'END' | 'LATE_WARNING' | 'ESCALATION';
   recipient: string;
   subject: string;
-  content?: string; // Conteúdo gerado pela IA (e-mail draft)
+  content?: string; // Conteúdo do email (opcional)
   sentAt: Date;
 }
 
