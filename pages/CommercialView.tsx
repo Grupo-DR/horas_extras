@@ -468,7 +468,7 @@ export const CommercialView: React.FC = () => {
         // 4. Financials - Optimized Single Reduce (Legacy Only for now, maybe add Pipeline values?)
         const outcomes = relevantMothers.reduce((acc, mother) => {
             // Sum value of CHILDREN that are 'Proposta Comercial' for this mother
-            const motherValue = tasks // checking against ALL tasks to find children
+            const motherValue = (tasks || []) // checking against ALL tasks to find children
                 .filter(child => child.parentId === mother.id && child.category === 'Proposta Comercial')
                 .reduce((sum, child) => sum + (child.value || 0), 0);
 
