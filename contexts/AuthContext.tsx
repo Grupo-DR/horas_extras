@@ -51,7 +51,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists()) {
-                    setUser(docSnap.data() as User);
+                    let userData = docSnap.data() as User;
+
+                    // --- EMERGENCY ADMIN RECOVERY ---
+                    if (firebaseUser.email === 'antonio.silva@grupodr.com.br') {
+                        userData = {
+                            ...userData,
+                            systemRole: 'ADMIN',
+                            role: 'Administrador Master',
+                            permissions: {
+                                crm: 'EDIT',
+                                commercial_dashboard: 'EDIT',
+                                financial: 'EDIT',
+                                strategic_planning: 'EDIT',
+                                operational_planning: 'EDIT',
+                                settings: 'EDIT',
+                                users: 'EDIT'
+                            }
+                        };
+                        // Optional: Write back to DB to fix permanently
+                        await updateDoc(docRef, userData);
+                    }
+                    // --------------------------------
+
+                    setUser(userData);
                 } else {
                     // Create profile if it doesn't exist (First Login)
                     // We might need to know the role here, but for first login logic, 
