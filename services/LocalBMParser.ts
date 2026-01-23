@@ -120,16 +120,56 @@ export const LocalBMParser = {
         };
     },
 
-    extractAuditMatrix(text: string): any[] {
+    extractAuditMatrix(text: string): any[] | null {
         const matrix: any[] = [];
-        // Strategy: detected lines that start with a code VLI (usually numbers like 1032, 2.1, etc)
-        // AND contain currency values.
+        const lines = text.split('\n');
 
-        // 1. Split into lines (pdfjs returns text joined by spaces mostly, but our loop added newlines contextually?
-        // Wait, our parsePDF joined pages with \n, but inside page joined items with ' '.
-        // We might lost line breaks within the page! 
-        // FIX: The current parsePDF implementation joins everything with ' '. This DESTROYS table structure.
-        // We must fix parsePDF to preserve lines first.
-        return matrix;
+        for (const line of lines) {
+            // HEURISTIC v2: Relaxed Match
+            // Look for lines that contain at least TWO numbers formatted like money (1.234,56 or 1234,56)
+            // AND presumably have some text description.
+
+            // Regex for BRL value: \b\d{1,3}(?:\.\d{3})*,\d{2}\b
+            const moneyValues = line.match(/\b\d{1,3}(?:\.\d{3})*,\d{2}\b/g);
+
+            if (moneyValues && moneyValues.length >= 2) {
+                // Ignore if it looks like a date (01/01/2021 is not money, but 1.000,00 is)
+                // The regex usually implies comma decimal, dates use slash. safely separated.
+
+                // Assumption: The Last Value is Balance. The one before is Month Value.
+                // Description is everything before the first numeric value match.
+
+                // Find index of first match
+                const firstMatchIndex = line.indexOf(moneyValues[0]);
+                const preMoney = line.substring(0, firstMatchIndex).trim();
+
+                // If preMoney is empty or just a number, skip (header or weird line)
+                if (!preMoney || preMoney.length < 3) continue;
+
+                const values = moneyValues.map(v => {
+                    return parseFloat(v.replace(/\./g, '').replace(',', '.'));
+                });
+
+                const balance = values[values.length - 1];
+                const currentMonth = values.length >= 2 ? values[values.length - 2] : values[0];
+
+                const parts = preMoney.split(' ');
+                // Check if starts with code
+                const possibleCode = parts[0];
+                const hasCode = /^[\d.]+$/.test(possibleCode);
+
+                matrix.push({
+                    codeVLI: hasCode ? possibleCode : '',
+                    description: hasCode ? parts.slice(1).join(' ') : preMoney,
+                    currentMonth,
+                    balance,
+                    totalAccumulated: 0,
+                    prevAccumulated: 0,
+                    plannedContract: 0
+                });
+            }
+        }
+
+        return matrix.length > 0 ? matrix : null;
     }
 };
