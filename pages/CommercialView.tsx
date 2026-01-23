@@ -333,6 +333,7 @@ export const CommercialView: React.FC = () => {
 
     // --- FILTER LOGIC ---
     const getFilteredTasks = (sourceTasks: Task[]) => {
+        if (!sourceTasks) return [];
         const start = timeFilterType === 'MONTH' ? startOfMonth(selectedDate) :
             timeFilterType === 'YTD' ? startOfYear(selectedDate) : customRange.start;
         const end = timeFilterType === 'MONTH' ? endOfMonth(selectedDate) :
@@ -350,10 +351,10 @@ export const CommercialView: React.FC = () => {
         });
     };
 
-    const timeFilteredTasks = getFilteredTasks(tasks);
+    const timeFilteredTasks = getFilteredTasks(tasks || []);
 
     // NEW: Filter by Contract ID if present
-    const childTasks = tasks.filter(t => {
+    const childTasks = (tasks || []).filter(t => {
         if (contractIdFilter) {
             // Strict Contract Filter
             return t.contractId === contractIdFilter;
@@ -372,7 +373,7 @@ export const CommercialView: React.FC = () => {
     });
 
     // FIX: Strategic View only includes Legacy Mothers (No parent, No opportunity)
-    const motherTasks = tasks.filter(t => !t.parentId && !t.opportunityId);
+    const motherTasks = (tasks || []).filter(t => !t.parentId && !t.opportunityId);
 
     // View Filtering for Kanban/List
     const hierarchyScan = useMemo(() => {
@@ -384,6 +385,7 @@ export const CommercialView: React.FC = () => {
 
     // --- STATISTICS ENGINE ---
     const calculateMetrics = (taskList: Task[]) => {
+        if (!taskList) return { total: 0, pending: 0, inProgress: 0, late: 0, completed: 0, productivity: 0, riskRate: 0 };
         const total = taskList.length;
         const pending = taskList.filter(t => t.status === TaskStatus.PENDING).length;
         const inProgress = taskList.filter(t => t.status === TaskStatus.IN_PROGRESS).length;
@@ -400,7 +402,7 @@ export const CommercialView: React.FC = () => {
 
     const dashboardStats = useMemo(() => {
         // 1. Single Pass Filter by Time for Tasks
-        const relevantTasks = getFilteredTasks(tasks);
+        const relevantTasks = getFilteredTasks(tasks || []);
 
         // 2. Separate Mothers/Children from ALREADY filtered list
         const relevantChildren = relevantTasks.filter(t => !!t.parentId || !!t.opportunityId);
@@ -421,7 +423,7 @@ export const CommercialView: React.FC = () => {
         const end = timeFilterType === 'MONTH' ? endOfMonth(selectedDate) :
             timeFilterType === 'YTD' ? new Date() : customRange.end;
 
-        const relevantOpportunities = opportunities.filter(op => {
+        const relevantOpportunities = (opportunities || []).filter(op => {
             const opDate = new Date(op.updatedAt || op.createdAt);
             return opDate >= start && opDate <= end;
         });
@@ -481,7 +483,7 @@ export const CommercialView: React.FC = () => {
         // NEW: ADD PIPELINE OPPORTUNITIES TO FINANCIAL TOTALS
         // Filter opportunities in 'RESULTADO' stage (which are "closed")
         // Use 'result' field to categorize
-        const pipelineOutcomes = opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO);
+        const pipelineOutcomes = (opportunities || []).filter(op => op.pipelineStage === PipelineStage.RESULTADO);
 
         pipelineOutcomes.forEach(op => {
             const val = op.estimatedValue || 0;
@@ -521,7 +523,7 @@ export const CommercialView: React.FC = () => {
                 clientResults[client] = { name: client, success: 0, failure: 0, study: 0, withdrawal: 0 };
             }
             // Get children value
-            const taskValue = tasks
+            const taskValue = (tasks || [])
                 .filter(child => child.parentId === task.id && child.category === 'Proposta Comercial')
                 .reduce((sum, child) => sum + (child.value || 0), 0);
 
@@ -548,7 +550,7 @@ export const CommercialView: React.FC = () => {
         const totalPipelineValue =
             relevantOpportunities.reduce((sum, op) => sum + n(op.estimatedValue), 0) +
             relevantMothers.reduce((sum, mother) => {
-                return sum + tasks.filter(c => c.parentId === mother.id && c.category === 'Proposta Comercial').reduce((s, c) => s + (c.value || 0), 0);
+                return sum + (tasks || []).filter(c => c.parentId === mother.id && c.category === 'Proposta Comercial').reduce((s, c) => s + (c.value || 0), 0);
             }, 0);
 
 
