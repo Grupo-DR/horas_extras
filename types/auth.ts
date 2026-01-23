@@ -25,7 +25,7 @@ export interface ModuleAccess {
 export const DEFAULT_MODULE_ACCESS: ModuleAccess = {
     crm: 'VIEW',
     commercial_dashboard: 'VIEW',
-    financial: 'NONE',
+    financial: 'VIEW',
     strategic_planning: 'VIEW',
     operational_planning: 'VIEW',
     settings: 'NONE',
