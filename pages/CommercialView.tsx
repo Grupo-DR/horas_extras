@@ -1056,7 +1056,7 @@ export const CommercialView: React.FC = () => {
                             </h3>
                             <div className="flex-1 overflow-hidden">
                                 <PipelineBoard
-                                    opportunities={opportunities} // NEW: Pass down
+                                    bids={(opportunities || [])} // Corrected prop name from 'opportunities' to 'bids'
                                     refreshOpportunities={refresh}
                                     onEditOpportunity={(op) => { setEditingOpportunity(op); setIsOpportunityModalOpen(true); }}
                                     onDeleteOpportunity={handleDeleteOpportunity}
