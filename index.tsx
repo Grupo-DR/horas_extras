@@ -9,6 +9,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { CrmProvider } from './contexts/CrmContext';
 import { PrivateRoute } from './components/PrivateRoute';
 import { RequireAdmin } from './components/RequireAdmin';
+import RequireModuleAccess from './components/auth/RequireModuleAccess';
 import { LoginPage } from './pages/LoginPage';
 
 // Lazy Load Pages
@@ -27,6 +28,7 @@ const ContactDetailsView = React.lazy(() => import('./pages/crm/ContactDetailsVi
 
 // Config Pages
 const TeamSettings = React.lazy(() => import('./pages/config/TeamSettings').then(module => ({ default: module.TeamSettings })));
+const AccountSettings = React.lazy(() => import('./pages/config/AccountSettings').then(module => ({ default: module.AccountSettings })));
 
 const LoadingFallback = () => (
   <div className="flex h-screen w-full items-center justify-center bg-slate-50">
@@ -51,22 +53,43 @@ const App: React.FC = () => {
               {/* PRIVATE */}
               <Route element={<PrivateRoute />}>
                 <Route path="/" element={<MainLayout />}>
+                  import RequireModuleAccess from './components/auth/RequireModuleAccess'; // Import
+
+                  // ... inside Routes ...
+
                   <Route index element={<Navigate to="/comercial" replace />} />
-                  <Route path="comercial" element={<CommercialView />} />
-                  <Route path="contratos" element={<ContractsView />} />
-                  <Route path="dados" element={<DataCenterView />} />
-                  <Route path="kpis" element={<KPIView />} />
-                  <Route path="acoes" element={<ActionsView />} />
+
+                  <Route element={<RequireModuleAccess module="commercial_dashboard" />}>
+                    <Route path="comercial" element={<CommercialView />} />
+                  </Route>
+
+                  <Route element={<RequireModuleAccess module="financial" />}>
+                    <Route path="contratos" element={<ContractsView />} />
+                  </Route>
+
+                  <Route element={<RequireModuleAccess module="strategic_planning" />}>
+                    <Route path="dados" element={<DataCenterView />} />
+                    <Route path="kpis" element={<KPIView />} />
+                  </Route>
+
+                  <Route element={<RequireModuleAccess module="operational_planning" />}>
+                    <Route path="acoes" element={<ActionsView />} />
+                  </Route>
 
                   {/* CRM Module */}
-                  <Route path="crm" element={<Navigate to="/crm/dashboard" replace />} />
-                  <Route path="crm/dashboard" element={<RelationshipDashboard />} />
-                  <Route path="crm/clients" element={<ClientsView />} />
-                  <Route path="crm/clients/:id" element={<ClientDetailsView />} />
-                  <Route path="crm/contacts" element={<ContactsView />} />
-                  <Route path="crm/contacts/:id" element={<ContactDetailsView />} />
+                  <Route element={<RequireModuleAccess module="crm" />}>
+                    <Route path="crm" element={<Navigate to="/crm/dashboard" replace />} />
+                    <Route path="crm/dashboard" element={<RelationshipDashboard />} />
+                    <Route path="crm/clients" element={<ClientsView />} />
+                    <Route path="crm/clients/:id" element={<ClientDetailsView />} />
+                    <Route path="crm/contacts" element={<ContactsView />} />
+                    <Route path="crm/contacts/:id" element={<ContactDetailsView />} />
+                  </Route>
 
-                  {/* Config Module (Admin Only) */}
+                  {/* Account Settings */}
+                  <Route path="config/conta" element={<AccountSettings />} />
+
+                  {/* Config Module (Admin Only - kept as RequireAdmin for extra safety or use users module) */}
                   <Route
                     path="config/equipe"
                     element={

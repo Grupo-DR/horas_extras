@@ -29,11 +29,15 @@ export const TeamSettings: React.FC = () => {
         }
     };
 
-    const handleSave = (userData: Omit<User, 'id'>) => {
+    const handleSave = (userData: Omit<User, 'id'>, initialPassword?: string) => {
         if (editingUser) {
             updateUserCtx(editingUser.id, userData);
         } else {
-            addUserCtx(userData);
+            if (!initialPassword) {
+                toast.error('Senha inicial é obrigatória para novos usuários');
+                return;
+            }
+            addUserCtx(userData, initialPassword);
         }
     };
 

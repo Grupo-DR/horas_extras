@@ -1,8 +1,8 @@
-/// <reference types="vite/client" />
-import { initializeApp } from 'firebase/app';
-import { initializeFirestore } from 'firebase/firestore';
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { initializeFirestore, Firestore } from 'firebase/firestore';
+import { getAuth, setPersistence, browserLocalPersistence, Auth } from 'firebase/auth';
 
-const firebaseConfig = {
+export const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
     authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
     projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
@@ -11,7 +11,25 @@ const firebaseConfig = {
     appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-const app = initializeApp(firebaseConfig);
-export const db = initializeFirestore(app, {
-    ignoreUndefinedProperties: true
-});
+let app: FirebaseApp;
+let auth: Auth;
+let db: Firestore;
+
+if (!getApps().length) {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    // Persistence is local by default in web, but explicitly setting it is fine
+    setPersistence(auth, browserLocalPersistence).catch(console.error);
+
+    db = initializeFirestore(app, {
+        ignoreUndefinedProperties: true
+    });
+} else {
+    app = getApp();
+    auth = getAuth(app);
+    db = initializeFirestore(app, {
+        ignoreUndefinedProperties: true
+    });
+}
+
+export { app, auth, db };

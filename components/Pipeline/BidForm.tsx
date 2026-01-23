@@ -16,11 +16,11 @@ interface OpportunityFormProps {
     initialData?: Opportunity;
     linkedTasks?: Task[];
     onClose: () => void;
-    onSave: () => void; // Trigger reload
+    onSuccess: () => void; // Trigger reload
     onDelete?: (id: string) => void;
 }
 
-export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, linkedTasks = [], onClose, onSave, onDelete }) => {
+export const BidForm: React.FC<OpportunityFormProps> = ({ initialData, linkedTasks = [], onClose, onSuccess, onDelete }) => {
     // CRM Context Integration
     const { clients, getContactsByClientId } = useCrm();
     const { users } = useAuth();
@@ -101,7 +101,7 @@ export const OpportunityForm: React.FC<OpportunityFormProps> = ({ initialData, l
                 } as any); // Casting as any for now since OpportunityService might need update
                 toast.success("Oportunidade criada com sucesso!");
             }
-            onSave(); // Reload parent
+            onSuccess(); // Reload parent
             onClose();
         } catch (error: any) {
             toast.error(error.message || "Erro ao salvar.");

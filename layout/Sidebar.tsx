@@ -4,18 +4,67 @@ import { LayoutDashboard, FileText, Database, BarChart, Settings, CheckSquare, U
 import { AppModule } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 
+import { ModuleKey } from '../types/auth'; // Import ModuleKey
+
 export const Sidebar: React.FC = () => {
+
     const { user, logout } = useAuth();
     const navigate = useNavigate();
 
+    // Helper to check permission
+    const canView = (module: ModuleKey) => {
+        if (!user) return false;
+        if (user.systemRole === 'ADMIN') return true;
+        const access = user.permissions?.[module];
+        return access === 'VIEW' || access === 'EDIT';
+    };
+
     const menuItems = [
-        { module: AppModule.COMMERCIAL, label: 'Comercial', icon: LayoutDashboard, path: '/comercial' },
-        { module: AppModule.CONTRACTS, label: 'Contratos', icon: FileText, path: '/contratos' },
-        { module: AppModule.DATA_CENTER, label: 'Dados', icon: Database, path: '/dados' },
-        { module: AppModule.KPI, label: 'KPIs', icon: BarChart, path: '/kpis' },
-        { module: 'ACTIONS', label: 'Ações', icon: CheckSquare, path: '/acoes' },
-        { module: 'CRM', label: 'Relacionamento', icon: Users, path: '/crm' },
+        {
+            module: AppModule.COMMERCIAL,
+            label: 'Comercial',
+            icon: LayoutDashboard,
+            path: '/comercial',
+            authModule: 'commercial_dashboard' as ModuleKey
+        },
+        {
+            module: AppModule.CONTRACTS,
+            label: 'Contratos',
+            icon: FileText,
+            path: '/contratos',
+            authModule: 'financial' as ModuleKey
+        },
+        {
+            module: AppModule.DATA_CENTER,
+            label: 'Dados',
+            icon: Database,
+            path: '/dados',
+            authModule: 'strategic_planning' as ModuleKey
+        },
+        {
+            module: AppModule.KPI,
+            label: 'KPIs',
+            icon: BarChart,
+            path: '/kpis',
+            authModule: 'strategic_planning' as ModuleKey // KPIs usually strategic
+        },
+        {
+            module: 'ACTIONS',
+            label: 'Ações',
+            icon: CheckSquare,
+            path: '/acoes',
+            authModule: 'operational_planning' as ModuleKey
+        },
+        {
+            module: 'CRM',
+            label: 'Relacionamento',
+            icon: Users,
+            path: '/crm',
+            authModule: 'crm' as ModuleKey
+        },
     ];
+
+    const visibleItems = menuItems.filter(item => canView(item.authModule));
 
     const getInitials = (name: string) => {
         return name
@@ -53,7 +102,7 @@ export const Sidebar: React.FC = () => {
 
             {/* NAV */}
             <nav className="flex-1 flex flex-col gap-4 w-full px-3 shrink-0">
-                {menuItems.map((item) => (
+                {visibleItems.map((item) => (
                     <NavLink
                         key={item.module}
                         to={item.path}
@@ -120,14 +169,14 @@ export const Sidebar: React.FC = () => {
                     </div>
 
                     {/* Identification - Visible ONLY on Group Hover */}
-                    <div className="flex flex-col min-w-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 w-0 group-hover:w-auto group-hover:flex-1">
+                    <NavLink to="/config/conta" className="flex flex-col min-w-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 w-0 group-hover:w-auto group-hover:flex-1 hover:bg-slate-100/50 rounded p-1 cursor-pointer">
                         <span className="text-sm font-semibold text-slate-700 truncate block">
                             {user?.name || 'Usuário'}
                         </span>
                         <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium truncate block">
                             {user?.role || 'Membro'}
                         </span>
-                    </div>
+                    </NavLink>
 
                     {/* Logout - Visible ONLY on Group Hover */}
                     <button

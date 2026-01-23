@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save } from 'lucide-react';
-import { User, SystemRole } from '../../types/auth';
+import { User, SystemRole, ModuleAccess, AccessLevel, DEFAULT_MODULE_ACCESS, ModuleKey } from '../../types/auth'; // Updated imports
 
 interface UserModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (data: Omit<User, 'id'>) => void;
+    onSave: (data: Omit<User, 'id'>, initialPassword?: string) => void; // Updated signature
     userToEdit?: User | null;
 }
 
@@ -14,6 +14,8 @@ export const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSave, u
     const [email, setEmail] = useState('');
     const [role, setRole] = useState('');
     const [systemRole, setSystemRole] = useState<SystemRole>('VIEWER');
+    const [tempPassword, setTempPassword] = useState(''); // New State
+    const [permissions, setPermissions] = useState<ModuleAccess>(DEFAULT_MODULE_ACCESS); // New State
 
     useEffect(() => {
         if (userToEdit) {
@@ -21,14 +23,22 @@ export const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSave, u
             setEmail(userToEdit.email);
             setRole(userToEdit.role);
             setSystemRole(userToEdit.systemRole);
+            setPermissions(userToEdit.permissions || DEFAULT_MODULE_ACCESS);
+            setTempPassword('');
         } else {
             // Reset for creation
             setName('');
             setEmail('');
             setRole('');
             setSystemRole('VIEWER');
+            setPermissions(DEFAULT_MODULE_ACCESS);
+            setTempPassword('');
         }
     }, [userToEdit, isOpen]);
+
+    const handlePermissionChange = (module: ModuleKey, level: AccessLevel) => {
+        setPermissions(prev => ({ ...prev, [module]: level }));
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -37,9 +47,10 @@ export const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSave, u
             email,
             role,
             systemRole,
+            permissions: systemRole === 'ADMIN' ? DEFAULT_MODULE_ACCESS : permissions, // Admin gets all anyway, but keep clean
             // Preserve existing avatar if editing, else undefined (let context handle default)
             avatarUrl: userToEdit?.avatarUrl
-        });
+        }, tempPassword);
         onClose();
     };
 
@@ -124,11 +135,52 @@ export const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSave, u
                             <option value="ADMIN">Administrador (Acesso Total)</option>
                         </select>
                         <p className="text-xs text-slate-500 mt-1">
-                            {systemRole === 'ADMIN' && '⚠️ Acesso total ao sistema, incluindo configurações.'}
-                            {systemRole === 'EDITOR' && 'ℹ️ Pode gerenciar pipeline, tarefas e propostas.'}
-                            {systemRole === 'VIEWER' && '👀 Apenas visualiza dashboards e relatórios.'}
+                            {systemRole === 'ADMIN' && '⚠️ Acesso total ao sistema, incluindo configurações e todos os módulos.'}
+                            {systemRole === 'EDITOR' && 'ℹ️ Pode gerenciar pipeline, tarefas e propostas, mas acesso aos módulos depende das permissões abaixo.'}
+                            {systemRole === 'VIEWER' && '👀 Apenas visualiza os módulos permitidos.'}
                         </p>
                     </div>
+
+                    {/* Password - Only for new users */}
+                    {!userToEdit && (
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Senha Inicial</label>
+                            <input
+                                type="password"
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                placeholder="Defina uma senha inicial (min. 6 caracteres)"
+                                value={tempPassword}
+                                onChange={(e) => setTempPassword(e.target.value)}
+                            />
+                            <p className="text-xs text-slate-500 mt-1">O usuário será forçado a trocar esta senha no primeiro login.</p>
+                        </div>
+                    )}
+
+                    {/* Permissions Matrix - Hide if ADMIN */}
+                    {systemRole !== 'ADMIN' && (
+                        <div className="pt-2">
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Permissões por Módulo</label>
+                            <div className="space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                {Object.keys(DEFAULT_MODULE_ACCESS).map((key) => {
+                                    const mKey = key as ModuleKey;
+                                    return (
+                                        <div key={mKey} className="flex items-center justify-between">
+                                            <span className="text-sm text-slate-600 capitalize">{mKey.replace('_', ' ')}</span>
+                                            <select
+                                                className="text-sm border-slate-200 rounded px-2 py-1"
+                                                value={permissions[mKey]}
+                                                onChange={(e) => handlePermissionChange(mKey, e.target.value as AccessLevel)}
+                                            >
+                                                <option value="NONE">Sem Acesso</option>
+                                                <option value="VIEW">Visualizar</option>
+                                                <option value="EDIT">Editar</option>
+                                            </select>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Footer Actions */}
                     <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">

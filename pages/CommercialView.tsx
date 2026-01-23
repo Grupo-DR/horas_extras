@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Task, User, TaskStatus, HelpChainLevel, HistoryLog, Notification, TaskOutcome, Bid, PipelineStage } from '../types';
 import { TaskForm } from '../components/TaskForm';
-import { OpportunityForm } from '../components/Pipeline/OpportunityForm';
+import { OpportunityForm } from '../components/Pipeline/OpportunityForm'; // Import OpportunityForm
 
 import { PipelineBoard } from '../components/Pipeline/PipelineBoard';
 import { EscalationSettings } from '../components/EscalationSettings';
 import { HistoryPanel } from '../components/HistoryPanel';
-import { Layout, LayoutDashboard, PlusCircle, Filter, Bell, Bot, Settings, LogOut, Columns, List, TrendingUp, AlertTriangle, CheckCircle, Calendar, DollarSign, Activity, Users, ChevronDown, Link as LinkIcon, X, FileText, Target } from 'lucide-react';
+import { Layout, LayoutDashboard, PlusCircle, Filter, Bell, Bot, Settings, LogOut, Columns, List, TrendingUp, AlertTriangle, CheckCircle, Calendar, DollarSign, Activity, Users, ChevronDown, Link as LinkIcon, X, FileText, Target, Database } from 'lucide-react';
 import { draftEscalationEmail, draftWelcomeEmail } from '../services/geminiService';
 import { BidService } from '../services/bidService';
 // OpportunityService removed as we use CrmContext/BidService now
@@ -18,6 +18,7 @@ import { Toaster, toast } from 'sonner';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useCrm } from '../contexts/CrmContext';
 import { migrateOpportunitiesToBidsOnce } from '../utils/migrationUtils';
+import { useAuth } from '../contexts/AuthContext'; // Import useAuth
 
 // THEME COLORS
 const COLORS = {
@@ -31,17 +32,8 @@ const COLORS = {
 import { db } from '../services/firebaseConfig';
 import { collection, onSnapshot, addDoc, updateDoc, doc, deleteDoc, query, Timestamp } from 'firebase/firestore';
 
-// --- MOCK DATA ---
-const MOCK_USERS: User[] = [
-    { id: 'u1', name: 'Antonio Augusto da Silva', role: 'Analista Comercial', email: 'antonio.silva@grupodr.com.br' },
-    { id: 'u2', name: 'Cintia Ferreira', role: 'Engenheira Orçamentista', email: 'cintia.ferreira@grupodr.com.br' },
-    { id: 'u3', name: 'Tatiana Guimarães', role: 'Engenheira Auxiliar', email: 'tatiana.guimaraes@grupodr.com.br' },
-    { id: 'u4', name: 'Nilton Camilo', role: 'Gerente Comercial', email: 'nilton.camilo@grupodr.com.br' },
-    { id: 'u5', name: 'Maria Tereza', role: 'Engenheiro Trainee', email: 'maria.tereza@grupodr.com.br' },
-    { id: 'u6', name: 'Isabela Costa', role: 'Assistente Comercial', email: 'isabela.costa@grupodr.com.br' },
-    { id: 'u7', name: 'Fabiana Fernandes', role: 'Analista Comercial Jr', email: 'fabiana.fernandes@grupodr.com.br' },
-    { id: 'u8', name: 'Clara Santos', role: 'Jovem Aprendiz', email: 'clara.santos@grupodr.com.br' },
-];
+// --- MOCK DATA REMOVED (or kept minimum if needed for chain defaults, but user handling should be real) ---
+// We'll keep INITIAL_CHAIN for now as it's config.
 
 const INITIAL_CHAIN: HelpChainLevel[] = [
     { level: 1, roleName: 'Gerente Comercial', contactEmail: 'gerente@construtora.com', triggerDaysBefore: 1, triggerWhenLate: true },
@@ -87,9 +79,7 @@ export const CommercialView: React.FC = () => {
 
     // CRM Context Integration
     const { bids: opportunities, refresh } = useCrm(); // Aliasing bids to opportunities to minimize refactor
-
-    // MOCK LOGIN for now
-    const currentUser = MOCK_USERS[Math.floor(Math.random() * MOCK_USERS.length)];
+    const { user: currentUser } = useAuth(); // REAL USER
 
     // VIEW STATE
     const [view, setView] = useState<'DASHBOARD' | 'STRATEGIC' | 'SETTINGS'>('DASHBOARD');
@@ -257,8 +247,8 @@ export const CommercialView: React.FC = () => {
                 addLog(docRef.id, 'Tarefa Criada');
 
                 // --- GEMINI WELCOME EMAIL TRIGGER ---
-                const assigneeName = MOCK_USERS.find(u => u.id === finalDocData.assigneeId)?.name || 'Colaborador';
-                const assigneeEmail = MOCK_USERS.find(u => u.id === finalDocData.assigneeId)?.email || 'admin';
+                const assigneeName = users.find(u => u.id === finalDocData.assigneeId)?.name || 'Colaborador';
+                const assigneeEmail = users.find(u => u.id === finalDocData.assigneeId)?.email || 'admin';
 
                 // Create full Task object for the function
                 const taskForEmail = { ...finalDocData, id: docRef.id } as Task;
@@ -1101,8 +1091,7 @@ export const CommercialView: React.FC = () => {
                     initialData={editingOpportunity}
                     linkedTasks={tasks.filter(t => t.opportunityId === editingOpportunity?.id)}
                     onClose={() => { setIsOpportunityModalOpen(false); setEditingOpportunity(undefined); }}
-                    onSave={refresh}
-                    onDelete={handleDeleteOpportunity}
+                    onSuccess={refresh}
                 />
             )}
             <TaskForm
@@ -1112,7 +1101,7 @@ export const CommercialView: React.FC = () => {
                         solutionIdFilter ? { solutionId: solutionIdFilter } :
                             kpiIdFilter ? { kpiId: kpiIdFilter } : undefined
                 )}
-                users={MOCK_USERS}
+                users={users}
                 availableParents={[
                     ...tasks.filter(t => !t.parentId && !t.opportunityId).map(t => ({ ...t, id: String(t.id), title: String(t.title), clientName: String(t.clientName || '') })),
                     ...opportunities.map(op => {
