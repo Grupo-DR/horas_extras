@@ -66,34 +66,51 @@ export const MeasurementForm: React.FC<MeasurementFormProps> = ({ isOpen, onClos
                         /* REVIEW TABLE (Matriz de Auditoria) */
                         <div className="space-y-6">
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                <div><p className="text-[10px] text-slate-500 uppercase font-bold">Tipo</p><p className="font-bold text-blue-700">{previewData.entityType}</p></div>
-                                <div><p className="text-[10px] text-slate-500 uppercase font-bold">Período</p><p className="font-bold">{previewData.period}</p></div>
-                                <div><p className="text-[10px] text-slate-500 uppercase font-bold">Valor Medição</p><p className="font-bold text-emerald-600">R$ {previewData.value.toLocaleString()}</p></div>
-                                <div><p className="text-[10px] text-slate-500 uppercase font-bold">Saldo Restante</p><p className="font-bold">R$ {previewData.contractBalance.toLocaleString()}</p></div>
+                                <div><p className="text-[10px] text-slate-500 uppercase font-bold">Tipo</p><p className="font-bold text-blue-700">{previewData?.entityType || '-'}</p></div>
+                                <div><p className="text-[10px] text-slate-500 uppercase font-bold">Período</p><p className="font-bold">{previewData?.period || previewData?.date || '-'}</p></div>
+                                <div>
+                                    <p className="text-[10px] text-slate-500 uppercase font-bold">Valor Medição</p>
+                                    <p className="font-bold text-emerald-600">
+                                        {/* Robust number formatting */}
+                                        {typeof previewData?.value === 'number'
+                                            ? `R$ ${previewData.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                                            : typeof previewData?.value === 'string'
+                                                ? previewData.value
+                                                : '-'}
+                                    </p>
+                                </div>
+                                <div><p className="text-[10px] text-slate-500 uppercase font-bold">Saldo Restante</p><p className="font-bold">R$ 0,00</p></div>
                             </div>
 
-                            <div className="overflow-x-auto border rounded-xl">
-                                <table className="w-full text-xs text-left">
-                                    <thead className="bg-slate-100 text-slate-600 uppercase">
-                                        <tr>
-                                            <th className="p-2">Cód. VLI</th>
-                                            <th className="p-2">Descrição</th>
-                                            <th className="p-2 text-right">Do Mês (R$)</th>
-                                            <th className="p-2 text-right">Saldo (R$)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {previewData.auditMatrix.map((item: any, idx: number) => (
-                                            <tr key={idx} className="border-b hover:bg-slate-50">
-                                                <td className="p-2 font-mono text-blue-600">{item.codeVLI}</td>
-                                                <td className="p-2 max-w-[200px] truncate">{item.description}</td>
-                                                <td className="p-2 text-right font-bold text-slate-700">R$ {item.currentMonth.toLocaleString()}</td>
-                                                <td className="p-2 text-right text-slate-500">R$ {item.balance.toLocaleString()}</td>
+                            {previewData?.auditMatrix && Array.isArray(previewData.auditMatrix) ? (
+                                <div className="overflow-x-auto border rounded-xl">
+                                    <table className="w-full text-xs text-left">
+                                        <thead className="bg-slate-100 text-slate-600 uppercase">
+                                            <tr>
+                                                <th className="p-2">Cód. VLI</th>
+                                                <th className="p-2">Descrição</th>
+                                                <th className="p-2 text-right">Do Mês (R$)</th>
+                                                <th className="p-2 text-right">Saldo (R$)</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                        </thead>
+                                        <tbody>
+                                            {previewData.auditMatrix.map((item: any, idx: number) => (
+                                                <tr key={idx} className="border-b hover:bg-slate-50">
+                                                    <td className="p-2 font-mono text-blue-600">{item.codeVLI}</td>
+                                                    <td className="p-2 max-w-[200px] truncate">{item.description}</td>
+                                                    <td className="p-2 text-right font-bold text-slate-700">R$ {(item.currentMonth || 0).toLocaleString()}</td>
+                                                    <td className="p-2 text-right text-slate-500">R$ {(item.balance || 0).toLocaleString()}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className="p-4 bg-yellow-50 text-yellow-700 text-sm rounded-lg border border-yellow-200">
+                                    Não foi possível extrair a Matriz de Auditoria detalhada deste PDF.
+                                    Verifique os valores totais acima.
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

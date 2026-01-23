@@ -11,6 +11,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { MeasurementForm } from './MeasurementForm';
 import { ContractFinancialChart } from './ContractFinancialChart';
+import { DocumentImportModal } from './DocumentImportModal';
 import { ContractEventForm } from './ContractEventForm';
 
 interface ContractDetailsModalProps {
@@ -69,8 +70,25 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
 
     const [isMeasurementFormOpen, setIsMeasurementFormOpen] = useState(false);
     const [isEventFormOpen, setIsEventFormOpen] = useState(false);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false); // Shared for generic imports if needed, or RDO specific
+    const [importType, setImportType] = useState<'BM' | 'RDO'>('BM');
+
     const [history, setHistory] = useState<ContractMeasurement[]>([]);
     const [selectedMeasurementId, setSelectedMeasurementId] = useState<string | null>(null);
+
+    const handleImportSuccess = async (data: any) => {
+        if (data.documentType === 'RDO') {
+            // Save RDO logic here. For now just toast and maybe save as an "event" or specific structure?
+            // The user said: "Ainda não estruturei o que vamos fazer com os dados do RDO. Então precisamos neste momento apenas ler os dados e projetar na tela"
+            // The DocumentImportModal ALREADY does the projection (Split View).
+            // So if they click "Confirmar", we just acknowledge for now.
+            toast.success("RDO Importado e Validado!", { description: `Data: ${data.date} - Obra: ${data.siteName}` });
+        } else if (data.documentType === 'BM') {
+            // If we decide to use this generic modal for BM too in future
+            toast.success("Medição Importada");
+        }
+        setIsImportModalOpen(false);
+    };
 
     // Refresh history when modal opens
     React.useEffect(() => {
@@ -241,6 +259,12 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                     className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-600/20 transition-all transform hover:scale-105 active:scale-95"
                                 >
                                     <Plus size={18} /> Nova Medição
+                                </button>
+                                <button
+                                    onClick={() => { setImportType('RDO'); setIsImportModalOpen(true); }}
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold shadow-lg shadow-orange-600/20 transition-all transform hover:scale-105 active:scale-95"
+                                >
+                                    <FileText size={18} /> Inserir RDO
                                 </button>
                                 <button
                                     onClick={() => setIsEventFormOpen(true)}
@@ -545,6 +569,12 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                         // Actually, ContractDetailsModal receives `detailsContract` from parent which is updated via realtime.
                         // So just closing is enough.
                     }}
+                />
+
+                <DocumentImportModal
+                    isOpen={isImportModalOpen}
+                    onClose={() => setIsImportModalOpen(false)}
+                    onImport={handleImportSuccess}
                 />
             </div>
         </AnimatePresence>

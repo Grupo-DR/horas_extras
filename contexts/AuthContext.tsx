@@ -70,7 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             }
                         };
                         // Optional: Write back to DB to fix permanently
-                        await updateDoc(docRef, userData);
+                        await updateDoc(docRef, userData as any);
                     }
                     // --------------------------------
 
