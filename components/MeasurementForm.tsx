@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Upload, Check, Loader2 } from 'lucide-react';
-import { BMParser } from '../services/BMParser';
+import { LocalBMParser } from '../services/LocalBMParser';
 import { toast } from 'sonner';
 
 interface MeasurementFormProps {
@@ -20,9 +20,10 @@ export const MeasurementForm: React.FC<MeasurementFormProps> = ({ isOpen, onClos
 
         setIsProcessing(true);
         try {
-            const data = await BMParser.parsePDF(file);
-            setPreviewData(data);
-            toast.success("Dados extraídos com sucesso!");
+            const data = await LocalBMParser.parsePDF(file);
+            // Adapt data structure if needed, or just set it
+            setPreviewData(data.fields); // LocalBMParser returns { fields: ... }
+            toast.success("Dados extraídos com sucesso (Versão Local)!");
         } catch (error) {
             toast.error("Erro ao ler PDF. Tente novamente.");
         } finally {
