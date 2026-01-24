@@ -537,6 +537,51 @@ export const CommercialView: React.FC = () => {
 
         const clientsAnalysisData = (Object.values(clientResults) as any[]).sort((a, b) => b.total.value - a.total.value); // Sort by TOTAL value now
 
+        // 6. Results by ESTIMATOR (Internal Responsible)
+        const estimatorResults = relevantOpportunities.reduce((acc, op) => {
+            const estimator = s(op.ownerName) || 'Não Definido';
+
+            if (!acc[estimator]) {
+                acc[estimator] = {
+                    name: estimator,
+                    success: { count: 0, value: 0 },
+                    failure: { count: 0, value: 0 },
+                    study: { count: 0, value: 0 },
+                    withdrawal: { count: 0, value: 0 },
+                    inProgress: { count: 0, value: 0 },
+                    total: { count: 0, value: 0 }
+                };
+            }
+            const val = n(op.estimatedValue);
+
+            if (op.pipelineStage === PipelineStage.RESULTADO) {
+                if (op.result === TaskOutcome.SUCCESS) { acc[estimator].success.count++; acc[estimator].success.value += val; }
+                if (op.result === TaskOutcome.FAILURE) { acc[estimator].failure.count++; acc[estimator].failure.value += val; }
+                if (op.result === TaskOutcome.STUDY) { acc[estimator].study.count++; acc[estimator].study.value += val; }
+                if (op.result === TaskOutcome.WITHDRAWAL) { acc[estimator].withdrawal.count++; acc[estimator].withdrawal.value += val; }
+            } else {
+                // IN PROGRESS
+                acc[estimator].inProgress.count++;
+                acc[estimator].inProgress.value += val;
+            }
+
+            // ADD TO TOTAL (Active + Closed)
+            acc[estimator].total.count++;
+            acc[estimator].total.value += val;
+
+            return acc;
+        }, {} as Record<string, {
+            name: string;
+            success: { count: number; value: number };
+            failure: { count: number; value: number };
+            study: { count: number; value: number };
+            withdrawal: { count: number; value: number };
+            inProgress: { count: number; value: number };
+            total: { count: number; value: number };
+        }>);
+
+        const estimatorAnalysisData = (Object.values(estimatorResults) as any[]).sort((a, b) => b.total.value - a.total.value);
+
 
         // 6. Conversion Rate & Pipeline Totals
         // Conversion Rate = (Success Count / Total Opportunities) * 100
@@ -548,7 +593,7 @@ export const CommercialView: React.FC = () => {
         // VGV
         const totalPipelineValue = relevantOpportunities.reduce((sum, op) => sum + n(op.estimatedValue), 0);
 
-        return { strategic, outcomes, clientsAnalysisData, conversionRate, totalOpsCount, totalPipelineValue };
+        return { strategic, outcomes, clientsAnalysisData, estimatorAnalysisData, conversionRate, totalOpsCount, totalPipelineValue };
         return { strategic, outcomes, clientsAnalysisData, conversionRate, totalOpsCount, totalPipelineValue };
     }, [tasks, opportunities, clients, timeFilterType, selectedDate, customRange]);
 
@@ -1155,6 +1200,122 @@ export const CommercialView: React.FC = () => {
                                                 {/* CONVERSION RATE */}
                                                 <td className="px-4 py-3 text-center font-bold text-slate-700 border-l bg-slate-50/50">
                                                     {client.total.count > 0 ? ((client.success.count / client.total.count) * 100).toFixed(0) + '%' : '-'}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* ESTIMATOR PIVOT TABLE (NEW - DR) */}
+                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                            <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                <Users size={20} className="text-slate-600" />
+                                Desempenho por Responsável Técnico (DR)
+                            </h3>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-xs text-left whitespace-nowrap">
+                                    <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+                                        <tr>
+                                            <th rowSpan={2} className="px-4 py-3 border-r">Responsável</th>
+                                            <th colSpan={4} className="px-4 py-1 text-center border-r text-purple-600 bg-purple-50/50">Em Andamento</th>
+                                            <th colSpan={4} className="px-4 py-1 text-center border-r text-emerald-600 bg-emerald-50/50">Sucesso</th>
+                                            <th colSpan={4} className="px-4 py-1 text-center border-r text-red-600 bg-red-50/50">Insucesso</th>
+                                            <th colSpan={4} className="px-4 py-1 text-center border-r text-amber-600 bg-amber-50/50">Desistência</th>
+                                            <th colSpan={4} className="px-4 py-1 text-center border-r text-blue-600 bg-blue-50/50">Em Estudo</th>
+                                            <th colSpan={4} className="px-4 py-1 text-center border-r text-slate-600 bg-slate-100">Total</th>
+                                            <th rowSpan={2} className="px-4 py-3 text-center border-l bg-slate-50">Conv.</th>
+                                        </tr>
+                                        <tr>
+                                            {/* EM ANDAMENTO */}
+                                            <th className="px-2 py-2 text-center bg-purple-50/50">Qtd</th>
+                                            <th className="px-2 py-2 text-center bg-purple-50/50">%</th>
+                                            <th className="px-2 py-2 text-right bg-purple-50/50">Valor</th>
+                                            <th className="px-2 py-2 text-right border-r bg-purple-50/50">%</th>
+                                            {/* SUCESSO */}
+                                            <th className="px-2 py-2 text-center bg-emerald-50/50">Qtd</th>
+                                            <th className="px-2 py-2 text-center bg-emerald-50/50">%</th>
+                                            <th className="px-2 py-2 text-right bg-emerald-50/50">Valor</th>
+                                            <th className="px-2 py-2 text-right border-r bg-emerald-50/50">%</th>
+                                            {/* INSUCESSO */}
+                                            <th className="px-2 py-2 text-center bg-red-50/50">Qtd</th>
+                                            <th className="px-2 py-2 text-center bg-red-50/50">%</th>
+                                            <th className="px-2 py-2 text-right bg-red-50/50">Valor</th>
+                                            <th className="px-2 py-2 text-right border-r bg-red-50/50">%</th>
+                                            {/* DESISTÊNCIA */}
+                                            <th className="px-2 py-2 text-center bg-amber-50/50">Qtd</th>
+                                            <th className="px-2 py-2 text-center bg-amber-50/50">%</th>
+                                            <th className="px-2 py-2 text-right bg-amber-50/50">Valor</th>
+                                            <th className="px-2 py-2 text-right border-r bg-amber-50/50">%</th>
+                                            {/* ESTUDO */}
+                                            <th className="px-2 py-2 text-center bg-blue-50/50">Qtd</th>
+                                            <th className="px-2 py-2 text-center bg-blue-50/50">%</th>
+                                            <th className="px-2 py-2 text-right bg-blue-50/50">Valor</th>
+                                            <th className="px-2 py-2 text-right border-r bg-blue-50/50">%</th>
+                                            {/* TOTAL */}
+                                            <th className="px-2 py-2 text-center bg-slate-100">Qtd</th>
+                                            <th className="px-2 py-2 text-center bg-slate-100">%</th>
+                                            <th className="px-2 py-2 text-right bg-slate-100">Valor</th>
+                                            <th className="px-2 py-2 text-right bg-slate-100">%</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {(dashboardStats.estimatorAnalysisData || []).map((est, idx) => (
+                                            <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                                <td className="px-4 py-3 font-medium text-slate-700 border-r">{est.name}</td>
+
+                                                {/* IN PROGRESS */}
+                                                <td className="px-2 py-3 text-center text-purple-700 font-bold bg-purple-50/10">{est.inProgress.count}</td>
+                                                <td className="px-2 py-3 text-center text-slate-500 bg-purple-50/10">{est.total.count > 0 ? ((est.inProgress.count / est.total.count) * 100).toFixed(0) + '%' : '-'}</td>
+                                                <td className="px-2 py-3 text-right text-purple-700 bg-purple-50/10">
+                                                    {est.inProgress.value > 0 ? parseFloat((est.inProgress.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
+                                                </td>
+                                                <td className="px-2 py-3 text-right text-slate-500 border-r bg-purple-50/10">{est.total.value > 0 ? ((est.inProgress.value / est.total.value) * 100).toFixed(0) + '%' : '-'}</td>
+
+                                                {/* SUCCESS */}
+                                                <td className="px-2 py-3 text-center text-emerald-700 font-bold bg-emerald-50/10">{est.success.count}</td>
+                                                <td className="px-2 py-3 text-center text-slate-500 bg-emerald-50/10">{est.total.count > 0 ? ((est.success.count / est.total.count) * 100).toFixed(0) + '%' : '-'}</td>
+                                                <td className="px-2 py-3 text-right text-emerald-700 bg-emerald-50/10">
+                                                    {est.success.value > 0 ? parseFloat((est.success.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
+                                                </td>
+                                                <td className="px-2 py-3 text-right text-slate-500 border-r bg-emerald-50/10">{est.total.value > 0 ? ((est.success.value / est.total.value) * 100).toFixed(0) + '%' : '-'}</td>
+
+                                                {/* FAILURE */}
+                                                <td className="px-2 py-3 text-center text-red-700 bg-red-50/10">{est.failure.count}</td>
+                                                <td className="px-2 py-3 text-center text-slate-500 bg-red-50/10">{est.total.count > 0 ? ((est.failure.count / est.total.count) * 100).toFixed(0) + '%' : '-'}</td>
+                                                <td className="px-2 py-3 text-right text-red-700 bg-red-50/10">
+                                                    {est.failure.value > 0 ? parseFloat((est.failure.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
+                                                </td>
+                                                <td className="px-2 py-3 text-right text-slate-500 border-r bg-red-50/10">{est.total.value > 0 ? ((est.failure.value / est.total.value) * 100).toFixed(0) + '%' : '-'}</td>
+
+                                                {/* WITHDRAWAL */}
+                                                <td className="px-2 py-3 text-center text-amber-700 bg-amber-50/10">{est.withdrawal.count}</td>
+                                                <td className="px-2 py-3 text-center text-slate-500 bg-amber-50/10">{est.total.count > 0 ? ((est.withdrawal.count / est.total.count) * 100).toFixed(0) + '%' : '-'}</td>
+                                                <td className="px-2 py-3 text-right text-amber-700 bg-amber-50/10">
+                                                    {est.withdrawal.value > 0 ? parseFloat((est.withdrawal.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
+                                                </td>
+                                                <td className="px-2 py-3 text-right text-slate-500 border-r bg-amber-50/10">{est.total.value > 0 ? ((est.withdrawal.value / est.total.value) * 100).toFixed(0) + '%' : '-'}</td>
+
+                                                {/* STUDY */}
+                                                <td className="px-2 py-3 text-center text-blue-700 bg-blue-50/10">{est.study.count}</td>
+                                                <td className="px-2 py-3 text-center text-slate-500 bg-blue-50/10">{est.total.count > 0 ? ((est.study.count / est.total.count) * 100).toFixed(0) + '%' : '-'}</td>
+                                                <td className="px-2 py-3 text-right text-blue-700 bg-blue-50/10">
+                                                    {est.study.value > 0 ? parseFloat((est.study.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
+                                                </td>
+                                                <td className="px-2 py-3 text-right text-slate-500 border-r bg-blue-50/10">{est.total.value > 0 ? ((est.study.value / est.total.value) * 100).toFixed(0) + '%' : '-'}</td>
+
+                                                {/* TOTAL */}
+                                                <td className="px-2 py-3 text-center font-bold text-slate-800 bg-slate-50/30">{est.total.count}</td>
+                                                <td className="px-2 py-3 text-center text-slate-500 bg-slate-50/30">100%</td>
+                                                <td className="px-2 py-3 text-right font-bold text-slate-800 bg-slate-50/30">
+                                                    {est.total.value > 0 ? parseFloat((est.total.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
+                                                </td>
+                                                <td className="px-2 py-3 text-right text-slate-500 bg-slate-50/30">100%</td>
+
+                                                {/* CONVERSION RATE */}
+                                                <td className="px-4 py-3 text-center font-bold text-slate-700 border-l bg-slate-50/50">
+                                                    {est.total.count > 0 ? ((est.success.count / est.total.count) * 100).toFixed(0) + '%' : '-'}
                                                 </td>
                                             </tr>
                                         ))}
