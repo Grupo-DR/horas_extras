@@ -212,9 +212,34 @@ export const ClientDetailsView: React.FC = () => {
                             {clientContacts.map((contact: ClientContact) => {
                                 const analytics = calculateContactAnalytics(contact, clientInteractions, bids);
 
+                                // Determine Status Badge
+                                let statusBadge;
+                                if ((analytics.score ?? 0) >= 80) {
+                                    statusBadge = (
+                                        <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-700 border border-amber-200" title="Campeão">
+                                            <span>🏆</span> Campeão
+                                        </span>
+                                    );
+                                } else if ((analytics.score ?? 0) >= 50) {
+                                    statusBadge = (
+                                        <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-100 text-blue-700 border border-blue-200" title="Promissor">
+                                            <span>⭐</span> Promissor
+                                        </span>
+                                    );
+                                } else {
+                                    statusBadge = (
+                                        <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-bold bg-slate-100 text-slate-600 border border-slate-200" title="Neutro">
+                                            <span>😐</span> Neutro
+                                        </span>
+                                    );
+                                }
+
+                                const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(val);
+
                                 return (
-                                    <div key={contact.id} className="flex gap-3 rounded-lg border border-slate-200 p-4 bg-white hover:border-blue-200 transition-colors group items-start relative">
+                                    <div key={contact.id} className="flex gap-4 rounded-lg border border-slate-200 p-5 bg-white hover:border-blue-200 transition-colors group items-start relative">
                                         <UserAvatar user={{ name: contact.name }} size="md" />
+
                                         {/* Action Buttons */}
                                         <div className="absolute top-2 right-2 flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-10">
                                             <button
@@ -236,19 +261,13 @@ export const ClientDetailsView: React.FC = () => {
                                                 <Trash2 size={14} />
                                             </button>
                                         </div>
+
                                         <div className="flex-1 min-w-0">
-                                            <div className="mb-1">
-                                                <div className="flex items-center gap-2">
-                                                    <p className="font-semibold text-slate-900 group-hover:text-blue-700 transition-colors truncate">{contact.name}</p>
-                                                    {/* Score Badge */}
-                                                    {(analytics.score ?? 0) > 0 && (
-                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold border ${(analytics.score ?? 0) >= 80 ? 'bg-amber-100 text-amber-700 border-amber-200' :
-                                                                (analytics.score ?? 0) >= 50 ? 'bg-blue-100 text-blue-700 border-blue-200' :
-                                                                    'bg-slate-100 text-slate-600 border-slate-200'
-                                                            }`} title={`Score: ${analytics.score}/100 | Conversão: ${(analytics.conversionRate || 0).toFixed(0)}%`}>
-                                                            {analytics.score} pts
-                                                        </span>
-                                                    )}
+                                            {/* Header */}
+                                            <div className="mb-2">
+                                                <div className="flex items-center gap-2 mb-0.5">
+                                                    <p className="font-semibold text-slate-900 group-hover:text-blue-700 transition-colors truncate text-base">{contact.name}</p>
+                                                    {statusBadge}
                                                 </div>
                                                 <p className="text-xs text-slate-500 font-medium truncate">
                                                     {contact.role}
@@ -256,34 +275,64 @@ export const ClientDetailsView: React.FC = () => {
                                                 </p>
                                             </div>
 
-                                            <div className="space-y-1 mt-2">
+                                            {/* Contact Info */}
+                                            <div className="space-y-1 mb-4">
                                                 {contact.email && (
                                                     <div className="flex items-center gap-2 text-xs text-slate-500" title="Email">
-                                                        <Mail className="w-3 h-3 text-slate-400" />
+                                                        <Mail className="w-3.5 h-3.5 text-slate-400" />
                                                         <span className="truncate">{contact.email}</span>
                                                     </div>
                                                 )}
                                                 {contact.phone && (
                                                     <div className="flex items-center gap-2 text-xs text-slate-500" title="Telefone">
-                                                        <Phone className="w-3 h-3 text-slate-400" />
+                                                        <Phone className="w-3.5 h-3.5 text-slate-400" />
                                                         <span>{contact.phone}</span>
                                                     </div>
                                                 )}
                                                 {contact.address?.city && (
                                                     <div className="flex items-center gap-2 text-xs text-slate-500" title="Localização">
-                                                        <MapPin className="w-3 h-3 text-slate-400" />
+                                                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
                                                         <span className="truncate">{contact.address.city} - {contact.address.state}</span>
                                                     </div>
                                                 )}
-                                                {/* Metrics Summary */}
-                                                <div className="flex gap-3 mt-2 pt-2 border-t border-slate-100">
-                                                    <div className="text-xs text-slate-500" title="Oportunidades">
-                                                        <span className="font-bold text-slate-700">{analytics.opportunityCount || 0}</span> <span className="text-[10px]">Opps</span>
+                                            </div>
+
+                                            {/* Metrics Footer */}
+                                            <div className="pt-3 border-t border-slate-100 grid grid-cols-2 gap-y-2 gap-x-4">
+                                                {/* Total Opps */}
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] uppercase text-slate-400 font-bold tracking-wide">Oportunidades</span>
+                                                    <div className="flex items-baseline gap-1">
+                                                        <span className="text-sm font-bold text-slate-700">{analytics.opportunityCount || 0}</span>
+                                                        <span className="text-[10px] text-slate-500">({formatCurrency(analytics.totalValue || 0)})</span>
                                                     </div>
-                                                    <div className="text-xs text-slate-500" title="Taxa de Conversão">
-                                                        <span className={`font-bold ${(analytics.conversionRate || 0) >= 30 ? 'text-emerald-600' : 'text-slate-700'}`}>
+                                                </div>
+
+                                                {/* Success Opps */}
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] uppercase text-emerald-600 font-bold tracking-wide">Sucesso</span>
+                                                    <div className="flex items-baseline gap-1">
+                                                        <span className="text-sm font-bold text-emerald-700">{analytics.successCount || 0}</span>
+                                                        <span className="text-[10px] text-emerald-600">({formatCurrency(analytics.successValue || 0)})</span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Conversion Rate */}
+                                                <div className="col-span-2 mt-1">
+                                                    <div className="flex items-center justify-between text-[10px] mb-1">
+                                                        <span className="font-medium text-slate-500">Taxa de Conversão</span>
+                                                        <span className={`font-bold ${(analytics.conversionRate || 0) >= 30 ? 'text-emerald-600' : 'text-slate-600'}`}>
                                                             {(analytics.conversionRate || 0).toFixed(0)}%
-                                                        </span> <span className="text-[10px]">Conv.</span>
+                                                        </span>
+                                                    </div>
+                                                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                                        <div
+                                                            className={`h-full rounded-full ${(analytics.conversionRate || 0) >= 50 ? 'bg-emerald-500' :
+                                                                    (analytics.conversionRate || 0) >= 20 ? 'bg-blue-400' :
+                                                                        'bg-slate-300'
+                                                                }`}
+                                                            style={{ width: `${Math.min(analytics.conversionRate || 0, 100)}%` }}
+                                                        />
                                                     </div>
                                                 </div>
                                             </div>

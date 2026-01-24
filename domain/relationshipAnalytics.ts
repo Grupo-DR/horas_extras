@@ -99,6 +99,10 @@ export const calculateContactAnalytics = (contact: ClientContact, interactions: 
     // Requirement says: "quantidade de propostas de sucesso" over "propostas recebidas" (total)
     const conversionRate = opportunityCount > 0 ? (successCount / opportunityCount) : 0;
 
+    // Calculate Values
+    const totalValue = contactBids.reduce((sum, b) => sum + (b.estimatedValue || 0), 0);
+    const successValue = successBids.reduce((sum, b) => sum + (b.estimatedValue || 0), 0);
+
     // Normalized Score (Max 40)
     score += Math.min(Math.round(conversionRate * 40), 40);
 
@@ -112,7 +116,9 @@ export const calculateContactAnalytics = (contact: ClientContact, interactions: 
         score,
         conversionRate: conversionRate * 100, // Display as %
         opportunityCount,
-        successCount
+        successCount,
+        totalValue,
+        successValue
     };
 };
 

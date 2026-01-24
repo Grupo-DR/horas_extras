@@ -435,6 +435,8 @@ export interface ClientContact {
     conversionRate?: number;
     opportunityCount?: number;
     successCount?: number;
+    totalValue?: number;
+    successValue?: number;
   };
 }
 
