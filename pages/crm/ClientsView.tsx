@@ -63,8 +63,10 @@ export const ClientsView: React.FC = () => {
         }).filter(client => {
             // Text Search
             const searchLower = searchText.toLowerCase();
-            const matchesText = client.name.toLowerCase().includes(searchLower) ||
-                (client.industry && client.industry.toLowerCase().includes(searchLower));
+            const clientName = (client.tradeName || client.corporateName || client.name || '').toLowerCase();
+            const clientSegment = (client.segment || client.industry || '').toLowerCase();
+
+            const matchesText = clientName.includes(searchLower) || clientSegment.includes(searchLower);
 
             if (!matchesText) return false;
 
@@ -133,7 +135,7 @@ export const ClientsView: React.FC = () => {
                 {processedClients.map(client => (
                     <ClientCard
                         key={client.id}
-                        clientName={client.name}
+                        clientName={client.tradeName || client.corporateName || client.name || 'Sem Nome'}
                         metrics={client.metrics}
                         onRegisterInteraction={() => {
                             setSelectedClientId(client.id);
