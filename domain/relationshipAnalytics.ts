@@ -57,7 +57,7 @@ export const calculateContactProfile = (
     return 'OCASIONAL';
 };
 
-export const calculateContactAnalytics = (contact: ClientContact, interactions: Interaction[]) => {
+export const calculateContactAnalytics = (contact: ClientContact, interactions: Interaction[], bids: Bid[] = []) => {
     const effective = getEffectiveInteractions(interactions);
     const sorted = [...effective].sort((a, b) => b.date.getTime() - a.date.getTime());
     const last = sorted[0] || null;
@@ -66,11 +66,53 @@ export const calculateContactAnalytics = (contact: ClientContact, interactions: 
     cutoff90d.setDate(cutoff90d.getDate() - 90);
     const count90d = effective.filter(i => i.date >= cutoff90d).length;
 
+    // --- SCORING ALGORITHM ---
+    let score = 0;
+
+    // 1. Interactions (30 pts)
+    if (last) {
+        const days = getDaysDiff(last.date);
+        if (days <= 30) score += 15;
+        else if (days <= 60) score += 5;
+    }
+    if (count90d >= 5) score += 15;
+    else if (count90d >= 2) score += 5;
+
+    // 2. Opportunities (30 pts)
+    // Filter bids created/owned by this contact (using contactId)
+    const contactBids = bids.filter(b => b.contactId === contact.id);
+    const opportunityCount = contactBids.length;
+
+    if (opportunityCount >= 5) score += 30;
+    else if (opportunityCount >= 2) score += 20;
+    else if (opportunityCount > 0) score += 10;
+
+    // 3. Conversion Rate (40 pts)
+    const successBids = contactBids.filter(b =>
+        b.status === 'VENCIDA' ||
+        b.status === 'GANHA' ||
+        b.result === 'SUCCESS'
+    );
+    const successCount = successBids.length;
+
+    // Calculate Rate: Success / Total (Consider only closed/decided ones? Or all?)
+    // Requirement says: "quantidade de propostas de sucesso" over "propostas recebidas" (total)
+    const conversionRate = opportunityCount > 0 ? (successCount / opportunityCount) : 0;
+
+    // Normalized Score (Max 40)
+    score += Math.min(Math.round(conversionRate * 40), 40);
+
+
     return {
         profile: calculateContactProfile(contact, interactions, []),
         lastInteraction: last ? last.date : null,
         daysSinceLastInteraction: last ? getDaysDiff(last.date) : -1,
-        totalInteractions90d: count90d
+        totalInteractions90d: count90d,
+        // Metrics
+        score,
+        conversionRate: conversionRate * 100, // Display as %
+        opportunityCount,
+        successCount
     };
 };
 

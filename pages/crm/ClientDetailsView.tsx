@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCrm } from '../../contexts/CrmContext';
-import { calculateClientHealth } from '../../domain/relationshipAnalytics';
+import { calculateClientHealth, calculateContactAnalytics } from '../../domain/relationshipAnalytics';
 import { TimelineItem } from '../../components/crm/TimelineItem';
 import { Plus, Building2, AlertTriangle, CheckCircle2, XCircle, MapPin, Globe, Mail, Info, Phone, FileText, Pencil, Trash2, PieChart as PieChartIcon, TrendingUp } from 'lucide-react';
 import { Client, Interaction, Bid, ClientContact, TaskOutcome, BidStatus } from '../../types';
@@ -209,68 +209,88 @@ export const ClientDetailsView: React.FC = () => {
 
                     {activeTab === 'overview' && (
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            {clientContacts.map((contact: ClientContact) => (
-                                <div key={contact.id} className="flex gap-3 rounded-lg border border-slate-200 p-4 bg-white hover:border-blue-200 transition-colors group items-start relative">
-                                    <UserAvatar user={{ name: contact.name }} size="md" />
-                                    {/* Action Buttons */}
-                                    <div className="absolute top-2 right-2 flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-10">
-                                        <button
-                                            onClick={() => { setContactToEdit(contact); setIsContactModalOpen(true); }}
-                                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors bg-white/80 backdrop-blur-sm"
-                                            title="Editar"
-                                        >
-                                            <Pencil size={14} />
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                if (window.confirm('Excluir este contato?')) {
-                                                    removeContact(contact.id);
-                                                }
-                                            }}
-                                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors bg-white/80 backdrop-blur-sm"
-                                            title="Excluir"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="mb-1">
-                                            <p className="font-semibold text-slate-900 group-hover:text-blue-700 transition-colors truncate">{contact.name}</p>
-                                            <p className="text-xs text-slate-500 font-medium truncate">
-                                                {contact.role}
-                                                {contact.department && <span className="text-slate-400"> • {contact.department}</span>}
-                                            </p>
-                                        </div>
+                            {clientContacts.map((contact: ClientContact) => {
+                                const analytics = calculateContactAnalytics(contact, clientInteractions, bids);
 
-                                        <div className="space-y-1 mt-2">
-                                            {contact.email && (
-                                                <div className="flex items-center gap-2 text-xs text-slate-500" title="Email">
-                                                    <Mail className="w-3 h-3 text-slate-400" />
-                                                    <span className="truncate">{contact.email}</span>
+                                return (
+                                    <div key={contact.id} className="flex gap-3 rounded-lg border border-slate-200 p-4 bg-white hover:border-blue-200 transition-colors group items-start relative">
+                                        <UserAvatar user={{ name: contact.name }} size="md" />
+                                        {/* Action Buttons */}
+                                        <div className="absolute top-2 right-2 flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-10">
+                                            <button
+                                                onClick={() => { setContactToEdit(contact); setIsContactModalOpen(true); }}
+                                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors bg-white/80 backdrop-blur-sm"
+                                                title="Editar"
+                                            >
+                                                <Pencil size={14} />
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    if (window.confirm('Excluir este contato?')) {
+                                                        removeContact(contact.id);
+                                                    }
+                                                }}
+                                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors bg-white/80 backdrop-blur-sm"
+                                                title="Excluir"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="mb-1">
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-semibold text-slate-900 group-hover:text-blue-700 transition-colors truncate">{contact.name}</p>
+                                                    {/* Score Badge */}
+                                                    {(analytics.score ?? 0) > 0 && (
+                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold border ${(analytics.score ?? 0) >= 80 ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                                                                (analytics.score ?? 0) >= 50 ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                                                    'bg-slate-100 text-slate-600 border-slate-200'
+                                                            }`} title={`Score: ${analytics.score}/100 | Conversão: ${(analytics.conversionRate || 0).toFixed(0)}%`}>
+                                                            {analytics.score} pts
+                                                        </span>
+                                                    )}
                                                 </div>
-                                            )}
-                                            {contact.phone && (
-                                                <div className="flex items-center gap-2 text-xs text-slate-500" title="Telefone">
-                                                    <Phone className="w-3 h-3 text-slate-400" />
-                                                    <span>{contact.phone}</span>
+                                                <p className="text-xs text-slate-500 font-medium truncate">
+                                                    {contact.role}
+                                                    {contact.department && <span className="text-slate-400"> • {contact.department}</span>}
+                                                </p>
+                                            </div>
+
+                                            <div className="space-y-1 mt-2">
+                                                {contact.email && (
+                                                    <div className="flex items-center gap-2 text-xs text-slate-500" title="Email">
+                                                        <Mail className="w-3 h-3 text-slate-400" />
+                                                        <span className="truncate">{contact.email}</span>
+                                                    </div>
+                                                )}
+                                                {contact.phone && (
+                                                    <div className="flex items-center gap-2 text-xs text-slate-500" title="Telefone">
+                                                        <Phone className="w-3 h-3 text-slate-400" />
+                                                        <span>{contact.phone}</span>
+                                                    </div>
+                                                )}
+                                                {contact.address?.city && (
+                                                    <div className="flex items-center gap-2 text-xs text-slate-500" title="Localização">
+                                                        <MapPin className="w-3 h-3 text-slate-400" />
+                                                        <span className="truncate">{contact.address.city} - {contact.address.state}</span>
+                                                    </div>
+                                                )}
+                                                {/* Metrics Summary */}
+                                                <div className="flex gap-3 mt-2 pt-2 border-t border-slate-100">
+                                                    <div className="text-xs text-slate-500" title="Oportunidades">
+                                                        <span className="font-bold text-slate-700">{analytics.opportunityCount || 0}</span> <span className="text-[10px]">Opps</span>
+                                                    </div>
+                                                    <div className="text-xs text-slate-500" title="Taxa de Conversão">
+                                                        <span className={`font-bold ${(analytics.conversionRate || 0) >= 30 ? 'text-emerald-600' : 'text-slate-700'}`}>
+                                                            {(analytics.conversionRate || 0).toFixed(0)}%
+                                                        </span> <span className="text-[10px]">Conv.</span>
+                                                    </div>
                                                 </div>
-                                            )}
-                                            {contact.address?.city && (
-                                                <div className="flex items-center gap-2 text-xs text-slate-500" title="Localização">
-                                                    <MapPin className="w-3 h-3 text-slate-400" />
-                                                    <span className="truncate">{contact.address.city} - {contact.address.state}</span>
-                                                </div>
-                                            )}
-                                            {contact.notes && (
-                                                <div className="flex gap-2 text-xs text-slate-500 mt-2 bg-slate-50 p-2 rounded" title="Observações">
-                                                    <FileText className="w-3 h-3 text-slate-400 shrink-0 mt-0.5" />
-                                                    <span className="line-clamp-2 italic">{contact.notes}</span>
-                                                </div>
-                                            )}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
 
                             {/* Botão Adicionar Contato */}
                             <button
@@ -279,12 +299,12 @@ export const ClientDetailsView: React.FC = () => {
                             >
                                 <Plus className="h-4 w-4 mr-2" /> Adicionar Contato
                             </button>
-                        </div>
+                        </div >
                     )}
-                </div>
+                </div >
 
                 {/* Contact Modal */}
-                <ContactModal
+                < ContactModal
                     isOpen={isContactModalOpen}
                     onClose={() => setIsContactModalOpen(false)}
                     contactToEdit={contactToEdit}
@@ -380,7 +400,7 @@ export const ClientDetailsView: React.FC = () => {
                     </div>
                 </div>
 
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };

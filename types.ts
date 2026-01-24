@@ -430,6 +430,11 @@ export interface ClientContact {
     lastInteraction: Date | null;
     totalInteractions90d: number;
     daysSinceLastInteraction: number;
+    // New Scoring Metrics
+    score?: number;
+    conversionRate?: number;
+    opportunityCount?: number;
+    successCount?: number;
   };
 }
 
