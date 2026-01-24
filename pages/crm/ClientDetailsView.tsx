@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useCrm } from '../../contexts/CrmContext';
 import { calculateClientHealth } from '../../domain/relationshipAnalytics';
 import { TimelineItem } from '../../components/crm/TimelineItem';
-import { Plus, Building2, AlertTriangle, CheckCircle2, XCircle, MapPin, Globe, Mail, Info } from 'lucide-react';
+import { Plus, Building2, AlertTriangle, CheckCircle2, XCircle, MapPin, Globe, Mail, Info, Phone, FileText } from 'lucide-react';
 import { UserAvatar } from '../../components/ui/UserAvatar';
 import { ContactModal } from '../../components/crm/ContactModal';
 
@@ -157,13 +157,44 @@ export const ClientDetailsView: React.FC = () => {
 
                     {activeTab === 'overview' && (
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            {clientContacts.map(contact => (
-                                <div key={contact.id} className="flex items-center gap-3 rounded-lg border border-slate-200 p-4 bg-white hover:border-blue-200 transition-colors group">
+                            {clientContacts.map((contact: any) => (
+                                <div key={contact.id} className="flex gap-3 rounded-lg border border-slate-200 p-4 bg-white hover:border-blue-200 transition-colors group items-start">
                                     <UserAvatar user={{ name: contact.name }} size="md" />
-                                    <div>
-                                        <p className="font-semibold text-slate-900 group-hover:text-blue-700 transition-colors">{contact.name}</p>
-                                        <p className="text-xs text-slate-500 font-medium">{contact.role}</p>
-                                        <p className="text-xs text-slate-400 mt-1">{contact.email}</p>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="mb-1">
+                                            <p className="font-semibold text-slate-900 group-hover:text-blue-700 transition-colors truncate">{contact.name}</p>
+                                            <p className="text-xs text-slate-500 font-medium truncate">
+                                                {contact.role}
+                                                {contact.department && <span className="text-slate-400"> • {contact.department}</span>}
+                                            </p>
+                                        </div>
+
+                                        <div className="space-y-1 mt-2">
+                                            {contact.email && (
+                                                <div className="flex items-center gap-2 text-xs text-slate-500" title="Email">
+                                                    <Mail className="w-3 h-3 text-slate-400" />
+                                                    <span className="truncate">{contact.email}</span>
+                                                </div>
+                                            )}
+                                            {contact.phone && (
+                                                <div className="flex items-center gap-2 text-xs text-slate-500" title="Telefone">
+                                                    <Phone className="w-3 h-3 text-slate-400" />
+                                                    <span>{contact.phone}</span>
+                                                </div>
+                                            )}
+                                            {contact.address?.city && (
+                                                <div className="flex items-center gap-2 text-xs text-slate-500" title="Localização">
+                                                    <MapPin className="w-3 h-3 text-slate-400" />
+                                                    <span className="truncate">{contact.address.city} - {contact.address.state}</span>
+                                                </div>
+                                            )}
+                                            {contact.notes && (
+                                                <div className="flex gap-2 text-xs text-slate-500 mt-2 bg-slate-50 p-2 rounded" title="Observações">
+                                                    <FileText className="w-3 h-3 text-slate-400 shrink-0 mt-0.5" />
+                                                    <span className="line-clamp-2 italic">{contact.notes}</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             ))}

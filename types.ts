@@ -407,7 +407,19 @@ export interface ClientContact {
   role: string;
   email?: string;
   phone?: string;
+  department?: string;
+  notes?: string;
   isActive: boolean;
+
+  address?: {
+    street: string;
+    number?: string;
+    complement?: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+    zipCode: string; // CEP
+  };
 
   createdAt: Date;
   updatedAt: Date;
