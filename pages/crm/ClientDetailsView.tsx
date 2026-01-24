@@ -3,14 +3,16 @@ import { useParams } from 'react-router-dom';
 import { useCrm } from '../../contexts/CrmContext';
 import { calculateClientHealth } from '../../domain/relationshipAnalytics';
 import { TimelineItem } from '../../components/crm/TimelineItem';
-import { Plus, Building2, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react'; // Added XCircle
-import { UserAvatar } from '../../components/ui/UserAvatar'; // Assumindo componente
+import { Plus, Building2, AlertTriangle, CheckCircle2, XCircle, MapPin, Globe, Mail, Info } from 'lucide-react';
+import { UserAvatar } from '../../components/ui/UserAvatar';
+import { ContactModal } from '../../components/crm/ContactModal';
 
 export const ClientDetailsView: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     // @ts-ignore
     const { clients, interactions, contacts, bids, addInteraction } = useCrm();
     const [activeTab, setActiveTab] = useState<'overview' | 'timeline'>('timeline');
+    const [isContactModalOpen, setIsContactModalOpen] = useState(false);
 
     const client = clients.find((c: any) => c.id === id);
 
@@ -51,12 +53,47 @@ export const ClientDetailsView: React.FC = () => {
                         <Building2 className="h-8 w-8 text-slate-400" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-900">{client.tradeName}</h1>
-                        <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
-                            <span className="bg-slate-100 px-2 py-0.5 rounded text-xs font-medium">{client.segment || 'Geral'}</span>
-                            <span>•</span>
-                            <span>CNPJ: {client.cnpj}</span>
+                        <h1 className="text-2xl font-bold text-slate-900">{client.tradeName || client.corporateName}</h1>
+                        <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500 mt-2">
+                            <span className="bg-slate-100 px-2 py-0.5 rounded text-xs font-medium uppercase tracking-wide text-slate-600">
+                                {client.segment || 'Geral'}
+                            </span>
+
+                            <div className="flex items-center gap-1.5" title="CNPJ">
+                                <Building2 className="w-4 h-4 text-slate-400" />
+                                <span>{client.cnpj}</span>
+                            </div>
+
+                            {client.address?.city && (
+                                <div className="flex items-center gap-1.5" title="Localização">
+                                    <MapPin className="w-4 h-4 text-slate-400" />
+                                    <span>{client.address.city} - {client.address.state}</span>
+                                </div>
+                            )}
+
+                            {client.primaryEmail && (
+                                <div className="flex items-center gap-1.5" title="Email Principal">
+                                    <Mail className="w-4 h-4 text-slate-400" />
+                                    <span>{client.primaryEmail}</span>
+                                </div>
+                            )}
+
+                            {client.website && (
+                                <div className="flex items-center gap-1.5" title="Website">
+                                    <Globe className="w-4 h-4 text-slate-400" />
+                                    <a href={client.website} target="_blank" rel="noreferrer" className="hover:text-blue-600 hover:underline">
+                                        Website
+                                    </a>
+                                </div>
+                            )}
                         </div>
+
+                        {(client.clientType || client.origin) && (
+                            <div className="flex items-center gap-3 mt-2 text-xs text-slate-400">
+                                {client.clientType && <span>Tipo: <strong className="text-slate-600">{client.clientType}</strong></span>}
+                                {client.origin && <span>Origem: <strong className="text-slate-600">{client.origin.replace('_', ' ')}</strong></span>}
+                            </div>
+                        )}
                     </div>
                 </div>
                 <div className="flex flex-col items-end gap-3">
@@ -132,12 +169,21 @@ export const ClientDetailsView: React.FC = () => {
                             ))}
 
                             {/* Botão Adicionar Contato */}
-                            <button className="flex h-full min-h-[88px] items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:border-slate-400 transition hover:text-blue-600">
+                            <button
+                                onClick={() => setIsContactModalOpen(true)}
+                                className="flex h-full min-h-[88px] items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:border-slate-400 transition hover:text-blue-600"
+                            >
                                 <Plus className="h-4 w-4 mr-2" /> Adicionar Contato
                             </button>
                         </div>
                     )}
                 </div>
+
+                {/* Contact Modal */}
+                <ContactModal
+                    isOpen={isContactModalOpen}
+                    onClose={() => setIsContactModalOpen(false)}
+                />
 
                 {/* COLUNA LATERAL (KPIs Rápidos) */}
                 <div className="w-full lg:w-80 shrink-0 space-y-6">
