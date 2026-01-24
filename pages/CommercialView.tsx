@@ -1147,7 +1147,7 @@ export const CommercialView: React.FC = () => {
                             clientName: String(opClient),
                             // spread other required fields with defaults to satisfy Task type
                             description: '',
-                            assigneeId: op.responsibleId || '',
+                            assigneeId: op.ownerId || '',
                             status: TaskStatus.PENDING,
                             priority: 'MEDIO',
                             category: 'Oportunidade',
