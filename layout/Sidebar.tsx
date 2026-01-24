@@ -27,27 +27,7 @@ export const Sidebar: React.FC = () => {
             path: '/comercial',
             authModule: 'commercial_dashboard' as ModuleKey
         },
-        {
-            module: AppModule.CONTRACTS,
-            label: 'Contratos',
-            icon: FileText,
-            path: '/contratos',
-            authModule: 'financial' as ModuleKey
-        },
-        {
-            module: AppModule.DATA_CENTER,
-            label: 'Dados',
-            icon: Database,
-            path: '/dados',
-            authModule: 'strategic_planning' as ModuleKey
-        },
-        {
-            module: AppModule.KPI,
-            label: 'KPIs',
-            icon: BarChart,
-            path: '/kpis',
-            authModule: 'strategic_planning' as ModuleKey // KPIs usually strategic
-        },
+
         {
             module: 'ACTIONS',
             label: 'Ações',
@@ -57,9 +37,9 @@ export const Sidebar: React.FC = () => {
         },
         {
             module: 'CRM',
-            label: 'Relacionamento',
+            label: 'Clientes',
             icon: Users,
-            path: '/crm',
+            path: '/crm/clients',
             authModule: 'crm' as ModuleKey
         },
     ];

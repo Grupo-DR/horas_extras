@@ -14,17 +14,11 @@ import { LoginPage } from './pages/LoginPage';
 
 // Lazy Load Pages
 const CommercialView = React.lazy(() => import('./pages/CommercialView').then(module => ({ default: module.CommercialView })));
-const ContractsView = React.lazy(() => import('./pages/ContractsView').then(module => ({ default: module.ContractsView })));
-const DataCenterView = React.lazy(() => import('./pages/DataCenterView').then(module => ({ default: module.DataCenterView })));
-const KPIView = React.lazy(() => import('./pages/KPIView').then(module => ({ default: module.KPIView })));
 const ActionsView = React.lazy(() => import('./pages/ActionsView').then(module => ({ default: module.ActionsView })));
 
 // CRM Pages
-const RelationshipDashboard = React.lazy(() => import('./pages/crm/RelationshipDashboard').then(module => ({ default: module.RelationshipDashboard })));
 const ClientsView = React.lazy(() => import('./pages/crm/ClientsView').then(module => ({ default: module.ClientsView })));
 const ClientDetailsView = React.lazy(() => import('./pages/crm/ClientDetailsView').then(module => ({ default: module.ClientDetailsView })));
-const ContactsView = React.lazy(() => import('./pages/crm/ContactsView').then(module => ({ default: module.ContactsView })));
-const ContactDetailsView = React.lazy(() => import('./pages/crm/ContactDetailsView').then(module => ({ default: module.ContactDetailsView })));
 
 // Config Pages
 const TeamSettings = React.lazy(() => import('./pages/config/TeamSettings').then(module => ({ default: module.TeamSettings })));
@@ -63,14 +57,7 @@ const App: React.FC = () => {
                     <Route path="comercial" element={<CommercialView />} />
                   </Route>
 
-                  <Route element={<RequireModuleAccess module="financial" />}>
-                    <Route path="contratos" element={<ContractsView />} />
-                  </Route>
 
-                  <Route element={<RequireModuleAccess module="strategic_planning" />}>
-                    <Route path="dados" element={<DataCenterView />} />
-                    <Route path="kpis" element={<KPIView />} />
-                  </Route>
 
                   <Route element={<RequireModuleAccess module="operational_planning" />}>
                     <Route path="acoes" element={<ActionsView />} />
@@ -78,12 +65,9 @@ const App: React.FC = () => {
 
                   {/* CRM Module */}
                   <Route element={<RequireModuleAccess module="crm" />}>
-                    <Route path="crm" element={<Navigate to="/crm/dashboard" replace />} />
-                    <Route path="crm/dashboard" element={<RelationshipDashboard />} />
+                    <Route path="crm" element={<Navigate to="/crm/clients" replace />} />
                     <Route path="crm/clients" element={<ClientsView />} />
                     <Route path="crm/clients/:id" element={<ClientDetailsView />} />
-                    <Route path="crm/contacts" element={<ContactsView />} />
-                    <Route path="crm/contacts/:id" element={<ContactDetailsView />} />
                   </Route>
 
                   {/* Account Settings */}
