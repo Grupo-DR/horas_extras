@@ -436,8 +436,8 @@ export const CommercialView: React.FC = () => {
             return opDate >= start && opDate <= end;
         });
 
-        // Calculate Strategic Metrics (Legacy + Opportunities)
-        const strategicLegacy = calculateMetrics(relevantMothers);
+        // Calculate Strategic Metrics (Pipeline Only)
+        // Legacy Mothers (Tasks) are excluded to match the visual Pipeline Board which only shows Bids.
         const strategicPipeline = {
             pending: relevantOpportunities.filter(op => {
                 const isCompleted = op.pipelineStage === PipelineStage.RESULTADO || op.status === 'GANHA' || op.status === 'PERDIDA';
@@ -458,39 +458,21 @@ export const CommercialView: React.FC = () => {
             total: relevantOpportunities.length
         };
 
-        // Combine Strategic
+        // Strategic Stats = Pipeline Only
         const strategic = {
-            pending: strategicLegacy.pending + strategicPipeline.pending,
-            inProgress: strategicLegacy.inProgress + strategicPipeline.inProgress,
-            late: strategicLegacy.late + strategicPipeline.late,
-            completed: strategicLegacy.completed + strategicPipeline.completed,
-            productivity: 0, // Recalc below
-            riskRate: 0 // Recalc below
+            pending: strategicPipeline.pending,
+            inProgress: strategicPipeline.inProgress,
+            late: strategicPipeline.late,
+            completed: strategicPipeline.completed,
+            productivity: 0,
+            riskRate: 0
         };
         const totalStrategic = strategic.pending + strategic.inProgress + strategic.late + strategic.completed;
         strategic.productivity = totalStrategic > 0 ? Math.round((strategic.completed / totalStrategic) * 100) : 0;
         strategic.riskRate = totalStrategic > 0 ? Math.round((strategic.late / totalStrategic) * 100) : 0;
 
-        const operational = calculateMetrics(relevantChildren);
-
-        // 4. Financials - Optimized Single Reduce (Legacy Only for now, maybe add Pipeline values?)
-        const outcomes = relevantMothers.reduce((acc, mother) => {
-            // Sum value of CHILDREN that are 'Proposta Comercial' for this mother
-            const motherValue = (tasks || []) // checking against ALL tasks to find children
-                .filter(child => child.parentId === mother.id && child.category === 'Proposta Comercial')
-                .reduce((sum, child) => sum + (child.value || 0), 0);
-
-            if (mother.outcome === TaskOutcome.SUCCESS) acc.success += motherValue;
-            if (mother.outcome === TaskOutcome.FAILURE) acc.failure += motherValue;
-            if (mother.outcome === TaskOutcome.STUDY) acc.study += motherValue;
-            if (mother.outcome === TaskOutcome.WITHDRAWAL) acc.withdrawal += motherValue;
-
-            return acc;
-        }, { success: 0, failure: 0, study: 0, withdrawal: 0 });
-
-        // NEW: ADD PIPELINE OPPORTUNITIES TO FINANCIAL TOTALS
-        // Filter opportunities in 'RESULTADO' stage (which are "closed")
-        // Use 'result' field to categorize
+        // 4. Financials - Pipeline Only
+        const outcomes = { success: 0, failure: 0, study: 0, withdrawal: 0 };
         const pipelineOutcomes = (opportunities || []).filter(op => op.pipelineStage === PipelineStage.RESULTADO);
 
         pipelineOutcomes.forEach(op => {
@@ -501,66 +483,34 @@ export const CommercialView: React.FC = () => {
             if (op.result === TaskOutcome.WITHDRAWAL) outcomes.withdrawal += val;
         });
 
-        // 5. Results by Client (Aggregation)
+        // 5. Results by Client (Pipeline Only)
         const clientResults = relevantOpportunities.reduce((acc, op) => {
             const client = s(op.clientName) || 'Não identificado';
             if (!acc[client]) {
                 acc[client] = { name: client, success: 0, failure: 0, study: 0, withdrawal: 0 };
             }
             const val = n(op.estimatedValue);
-            // Use Result for Closed Ops, or classify open ops?
-            // User requested grouping by status/outcome.
-            // Start with Pipeline Outcomes
+
             if (op.pipelineStage === PipelineStage.RESULTADO) {
                 if (op.result === TaskOutcome.SUCCESS) acc[client].success += val;
                 if (op.result === TaskOutcome.FAILURE) acc[client].failure += val;
                 if (op.result === TaskOutcome.STUDY) acc[client].study += val;
                 if (op.result === TaskOutcome.WITHDRAWAL) acc[client].withdrawal += val;
-            } else {
-                // Active ops are not "Result" yet, maybe classify as Study? Or just ignore for "Results" table?
-                // User asked for "Valor Total em Sucesso", etc. implying outcomes.
-                // We will verify tasks (Legacy) too.
             }
             return acc;
         }, {} as Record<string, { name: string, success: number, failure: number, study: number, withdrawal: number }>);
-
-        // Merge with Legacy Tasks for Clients
-        relevantMothers.forEach(task => {
-            const client = s(task.clientName) || 'Não identificado';
-            if (!clientResults[client]) {
-                clientResults[client] = { name: client, success: 0, failure: 0, study: 0, withdrawal: 0 };
-            }
-            // Get children value
-            const taskValue = (tasks || [])
-                .filter(child => child.parentId === task.id && child.category === 'Proposta Comercial')
-                .reduce((sum, child) => sum + (child.value || 0), 0);
-
-            if (task.outcome === TaskOutcome.SUCCESS) clientResults[client].success += taskValue;
-            if (task.outcome === TaskOutcome.FAILURE) clientResults[client].failure += taskValue;
-            if (task.outcome === TaskOutcome.STUDY) clientResults[client].study += taskValue;
-            if (task.outcome === TaskOutcome.WITHDRAWAL) clientResults[client].withdrawal += taskValue;
-        });
-
 
         const clientsAnalysisData = (Object.values(clientResults) as any[]).sort((a, b) => b.success - a.success);
 
         // 6. Conversion Rate & Pipeline Totals
         // Conversion Rate = (Success Count / Total Opportunities) * 100
-        const totalOpsCount = relevantOpportunities.length + relevantMothers.length;
-        const totalSuccessCount =
-            relevantOpportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length +
-            relevantMothers.filter(t => t.outcome === TaskOutcome.SUCCESS).length;
+        const totalOpsCount = relevantOpportunities.length;
+        const totalSuccessCount = relevantOpportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length;
 
         const conversionRate = totalOpsCount > 0 ? (totalSuccessCount / totalOpsCount) * 100 : 0;
 
-        // VGV (Valor Global de Vendas Potential?) or Total Pipeline Value?
-        // User asked "% Value over Pipeline VGV". Let's assume VGV = Sum of All Opportunity Values (Active + Closed)
-        const totalPipelineValue =
-            relevantOpportunities.reduce((sum, op) => sum + n(op.estimatedValue), 0) +
-            relevantMothers.reduce((sum, mother) => {
-                return sum + (tasks || []).filter(c => c.parentId === mother.id && c.category === 'Proposta Comercial').reduce((s, c) => s + (c.value || 0), 0);
-            }, 0);
-
+        // VGV
+        const totalPipelineValue = relevantOpportunities.reduce((sum, op) => sum + n(op.estimatedValue), 0);
 
         return { strategic, outcomes, clientsAnalysisData, conversionRate, totalOpsCount, totalPipelineValue };
     }, [tasks, opportunities, timeFilterType, selectedDate, customRange]);
@@ -861,17 +811,11 @@ export const CommercialView: React.FC = () => {
                                                 Sucesso
                                             </td>
                                             <td className="px-6 py-4 text-center font-bold text-slate-700">
-                                                {
-                                                    (() => {
-                                                        const count = opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length +
-                                                            tasks.filter(t => !t.parentId && !t.opportunityId && t.outcome === TaskOutcome.SUCCESS).length;
-                                                        return count;
-                                                    })()
-                                                }
+                                                {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length}
                                             </td>
                                             <td className="px-6 py-4 text-center text-slate-500 text-xs">
                                                 {dashboardStats.totalOpsCount > 0 ?
-                                                    ((opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length + tasks.filter(t => !t.parentId && !t.opportunityId && t.outcome === TaskOutcome.SUCCESS).length) / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
+                                                    (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
                                                     : '0%'}
                                             </td>
                                             <td className="px-6 py-4 text-right font-bold text-emerald-700">
@@ -888,12 +832,11 @@ export const CommercialView: React.FC = () => {
                                                 Insucesso
                                             </td>
                                             <td className="px-6 py-4 text-center font-bold text-slate-700">
-                                                {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length +
-                                                    tasks.filter(t => !t.parentId && !t.opportunityId && t.outcome === TaskOutcome.FAILURE).length}
+                                                {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length}
                                             </td>
                                             <td className="px-6 py-4 text-center text-slate-500 text-xs">
                                                 {dashboardStats.totalOpsCount > 0 ?
-                                                    ((opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length + tasks.filter(t => !t.parentId && !t.opportunityId && t.outcome === TaskOutcome.FAILURE).length) / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
+                                                    (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
                                                     : '0%'}
                                             </td>
                                             <td className="px-6 py-4 text-right font-bold text-red-700">
@@ -910,12 +853,11 @@ export const CommercialView: React.FC = () => {
                                                 Em Estudo
                                             </td>
                                             <td className="px-6 py-4 text-center font-bold text-slate-700">
-                                                {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length +
-                                                    tasks.filter(t => !t.parentId && !t.opportunityId && t.outcome === TaskOutcome.STUDY).length}
+                                                {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length}
                                             </td>
                                             <td className="px-6 py-4 text-center text-slate-500 text-xs">
                                                 {dashboardStats.totalOpsCount > 0 ?
-                                                    ((opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length + tasks.filter(t => !t.parentId && !t.opportunityId && t.outcome === TaskOutcome.STUDY).length) / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
+                                                    (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
                                                     : '0%'}
                                             </td>
                                             <td className="px-6 py-4 text-right font-bold text-blue-700">
@@ -932,12 +874,11 @@ export const CommercialView: React.FC = () => {
                                                 Desistência
                                             </td>
                                             <td className="px-6 py-4 text-center font-bold text-slate-700">
-                                                {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length +
-                                                    tasks.filter(t => !t.parentId && !t.opportunityId && t.outcome === TaskOutcome.WITHDRAWAL).length}
+                                                {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length}
                                             </td>
                                             <td className="px-6 py-4 text-center text-slate-500 text-xs">
                                                 {dashboardStats.totalOpsCount > 0 ?
-                                                    ((opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length + tasks.filter(t => !t.parentId && !t.opportunityId && t.outcome === TaskOutcome.WITHDRAWAL).length) / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
+                                                    (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
                                                     : '0%'}
                                             </td>
                                             <td className="px-6 py-4 text-right font-bold text-slate-600">
