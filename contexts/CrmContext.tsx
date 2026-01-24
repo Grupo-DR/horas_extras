@@ -1,3 +1,4 @@
+import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { Client, ClientContact, Bid, Interaction, Task } from '../types';
 import { ClientService } from '../services/clientService';
 import { ClientContactService } from '../services/clientContactService'; // Canonical
@@ -80,25 +81,7 @@ export const CrmProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     // --- ACTIONS ---
 
-    const addClient = async (clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
-        // ... existing code
-        try { await ClientService.create(clientData); refresh(); } catch (e) { throw e; }
-    };
 
-    // ... (Add Task Actions below) -> We will insert them via next replace or manually if I missed cleaning up existing functions.
-    // Ideally I keep existing functions and just ADD new ones.
-
-    // Let's redo this part carefully to NOT remove existing functions.
-    // I will primarily target the STATE declaration and FETCH logic first.
-
-    // State Declaration
-    /*
-    const [interactions, setInteractions] = useState<Interaction[]>([]);
-    const [tasks, setTasks] = useState<Task[]>([]);
-    */
-
-
-    // --- ACTIONS ---
 
     const addClient = async (clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
         try {
