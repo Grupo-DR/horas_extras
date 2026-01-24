@@ -220,7 +220,6 @@ export const ClientDetailsView: React.FC = () => {
 
                                 return (
                                     <div key={contact.id} className="flex gap-4 rounded-lg border border-slate-200 p-5 bg-white hover:border-blue-200 transition-colors group items-start relative">
-                                        <UserAvatar user={{ name: contact.name }} size="md" />
 
                                         {/* Action Buttons */}
                                         <div className="absolute top-2 right-2 flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-10">
@@ -249,7 +248,6 @@ export const ClientDetailsView: React.FC = () => {
                                             <div className="mb-2">
                                                 <div className="flex items-center gap-2 mb-0.5">
                                                     <p className="font-semibold text-slate-900 group-hover:text-blue-700 transition-colors truncate text-base">{contact.name}</p>
-                                                    {statusBadge}
                                                 </div>
                                                 <p className="text-xs text-slate-500 font-medium truncate">
                                                     {contact.role}
@@ -279,40 +277,39 @@ export const ClientDetailsView: React.FC = () => {
                                                 )}
                                             </div>
 
-                                            {/* 3-Axis Indices */}
-                                            <div className="grid grid-cols-3 gap-1 mb-4 border-t border-b border-slate-50 py-3 bg-slate-50/50 rounded-lg px-2">
+                                            {/* 3-Axis Indices (Text Descriptions) */}
+                                            <div className="flex flex-col gap-2 mb-4 pt-3 border-t border-slate-100">
                                                 {/* Relationship */}
-                                                <div className="text-center">
-                                                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Relação</div>
-                                                    <div className="flex justify-center" title="Recência da Última Oportunidade">
-                                                        {analytics.relationshipIndex === 'MUITO_PROXIMO' && <span className="text-lg">🔥</span>}
-                                                        {analytics.relationshipIndex === 'PROXIMO' && <span className="text-lg">☁️</span>}
-                                                        {analytics.relationshipIndex === 'DISTANTE' && <span className="text-lg">❄️</span>}
-                                                        {/* Fallback if undefined */}
-                                                        {!analytics.relationshipIndex && <span className="text-lg">❄️</span>}
-                                                    </div>
+                                                <div className="text-xs">
+                                                    <span className="font-bold text-slate-700">Índice de Relacionamento: </span>
+                                                    <span className="text-slate-600">
+                                                        {analytics.relationshipIndex === 'MUITO_PROXIMO' && "Muito Próximo: Última oportunidade recebida há menos de 30 dias."}
+                                                        {analytics.relationshipIndex === 'PROXIMO' && "Próximo: Última oportunidade recebida entre 30 e 90 dias."}
+                                                        {analytics.relationshipIndex === 'DISTANTE' && "Distante: Última oportunidade recebida há mais de 90 dias."}
+                                                        {!analytics.relationshipIndex && "Sem histórico recente."}
+                                                    </span>
                                                 </div>
 
                                                 {/* Commercial */}
-                                                <div className="text-center border-l border-slate-100">
-                                                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Volume</div>
-                                                    <div className="flex justify-center" title="Volume de Oportunidades">
-                                                        {analytics.commercialIndex === 'ALTO_VOLUME' && <span className="text-lg">📈</span>}
-                                                        {analytics.commercialIndex === 'MEDIO_VOLUME' && <span className="text-lg">📊</span>}
-                                                        {analytics.commercialIndex === 'BAIXO_VOLUME' && <span className="text-lg">📉</span>}
-                                                        {!analytics.commercialIndex && <span className="text-lg">📉</span>}
-                                                    </div>
+                                                <div className="text-xs">
+                                                    <span className="font-bold text-slate-700">Índice Comercial: </span>
+                                                    <span className="text-slate-600">
+                                                        {analytics.commercialIndex === 'ALTO_VOLUME' && "Alto Volume: Mais de 5 oportunidades."}
+                                                        {analytics.commercialIndex === 'MEDIO_VOLUME' && "Médio Volume: Entre 2 e 5 oportunidades."}
+                                                        {analytics.commercialIndex === 'BAIXO_VOLUME' && "Baixo Volume: Menos de 2 oportunidades."}
+                                                        {!analytics.commercialIndex && "Sem dados de volume."}
+                                                    </span>
                                                 </div>
 
                                                 {/* Quality */}
-                                                <div className="text-center border-l border-slate-100">
-                                                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Qualidade</div>
-                                                    <div className="flex justify-center" title="Taxa de Conversão">
-                                                        {analytics.qualityIndex === 'CAMPEAO' && <span className="text-lg">🏆</span>}
-                                                        {analytics.qualityIndex === 'PROMISSOR' && <span className="text-lg">⭐</span>}
-                                                        {analytics.qualityIndex === 'NEUTRO' && <span className="text-lg">😐</span>}
-                                                        {!analytics.qualityIndex && <span className="text-lg">😐</span>}
-                                                    </div>
+                                                <div className="text-xs">
+                                                    <span className="font-bold text-slate-700">Índice de Qualidade: </span>
+                                                    <span className="text-slate-600">
+                                                        {analytics.qualityIndex === 'CAMPEAO' && "Campeão: Taxa de conversão acima de 40%."}
+                                                        {analytics.qualityIndex === 'PROMISSOR' && "Promissor: Taxa de conversão acima de 10%."}
+                                                        {analytics.qualityIndex === 'NEUTRO' && "Neutro: Taxa de conversão abaixo de 10%."}
+                                                        {!analytics.qualityIndex && "Sem dados de conversão."}
+                                                    </span>
                                                 </div>
                                             </div>
 
