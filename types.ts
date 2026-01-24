@@ -395,6 +395,12 @@ export interface Interaction {
   notes: string;
   nextSteps?: string;
   tags?: string[];
+  participants?: {
+    id: string; // User ID or Contact ID
+    name: string;
+    type: 'USER' | 'CONTACT';
+    role?: string;
+  }[];
   createdBy: UserSummary;
   createdAt: Date;
 }

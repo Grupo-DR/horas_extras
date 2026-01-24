@@ -64,10 +64,14 @@ export const ClientCard: React.FC<ClientCardProps> = ({
                     </span>
                 </div>
 
-                {/* Active Contacts */}
+                {/* Last Bid (Replaces Active Contacts) */}
                 <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500">Contatos Ativos (90d)</span>
-                    <span className="font-medium text-slate-700">{metrics.activeContacts90d}</span>
+                    <span className="text-slate-500">Última Proposta</span>
+                    <span className="font-medium text-slate-700">
+                        {metrics.lastBid
+                            ? format(new Date(metrics.lastBid), 'dd/MM/yyyy', { locale: ptBR })
+                            : 'Nenhuma'}
+                    </span>
                 </div>
 
                 {/* Bid Trend */}

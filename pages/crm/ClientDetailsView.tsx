@@ -3,8 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useCrm } from '../../contexts/CrmContext';
 import { calculateClientHealth, calculateContactAnalytics } from '../../domain/relationshipAnalytics';
 import { TimelineItem } from '../../components/crm/TimelineItem';
-import { Plus, Building2, AlertTriangle, CheckCircle2, XCircle, MapPin, Globe, Mail, Info, Phone, FileText, Pencil, Trash2, PieChart as PieChartIcon, TrendingUp, NotebookPen } from 'lucide-react';
-import { Client, Interaction, Bid, ClientContact, TaskOutcome, BidStatus, Task } from '../../types';
+import { Plus, Building2, AlertTriangle, CheckCircle2, XCircle, MapPin, Globe, Mail, Info, Phone, FileText, Pencil, Trash2, PieChart as PieChartIcon, TrendingUp, NotebookPen, Filter, Tag } from 'lucide-react';
+import { Client, Interaction, Bid, ClientContact, TaskOutcome, BidStatus, Task, InteractionType } from '../../types';
 import { UserAvatar } from '../../components/ui/UserAvatar';
 import { ContactModal } from '../../components/crm/ContactModal';
 import { ClientModal } from '../../components/crm/ClientModal';
@@ -33,14 +33,39 @@ export const ClientDetailsView: React.FC = () => {
     const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
     const [activeInteractionForTask, setActiveInteractionForTask] = useState<Interaction | undefined>(undefined);
 
+    // History Filters
+    const [filterType, setFilterType] = useState<string>('ALL');
+    const [filterPerson, setFilterPerson] = useState<string>('');
+    const [filterTag, setFilterTag] = useState<string>('');
+
     const client = clients.find((c: Client) => c.id === id);
 
     if (!client) return <div className="p-8 text-center text-slate-500">Cliente não encontrado.</div>;
 
     // Filter Data for this Client
+    // Filter Data for this Client
     const clientInteractions = interactions
         .filter((i: Interaction) => i.clientId === client.id)
         .sort((a: Interaction, b: Interaction) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const filteredInteractions = useMemo(() => {
+        return clientInteractions.filter(i => {
+            if (filterType !== 'ALL' && i.type !== filterType) return false;
+
+            if (filterPerson) {
+                const search = filterPerson.toLowerCase();
+                const createdMatch = i.createdBy.name.toLowerCase().includes(search);
+                const participantMatch = i.participants?.some(p => p.name.toLowerCase().includes(search));
+                if (!createdMatch && !participantMatch) return false;
+            }
+
+            if (filterTag) {
+                if (!i.tags || !i.tags.some(t => t.toLowerCase().includes(filterTag.toLowerCase()))) return false;
+            }
+
+            return true;
+        });
+    }, [clientInteractions, filterType, filterPerson, filterTag]);
 
     const clientBids = bids.filter((o: Bid) => o.clientId === client.id);
     const clientContacts = contacts.filter((c: ClientContact) => c.clientId === client.id);
@@ -235,7 +260,56 @@ export const ClientDetailsView: React.FC = () => {
                                 </button>
                             </div>
 
-                            {clientInteractions.length === 0 ? (
+                            {/* FILTERS BAR */}
+                            <div className="flex flex-wrap gap-3 mb-6 p-4 bg-slate-50 rounded-lg border border-slate-100 items-center">
+                                <div className="flex items-center gap-2 text-sm text-slate-500 mr-2">
+                                    <Filter size={16} />
+                                    <span className="font-medium">Filtrar:</span>
+                                </div>
+
+                                <select
+                                    className="text-xs rounded-md border-slate-300 py-1.5 focus:ring-blue-500 focus:border-blue-500"
+                                    value={filterType}
+                                    onChange={(e) => setFilterType(e.target.value)}
+                                >
+                                    <option value="ALL">Todos os Tipos</option>
+                                    <option value="REUNIAO">Reunião</option>
+                                    <option value="LIGACAO">Ligação</option>
+                                    <option value="VISITA">Visita</option>
+                                    <option value="EMAIL">Email</option>
+                                    <option value="WHATSAPP">WhatsApp</option>
+                                </select>
+
+                                <input
+                                    type="text"
+                                    placeholder="Buscar pessoa..."
+                                    className="text-xs rounded-md border-slate-300 py-1.5 focus:ring-blue-500 focus:border-blue-500"
+                                    value={filterPerson}
+                                    onChange={(e) => setFilterPerson(e.target.value)}
+                                />
+
+                                <div className="relative">
+                                    <Tag className="absolute left-2 top-2 w-3 h-3 text-slate-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Filtrar por tag..."
+                                        className="pl-7 text-xs rounded-md border-slate-300 py-1.5 focus:ring-blue-500 focus:border-blue-500"
+                                        value={filterTag}
+                                        onChange={(e) => setFilterTag(e.target.value)}
+                                    />
+                                </div>
+
+                                {(filterType !== 'ALL' || filterPerson || filterTag) && (
+                                    <button
+                                        onClick={() => { setFilterType('ALL'); setFilterPerson(''); setFilterTag(''); }}
+                                        className="text-xs text-red-600 hover:text-red-800 ml-auto font-medium"
+                                    >
+                                        Limpar Filtros
+                                    </button>
+                                )}
+                            </div>
+
+                            {filteredInteractions.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-16 text-slate-400 text-center">
                                     <div className="bg-slate-50 p-4 rounded-full mb-3">
                                         <CheckCircle2 className="h-8 w-8 text-slate-300" />
@@ -245,12 +319,12 @@ export const ClientDetailsView: React.FC = () => {
                                 </div>
                             ) : (
                                 <div className="pl-2">
-                                    {clientInteractions.map((interaction, idx) => (
+                                    {filteredInteractions.map((interaction, idx) => (
                                         <TimelineItem
                                             key={interaction.id}
                                             interaction={interaction}
                                             tasks={clientTasks}
-                                            isLast={idx === clientInteractions.length - 1}
+                                            isLast={idx === filteredInteractions.length - 1}
                                             onEdit={handleEditInteraction}
                                             // onDelete (Assuming not exposed in context yet or handled inside TimelineItem via callback if needed. TimelineItem prop allows it)
                                             // The user requirement said: "Add Edit/Delete". I implemented onDelete in TimelineItem but I need to pass a handler.

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, CheckCircle, Tag } from 'lucide-react';
+import { X, Calendar, CheckCircle, Tag, Users, UserPlus } from 'lucide-react';
 import { Interaction, InteractionType } from '../../types';
 import { InteractionService } from '../../services/interactionService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCrm } from '../../contexts/CrmContext';
 import { toast } from 'sonner';
 
 interface InteractionFormModalProps {
@@ -34,7 +35,8 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
     onSuccess,
     opportunities = []
 }) => {
-    const { user } = useAuth();
+    const { user, users: systemUsers } = useAuth();
+    const { contacts } = useCrm();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         type: 'REUNIAO' as InteractionType,
@@ -43,8 +45,30 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
         notes: '',
         nextSteps: '',
         tags: '',
-        bidId: bidId || ''
+        bidId: bidId || '',
+        participants: [] as { id: string; name: string; type: 'USER' | 'CONTACT'; role?: string }[]
     });
+
+    // Resolve available people (Contacts + Users)
+    const availablePeople = React.useMemo(() => {
+        const people: { id: string; name: string; type: 'USER' | 'CONTACT'; role?: string }[] = [];
+
+        // Add System Users
+        systemUsers.forEach(u => {
+            people.push({ id: u.id, name: u.name, type: 'USER' as const, role: u.role });
+        });
+
+        // Add Client Contacts (Filtered)
+        if (clientId) {
+            const clientContacts = contacts.filter(c => c.clientId === clientId);
+            clientContacts.forEach(c => {
+                people.push({ id: c.id, name: c.name, type: 'CONTACT' as const, role: c.role });
+            });
+        }
+
+        return people;
+    }, [systemUsers, contacts, clientId]);
+
 
     // Populate form on open/change
     useEffect(() => {
@@ -56,7 +80,8 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
                 notes: initialData.notes,
                 nextSteps: initialData.nextSteps || '',
                 tags: initialData.tags ? initialData.tags.join(', ') : '',
-                bidId: initialData.bidId || ''
+                bidId: initialData.bidId || '',
+                participants: initialData.participants || []
             });
         } else if (isOpen && !initialData) {
             // Reset if new
@@ -67,7 +92,8 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
                 notes: '',
                 nextSteps: '',
                 tags: '',
-                bidId: bidId || ''
+                bidId: bidId || '',
+                participants: []
             });
         }
     }, [isOpen, initialData, bidId]);
@@ -99,6 +125,7 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
                 notes: formData.notes,
                 nextSteps: formData.nextSteps || undefined,
                 tags: tagsArray,
+                participants: formData.participants
             };
 
             if (initialData?.id) {
@@ -201,6 +228,64 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
                             value={formData.title}
                             onChange={e => setFormData({ ...formData, title: e.target.value })}
                         />
+                    </div>
+
+                    {/* Participants Selector */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Pessoas Envolvidas</label>
+                        <div className="space-y-2">
+                            <div className="relative">
+                                <UserPlus className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                                <select
+                                    className="w-full pl-9 py-2.5 rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500 text-sm shadow-sm bg-white"
+                                    onChange={(e) => {
+                                        if (!e.target.value) return;
+                                        const person = availablePeople.find(p => p.id === e.target.value);
+                                        if (person && !formData.participants.some(p => p.id === person.id)) {
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                participants: [...prev.participants, person]
+                                            }));
+                                        }
+                                        e.target.value = ''; // Reset select
+                                    }}
+                                >
+                                    <option value="">Adicionar pessoa...</option>
+                                    <optgroup label="Usuários do Sistema">
+                                        {availablePeople.filter(p => p.type === 'USER').map(p => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))}
+                                    </optgroup>
+                                    <optgroup label="Contatos do Cliente">
+                                        {availablePeople.filter(p => p.type === 'CONTACT').map(p => (
+                                            <option key={p.id} value={p.id}>{p.name} ({p.role})</option>
+                                        ))}
+                                    </optgroup>
+                                </select>
+                            </div>
+
+                            {/* Selected Chips */}
+                            {formData.participants.length > 0 && (
+                                <div className="flex flex-wrap gap-2 p-2 bg-slate-50 rounded-lg border border-slate-100">
+                                    {formData.participants.map(p => (
+                                        <div key={p.id} className="flex items-center gap-1.5 px-2 py-1 bg-white border border-slate-200 rounded-full text-xs font-medium text-slate-700 shadow-sm">
+                                            <span className={`w-2 h-2 rounded-full ${p.type === 'USER' ? 'bg-blue-500' : 'bg-emerald-500'}`} />
+                                            {p.name}
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData(prev => ({
+                                                    ...prev,
+                                                    participants: prev.participants.filter(x => x.id !== p.id)
+                                                }))}
+                                                className="hover:text-red-500 transition-colors ml-1"
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Date */}
