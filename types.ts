@@ -349,6 +349,22 @@ export interface Client {
   segment?: string;
   status: 'ATIVA' | 'INATIVA' | 'PROSPECT';
 
+  // New Fields
+  clientType?: 'PRIVADA' | 'PUBLICA';
+  origin?: 'PROSPECCAO_INTERNA' | 'INDICACAO' | 'CONTATO_PASSIVO';
+  primaryEmail?: string;
+  website?: string;
+
+  address?: {
+    street: string;
+    number?: string;
+    complement?: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+    zipCode: string; // CEP
+  };
+
   // Legacy fields to optionally support or map
   name?: string; // Alias for tradeName?
   document?: string; // Alias for CNPJ?
