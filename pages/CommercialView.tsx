@@ -14,7 +14,7 @@ import { BidService } from '../services/bidService';
 import { UserService } from '../services/userService';
 import { isPast, format, startOfYear, isWithinInterval, startOfMonth, endOfMonth, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, LineChart, Line } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, LineChart, Line, FunnelChart, Funnel, LabelList } from 'recharts';
 import { Toaster, toast } from 'sonner';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useCrm } from '../contexts/CrmContext';
@@ -1049,45 +1049,67 @@ export const CommercialView: React.FC = () => {
                             </div>
 
                             {/* TABLE - CLIENT ANALYSIS (REFORMED: All Clients + Segmented Values) */}
+                            {/* FUNNEL CHART - Sales Funnel (Substitutes Client Analysis) */}
                             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
-                                <h3 className="font-bold text-slate-700 mb-4 flex items-center justify-between">
-                                    <span>Análise de Clientes</span>
-                                    <span className="text-xs font-normal text-slate-500 bg-slate-100 px-2 py-1 rounded-full">{dashboardStats.clientsAnalysisData.length} Clientes</span>
+                                <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                    <Filter size={20} className="text-slate-600" />
+                                    Funil de Vendas (Conversão)
                                 </h3>
-                                <div className="flex-1 overflow-auto max-h-[350px] custom-scrollbar">
-                                    <table className="w-full text-sm text-left">
-                                        <thead className="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0 z-10 shadow-sm">
-                                            <tr>
-                                                <th className="px-4 py-3">Cliente</th>
-                                                <th className="px-4 py-3 text-right text-emerald-600">Sucesso</th>
-                                                <th className="px-4 py-3 text-right text-red-600">Insucesso</th>
-                                                <th className="px-4 py-3 text-right text-blue-600">Estudo</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {dashboardStats.clientsAnalysisData.length === 0 && (
-                                                <tr>
-                                                    <td colSpan={4} className="text-center py-8 text-slate-400 italic">Nenhum dado disponível no período.</td>
-                                                </tr>
-                                            )}
-                                            {dashboardStats.clientsAnalysisData.map((client, idx) => (
-                                                <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                                                    <td className="px-4 py-3 font-medium text-slate-700 max-w-[150px] truncate" title={client.name}>
-                                                        {client.name}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right font-medium text-slate-600">
-                                                        {client.success.value > 0 ? `R$ ${client.success.value.toLocaleString()}` : '-'}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right text-slate-400 text-xs">
-                                                        {client.failure.value > 0 ? `R$ ${client.failure.value.toLocaleString()}` : '-'}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right text-slate-400 text-xs">
-                                                        {client.study.value > 0 ? `R$ ${client.study.value.toLocaleString()}` : '-'}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                <div className="flex-1 min-h-[350px]">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <FunnelChart>
+                                            <RechartsTooltip
+                                                formatter={(value: any) => [`R$ ${Number(value).toLocaleString()}`, 'Valor']}
+                                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                            />
+                                            <Funnel
+                                                dataKey="value"
+                                                data={[
+                                                    {
+                                                        name: '1. Visitantes (Total)',
+                                                        value: dashboardStats.totalPipelineValue,
+                                                        fill: '#f43f5e', // rose-500
+                                                        count: dashboardStats.totalOpsCount
+                                                    },
+                                                    {
+                                                        name: '2. Desistência',
+                                                        value: dashboardStats.outcomes.withdrawal,
+                                                        fill: '#f59e0b', // amber-500
+                                                        count: opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length
+                                                    },
+                                                    {
+                                                        name: '3. Em Estudo',
+                                                        value: dashboardStats.outcomes.study,
+                                                        fill: '#22c55e', // green-500 (Image has green here)
+                                                        count: opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length
+                                                    },
+                                                    {
+                                                        name: '4. Perdida',
+                                                        value: dashboardStats.outcomes.failure,
+                                                        fill: '#6366f1', // indigo-500 (Purple in image)
+                                                        count: opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length
+                                                    },
+                                                    {
+                                                        name: '5. Venda (Sucesso)',
+                                                        value: dashboardStats.outcomes.success,
+                                                        fill: '#4f46e5', // indigo-600 (Dark purple)
+                                                        count: opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length
+                                                    }
+                                                ]}
+                                                isAnimationActive
+                                            >
+                                                <LabelList position="right" fill="#000" stroke="none" dataKey="name" />
+                                                <LabelList
+                                                    position="center"
+                                                    fill="#fff"
+                                                    stroke="none"
+                                                    dataKey="value"
+                                                    formatter={(val: any) => `R$${(Number(val) / 1000).toFixed(0)}k`}
+                                                    style={{ fontWeight: 'bold' }}
+                                                />
+                                            </Funnel>
+                                        </FunnelChart>
+                                    </ResponsiveContainer>
                                 </div>
                             </div>
                         </div>
