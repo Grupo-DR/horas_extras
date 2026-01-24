@@ -64,9 +64,9 @@ export const ClientModal: React.FC<ClientModalProps> = ({ isOpen, onClose }) => 
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl my-8">
-                <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 sticky top-0 z-10">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+                <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                     <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                         <Building2 size={20} className="text-blue-600" />
                         Nova Empresa
@@ -76,7 +76,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({ isOpen, onClose }) => 
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto">
                     {/* Basic Info */}
                     <div className="space-y-4">
                         <h3 className="text-sm font-semibold text-slate-900 border-b pb-2">Informações Básicas</h3>
