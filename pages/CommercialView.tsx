@@ -87,7 +87,7 @@ export const CommercialView: React.FC = () => {
     const kpiIdFilter = searchParams.get('kpiId');
 
     // CRM Context Integration
-    const { bids: opportunities = [], refresh } = useCrm(); // Aliasing bids to opportunities to minimize refactor
+    const { bids: opportunities = [], clients = [], refresh } = useCrm(); // Aliasing bids to opportunities to minimize refactor
     const { user: currentUser } = useAuth(); // REAL USER
 
     // --- NEW IMPORT MODAL STATE ---
@@ -473,42 +473,57 @@ export const CommercialView: React.FC = () => {
         strategic.riskRate = totalStrategic > 0 ? Math.round((strategic.late / totalStrategic) * 100) : 0;
 
         // 4. Financials - Pipeline Only
-        const outcomes = { success: 0, failure: 0, study: 0, withdrawal: 0 };
-        const pipelineOutcomes = (opportunities || []).filter(op => op.pipelineStage === PipelineStage.RESULTADO);
+        const outcomes = { success: 0, failure: 0, study: 0, withdrawal: 0, inProgress: 0 };
+        const pipelineOutcomes = (opportunities || []); // CHECK ALL
 
         pipelineOutcomes.forEach(op => {
             const val = op.estimatedValue || 0;
-            if (op.result === TaskOutcome.SUCCESS) outcomes.success += val;
-            if (op.result === TaskOutcome.FAILURE) outcomes.failure += val;
-            if (op.result === TaskOutcome.STUDY) outcomes.study += val;
-            if (op.result === TaskOutcome.WITHDRAWAL) outcomes.withdrawal += val;
+            if (op.pipelineStage === PipelineStage.RESULTADO) {
+                if (op.result === TaskOutcome.SUCCESS) outcomes.success += val;
+                if (op.result === TaskOutcome.FAILURE) outcomes.failure += val;
+                if (op.result === TaskOutcome.STUDY) outcomes.study += val;
+                if (op.result === TaskOutcome.WITHDRAWAL) outcomes.withdrawal += val;
+            } else {
+                // If NOT in RESULTADO, it is "Em Andamento"
+                outcomes.inProgress += val;
+            }
         });
 
         // 5. Results by Client (Pipeline Only) - REFACTORED for Detailed Table
         const clientResults = relevantOpportunities.reduce((acc, op) => {
-            const client = s(op.clientName) || 'Não identificado';
-            if (!acc[client]) {
-                acc[client] = {
-                    name: client,
+            // RESOLVE CLIENT NAME: Try to find by ID or Name matching
+            let displayName = s(op.clientName) || 'Não identificado';
+            const matchedClient = clients.find(c => c.id === op.clientId || c.corporateName === op.clientName || c.tradeName === op.clientName);
+            if (matchedClient?.tradeName) displayName = matchedClient.tradeName;
+
+            if (!acc[displayName]) {
+                acc[displayName] = {
+                    name: displayName,
                     success: { count: 0, value: 0 },
                     failure: { count: 0, value: 0 },
                     study: { count: 0, value: 0 },
                     withdrawal: { count: 0, value: 0 },
+                    inProgress: { count: 0, value: 0 },
                     total: { count: 0, value: 0 }
                 };
             }
             const val = n(op.estimatedValue);
 
             if (op.pipelineStage === PipelineStage.RESULTADO) {
-                if (op.result === TaskOutcome.SUCCESS) { acc[client].success.count++; acc[client].success.value += val; }
-                if (op.result === TaskOutcome.FAILURE) { acc[client].failure.count++; acc[client].failure.value += val; }
-                if (op.result === TaskOutcome.STUDY) { acc[client].study.count++; acc[client].study.value += val; }
-                if (op.result === TaskOutcome.WITHDRAWAL) { acc[client].withdrawal.count++; acc[client].withdrawal.value += val; }
-
-                // ADD TO TOTAL if it is closed
-                acc[client].total.count++;
-                acc[client].total.value += val;
+                if (op.result === TaskOutcome.SUCCESS) { acc[displayName].success.count++; acc[displayName].success.value += val; }
+                if (op.result === TaskOutcome.FAILURE) { acc[displayName].failure.count++; acc[displayName].failure.value += val; }
+                if (op.result === TaskOutcome.STUDY) { acc[displayName].study.count++; acc[displayName].study.value += val; }
+                if (op.result === TaskOutcome.WITHDRAWAL) { acc[displayName].withdrawal.count++; acc[displayName].withdrawal.value += val; }
+            } else {
+                // IN PROGRESS
+                acc[displayName].inProgress.count++;
+                acc[displayName].inProgress.value += val;
             }
+
+            // ADD TO TOTAL (Active + Closed)
+            acc[displayName].total.count++;
+            acc[displayName].total.value += val;
+
             return acc;
         }, {} as Record<string, {
             name: string;
@@ -516,10 +531,12 @@ export const CommercialView: React.FC = () => {
             failure: { count: number; value: number };
             study: { count: number; value: number };
             withdrawal: { count: number; value: number };
+            inProgress: { count: number; value: number };
             total: { count: number; value: number };
         }>);
 
-        const clientsAnalysisData = (Object.values(clientResults) as any[]).sort((a, b) => b.success.value - a.success.value);
+        const clientsAnalysisData = (Object.values(clientResults) as any[]).sort((a, b) => b.total.value - a.total.value); // Sort by TOTAL value now
+
 
         // 6. Conversion Rate & Pipeline Totals
         // Conversion Rate = (Success Count / Total Opportunities) * 100
@@ -532,7 +549,8 @@ export const CommercialView: React.FC = () => {
         const totalPipelineValue = relevantOpportunities.reduce((sum, op) => sum + n(op.estimatedValue), 0);
 
         return { strategic, outcomes, clientsAnalysisData, conversionRate, totalOpsCount, totalPipelineValue };
-    }, [tasks, opportunities, timeFilterType, selectedDate, customRange]);
+        return { strategic, outcomes, clientsAnalysisData, conversionRate, totalOpsCount, totalPipelineValue };
+    }, [tasks, opportunities, clients, timeFilterType, selectedDate, customRange]);
 
 
 
@@ -823,6 +841,27 @@ export const CommercialView: React.FC = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 font-medium">
+                                        {/* IN PROGRESS (NEW) */}
+                                        <tr className="hover:bg-purple-50/30 transition-colors group">
+                                            <td className="px-6 py-4 text-purple-700 flex items-center gap-2">
+                                                <div className="p-1.5 bg-purple-100 rounded text-purple-600 group-hover:bg-purple-200 transition-colors"><Activity size={14} /></div>
+                                                Em Andamento
+                                            </td>
+                                            <td className="px-6 py-4 text-center font-bold text-slate-700">
+                                                {opportunities.filter(op => op.pipelineStage !== PipelineStage.RESULTADO).length}
+                                            </td>
+                                            <td className="px-6 py-4 text-center text-slate-500 text-xs">
+                                                {dashboardStats.totalOpsCount > 0 ?
+                                                    (opportunities.filter(op => op.pipelineStage !== PipelineStage.RESULTADO).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
+                                                    : '0%'}
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-bold text-purple-700">
+                                                R$ {dashboardStats.outcomes.inProgress.toLocaleString()}
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-slate-500 text-xs">
+                                                {dashboardStats.totalPipelineValue > 0 ? (dashboardStats.outcomes.inProgress / dashboardStats.totalPipelineValue * 100).toFixed(1) + '%' : '0%'}
+                                            </td>
+                                        </tr>
                                         {/* SUCCESS */}
                                         <tr className="hover:bg-emerald-50/30 transition-colors group">
                                             <td className="px-6 py-4 text-emerald-700 flex items-center gap-2">
@@ -1019,12 +1058,18 @@ export const CommercialView: React.FC = () => {
                                     <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
                                         <tr>
                                             <th rowSpan={2} className="px-4 py-3 border-r">Cliente</th>
+                                            <th colSpan={4} className="px-4 py-1 text-center border-r text-purple-600 bg-purple-50/50">Em Andamento</th>
                                             <th colSpan={4} className="px-4 py-1 text-center border-r text-emerald-600 bg-emerald-50/50">Sucesso</th>
                                             <th colSpan={4} className="px-4 py-1 text-center border-r text-red-600 bg-red-50/50">Insucesso</th>
                                             <th colSpan={4} className="px-4 py-1 text-center border-r text-blue-600 bg-blue-50/50">Em Estudo</th>
                                             <th colSpan={4} className="px-4 py-1 text-center border-r text-slate-600 bg-slate-100">Total</th>
                                         </tr>
                                         <tr>
+                                            {/* EM ANDAMENTO */}
+                                            <th className="px-2 py-2 text-center bg-purple-50/50">Qtd</th>
+                                            <th className="px-2 py-2 text-center bg-purple-50/50">%</th>
+                                            <th className="px-2 py-2 text-right bg-purple-50/50">Valor</th>
+                                            <th className="px-2 py-2 text-right border-r bg-purple-50/50">%</th>
                                             {/* SUCESSO */}
                                             <th className="px-2 py-2 text-center bg-emerald-50/50">Qtd</th>
                                             <th className="px-2 py-2 text-center bg-emerald-50/50">%</th>
@@ -1051,6 +1096,14 @@ export const CommercialView: React.FC = () => {
                                         {dashboardStats.clientsAnalysisData.map((client, idx) => (
                                             <tr key={idx} className="hover:bg-slate-50 transition-colors">
                                                 <td className="px-4 py-3 font-medium text-slate-700 border-r">{client.name}</td>
+
+                                                {/* IN PROGRESS */}
+                                                <td className="px-2 py-3 text-center text-purple-700 font-bold bg-purple-50/10">{client.inProgress.count}</td>
+                                                <td className="px-2 py-3 text-center text-slate-500 bg-purple-50/10">{client.total.count > 0 ? ((client.inProgress.count / client.total.count) * 100).toFixed(0) + '%' : '-'}</td>
+                                                <td className="px-2 py-3 text-right text-purple-700 bg-purple-50/10">
+                                                    {client.inProgress.value > 0 ? parseFloat((client.inProgress.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
+                                                </td>
+                                                <td className="px-2 py-3 text-right text-slate-500 border-r bg-purple-50/10">{client.total.value > 0 ? ((client.inProgress.value / client.total.value) * 100).toFixed(0) + '%' : '-'}</td>
 
                                                 {/* SUCCESS */}
                                                 <td className="px-2 py-3 text-center text-emerald-700 font-bold bg-emerald-50/10">{client.success.count}</td>
