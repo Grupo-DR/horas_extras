@@ -115,18 +115,27 @@ export const ClientsView: React.FC = () => {
 
                 <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto">
                     <Filter className="w-4 h-4 text-slate-400 shrink-0" />
-                    {['ALL', 'ATIVA', 'ATENCAO', 'EM_RISCO'].map(status => (
-                        <button
-                            key={status}
-                            onClick={() => setStatusFilter(status)}
-                            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${statusFilter === status
-                                ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-600'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                }`}
-                        >
-                            {status === 'ALL' ? 'Todos' : status.replace('_', ' ')}
-                        </button>
-                    ))}
+                    {['ALL', 'ATIVA', 'ATENCAO', 'EM_RISCO', 'PERDIDA'].map(status => {
+                        const labels: Record<string, string> = {
+                            'ALL': 'Todos',
+                            'ATIVA': 'Ativa',
+                            'ATENCAO': 'Atenção',
+                            'EM_RISCO': 'Em Risco',
+                            'PERDIDA': 'Baixa Relação'
+                        };
+                        return (
+                            <button
+                                key={status}
+                                onClick={() => setStatusFilter(status)}
+                                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${statusFilter === status
+                                    ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-600'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                    }`}
+                            >
+                                {labels[status] || status}
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 

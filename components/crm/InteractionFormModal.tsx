@@ -168,8 +168,8 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
             />
 
             {/* Modal Panel */}
-            <div className="relative w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl ring-1 ring-gray-200 animate-in fade-in zoom-in-95 duration-200">
-                <div className="flex items-center justify-between mb-6 border-b pb-4">
+            <div className="relative w-full max-w-lg flex flex-col max-h-[90vh] rounded-xl bg-white shadow-2xl ring-1 ring-gray-200 animate-in fade-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
                     <h3 className="text-xl font-bold text-slate-800">
                         {initialData ? 'Editar Interação' : 'Registrar Interação'}
                     </h3>
@@ -178,7 +178,7 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
 
                     {/* Type Selector */}
                     <div className="grid grid-cols-5 gap-2">
