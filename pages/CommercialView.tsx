@@ -1061,8 +1061,10 @@ export const CommercialView: React.FC = () => {
                                             <th colSpan={4} className="px-4 py-1 text-center border-r text-purple-600 bg-purple-50/50">Em Andamento</th>
                                             <th colSpan={4} className="px-4 py-1 text-center border-r text-emerald-600 bg-emerald-50/50">Sucesso</th>
                                             <th colSpan={4} className="px-4 py-1 text-center border-r text-red-600 bg-red-50/50">Insucesso</th>
+                                            <th colSpan={4} className="px-4 py-1 text-center border-r text-amber-600 bg-amber-50/50">Desistência</th>
                                             <th colSpan={4} className="px-4 py-1 text-center border-r text-blue-600 bg-blue-50/50">Em Estudo</th>
                                             <th colSpan={4} className="px-4 py-1 text-center border-r text-slate-600 bg-slate-100">Total</th>
+                                            <th rowSpan={2} className="px-4 py-3 text-center border-l bg-slate-50">Conv.</th>
                                         </tr>
                                         <tr>
                                             {/* EM ANDAMENTO */}
@@ -1080,6 +1082,11 @@ export const CommercialView: React.FC = () => {
                                             <th className="px-2 py-2 text-center bg-red-50/50">%</th>
                                             <th className="px-2 py-2 text-right bg-red-50/50">Valor</th>
                                             <th className="px-2 py-2 text-right border-r bg-red-50/50">%</th>
+                                            {/* DESISTÊNCIA */}
+                                            <th className="px-2 py-2 text-center bg-amber-50/50">Qtd</th>
+                                            <th className="px-2 py-2 text-center bg-amber-50/50">%</th>
+                                            <th className="px-2 py-2 text-right bg-amber-50/50">Valor</th>
+                                            <th className="px-2 py-2 text-right border-r bg-amber-50/50">%</th>
                                             {/* ESTUDO */}
                                             <th className="px-2 py-2 text-center bg-blue-50/50">Qtd</th>
                                             <th className="px-2 py-2 text-center bg-blue-50/50">%</th>
@@ -1121,6 +1128,14 @@ export const CommercialView: React.FC = () => {
                                                 </td>
                                                 <td className="px-2 py-3 text-right text-slate-500 border-r bg-red-50/10">{client.total.value > 0 ? ((client.failure.value / client.total.value) * 100).toFixed(0) + '%' : '-'}</td>
 
+                                                {/* WITHDRAWAL */}
+                                                <td className="px-2 py-3 text-center text-amber-700 bg-amber-50/10">{client.withdrawal.count}</td>
+                                                <td className="px-2 py-3 text-center text-slate-500 bg-amber-50/10">{client.total.count > 0 ? ((client.withdrawal.count / client.total.count) * 100).toFixed(0) + '%' : '-'}</td>
+                                                <td className="px-2 py-3 text-right text-amber-700 bg-amber-50/10">
+                                                    {client.withdrawal.value > 0 ? parseFloat((client.withdrawal.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
+                                                </td>
+                                                <td className="px-2 py-3 text-right text-slate-500 border-r bg-amber-50/10">{client.total.value > 0 ? ((client.withdrawal.value / client.total.value) * 100).toFixed(0) + '%' : '-'}</td>
+
                                                 {/* STUDY */}
                                                 <td className="px-2 py-3 text-center text-blue-700 bg-blue-50/10">{client.study.count}</td>
                                                 <td className="px-2 py-3 text-center text-slate-500 bg-blue-50/10">{client.total.count > 0 ? ((client.study.count / client.total.count) * 100).toFixed(0) + '%' : '-'}</td>
@@ -1136,6 +1151,11 @@ export const CommercialView: React.FC = () => {
                                                     {client.total.value > 0 ? parseFloat((client.total.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
                                                 </td>
                                                 <td className="px-2 py-3 text-right text-slate-500 bg-slate-50/30">100%</td>
+
+                                                {/* CONVERSION RATE */}
+                                                <td className="px-4 py-3 text-center font-bold text-slate-700 border-l bg-slate-50/50">
+                                                    {client.total.count > 0 ? ((client.success.count / client.total.count) * 100).toFixed(0) + '%' : '-'}
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
