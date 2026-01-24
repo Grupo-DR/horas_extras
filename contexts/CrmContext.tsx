@@ -1,14 +1,15 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { Client, ClientContact, Bid, Interaction } from '../types';
+import { Client, ClientContact, Bid, Interaction, Task } from '../types';
 import { ClientService } from '../services/clientService';
 import { ClientContactService } from '../services/clientContactService'; // Canonical
 import { BidService } from '../services/bidService';
 import { InteractionService } from '../services/interactionService';
+import { TaskService } from '../services/taskService';
 
 interface CrmContextData {
     clients: Client[];
     contacts: ClientContact[];
     bids: Bid[]; // Canonical "bids"
+    tasks: Task[]; // Linked Actions
 
     interactions: Interaction[]; // Global recent
     loading: boolean;
@@ -18,6 +19,8 @@ interface CrmContextData {
     addContact: (contact: Omit<ClientContact, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
     updateContact: (id: string, contact: Partial<ClientContact>) => Promise<void>;
     addInteraction: (data: Omit<Interaction, 'id' | 'createdAt'>) => Promise<void>;
+    addTask: (task: Omit<Task, 'id'>) => Promise<void>;
+    updateTask: (id: string, task: Partial<Task>) => Promise<void>;
     removeClient: (id: string) => Promise<void>;
     removeContact: (id: string) => Promise<void>;
     getContactsByClientId: (clientId: string) => ClientContact[];
@@ -32,6 +35,7 @@ export const CrmProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const [contacts, setContacts] = useState<ClientContact[]>([]);
     const [bids, setBids] = useState<Bid[]>([]);
     const [interactions, setInteractions] = useState<Interaction[]>([]);
+    const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -43,17 +47,14 @@ export const CrmProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             setLoading(true);
             try {
                 // Initialize Subscriptions or simple Fetch
-                // For simplicity and stability, we fetch all once or stick to Promise.all
-                // But subscription is better. Converting to Promise-based for initial load.
-
-                const [fetchedClients, fetchedContacts, fetchedBids] = await Promise.all([
+                const [fetchedClients, fetchedContacts, fetchedBids, fetchedTasks] = await Promise.all([
                     ClientService.getAll(),
                     ClientContactService.getAll(),
-                    BidService.getAll()
+                    BidService.getAll(),
+                    TaskService.getAll()
                 ]);
 
                 // Interactions: fetch recent global (e.g., 6 months)
-                // We'll use a promise wrapper around the subscription for the first load
                 const fetchedRecents = await new Promise<Interaction[]>(resolve => {
                     const unsubscribe = InteractionService.subscribeRecentGlobal(6, (data) => {
                         resolve(data);
@@ -64,15 +65,8 @@ export const CrmProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                 setClients(fetchedClients);
                 setContacts(fetchedContacts);
                 setBids(fetchedBids);
+                setTasks(fetchedTasks);
                 setInteractions(fetchedRecents);
-
-                // Setup realtime listeners? 
-                // Creating full realtime context for everything might be heavy.
-                // Let's rely on refreshTrigger for now, or components subscribing individually.
-                // However, the requirement implies "Context consolidado".
-                // If we want detailed lists to update automatically, we should use subscriptions.
-                // But let's check current architecture. It used getAll().
-                // We will stick to getAll() + manual refresh for stability unless requested otherwise.
 
             } catch (error) {
                 console.error("Failed to fetch CRM data:", error);
@@ -83,6 +77,26 @@ export const CrmProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
         fetchData();
     }, [refreshTrigger]);
+
+    // --- ACTIONS ---
+
+    const addClient = async (clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
+        // ... existing code
+        try { await ClientService.create(clientData); refresh(); } catch (e) { throw e; }
+    };
+
+    // ... (Add Task Actions below) -> We will insert them via next replace or manually if I missed cleaning up existing functions.
+    // Ideally I keep existing functions and just ADD new ones.
+
+    // Let's redo this part carefully to NOT remove existing functions.
+    // I will primarily target the STATE declaration and FETCH logic first.
+
+    // State Declaration
+    /*
+    const [interactions, setInteractions] = useState<Interaction[]>([]);
+    const [tasks, setTasks] = useState<Task[]>([]);
+    */
+
 
     // --- ACTIONS ---
 
@@ -115,6 +129,26 @@ export const CrmProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             throw error;
         }
     }
+
+    const addTask = async (task: Omit<Task, 'id'>) => {
+        try {
+            await TaskService.create(task);
+            refresh();
+        } catch (error) {
+            console.error("Error adding task:", error);
+            throw error;
+        }
+    };
+
+    const updateTask = async (id: string, task: Partial<Task>) => {
+        try {
+            await TaskService.update(id, task);
+            refresh();
+        } catch (error) {
+            console.error("Error updating task:", error);
+            throw error;
+        }
+    };
 
     const updateClient = async (id: string, clientData: Partial<Client>) => {
         try {
@@ -168,12 +202,15 @@ export const CrmProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             bids,
 
             interactions,
+            tasks,
             loading,
             addClient,
             addContact,
             updateClient,
             updateContact,
             addInteraction,
+            addTask,
+            updateTask,
             removeClient,
             removeContact,
             getContactsByClientId,

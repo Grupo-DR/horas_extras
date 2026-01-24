@@ -166,6 +166,7 @@ export interface Task {
   contractId?: string;
   solutionId?: string;
   kpiId?: string;
+  interactionId?: string; // Link to Interaction
   stageAtCreation?: PipelineStage;
   needsDetails?: boolean;
   outcome?: TaskOutcome;
