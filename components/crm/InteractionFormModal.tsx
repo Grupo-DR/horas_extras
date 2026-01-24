@@ -187,7 +187,7 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
                             <input
                                 type="datetime-local"
                                 required
-                                className="w-full pl-9 rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500 text-sm shadow-sm"
+                                className="w-full pl-9 py-2.5 rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500 text-sm shadow-sm"
                                 value={formData.date}
                                 onChange={e => setFormData({ ...formData, date: e.target.value })}
                             />
@@ -214,7 +214,7 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
                             <CheckCircle className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
                             <input
                                 type="text"
-                                className="w-full pl-9 rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500 text-sm shadow-sm"
+                                className="w-full pl-9 py-2.5 rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500 text-sm shadow-sm"
                                 placeholder="Ex: Enviar orçamento revisado..."
                                 value={formData.nextSteps}
                                 onChange={e => setFormData({ ...formData, nextSteps: e.target.value })}
@@ -229,7 +229,7 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
                             <Tag className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
                             <input
                                 type="text"
-                                className="w-full pl-9 rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500 text-sm shadow-sm"
+                                className="w-full pl-9 py-2.5 rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500 text-sm shadow-sm"
                                 placeholder="Ex: urgencia, diretoria, negociacao"
                                 value={formData.tags}
                                 onChange={e => setFormData({ ...formData, tags: e.target.value })}

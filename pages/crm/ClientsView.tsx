@@ -141,7 +141,7 @@ export const ClientsView: React.FC = () => {
                             setSelectedClientId(client.id);
                             setModalOpen(true);
                         }}
-                        onViewDetails={() => navigate(`/clients/${client.id}`)}
+                        onViewDetails={() => navigate(`/crm/clients/${client.id}`)}
                     />
                 ))}
             </div>
