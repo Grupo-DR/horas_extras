@@ -4,28 +4,27 @@ import { useCrm } from '../../contexts/CrmContext';
 import { calculateClientHealth } from '../../domain/relationshipAnalytics';
 import { TimelineItem } from '../../components/crm/TimelineItem';
 import { Plus, Building2, AlertTriangle, CheckCircle2, XCircle, MapPin, Globe, Mail, Info, Phone, FileText } from 'lucide-react';
+import { Client, Interaction, Bid, ClientContact } from '../../types';
 import { UserAvatar } from '../../components/ui/UserAvatar';
 import { ContactModal } from '../../components/crm/ContactModal';
 
 export const ClientDetailsView: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    // @ts-ignore
-    const { clients, interactions, contacts, bids, addInteraction } = useCrm();
+    const { clients, interactions, contacts, bids } = useCrm();
     const [activeTab, setActiveTab] = useState<'overview' | 'timeline'>('timeline');
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
 
-    const client = clients.find((c: any) => c.id === id);
+    const client = clients.find((c: Client) => c.id === id);
 
     if (!client) return <div className="p-8 text-center text-slate-500">Cliente não encontrado.</div>;
 
     // Filter Data for this Client
     const clientInteractions = interactions
-        .filter((i: any) => i.clientId === client.id)
-        .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        .filter((i: Interaction) => i.clientId === client.id)
+        .sort((a: Interaction, b: Interaction) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    // @ts-ignore
-    const clientBids = (bids || []).filter(o => o.clientId === client.id);
-    const clientContacts = contacts.filter((c: any) => c.clientId === client.id);
+    const clientBids = bids.filter((o: Bid) => o.clientId === client.id);
+    const clientContacts = contacts.filter((c: ClientContact) => c.clientId === client.id);
 
     // Analytics Domain
     const health = calculateClientHealth(clientInteractions, clientBids, clientContacts);
@@ -157,7 +156,7 @@ export const ClientDetailsView: React.FC = () => {
 
                     {activeTab === 'overview' && (
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            {clientContacts.map((contact: any) => (
+                            {clientContacts.map((contact: ClientContact) => (
                                 <div key={contact.id} className="flex gap-3 rounded-lg border border-slate-200 p-4 bg-white hover:border-blue-200 transition-colors group items-start">
                                     <UserAvatar user={{ name: contact.name }} size="md" />
                                     <div className="flex-1 min-w-0">
