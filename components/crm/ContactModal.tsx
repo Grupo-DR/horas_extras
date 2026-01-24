@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { ClientContact } from '../../types';
 import { X, Users, Save } from 'lucide-react';
 import { useCrm } from '../../contexts/CrmContext';
 
 interface ContactModalProps {
     isOpen: boolean;
     onClose: () => void;
+    contactToEdit?: ClientContact;
 }
 
-export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
-    const { addContact, clients } = useCrm();
+export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose, contactToEdit }) => {
+    // @ts-ignore
+    const { addContact, updateContact, clients } = useCrm();
     const [formData, setFormData] = useState({
         clientId: '',
         name: '',
@@ -28,28 +31,75 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) =
         }
     });
 
+    // Populate Form on Edit
+    useEffect(() => {
+        if (contactToEdit) {
+            setFormData({
+                clientId: contactToEdit.clientId,
+                name: contactToEdit.name,
+                role: contactToEdit.role,
+                department: contactToEdit.department || '',
+                email: contactToEdit.email || '',
+                phone: contactToEdit.phone || '',
+                notes: contactToEdit.notes || '',
+                address: {
+                    street: contactToEdit.address?.street || '',
+                    number: contactToEdit.address?.number || '',
+                    complement: contactToEdit.address?.complement || '',
+                    neighborhood: contactToEdit.address?.neighborhood || '',
+                    city: contactToEdit.address?.city || '',
+                    state: contactToEdit.address?.state || '',
+                    zipCode: contactToEdit.address?.zipCode || ''
+                }
+            });
+        } else {
+            // Reset
+            setFormData({
+                clientId: '', name: '', role: '', department: '', email: '', phone: '', notes: '',
+                address: { street: '', number: '', complement: '', neighborhood: '', city: '', state: '', zipCode: '' }
+            });
+        }
+    }, [contactToEdit, isOpen]);
+
     if (!isOpen) return null;
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        addContact({
-            clientId: formData.clientId,
-            name: formData.name,
-            role: formData.role,
-            department: formData.department,
-            email: formData.email,
-            phone: formData.phone,
-            notes: formData.notes,
-            address: formData.address,
-            isActive: true,
-            createdAt: new Date(),
-            updatedAt: new Date()
-        } as any);
+
+        if (contactToEdit) {
+            await updateContact(contactToEdit.id, {
+                clientId: formData.clientId,
+                name: formData.name,
+                role: formData.role,
+                department: formData.department,
+                email: formData.email,
+                phone: formData.phone,
+                notes: formData.notes,
+                address: formData.address
+            });
+        } else {
+            await addContact({
+                clientId: formData.clientId,
+                name: formData.name,
+                role: formData.role,
+                department: formData.department,
+                email: formData.email,
+                phone: formData.phone,
+                notes: formData.notes,
+                address: formData.address,
+                isActive: true,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            } as any);
+        }
+
         onClose();
-        setFormData({
-            clientId: '', name: '', role: '', department: '', email: '', phone: '', notes: '',
-            address: { street: '', number: '', complement: '', neighborhood: '', city: '', state: '', zipCode: '' }
-        });
+        if (!contactToEdit) {
+            setFormData({
+                clientId: '', name: '', role: '', department: '', email: '', phone: '', notes: '',
+                address: { street: '', number: '', complement: '', neighborhood: '', city: '', state: '', zipCode: '' }
+            });
+        }
     };
 
     const updateAddress = (field: string, value: string) => {

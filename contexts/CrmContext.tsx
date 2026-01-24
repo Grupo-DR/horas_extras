@@ -15,6 +15,7 @@ interface CrmContextData {
 
     addClient: (client: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
     addContact: (contact: Omit<ClientContact, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+    updateContact: (id: string, contact: Partial<ClientContact>) => Promise<void>;
     addInteraction: (data: Omit<Interaction, 'id' | 'createdAt'>) => Promise<void>;
     removeClient: (id: string) => Promise<void>;
     removeContact: (id: string) => Promise<void>;
@@ -114,6 +115,16 @@ export const CrmProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
     }
 
+    const updateContact = async (id: string, contactData: Partial<ClientContact>) => {
+        try {
+            await ClientContactService.update(id, contactData);
+            refresh();
+        } catch (error) {
+            console.error("Error updating contact:", error);
+            throw error;
+        }
+    };
+
     const removeClient = async (id: string) => {
         try {
             await ClientService.delete(id);
@@ -149,6 +160,7 @@ export const CrmProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             loading,
             addClient,
             addContact,
+            updateContact,
             addInteraction,
             removeClient,
             removeContact,

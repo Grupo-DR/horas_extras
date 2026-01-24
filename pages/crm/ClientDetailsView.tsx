@@ -3,16 +3,17 @@ import { useParams } from 'react-router-dom';
 import { useCrm } from '../../contexts/CrmContext';
 import { calculateClientHealth } from '../../domain/relationshipAnalytics';
 import { TimelineItem } from '../../components/crm/TimelineItem';
-import { Plus, Building2, AlertTriangle, CheckCircle2, XCircle, MapPin, Globe, Mail, Info, Phone, FileText } from 'lucide-react';
+import { Plus, Building2, AlertTriangle, CheckCircle2, XCircle, MapPin, Globe, Mail, Info, Phone, FileText, Pencil, Trash2 } from 'lucide-react';
 import { Client, Interaction, Bid, ClientContact } from '../../types';
 import { UserAvatar } from '../../components/ui/UserAvatar';
 import { ContactModal } from '../../components/crm/ContactModal';
 
 export const ClientDetailsView: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const { clients, interactions, contacts, bids } = useCrm();
+    const { clients, interactions, contacts, bids, removeContact } = useCrm();
     const [activeTab, setActiveTab] = useState<'overview' | 'timeline'>('timeline');
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+    const [contactToEdit, setContactToEdit] = useState<ClientContact | undefined>(undefined);
 
     const client = clients.find((c: Client) => c.id === id);
 
@@ -213,6 +214,7 @@ export const ClientDetailsView: React.FC = () => {
                 <ContactModal
                     isOpen={isContactModalOpen}
                     onClose={() => setIsContactModalOpen(false)}
+                    contactToEdit={contactToEdit}
                 />
 
                 {/* COLUNA LATERAL (KPIs Rápidos) */}

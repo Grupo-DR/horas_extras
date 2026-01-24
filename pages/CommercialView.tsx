@@ -1065,9 +1065,9 @@ export const CommercialView: React.FC = () => {
                             <div className="flex-1 overflow-hidden">
                                 <PipelineBoard
                                     bids={(opportunities || [])} // Corrected prop name from 'opportunities' to 'bids'
-                                    refreshOpportunities={refresh}
-                                    onEditOpportunity={(op) => { setEditingOpportunity(op); setIsOpportunityModalOpen(true); }}
-                                    onDeleteOpportunity={handleDeleteOpportunity}
+                                    refreshBids={refresh}
+                                    onEditBid={(op) => { setEditingOpportunity(op); setIsOpportunityModalOpen(true); }}
+                                    onDeleteBid={handleDeleteOpportunity}
                                     onTaskCreated={(newTask) => {
                                         setTasks(prev => [...prev, newTask]);
                                         toast.success("Ação criada a partir do pipeline!");
