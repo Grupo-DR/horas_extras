@@ -159,6 +159,8 @@ export const ClientsView: React.FC = () => {
                     isOpen={modalOpen}
                     onClose={() => setModalOpen(false)}
                     clientId={selectedClientId}
+                    initialData={undefined}
+                    opportunities={bids.filter(b => b.clientId === selectedClientId)}
                     onSuccess={() => {/* Optional Toast? Already handled in Modal */ }}
                 />
             )}
