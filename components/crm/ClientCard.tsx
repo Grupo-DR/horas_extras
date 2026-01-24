@@ -15,7 +15,7 @@ const STATUS_CONFIG: Record<string, { color: string; label: string; icon: any }>
     'ATIVA': { color: 'bg-green-100 text-green-700 border-green-200', label: 'Relacionamento Ativo', icon: CheckCircle },
     'ATENCAO': { color: 'bg-yellow-100 text-yellow-700 border-yellow-200', label: 'Atenção Necessária', icon: AlertTriangle },
     'EM_RISCO': { color: 'bg-orange-100 text-orange-700 border-orange-200', label: 'Em Risco', icon: AlertTriangle },
-    'PERDIDA': { color: 'bg-red-100 text-red-700 border-red-200', label: 'Carteira Perdida', icon: Building2 }, // Icon fallback
+    'PERDIDA': { color: 'bg-red-100 text-red-700 border-red-200', label: 'Baixa Relação', icon: Building2 }, // Icon fallback
 };
 
 export const ClientCard: React.FC<ClientCardProps> = ({

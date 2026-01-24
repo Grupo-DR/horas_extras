@@ -155,49 +155,29 @@ export const calculateContactAnalytics = (contact: ClientContact, interactions: 
 
 // --- CLIENT ANALYTICS ---
 
-export const calculateCompanyScore = (
-    lastInteractionDate: Date | undefined | null,
-    lastBidDate: Date | undefined | null,
-    activeContactsCount: number, // within window
-    bidTrend: 'CRESCENTE' | 'ESTAVEL' | 'CAINDO' | 'ZEROU'
-): number => {
-    let score = 0;
-    const now = new Date();
+// --- CLIENT ANALYTICS (SIMPLIFIED 24/01) ---
 
-    // 1. Recência Interação (0-40)
-    if (lastInteractionDate) {
-        const days = getDaysDiff(lastInteractionDate);
-        if (days <= 15) score += 40;
-        else if (days <= 30) score += 30;
-        else if (days <= 60) score += 15;
-        else if (days <= 90) score += 5;
-    }
+export const getCompanyStatus = (lastBidDate: Date | null): 'ATIVA' | 'ATENCAO' | 'EM_RISCO' | 'PERDIDA' => {
+    if (!lastBidDate) return 'PERDIDA';
 
-    // 2. Recência Convite/Bid (0-30)
-    if (lastBidDate) {
-        const days = getDaysDiff(lastBidDate);
-        if (days <= 30) score += 30;
-        else if (days <= 60) score += 20;
-        else if (days <= 120) score += 10;
-    }
+    const days = getDaysDiff(lastBidDate);
 
-    // 3. Diversidade Contatos (0-20)
-    if (activeContactsCount >= 3) score += 20;
-    else if (activeContactsCount === 2) score += 12;
-    else if (activeContactsCount === 1) score += 5;
+    if (days < 30) return 'ATIVA';
+    if (days < 90) return 'ATENCAO';
+    if (days < 120) return 'EM_RISCO';
 
-    // 4. Tendência (0-10)
-    const trendMap = { CRESCENTE: 10, ESTAVEL: 6, CAINDO: 2, ZEROU: 0 };
-    score += trendMap[bidTrend];
-
-    return Math.min(score, 100);
+    return 'PERDIDA';
 };
 
-export const getCompanyStatus = (score: number) => {
-    if (score >= 70) return 'ATIVA';
-    if (score >= 45) return 'ATENCAO';
-    if (score >= 20) return 'EM_RISCO';
-    return 'PERDIDA';
+// Kept for compatibility if needed, but returns score based on status urgency
+export const calculateCompanyScore = (status: string): number => {
+    switch (status) {
+        case 'ATIVA': return 100;
+        case 'ATENCAO': return 60;
+        case 'EM_RISCO': return 30;
+        case 'PERDIDA': return 0;
+        default: return 0;
+    }
 };
 
 export const calculateClientHealth = (
@@ -226,11 +206,7 @@ export const calculateClientHealth = (
         }
     });
 
-    // Bid Trend Calculation (Simplified)
-    // Compare last 6 months volume vs previous 6 months? 
-    // For now, let's use a simple heuristic:
-    // If last bid is recent (< 30d) -> CRESCENTE/ESTAVEL
-    // If last bid is old (> 90d) -> CAINDO
+    // Bid Trend Calculation
     let bidTrend: 'CRESCENTE' | 'ESTAVEL' | 'CAINDO' | 'ZEROU' = 'ESTAVEL';
 
     if (!lastBid) {
@@ -242,16 +218,13 @@ export const calculateClientHealth = (
         else bidTrend = 'CAINDO';
     }
 
-    const score = calculateCompanyScore(
-        lastInteraction,
-        lastBid,
-        activeContactIds.size,
-        bidTrend
-    );
+    // New Simplified Logic: Status based ONLY on Last Bid
+    const status = getCompanyStatus(lastBid);
+    const score = calculateCompanyScore(status);
 
     return {
         score,
-        status: getCompanyStatus(score),
+        status,
         lastInteraction,
         lastBid,
         silenceDays: lastInteraction ? getDaysDiff(lastInteraction) : 999,
