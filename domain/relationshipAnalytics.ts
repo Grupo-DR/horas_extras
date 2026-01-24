@@ -106,6 +106,33 @@ export const calculateContactAnalytics = (contact: ClientContact, interactions: 
     // Normalized Score (Max 40)
     score += Math.min(Math.round(conversionRate * 40), 40);
 
+    // --- 3-AXIS INDICES ---
+
+    // 1. Relationship Index (Last Opportunity Recency)
+    // Using last BID date (not interaction) as per request "oportunidade recebida"
+    // Find last bid date for this contact
+    const lastBidDate = contactBids.length > 0
+        ? contactBids.sort((a, b) => b.date.getTime() - a.date.getTime())[0].date
+        : null;
+
+    let relationshipIndex: 'MUITO_PROXIMO' | 'PROXIMO' | 'DISTANTE' = 'DISTANTE';
+    if (lastBidDate) {
+        const daysSinceBid = getDaysDiff(lastBidDate);
+        if (daysSinceBid < 30) relationshipIndex = 'MUITO_PROXIMO';
+        else if (daysSinceBid < 90) relationshipIndex = 'PROXIMO';
+    }
+
+    // 2. Commercial Index (Volume)
+    let commercialIndex: 'ALTO_VOLUME' | 'MEDIO_VOLUME' | 'BAIXO_VOLUME' = 'BAIXO_VOLUME';
+    if (opportunityCount > 5) commercialIndex = 'ALTO_VOLUME';
+    else if (opportunityCount >= 2) commercialIndex = 'MEDIO_VOLUME';
+
+    // 3. Quality Index (Conversion)
+    let qualityIndex: 'CAMPEAO' | 'PROMISSOR' | 'NEUTRO' = 'NEUTRO';
+    const convRatePercent = conversionRate * 100;
+    if (convRatePercent > 40) qualityIndex = 'CAMPEAO';
+    else if (convRatePercent > 10) qualityIndex = 'PROMISSOR';
+
 
     return {
         profile: calculateContactProfile(contact, interactions, []),
@@ -114,11 +141,15 @@ export const calculateContactAnalytics = (contact: ClientContact, interactions: 
         totalInteractions90d: count90d,
         // Metrics
         score,
-        conversionRate: conversionRate * 100, // Display as %
+        conversionRate: convRatePercent, // Display as %
         opportunityCount,
         successCount,
         totalValue,
-        successValue
+        successValue,
+        // Indexes
+        relationshipIndex,
+        commercialIndex,
+        qualityIndex
     };
 };
 

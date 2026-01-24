@@ -212,27 +212,9 @@ export const ClientDetailsView: React.FC = () => {
                             {clientContacts.map((contact: ClientContact) => {
                                 const analytics = calculateContactAnalytics(contact, clientInteractions, bids);
 
-                                // Determine Status Badge
-                                let statusBadge;
-                                if ((analytics.score ?? 0) >= 80) {
-                                    statusBadge = (
-                                        <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-700 border border-amber-200" title="Campeão">
-                                            <span>🏆</span> Campeão
-                                        </span>
-                                    );
-                                } else if ((analytics.score ?? 0) >= 50) {
-                                    statusBadge = (
-                                        <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-100 text-blue-700 border border-blue-200" title="Promissor">
-                                            <span>⭐</span> Promissor
-                                        </span>
-                                    );
-                                } else {
-                                    statusBadge = (
-                                        <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-bold bg-slate-100 text-slate-600 border border-slate-200" title="Neutro">
-                                            <span>😐</span> Neutro
-                                        </span>
-                                    );
-                                }
+                                // Determine Status Badge (Removed as per new 3-Axis design request)
+                                // We keep the variable undefined or remove usages
+                                const statusBadge = null;
 
                                 const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(val);
 
@@ -297,6 +279,43 @@ export const ClientDetailsView: React.FC = () => {
                                                 )}
                                             </div>
 
+                                            {/* 3-Axis Indices */}
+                                            <div className="grid grid-cols-3 gap-1 mb-4 border-t border-b border-slate-50 py-3 bg-slate-50/50 rounded-lg px-2">
+                                                {/* Relationship */}
+                                                <div className="text-center">
+                                                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Relação</div>
+                                                    <div className="flex justify-center" title="Recência da Última Oportunidade">
+                                                        {analytics.relationshipIndex === 'MUITO_PROXIMO' && <span className="text-lg">🔥</span>}
+                                                        {analytics.relationshipIndex === 'PROXIMO' && <span className="text-lg">☁️</span>}
+                                                        {analytics.relationshipIndex === 'DISTANTE' && <span className="text-lg">❄️</span>}
+                                                        {/* Fallback if undefined */}
+                                                        {!analytics.relationshipIndex && <span className="text-lg">❄️</span>}
+                                                    </div>
+                                                </div>
+
+                                                {/* Commercial */}
+                                                <div className="text-center border-l border-slate-100">
+                                                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Volume</div>
+                                                    <div className="flex justify-center" title="Volume de Oportunidades">
+                                                        {analytics.commercialIndex === 'ALTO_VOLUME' && <span className="text-lg">📈</span>}
+                                                        {analytics.commercialIndex === 'MEDIO_VOLUME' && <span className="text-lg">📊</span>}
+                                                        {analytics.commercialIndex === 'BAIXO_VOLUME' && <span className="text-lg">📉</span>}
+                                                        {!analytics.commercialIndex && <span className="text-lg">📉</span>}
+                                                    </div>
+                                                </div>
+
+                                                {/* Quality */}
+                                                <div className="text-center border-l border-slate-100">
+                                                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Qualidade</div>
+                                                    <div className="flex justify-center" title="Taxa de Conversão">
+                                                        {analytics.qualityIndex === 'CAMPEAO' && <span className="text-lg">🏆</span>}
+                                                        {analytics.qualityIndex === 'PROMISSOR' && <span className="text-lg">⭐</span>}
+                                                        {analytics.qualityIndex === 'NEUTRO' && <span className="text-lg">😐</span>}
+                                                        {!analytics.qualityIndex && <span className="text-lg">😐</span>}
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                             {/* Metrics Footer */}
                                             <div className="pt-3 border-t border-slate-100 grid grid-cols-2 gap-y-2 gap-x-4">
                                                 {/* Total Opps */}
@@ -328,8 +347,8 @@ export const ClientDetailsView: React.FC = () => {
                                                     <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                                                         <div
                                                             className={`h-full rounded-full ${(analytics.conversionRate || 0) >= 50 ? 'bg-emerald-500' :
-                                                                    (analytics.conversionRate || 0) >= 20 ? 'bg-blue-400' :
-                                                                        'bg-slate-300'
+                                                                (analytics.conversionRate || 0) >= 20 ? 'bg-blue-400' :
+                                                                    'bg-slate-300'
                                                                 }`}
                                                             style={{ width: `${Math.min(analytics.conversionRate || 0, 100)}%` }}
                                                         />

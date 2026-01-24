@@ -437,6 +437,10 @@ export interface ClientContact {
     successCount?: number;
     totalValue?: number;
     successValue?: number;
+    // 3-Axis Indexes
+    relationshipIndex?: 'MUITO_PROXIMO' | 'PROXIMO' | 'DISTANTE';
+    commercialIndex?: 'ALTO_VOLUME' | 'MEDIO_VOLUME' | 'BAIXO_VOLUME';
+    qualityIndex?: 'CAMPEAO' | 'PROMISSOR' | 'NEUTRO';
   };
 }
 
