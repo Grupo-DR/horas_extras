@@ -8,6 +8,7 @@ import { ClientContactService } from '../../services/clientContactService';
 import { calculateClientHealth } from '../../domain/relationshipAnalytics';
 import { ClientCard } from '../../components/crm/ClientCard';
 import { InteractionFormModal } from '../../components/crm/InteractionFormModal';
+import { ClientModal } from '../../components/crm/ClientModal';
 import { useNavigate } from 'react-router-dom';
 
 export const ClientsView: React.FC = () => {
@@ -27,6 +28,7 @@ export const ClientsView: React.FC = () => {
     // Modal State
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedClientId, setSelectedClientId] = useState<string>('');
+    const [isClientModalOpen, setIsClientModalOpen] = useState(false);
 
     // 1. Fetch Data (Parallel)
     useEffect(() => {
@@ -87,7 +89,7 @@ export const ClientsView: React.FC = () => {
                 </div>
                 <div className="flex gap-2">
                     <button
-                        onClick={() => { /* TODO: New Client Modal or Route */ }}
+                        onClick={() => setIsClientModalOpen(true)}
                         className="px-4 py-2 bg-slate-800 text-white rounded-lg flex items-center gap-2 text-sm font-medium hover:bg-slate-900 transition-colors"
                     >
                         <Plus className="w-4 h-4" />
@@ -158,6 +160,11 @@ export const ClientsView: React.FC = () => {
                     onSuccess={() => {/* Optional Toast? Already handled in Modal */ }}
                 />
             )}
+            {/* Client Creation Modal */}
+            <ClientModal
+                isOpen={isClientModalOpen}
+                onClose={() => setIsClientModalOpen(false)}
+            />
         </div>
     );
 };
