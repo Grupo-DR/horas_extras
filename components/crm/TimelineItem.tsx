@@ -57,7 +57,19 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({ interaction, tasks =
             {/* Conteúdo do Card */}
             <div className="flex flex-1 flex-col gap-1 pt-1">
                 <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold text-slate-900">{interaction.title}</h4>
+                    <h4 className="text-sm font-semibold text-slate-900">
+                        {interaction.title}
+                        {interaction.participants && interaction.participants.length > 0 && (
+                            <div className="flex items-center gap-1 mt-1">
+                                {interaction.participants.map(p => (
+                                    <span key={p.id} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-slate-100/80 text-slate-500 border border-slate-200" title={p.role || p.type}>
+                                        <div className={`w-1.5 h-1.5 rounded-full ${p.type === 'USER' ? 'bg-blue-400' : 'bg-emerald-400'}`} />
+                                        {p.name.split(' ')[0]}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                    </h4>
 
                     <div className="flex items-center gap-2">
                         <span className="text-xs text-slate-400 whitespace-nowrap">

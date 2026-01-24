@@ -53,19 +53,39 @@ export const ClientDetailsView: React.FC = () => {
             if (filterType !== 'ALL' && i.type !== filterType) return false;
 
             if (filterPerson) {
-                const search = filterPerson.toLowerCase();
-                const createdMatch = i.createdBy.name.toLowerCase().includes(search);
-                const participantMatch = i.participants?.some(p => p.name.toLowerCase().includes(search));
-                if (!createdMatch && !participantMatch) return false;
+                const personId = filterPerson;
+                const createdByMatch = i.createdBy.name === personId || i.createdBy.id === personId;
+                const participantMatch = i.participants?.some(p => p.id === personId || p.name === personId);
+                if (!createdByMatch && !participantMatch) return false;
             }
 
             if (filterTag) {
-                if (!i.tags || !i.tags.some(t => t.toLowerCase().includes(filterTag.toLowerCase()))) return false;
+                if (!i.tags || !i.tags.includes(filterTag)) return false;
             }
 
             return true;
         });
     }, [clientInteractions, filterType, filterPerson, filterTag]);
+
+    // Compute Available Filter Options based on History
+    const availablePeople = useMemo(() => {
+        const peopleMap = new Map<string, string>();
+        clientInteractions.forEach(i => {
+            if (i.createdBy?.name) peopleMap.set(i.createdBy.name, i.createdBy.name);
+            if (i.participants) {
+                i.participants.forEach(p => peopleMap.set(p.name, p.name));
+            }
+        });
+        return Array.from(peopleMap.values()).sort();
+    }, [clientInteractions]);
+
+    const availableTags = useMemo(() => {
+        const tags = new Set<string>();
+        clientInteractions.forEach(i => {
+            if (i.tags) i.tags.forEach(t => tags.add(t));
+        });
+        return Array.from(tags).sort();
+    }, [clientInteractions]);
 
     const clientBids = bids.filter((o: Bid) => o.clientId === client.id);
     const clientContacts = contacts.filter((c: ClientContact) => c.clientId === client.id);
@@ -280,23 +300,29 @@ export const ClientDetailsView: React.FC = () => {
                                     <option value="WHATSAPP">WhatsApp</option>
                                 </select>
 
-                                <input
-                                    type="text"
-                                    placeholder="Buscar pessoa..."
-                                    className="text-xs rounded-md border-slate-300 py-1.5 focus:ring-blue-500 focus:border-blue-500"
+                                <select
+                                    className="text-xs rounded-md border-slate-300 py-1.5 focus:ring-blue-500 focus:border-blue-500 max-w-[150px]"
                                     value={filterPerson}
                                     onChange={(e) => setFilterPerson(e.target.value)}
-                                />
+                                >
+                                    <option value="">Todas as Pessoas</option>
+                                    {availablePeople.map(p => (
+                                        <option key={p} value={p}>{p}</option>
+                                    ))}
+                                </select>
 
                                 <div className="relative">
                                     <Tag className="absolute left-2 top-2 w-3 h-3 text-slate-400" />
-                                    <input
-                                        type="text"
-                                        placeholder="Filtrar por tag..."
-                                        className="pl-7 text-xs rounded-md border-slate-300 py-1.5 focus:ring-blue-500 focus:border-blue-500"
+                                    <select
+                                        className="pl-7 text-xs rounded-md border-slate-300 py-1.5 focus:ring-blue-500 focus:border-blue-500 max-w-[150px]"
                                         value={filterTag}
                                         onChange={(e) => setFilterTag(e.target.value)}
-                                    />
+                                    >
+                                        <option value="">Todas as Tags</option>
+                                        {availableTags.map(t => (
+                                            <option key={t} value={t}>{t}</option>
+                                        ))}
+                                    </select>
                                 </div>
 
                                 {(filterType !== 'ALL' || filterPerson || filterTag) && (
