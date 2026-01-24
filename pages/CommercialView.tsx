@@ -228,7 +228,7 @@ export const CommercialView: React.FC = () => {
             action,
             details,
             timestamp: new Date(),
-            user: currentUser.name
+            user: currentUser?.name || 'Sistema'
         };
         setLogs(prev => [newLog, ...prev]);
     };
@@ -446,13 +446,14 @@ export const CommercialView: React.FC = () => {
             inProgress: relevantOpportunities.filter(op => {
                 const isCompleted = op.pipelineStage === PipelineStage.RESULTADO || op.status === 'GANHA' || op.status === 'PERDIDA';
                 const isPending = op.pipelineStage === PipelineStage.LEAD_RECEBIDO;
-                const isLate = isPast(new Date(op.deadline));
+                const isLate = op.deadline ? isPast(new Date(op.deadline)) : false;
                 return !isCompleted && !isPending && !isLate;
             }).length,
             late: relevantOpportunities.filter(op => {
                 const isCompleted = op.pipelineStage === PipelineStage.RESULTADO || op.status === 'GANHA' || op.status === 'PERDIDA';
                 const isPending = op.pipelineStage === PipelineStage.LEAD_RECEBIDO;
-                return !isCompleted && !isPending && isPast(new Date(op.deadline));
+                const isDeadlinePast = op.deadline ? isPast(new Date(op.deadline)) : false;
+                return !isCompleted && !isPending && isDeadlinePast;
             }).length,
             completed: relevantOpportunities.filter(op => op.status === 'GANHA' || op.status === 'PERDIDA' || op.pipelineStage === PipelineStage.RESULTADO).length,
             total: relevantOpportunities.length
@@ -483,24 +484,42 @@ export const CommercialView: React.FC = () => {
             if (op.result === TaskOutcome.WITHDRAWAL) outcomes.withdrawal += val;
         });
 
-        // 5. Results by Client (Pipeline Only)
+        // 5. Results by Client (Pipeline Only) - REFACTORED for Detailed Table
         const clientResults = relevantOpportunities.reduce((acc, op) => {
             const client = s(op.clientName) || 'Não identificado';
             if (!acc[client]) {
-                acc[client] = { name: client, success: 0, failure: 0, study: 0, withdrawal: 0 };
+                acc[client] = {
+                    name: client,
+                    success: { count: 0, value: 0 },
+                    failure: { count: 0, value: 0 },
+                    study: { count: 0, value: 0 },
+                    withdrawal: { count: 0, value: 0 },
+                    total: { count: 0, value: 0 }
+                };
             }
             const val = n(op.estimatedValue);
 
             if (op.pipelineStage === PipelineStage.RESULTADO) {
-                if (op.result === TaskOutcome.SUCCESS) acc[client].success += val;
-                if (op.result === TaskOutcome.FAILURE) acc[client].failure += val;
-                if (op.result === TaskOutcome.STUDY) acc[client].study += val;
-                if (op.result === TaskOutcome.WITHDRAWAL) acc[client].withdrawal += val;
+                if (op.result === TaskOutcome.SUCCESS) { acc[client].success.count++; acc[client].success.value += val; }
+                if (op.result === TaskOutcome.FAILURE) { acc[client].failure.count++; acc[client].failure.value += val; }
+                if (op.result === TaskOutcome.STUDY) { acc[client].study.count++; acc[client].study.value += val; }
+                if (op.result === TaskOutcome.WITHDRAWAL) { acc[client].withdrawal.count++; acc[client].withdrawal.value += val; }
+
+                // ADD TO TOTAL if it is closed
+                acc[client].total.count++;
+                acc[client].total.value += val;
             }
             return acc;
-        }, {} as Record<string, { name: string, success: number, failure: number, study: number, withdrawal: number }>);
+        }, {} as Record<string, {
+            name: string;
+            success: { count: number; value: number };
+            failure: { count: number; value: number };
+            study: { count: number; value: number };
+            withdrawal: { count: number; value: number };
+            total: { count: number; value: number };
+        }>);
 
-        const clientsAnalysisData = (Object.values(clientResults) as any[]).sort((a, b) => b.success - a.success);
+        const clientsAnalysisData = (Object.values(clientResults) as any[]).sort((a, b) => b.success.value - a.success.value);
 
         // 6. Conversion Rate & Pipeline Totals
         // Conversion Rate = (Success Count / Total Opportunities) * 100
@@ -926,7 +945,7 @@ export const CommercialView: React.FC = () => {
                                             <RechartsTooltip
                                                 cursor={{ fill: '#f8fafc' }}
                                                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                                formatter={(value: number) => [`R$ ${value.toLocaleString()}`, 'Valor']}
+                                                formatter={(value: number | undefined) => [`R$ ${value?.toLocaleString() || '0'}`, 'Valor'] as [string, string]}
                                             />
                                             <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                                                 {
@@ -973,19 +992,101 @@ export const CommercialView: React.FC = () => {
                                                         {client.name}
                                                     </td>
                                                     <td className="px-4 py-3 text-right font-medium text-slate-600">
-                                                        {client.success > 0 ? `R$ ${client.success.toLocaleString()}` : '-'}
+                                                        {client.success.value > 0 ? `R$ ${client.success.value.toLocaleString()}` : '-'}
                                                     </td>
                                                     <td className="px-4 py-3 text-right text-slate-400 text-xs">
-                                                        {client.failure > 0 ? `R$ ${client.failure.toLocaleString()}` : '-'}
+                                                        {client.failure.value > 0 ? `R$ ${client.failure.value.toLocaleString()}` : '-'}
                                                     </td>
                                                     <td className="px-4 py-3 text-right text-slate-400 text-xs">
-                                                        {client.study > 0 ? `R$ ${client.study.toLocaleString()}` : '-'}
+                                                        {client.study.value > 0 ? `R$ ${client.study.value.toLocaleString()}` : '-'}
                                                     </td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                     </table>
                                 </div>
+                            </div>
+                        </div>
+
+                        {/* DETAILED PIVOT TABLE (NEW) */}
+                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                            <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                <List size={20} className="text-slate-600" />
+                                Visão Detalhada por Cliente (Performance)
+                            </h3>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-xs text-left whitespace-nowrap">
+                                    <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+                                        <tr>
+                                            <th rowSpan={2} className="px-4 py-3 border-r">Cliente</th>
+                                            <th colSpan={4} className="px-4 py-1 text-center border-r text-emerald-600 bg-emerald-50/50">Sucesso</th>
+                                            <th colSpan={4} className="px-4 py-1 text-center border-r text-red-600 bg-red-50/50">Insucesso</th>
+                                            <th colSpan={4} className="px-4 py-1 text-center border-r text-blue-600 bg-blue-50/50">Em Estudo</th>
+                                            <th colSpan={4} className="px-4 py-1 text-center border-r text-slate-600 bg-slate-100">Total</th>
+                                        </tr>
+                                        <tr>
+                                            {/* SUCESSO */}
+                                            <th className="px-2 py-2 text-center bg-emerald-50/50">Qtd</th>
+                                            <th className="px-2 py-2 text-center bg-emerald-50/50">%</th>
+                                            <th className="px-2 py-2 text-right bg-emerald-50/50">Valor</th>
+                                            <th className="px-2 py-2 text-right border-r bg-emerald-50/50">%</th>
+                                            {/* INSUCESSO */}
+                                            <th className="px-2 py-2 text-center bg-red-50/50">Qtd</th>
+                                            <th className="px-2 py-2 text-center bg-red-50/50">%</th>
+                                            <th className="px-2 py-2 text-right bg-red-50/50">Valor</th>
+                                            <th className="px-2 py-2 text-right border-r bg-red-50/50">%</th>
+                                            {/* ESTUDO */}
+                                            <th className="px-2 py-2 text-center bg-blue-50/50">Qtd</th>
+                                            <th className="px-2 py-2 text-center bg-blue-50/50">%</th>
+                                            <th className="px-2 py-2 text-right bg-blue-50/50">Valor</th>
+                                            <th className="px-2 py-2 text-right border-r bg-blue-50/50">%</th>
+                                            {/* TOTAL */}
+                                            <th className="px-2 py-2 text-center bg-slate-100">Qtd</th>
+                                            <th className="px-2 py-2 text-center bg-slate-100">%</th>
+                                            <th className="px-2 py-2 text-right bg-slate-100">Valor</th>
+                                            <th className="px-2 py-2 text-right bg-slate-100">%</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {dashboardStats.clientsAnalysisData.map((client, idx) => (
+                                            <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                                <td className="px-4 py-3 font-medium text-slate-700 border-r">{client.name}</td>
+
+                                                {/* SUCCESS */}
+                                                <td className="px-2 py-3 text-center text-emerald-700 font-bold bg-emerald-50/10">{client.success.count}</td>
+                                                <td className="px-2 py-3 text-center text-slate-500 bg-emerald-50/10">{client.total.count > 0 ? ((client.success.count / client.total.count) * 100).toFixed(0) + '%' : '-'}</td>
+                                                <td className="px-2 py-3 text-right text-emerald-700 bg-emerald-50/10">
+                                                    {client.success.value > 0 ? parseFloat((client.success.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
+                                                </td>
+                                                <td className="px-2 py-3 text-right text-slate-500 border-r bg-emerald-50/10">{client.total.value > 0 ? ((client.success.value / client.total.value) * 100).toFixed(0) + '%' : '-'}</td>
+
+                                                {/* FAILURE */}
+                                                <td className="px-2 py-3 text-center text-red-700 bg-red-50/10">{client.failure.count}</td>
+                                                <td className="px-2 py-3 text-center text-slate-500 bg-red-50/10">{client.total.count > 0 ? ((client.failure.count / client.total.count) * 100).toFixed(0) + '%' : '-'}</td>
+                                                <td className="px-2 py-3 text-right text-red-700 bg-red-50/10">
+                                                    {client.failure.value > 0 ? parseFloat((client.failure.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
+                                                </td>
+                                                <td className="px-2 py-3 text-right text-slate-500 border-r bg-red-50/10">{client.total.value > 0 ? ((client.failure.value / client.total.value) * 100).toFixed(0) + '%' : '-'}</td>
+
+                                                {/* STUDY */}
+                                                <td className="px-2 py-3 text-center text-blue-700 bg-blue-50/10">{client.study.count}</td>
+                                                <td className="px-2 py-3 text-center text-slate-500 bg-blue-50/10">{client.total.count > 0 ? ((client.study.count / client.total.count) * 100).toFixed(0) + '%' : '-'}</td>
+                                                <td className="px-2 py-3 text-right text-blue-700 bg-blue-50/10">
+                                                    {client.study.value > 0 ? parseFloat((client.study.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
+                                                </td>
+                                                <td className="px-2 py-3 text-right text-slate-500 border-r bg-blue-50/10">{client.total.value > 0 ? ((client.study.value / client.total.value) * 100).toFixed(0) + '%' : '-'}</td>
+
+                                                {/* TOTAL */}
+                                                <td className="px-2 py-3 text-center font-bold text-slate-800 bg-slate-50/30">{client.total.count}</td>
+                                                <td className="px-2 py-3 text-center text-slate-500 bg-slate-50/30">100%</td>
+                                                <td className="px-2 py-3 text-right font-bold text-slate-800 bg-slate-50/30">
+                                                    {client.total.value > 0 ? parseFloat((client.total.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
+                                                </td>
+                                                <td className="px-2 py-3 text-right text-slate-500 bg-slate-50/30">100%</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
 
