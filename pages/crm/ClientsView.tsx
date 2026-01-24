@@ -30,7 +30,7 @@ export const ClientsView: React.FC = () => {
 
     // 1. Fetch Data (Parallel)
     useEffect(() => {
-        const unsubClients = ClientService.subscribe(setClients);
+        const unsubClients = ClientService.subscribeAll(setClients);
         // Fetch global recent history for analytics (e.g., last 6 months interactions, 12 months bids)
         const unsubInteractions = InteractionService.subscribeRecentGlobal(6, setInteractions);
         const unsubBids = BidService.subscribeRecentGlobal(12, setBids);
@@ -116,8 +116,8 @@ export const ClientsView: React.FC = () => {
                             key={status}
                             onClick={() => setStatusFilter(status)}
                             className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${statusFilter === status
-                                    ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-600'
-                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-600'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                 }`}
                         >
                             {status === 'ALL' ? 'Todos' : status.replace('_', ' ')}
