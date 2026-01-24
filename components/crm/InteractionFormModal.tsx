@@ -13,6 +13,7 @@ interface InteractionFormModalProps {
     bidId?: string;
     initialData?: Interaction; // For Edit Mode
     onSuccess?: () => void;
+    opportunities?: any[]; // Pass available opportunities
 }
 
 const INTERACTION_TYPES: { type: InteractionType; label: string; icon: string }[] = [
@@ -30,7 +31,8 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
     contactId,
     bidId,
     initialData,
-    onSuccess
+    onSuccess,
+    opportunities = []
 }) => {
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
@@ -40,7 +42,8 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
         date: new Date().toISOString().slice(0, 16),
         notes: '',
         nextSteps: '',
-        tags: ''
+        tags: '',
+        bidId: bidId || ''
     });
 
     // Populate form on open/change
@@ -52,7 +55,8 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
                 date: new Date(initialData.date).toISOString().slice(0, 16),
                 notes: initialData.notes,
                 nextSteps: initialData.nextSteps || '',
-                tags: initialData.tags ? initialData.tags.join(', ') : ''
+                tags: initialData.tags ? initialData.tags.join(', ') : '',
+                bidId: initialData.bidId || ''
             });
         } else if (isOpen && !initialData) {
             // Reset if new
@@ -62,10 +66,11 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
                 date: new Date().toISOString().slice(0, 16),
                 notes: '',
                 nextSteps: '',
-                tags: ''
+                tags: '',
+                bidId: bidId || ''
             });
         }
-    }, [isOpen, initialData]);
+    }, [isOpen, initialData, bidId]);
 
     if (!isOpen) return null;
 
@@ -106,10 +111,10 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
                     ...payloadBase,
                     clientId: clientId!,
                     contactId,
-                    bidId,
+                    bidId: formData.bidId || bidId, // Prefer form selection if available
                     createdBy: {
-                        id: user.uid,
-                        name: user.displayName || user.email || 'Usuário',
+                        id: user.id,
+                        name: user.name || user.email || 'Usuário',
                         email: user.email || ''
                     }
                 });
@@ -165,6 +170,25 @@ export const InteractionFormModal: React.FC<InteractionFormModalProps> = ({
                             </button>
                         ))}
                     </div>
+
+                    {/* Opportunity Selector (Optional) */}
+                    {opportunities.length > 0 && (
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Vincular a Oportunidade (Opcional)</label>
+                            <select
+                                className="w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500 text-sm shadow-sm"
+                                value={formData.bidId}
+                                onChange={e => setFormData({ ...formData, bidId: e.target.value })}
+                            >
+                                <option value="">-- Nenhuma --</option>
+                                {opportunities.map((op: any) => (
+                                    <option key={op.id} value={op.id}>
+                                        {op.title} (R$ {(op.estimatedValue || 0).toLocaleString()})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
 
                     {/* Title */}
                     <div>

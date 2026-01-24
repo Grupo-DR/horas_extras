@@ -2,13 +2,16 @@ import React, { useState } from 'react';
 import { X, Building2, Save } from 'lucide-react';
 import { useCrm } from '../../contexts/CrmContext';
 
+import { Client } from '../../types';
+
 interface ClientModalProps {
     isOpen: boolean;
     onClose: () => void;
+    clientToEdit?: Client;
 }
 
-export const ClientModal: React.FC<ClientModalProps> = ({ isOpen, onClose }) => {
-    const { addClient } = useCrm();
+export const ClientModal: React.FC<ClientModalProps> = ({ isOpen, onClose, clientToEdit }) => {
+    const { addClient, updateClient } = useCrm();
     const [formData, setFormData] = useState({
         corporateName: '',
         tradeName: '',
@@ -29,11 +32,44 @@ export const ClientModal: React.FC<ClientModalProps> = ({ isOpen, onClose }) => 
         }
     });
 
+    // Populate Form on Edit
+    React.useEffect(() => {
+        if (clientToEdit) {
+            setFormData({
+                corporateName: clientToEdit.corporateName || '',
+                tradeName: clientToEdit.tradeName || '',
+                cnpj: clientToEdit.cnpj || '',
+                segment: clientToEdit.segment || '',
+                clientType: clientToEdit.clientType || 'PRIVADA',
+                origin: clientToEdit.origin || 'PROSPECCAO_INTERNA',
+                primaryEmail: clientToEdit.primaryEmail || '',
+                website: clientToEdit.website || '',
+                address: {
+                    street: clientToEdit.address?.street || '',
+                    number: clientToEdit.address?.number || '',
+                    complement: clientToEdit.address?.complement || '',
+                    neighborhood: clientToEdit.address?.neighborhood || '',
+                    city: clientToEdit.address?.city || '',
+                    state: clientToEdit.address?.state || '',
+                    zipCode: clientToEdit.address?.zipCode || ''
+                }
+            });
+        } else {
+            // Reset
+            setFormData({
+                corporateName: '', tradeName: '', cnpj: '', segment: '',
+                clientType: 'PRIVADA', origin: 'PROSPECCAO_INTERNA', primaryEmail: '', website: '',
+                address: { street: '', number: '', complement: '', neighborhood: '', city: '', state: '', zipCode: '' }
+            });
+        }
+    }, [clientToEdit, isOpen]);
+
     if (!isOpen) return null;
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        addClient({
+
+        const payload = {
             corporateName: formData.corporateName,
             tradeName: formData.tradeName || formData.corporateName,
             cnpj: formData.cnpj,
@@ -43,17 +79,32 @@ export const ClientModal: React.FC<ClientModalProps> = ({ isOpen, onClose }) => 
             primaryEmail: formData.primaryEmail,
             website: formData.website,
             address: formData.address,
-            status: 'ATIVA',
-            createdAt: new Date().toISOString() as any,
-            updatedAt: new Date().toISOString() as any
-        });
+        };
+
+        if (clientToEdit) {
+            // We need to implement updateClient in Context if not exists, but let's assume it exists or use wrapper
+            // We'll fix context if needed.
+            if (updateClient) {
+                await updateClient(clientToEdit.id, payload);
+            } else {
+                console.error("updateClient not available in context");
+            }
+        } else {
+            await addClient({
+                ...payload,
+                status: 'ATIVA',
+            } as any);
+        }
+
         onClose();
         // Reset full state
-        setFormData({
-            corporateName: '', tradeName: '', cnpj: '', segment: '',
-            clientType: 'PRIVADA', origin: 'PROSPECCAO_INTERNA', primaryEmail: '', website: '',
-            address: { street: '', number: '', complement: '', neighborhood: '', city: '', state: '', zipCode: '' }
-        });
+        if (!clientToEdit) {
+            setFormData({
+                corporateName: '', tradeName: '', cnpj: '', segment: '',
+                clientType: 'PRIVADA', origin: 'PROSPECCAO_INTERNA', primaryEmail: '', website: '',
+                address: { street: '', number: '', complement: '', neighborhood: '', city: '', state: '', zipCode: '' }
+            });
+        }
     };
 
     const updateAddress = (field: string, value: string) => {

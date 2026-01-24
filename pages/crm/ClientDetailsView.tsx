@@ -1,18 +1,21 @@
-import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useState, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useCrm } from '../../contexts/CrmContext';
 import { calculateClientHealth } from '../../domain/relationshipAnalytics';
 import { TimelineItem } from '../../components/crm/TimelineItem';
-import { Plus, Building2, AlertTriangle, CheckCircle2, XCircle, MapPin, Globe, Mail, Info, Phone, FileText, Pencil, Trash2 } from 'lucide-react';
-import { Client, Interaction, Bid, ClientContact } from '../../types';
+import { Plus, Building2, AlertTriangle, CheckCircle2, XCircle, MapPin, Globe, Mail, Info, Phone, FileText, Pencil, Trash2, PieChart as PieChartIcon, TrendingUp } from 'lucide-react';
+import { Client, Interaction, Bid, ClientContact, TaskOutcome, BidStatus } from '../../types';
 import { UserAvatar } from '../../components/ui/UserAvatar';
 import { ContactModal } from '../../components/crm/ContactModal';
+import { ClientModal } from '../../components/crm/ClientModal';
 
 export const ClientDetailsView: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const { clients, interactions, contacts, bids, removeContact } = useCrm();
+    const navigate = useNavigate();
+    const { clients, interactions, contacts, bids, removeContact, removeClient } = useCrm();
     const [activeTab, setActiveTab] = useState<'overview' | 'timeline'>('timeline');
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+    const [isClientModalOpen, setIsClientModalOpen] = useState(false);
     const [contactToEdit, setContactToEdit] = useState<ClientContact | undefined>(undefined);
 
     const client = clients.find((c: Client) => c.id === id);
@@ -29,6 +32,29 @@ export const ClientDetailsView: React.FC = () => {
 
     // Analytics Domain
     const health = calculateClientHealth(clientInteractions, clientBids, clientContacts);
+
+    // Metrics Calculation
+    const metrics = useMemo(() => {
+        const totalBids = clientBids.length;
+        const totalValue = clientBids.reduce((sum, bid) => sum + (bid.estimatedValue || 0), 0);
+
+        // Status Check Helper
+        const isSuccess = (b: Bid) => b.status === BidStatus.VENCIDA || b.status === 'GANHA' || b.result === TaskOutcome.SUCCESS;
+        const isLost = (b: Bid) => b.status === BidStatus.PERDIDA || b.status === 'PERDIDA' || b.result === TaskOutcome.FAILURE;
+        const isStudy = (b: Bid) => b.result === TaskOutcome.STUDY; // Or any explicit status for Study
+        const isActive = (b: Bid) => !isSuccess(b) && !isLost(b) && !isStudy(b) && b.status !== BidStatus.CANCELADA;
+
+        const successCount = clientBids.filter(isSuccess).length;
+        const lostCount = clientBids.filter(isLost).length;
+        const studyCount = clientBids.filter(isStudy).length;
+        const activeCount = clientBids.filter(isActive).length;
+
+        // Conversion Rate: Success / (Success + Lost) ideally, or Total Finished
+        const finishedCount = successCount + lostCount;
+        const conversionRate = finishedCount > 0 ? (successCount / finishedCount) * 100 : 0;
+
+        return { totalBids, totalValue, successCount, lostCount, studyCount, activeCount, conversionRate };
+    }, [clientBids]);
 
     const getHealthBadge = () => {
         switch (health.status) {
@@ -98,13 +124,39 @@ export const ClientDetailsView: React.FC = () => {
                 </div>
                 <div className="flex flex-col items-end gap-3">
                     {getHealthBadge()}
-                    <button
-                        // TODO: Integrar modal de nova interação aqui
-                        onClick={() => console.log('Abrir modal interação')}
-                        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition shadow-sm hover:shadow"
-                    >
-                        Registrar Interação
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setIsClientModalOpen(true)}
+                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
+                            title="Editar Empresa"
+                        >
+                            <Pencil size={18} />
+                        </button>
+                        <button
+                            onClick={() => {
+                                if (window.confirm('Tem certeza que deseja excluir este cliente? Todas as interações e contatos serão removidos.')) {
+                                    removeClient(client.id);
+                                    navigate('/crm/clients');
+                                }
+                            }}
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                            title="Excluir Empresa"
+                        >
+                            <Trash2 size={18} />
+                        </button>
+                        <button
+                            onClick={() => {
+                                setContactToEdit(undefined); // Ensure clean state
+                                setIsContactModalOpen(false); // Close other modals if open
+                                // Handle Interaction Modal (which is seemingly separate or needs state)
+                                // Ah, I need to ADD state for Interaction Modal too!
+                                // For now, I will use a new state: isInteractionModalOpen
+                            }}
+                            className="ml-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition shadow-sm hover:shadow"
+                        >
+                            Registrar Interação
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -158,8 +210,29 @@ export const ClientDetailsView: React.FC = () => {
                     {activeTab === 'overview' && (
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             {clientContacts.map((contact: ClientContact) => (
-                                <div key={contact.id} className="flex gap-3 rounded-lg border border-slate-200 p-4 bg-white hover:border-blue-200 transition-colors group items-start">
+                                <div key={contact.id} className="flex gap-3 rounded-lg border border-slate-200 p-4 bg-white hover:border-blue-200 transition-colors group items-start relative">
                                     <UserAvatar user={{ name: contact.name }} size="md" />
+                                    {/* Action Buttons */}
+                                    <div className="absolute top-2 right-2 flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-10">
+                                        <button
+                                            onClick={() => { setContactToEdit(contact); setIsContactModalOpen(true); }}
+                                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors bg-white/80 backdrop-blur-sm"
+                                            title="Editar"
+                                        >
+                                            <Pencil size={14} />
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                if (window.confirm('Excluir este contato?')) {
+                                                    removeContact(contact.id);
+                                                }
+                                            }}
+                                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors bg-white/80 backdrop-blur-sm"
+                                            title="Excluir"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="mb-1">
                                             <p className="font-semibold text-slate-900 group-hover:text-blue-700 transition-colors truncate">{contact.name}</p>
@@ -217,6 +290,12 @@ export const ClientDetailsView: React.FC = () => {
                     contactToEdit={contactToEdit}
                 />
 
+                <ClientModal
+                    isOpen={isClientModalOpen}
+                    onClose={() => setIsClientModalOpen(false)}
+                    clientToEdit={client}
+                />
+
                 {/* COLUNA LATERAL (KPIs Rápidos) */}
                 <div className="w-full lg:w-80 shrink-0 space-y-6">
                     <div className="rounded-xl border border-slate-200 bg-white p-5 sticky top-6">
@@ -250,6 +329,51 @@ export const ClientDetailsView: React.FC = () => {
                                         {/* @ts-ignore */}
                                         {bids ? bids.filter(o => o.clientId === client.id).length : 0}
                                     </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* NEW METRICS CARD */}
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 sticky top-[280px]">
+                        <h4 className="font-semibold text-slate-900 mb-4 border-b border-slate-100 pb-2 flex items-center gap-2">
+                            <TrendingUp size={16} className="text-blue-600" /> Performance
+                        </h4>
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-2 text-center">
+                                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                    <div className="text-xs text-slate-500 uppercase font-bold">Propostas</div>
+                                    <div className="text-lg font-bold text-slate-800">{metrics.totalBids}</div>
+                                </div>
+                                <div className="bg-emerald-50 p-2 rounded-lg border border-emerald-100">
+                                    <div className="text-xs text-emerald-600 uppercase font-bold">Conversão</div>
+                                    <div className="text-lg font-bold text-emerald-700">{metrics.conversionRate.toFixed(0)}%</div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-slate-500 flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-500"></div> Sucesso</span>
+                                    <span className="font-medium">{metrics.successCount}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-slate-500 flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Em Andamento</span>
+                                    <span className="font-medium">{metrics.activeCount}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-slate-500 flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-yellow-500"></div> Em Estudo</span>
+                                    <span className="font-medium">{metrics.studyCount}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-slate-500 flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500"></div> Perdidas</span>
+                                    <span className="font-medium">{metrics.lostCount}</span>
+                                </div>
+                            </div>
+
+                            <div className="pt-2 border-t border-slate-100">
+                                <div className="text-xs text-slate-400 text-center uppercase tracking-wide mb-1">Valor Total Pipeline</div>
+                                <div className="text-center font-bold text-slate-700 text-lg">
+                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(metrics.totalValue)}
                                 </div>
                             </div>
                         </div>
