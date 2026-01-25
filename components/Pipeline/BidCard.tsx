@@ -14,6 +14,7 @@ interface BidCardProps {
     onDelete?: (id: string) => void;
 }
 
+
 export const BidCard: React.FC<BidCardProps> = ({
     bid,
     onDragStart,
@@ -21,16 +22,40 @@ export const BidCard: React.FC<BidCardProps> = ({
     onDelete
 }) => {
     const { users } = useAuth();
-
-    // Resolve Internal Owner
     const internalOwner = users.find(u => u.id === bid.ownerId) || null;
-
-    // Use current date
     const now = new Date();
-    // Use 'deadline' as safe date
-    const deadline = bid.deadline ? new Date(bid.deadline) : null;
+    const creationDate = bid.date ? new Date(bid.date) : new Date(bid.createdAt);
+    const daysOpen = Math.max(0, Math.floor((now.getTime() - creationDate.getTime()) / (1000 * 60 * 60 * 24)));
 
-    const isOverdue = deadline && now > deadline && bid.status === 'ABERTA';
+    // Priority Colors & Effects
+    const getPriorityStyles = () => {
+        switch (bid.priority) {
+            case 'ALTA':
+                return {
+                    border: 'border-l-4 border-l-red-500',
+                    container: 'shadow-[0_0_15px_rgba(239,68,68,0.4)] hover:shadow-[0_0_20px_rgba(239,68,68,0.6)] border-red-200',
+                    badge: 'bg-red-100 text-red-700',
+                    neon: true
+                };
+            case 'MÉDIA':
+                return {
+                    border: 'border-l-4 border-l-amber-500',
+                    container: 'hover:shadow-md border-slate-200',
+                    badge: 'bg-amber-100 text-amber-700',
+                    neon: false
+                };
+            case 'BAIXA':
+            default:
+                return {
+                    border: 'border-l-4 border-l-emerald-500',
+                    container: 'hover:shadow-md border-slate-200',
+                    badge: 'bg-emerald-100 text-emerald-700',
+                    neon: false
+                };
+        }
+    };
+
+    const styles = getPriorityStyles();
 
     // Format currency
     const formattedValue = new Intl.NumberFormat('pt-BR', {
@@ -41,15 +66,27 @@ export const BidCard: React.FC<BidCardProps> = ({
     return (
         <div
             className={`
-        bg-white p-4 rounded-lg shadow-sm border border-slate-200 
-        hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing
-        ${isOverdue ? 'border-l-4 border-l-red-500' : 'border-l-4 border-l-emerald-500'}
-        group relative
-      `}
+                bg-white p-4 rounded-lg transition-all duration-300 cursor-grab active:cursor-grabbing
+                ${styles.border} ${styles.container}
+                border-y border-r
+                group relative
+                ${styles.neon ? 'animate-pulse-slow' : ''} 
+            `}
+            style={styles.neon ? { animation: 'pulse-glow 2s infinite' } : {}}
             draggable
             onDragStart={(e) => onDragStart(e, bid.id)}
             onClick={() => onClick(bid.id)}
         >
+            {/* Custom Neon Animation Style Injection */}
+            {styles.neon && (
+                <style>{`
+                    @keyframes pulse-glow {
+                        0%, 100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.3); }
+                        50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.6); }
+                    }
+                `}</style>
+            )}
+
             <div className="flex justify-between items-start mb-2">
                 <h3 className="font-semibold text-slate-800 text-sm line-clamp-2 max-w-[85%]">
                     {bid.title}
@@ -87,18 +124,21 @@ export const BidCard: React.FC<BidCardProps> = ({
                 </div>
 
                 <div className="flex justify-between items-center pt-2 border-t border-slate-100">
-                    <div className={`flex items-center text-xs ${isOverdue ? 'text-red-500 font-bold' : 'text-slate-400'}`}>
-                        <Calendar className="w-3 h-3 mr-1" />
-                        <span>{deadline ? format(deadline, "dd MMM", { locale: ptBR }) : 'S/P'}</span>
+                    {/* Creation Date & Duration */}
+                    <div className="flex flex-col">
+                        <div className="flex items-center text-[10px] text-slate-400" title="Data de Criação">
+                            <Calendar className="w-3 h-3 mr-1" />
+                            <span>{format(creationDate, "dd/MM/yyyy", { locale: ptBR })}</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-500 pl-4 mt-0.5">
+                            {daysOpen} dias em aberto
+                        </span>
                     </div>
 
-                    {/* Internal Owner Avatar */}
+                    {/* Internal Owner & Priority Badge */}
                     <div className="flex items-center gap-2">
                         {bid.priority && (
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${bid.priority === 'ALTA' ? 'bg-red-100 text-red-700' :
-                                bid.priority === 'MÉDIA' ? 'bg-orange-100 text-orange-700' :
-                                    'bg-emerald-100 text-emerald-700'
-                                }`}>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${styles.badge}`}>
                                 {bid.priority}
                             </span>
                         )}
