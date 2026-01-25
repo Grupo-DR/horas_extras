@@ -1011,55 +1011,110 @@ export const CommercialView: React.FC = () => {
                                 <Filter size={20} className="text-slate-600" />
                                 Funil de Vendas (Conversão)
                             </h3>
-                            <div className="flex-1 min-h-[320px] relative flex justify-center items-center py-8">
+                            <div className="flex-1 min-h-[320px] relative flex justify-start items-center py-8 pl-10">
                                 <div className="relative w-full max-w-[420px]">
                                     <img src={funnelBg} alt="Funil de Vendas" className="w-full h-auto drop-shadow-lg" />
 
-                                    {/* LEVEL 1: TOP (TOTAL / VISITANTES) */}
-                                    <div className="absolute top-[18%] -right-4 w-[180px] bg-white/90 backdrop-blur-sm p-2 rounded-lg border-l-4 border-rose-500 shadow-sm text-sm">
-                                        <p className="font-bold text-slate-700">1. Total (Propostas)</p>
-                                        <div className="flex justify-between items-end mt-1">
-                                            <span className="text-xs text-slate-500">{dashboardStats.totalOpsCount} opps</span>
-                                            <span className="font-bold text-rose-600">R$ {(dashboardStats.totalPipelineValue / 1000).toFixed(0)}k</span>
+                                    {/* LEVEL 1: TOP (TOTAL / VISITANTES) - YELLOW/AMBER */}
+                                    <div className="absolute top-[10%] -right-24 w-[240px] bg-white/95 backdrop-blur-sm p-3 rounded-lg border-l-4 border-amber-400 shadow-md text-xs group hover:scale-[1.02] transition-transform z-10">
+                                        <p className="font-bold text-slate-700 mb-2 border-b border-slate-100 pb-1">1. Total (Propostas)</p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <span className="block text-slate-400 text-[10px] uppercase">Qtd</span>
+                                                <span className="font-bold text-slate-700">{dashboardStats.totalOpsCount}</span>
+                                                <span className="text-[10px] text-slate-400 ml-1">(100%)</span>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="block text-slate-400 text-[10px] uppercase">Valor</span>
+                                                <span className="font-bold text-amber-600">R$ {(dashboardStats.totalPipelineValue / 1000).toFixed(0)}k</span>
+                                                <span className="text-[10px] text-slate-400 ml-1 block">(100%)</span>
+                                            </div>
                                         </div>
                                     </div>
 
                                     {/* LEVEL 2: WITHDRAWAL (ORANGE) */}
-                                    <div className="absolute top-[35%] -right-4 w-[180px] bg-white/90 backdrop-blur-sm p-2 rounded-lg border-l-4 border-amber-500 shadow-sm text-sm">
-                                        <p className="font-bold text-slate-700">2. Desistência</p>
-                                        <div className="flex justify-between items-end mt-1">
-                                            <span className="text-xs text-slate-500">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length} opps</span>
-                                            <span className="font-bold text-amber-600">R$ {(dashboardStats.outcomes.withdrawal / 1000).toFixed(0)}k</span>
+                                    <div className="absolute top-[28%] -right-24 w-[240px] bg-white/95 backdrop-blur-sm p-3 rounded-lg border-l-4 border-orange-500 shadow-md text-xs group hover:scale-[1.02] transition-transform z-20">
+                                        <p className="font-bold text-slate-700 mb-2 border-b border-slate-100 pb-1">2. Desistência</p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <span className="block text-slate-400 text-[10px] uppercase">Qtd</span>
+                                                <span className="font-bold text-slate-700">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length}</span>
+                                                <span className="text-[10px] text-slate-400 ml-1">
+                                                    ({dashboardStats.totalOpsCount > 0 ? (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length / dashboardStats.totalOpsCount * 100).toFixed(0) : 0}%)
+                                                </span>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="block text-slate-400 text-[10px] uppercase">Valor</span>
+                                                <span className="font-bold text-orange-600">R$ {(dashboardStats.outcomes.withdrawal / 1000).toFixed(0)}k</span>
+                                                <span className="text-[10px] text-slate-400 ml-1 block">
+                                                    ({dashboardStats.totalPipelineValue > 0 ? (dashboardStats.outcomes.withdrawal / dashboardStats.totalPipelineValue * 100).toFixed(0) : 0}%)
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* LEVEL 3: STUDY */}
-                                    <div className="absolute top-[52%] -right-4 w-[180px] bg-white/90 backdrop-blur-sm p-2 rounded-lg border-l-4 border-emerald-500 shadow-sm text-sm">
-                                        <p className="font-bold text-slate-700">3. Em Estudo</p>
-                                        <div className="flex justify-between items-end mt-1">
-                                            <span className="text-xs text-slate-500">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length} opps</span>
-                                            <span className="font-bold text-emerald-600">R$ {(dashboardStats.outcomes.study / 1000).toFixed(0)}k</span>
+                                    {/* LEVEL 3: STUDY (PINK) */}
+                                    <div className="absolute top-[46%] -right-24 w-[240px] bg-white/95 backdrop-blur-sm p-3 rounded-lg border-l-4 border-pink-500 shadow-md text-xs group hover:scale-[1.02] transition-transform z-30">
+                                        <p className="font-bold text-slate-700 mb-2 border-b border-slate-100 pb-1">3. Em Estudo</p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <span className="block text-slate-400 text-[10px] uppercase">Qtd</span>
+                                                <span className="font-bold text-slate-700">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length}</span>
+                                                <span className="text-[10px] text-slate-400 ml-1">
+                                                    ({dashboardStats.totalOpsCount > 0 ? (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length / dashboardStats.totalOpsCount * 100).toFixed(0) : 0}%)
+                                                </span>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="block text-slate-400 text-[10px] uppercase">Valor</span>
+                                                <span className="font-bold text-pink-600">R$ {(dashboardStats.outcomes.study / 1000).toFixed(0)}k</span>
+                                                <span className="text-[10px] text-slate-400 ml-1 block">
+                                                    ({dashboardStats.totalPipelineValue > 0 ? (dashboardStats.outcomes.study / dashboardStats.totalPipelineValue * 100).toFixed(0) : 0}%)
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* LEVEL 4: FAILURE (INDIGO/PURPLE) */}
-                                    <div className="absolute top-[69%] -right-4 w-[180px] bg-white/90 backdrop-blur-sm p-2 rounded-lg border-l-4 border-indigo-500 shadow-sm text-sm">
-                                        <p className="font-bold text-slate-700">4. Perdida (Insucesso)</p>
-                                        <div className="flex justify-between items-end mt-1">
-                                            <span className="text-xs text-slate-500">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length} opps</span>
-                                            <span className="font-bold text-indigo-600">R$ {(dashboardStats.outcomes.failure / 1000).toFixed(0)}k</span>
+                                    {/* LEVEL 4: FAILURE (PURPLE) */}
+                                    <div className="absolute top-[64%] -right-24 w-[240px] bg-white/95 backdrop-blur-sm p-3 rounded-lg border-l-4 border-purple-600 shadow-md text-xs group hover:scale-[1.02] transition-transform z-40">
+                                        <p className="font-bold text-slate-700 mb-2 border-b border-slate-100 pb-1">4. Perdida (Insucesso)</p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <span className="block text-slate-400 text-[10px] uppercase">Qtd</span>
+                                                <span className="font-bold text-slate-700">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length}</span>
+                                                <span className="text-[10px] text-slate-400 ml-1">
+                                                    ({dashboardStats.totalOpsCount > 0 ? (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length / dashboardStats.totalOpsCount * 100).toFixed(0) : 0}%)
+                                                </span>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="block text-slate-400 text-[10px] uppercase">Valor</span>
+                                                <span className="font-bold text-purple-600">R$ {(dashboardStats.outcomes.failure / 1000).toFixed(0)}k</span>
+                                                <span className="text-[10px] text-slate-400 ml-1 block">
+                                                    ({dashboardStats.totalPipelineValue > 0 ? (dashboardStats.outcomes.failure / dashboardStats.totalPipelineValue * 100).toFixed(0) : 0}%)
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* LEVEL 5: SUCCESS (DARK PURPLE/BOTTOM) */}
-                                    <div className="absolute top-[86%] -right-4 w-[180px] bg-white/90 backdrop-blur-sm p-2 rounded-lg border-l-4 border-violet-700 shadow-sm text-sm">
-                                        <p className="font-bold text-slate-700">5. Venda (Sucesso)</p>
-                                        <div className="flex justify-between items-end mt-1">
-                                            <span className="text-xs text-slate-500">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length} opps</span>
-                                            <span className="font-bold text-violet-700">R$ {(dashboardStats.outcomes.success / 1000).toFixed(0)}k</span>
+                                    {/* LEVEL 5: SUCCESS (GREEN/EMERALD) */}
+                                    <div className="absolute top-[82%] -right-24 w-[240px] bg-white/95 backdrop-blur-sm p-3 rounded-lg border-l-4 border-emerald-500 shadow-md text-xs group hover:scale-[1.02] transition-transform z-50">
+                                        <p className="font-bold text-slate-700 mb-2 border-b border-slate-100 pb-1">5. Venda (Sucesso)</p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <span className="block text-slate-400 text-[10px] uppercase">Qtd</span>
+                                                <span className="font-bold text-slate-700">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length}</span>
+                                                <span className="text-[10px] text-slate-400 ml-1">
+                                                    ({dashboardStats.totalOpsCount > 0 ? (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length / dashboardStats.totalOpsCount * 100).toFixed(0) : 0}%)
+                                                </span>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="block text-slate-400 text-[10px] uppercase">Valor</span>
+                                                <span className="font-bold text-emerald-600">R$ {(dashboardStats.outcomes.success / 1000).toFixed(0)}k</span>
+                                                <span className="text-[10px] text-slate-400 ml-1 block">
+                                                    ({dashboardStats.totalPipelineValue > 0 ? (dashboardStats.outcomes.success / dashboardStats.totalPipelineValue * 100).toFixed(0) : 0}%)
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
-
                                 </div>
                             </div>
                         </div>
