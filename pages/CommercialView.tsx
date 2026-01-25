@@ -600,9 +600,10 @@ export const CommercialView: React.FC = () => {
         // VGV
         const totalPipelineValue = relevantOpportunities.reduce((sum, op) => sum + n(op.estimatedValue), 0);
 
-        return { strategic, outcomes, clientsAnalysisData, estimatorAnalysisData, conversionRate, totalOpsCount, totalPipelineValue };
-        return { strategic, outcomes, clientsAnalysisData, conversionRate, totalOpsCount, totalPipelineValue };
+        return { strategic, outcomes, clientsAnalysisData, estimatorAnalysisData, conversionRate, totalOpsCount, totalPipelineValue, relevantOpportunities };
     }, [tasks, opportunities, clients, timeFilterType, selectedDate, customRange]);
+
+    const { relevantOpportunities } = dashboardStats;
 
 
 
@@ -874,11 +875,6 @@ export const CommercialView: React.FC = () => {
                             </div>
                         </div>
 
-
-
-
-
-
                         {/* 1. QUANTITATIVE SUMMARY TABLE (REFORMED) */}
                         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                             <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
@@ -904,11 +900,11 @@ export const CommercialView: React.FC = () => {
                                                 Em Andamento
                                             </td>
                                             <td className="px-6 py-4 text-center font-bold text-slate-700">
-                                                {opportunities.filter(op => op.pipelineStage !== PipelineStage.RESULTADO).length}
+                                                {relevantOpportunities.filter(op => op.pipelineStage !== PipelineStage.RESULTADO).length}
                                             </td>
                                             <td className="px-6 py-4 text-center text-slate-500 text-xs">
                                                 {dashboardStats.totalOpsCount > 0 ?
-                                                    (opportunities.filter(op => op.pipelineStage !== PipelineStage.RESULTADO).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
+                                                    (relevantOpportunities.filter(op => op.pipelineStage !== PipelineStage.RESULTADO).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
                                                     : '0%'}
                                             </td>
                                             <td className="px-6 py-4 text-right font-bold text-purple-700">
@@ -925,11 +921,11 @@ export const CommercialView: React.FC = () => {
                                                 Sucesso
                                             </td>
                                             <td className="px-6 py-4 text-center font-bold text-slate-700">
-                                                {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length}
+                                                {relevantOpportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length}
                                             </td>
                                             <td className="px-6 py-4 text-center text-slate-500 text-xs">
                                                 {dashboardStats.totalOpsCount > 0 ?
-                                                    (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
+                                                    (relevantOpportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
                                                     : '0%'}
                                             </td>
                                             <td className="px-6 py-4 text-right font-bold text-emerald-700">
@@ -946,11 +942,11 @@ export const CommercialView: React.FC = () => {
                                                 Insucesso
                                             </td>
                                             <td className="px-6 py-4 text-center font-bold text-slate-700">
-                                                {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length}
+                                                {relevantOpportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length}
                                             </td>
                                             <td className="px-6 py-4 text-center text-slate-500 text-xs">
                                                 {dashboardStats.totalOpsCount > 0 ?
-                                                    (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
+                                                    (relevantOpportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
                                                     : '0%'}
                                             </td>
                                             <td className="px-6 py-4 text-right font-bold text-red-700">
@@ -967,11 +963,11 @@ export const CommercialView: React.FC = () => {
                                                 Em Estudo
                                             </td>
                                             <td className="px-6 py-4 text-center font-bold text-slate-700">
-                                                {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length}
+                                                {relevantOpportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length}
                                             </td>
                                             <td className="px-6 py-4 text-center text-slate-500 text-xs">
                                                 {dashboardStats.totalOpsCount > 0 ?
-                                                    (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
+                                                    (relevantOpportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
                                                     : '0%'}
                                             </td>
                                             <td className="px-6 py-4 text-right font-bold text-blue-700">
@@ -988,11 +984,11 @@ export const CommercialView: React.FC = () => {
                                                 Desistência
                                             </td>
                                             <td className="px-6 py-4 text-center font-bold text-slate-700">
-                                                {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length}
+                                                {relevantOpportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length}
                                             </td>
                                             <td className="px-6 py-4 text-center text-slate-500 text-xs">
                                                 {dashboardStats.totalOpsCount > 0 ?
-                                                    (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
+                                                    (relevantOpportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
                                                     : '0%'}
                                             </td>
                                             <td className="px-6 py-4 text-right font-bold text-slate-600">
@@ -1012,6 +1008,47 @@ export const CommercialView: React.FC = () => {
                                         </tr>
                                     </tbody>
                                 </table>
+                            </div>
+                        </div>
+
+                        {/* 0.5. EVOLUTION CHART (NEW) */}
+                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col h-[400px]">
+                            <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                <TrendingUp size={20} className="text-amber-500" />
+                                Evolução de Propostas (Acumulado x Mensal)
+                            </h3>
+                            <div className="flex-1 min-h-0">
+                                <EvolutionChart
+                                    data={(() => {
+                                        // Aggregate Data
+                                        const groups = new Map<string, { month: string, date: number, entered: number, won: number }>();
+
+                                        // Sort opportunities by date first to ensure correct accumulation
+                                        const sortedOps = [...relevantOpportunities].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+                                        sortedOps.forEach(op => {
+                                            const d = new Date(op.date);
+                                            if (isNaN(d.getTime())) return;
+                                            const key = format(d, 'MMM/yy', { locale: ptBR });
+
+                                            if (!groups.has(key)) {
+                                                groups.set(key, { month: key.charAt(0).toUpperCase() + key.slice(1), date: d.getTime(), entered: 0, won: 0 });
+                                            }
+                                            const g = groups.get(key)!;
+                                            g.entered += 1;
+                                            if (op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS) {
+                                                g.won += 1;
+                                            }
+                                        });
+
+                                        const sorted = Array.from(groups.values()).sort((a, b) => a.date - b.date);
+                                        let acc = 0;
+                                        return sorted.map(item => {
+                                            acc += item.entered;
+                                            return { ...item, accumulated: acc };
+                                        });
+                                    })()}
+                                />
                             </div>
                         </div>
 
@@ -1269,25 +1306,25 @@ export const CommercialView: React.FC = () => {
                                             },
                                             {
                                                 label: "Desistência",
-                                                subLabel: dashboardStats.totalOpsCount > 0 ? `${(opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length / dashboardStats.totalOpsCount * 100).toFixed(0)}%` : "0%",
+                                                subLabel: dashboardStats.totalOpsCount > 0 ? `${(relevantOpportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length / dashboardStats.totalOpsCount * 100).toFixed(0)}%` : "0%",
                                                 color: "#f97316",
                                                 topColor: "#c2410c"
                                             },
                                             {
                                                 label: "Em Estudo",
-                                                subLabel: dashboardStats.totalOpsCount > 0 ? `${(opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length / dashboardStats.totalOpsCount * 100).toFixed(0)}%` : "0%",
+                                                subLabel: dashboardStats.totalOpsCount > 0 ? `${(relevantOpportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length / dashboardStats.totalOpsCount * 100).toFixed(0)}%` : "0%",
                                                 color: "#ec4899",
                                                 topColor: "#be185d"
                                             },
                                             {
                                                 label: "Perdida",
-                                                subLabel: dashboardStats.totalOpsCount > 0 ? `${(opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length / dashboardStats.totalOpsCount * 100).toFixed(0)}%` : "0%",
+                                                subLabel: dashboardStats.totalOpsCount > 0 ? `${(relevantOpportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length / dashboardStats.totalOpsCount * 100).toFixed(0)}%` : "0%",
                                                 color: "#9333ea",
                                                 topColor: "#7e22ce"
                                             },
                                             {
                                                 label: "Venda",
-                                                subLabel: dashboardStats.totalOpsCount > 0 ? `${(opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length / dashboardStats.totalOpsCount * 100).toFixed(0)}%` : "0%",
+                                                subLabel: dashboardStats.totalOpsCount > 0 ? `${(relevantOpportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length / dashboardStats.totalOpsCount * 100).toFixed(0)}%` : "0%",
                                                 color: "#10b981",
                                                 topColor: "#047857"
                                             },
@@ -1336,7 +1373,7 @@ export const CommercialView: React.FC = () => {
                                         <div className="grid grid-cols-2 gap-2 items-center">
                                             <div>
                                                 <span className="block text-slate-400 text-[10px] uppercase">QTD</span>
-                                                <span className="font-bold text-slate-700 text-xl">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length}</span>
+                                                <span className="font-bold text-slate-700 text-xl">{relevantOpportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length}</span>
                                             </div>
                                             <div className="text-right">
                                                 <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
@@ -1356,7 +1393,7 @@ export const CommercialView: React.FC = () => {
                                         <div className="grid grid-cols-2 gap-2 items-center">
                                             <div>
                                                 <span className="block text-slate-400 text-[10px] uppercase">QTD</span>
-                                                <span className="font-bold text-slate-700 text-xl">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length}</span>
+                                                <span className="font-bold text-slate-700 text-xl">{relevantOpportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length}</span>
                                             </div>
                                             <div className="text-right">
                                                 <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
@@ -1376,7 +1413,7 @@ export const CommercialView: React.FC = () => {
                                         <div className="grid grid-cols-2 gap-2 items-center">
                                             <div>
                                                 <span className="block text-slate-400 text-[10px] uppercase">QTD</span>
-                                                <span className="font-bold text-slate-700 text-xl">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length}</span>
+                                                <span className="font-bold text-slate-700 text-xl">{relevantOpportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length}</span>
                                             </div>
                                             <div className="text-right">
                                                 <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
@@ -1396,7 +1433,7 @@ export const CommercialView: React.FC = () => {
                                         <div className="grid grid-cols-2 gap-2 items-center">
                                             <div>
                                                 <span className="block text-slate-400 text-[10px] uppercase">QTD</span>
-                                                <span className="font-bold text-slate-700 text-xl">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length}</span>
+                                                <span className="font-bold text-slate-700 text-xl">{relevantOpportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length}</span>
                                             </div>
                                             <div className="text-right">
                                                 <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
