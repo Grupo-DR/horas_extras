@@ -1011,12 +1011,12 @@ export const CommercialView: React.FC = () => {
                                 <Filter size={20} className="text-slate-600" />
                                 Funil de Vendas (Conversão)
                             </h3>
-                            <div className="flex-1 min-h-[320px] relative flex justify-start items-center py-8 pl-10">
+                            <div className="flex-1 min-h-[600px] relative flex justify-start items-center py-8 pl-10">
                                 <div className="relative w-full max-w-[420px]">
                                     <img src={funnelBg} alt="Funil de Vendas" className="w-full h-auto drop-shadow-lg" />
 
                                     {/* LEVEL 1: TOP (TOTAL / VISITANTES) - YELLOW/AMBER */}
-                                    <div className="absolute top-[10%] -right-24 w-[240px] bg-white/95 backdrop-blur-sm p-3 rounded-lg border-l-4 border-amber-400 shadow-md text-xs group hover:scale-[1.02] transition-transform z-10">
+                                    <div className="absolute top-[5%] left-[80%] w-[260px] bg-white/95 backdrop-blur-sm p-3 rounded-lg border-l-4 border-amber-400 shadow-md text-xs group hover:scale-[1.02] transition-transform z-10 ml-8">
                                         <p className="font-bold text-slate-700 mb-2 border-b border-slate-100 pb-1">1. Total (Propostas)</p>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
@@ -1033,7 +1033,7 @@ export const CommercialView: React.FC = () => {
                                     </div>
 
                                     {/* LEVEL 2: WITHDRAWAL (ORANGE) */}
-                                    <div className="absolute top-[28%] -right-24 w-[240px] bg-white/95 backdrop-blur-sm p-3 rounded-lg border-l-4 border-orange-500 shadow-md text-xs group hover:scale-[1.02] transition-transform z-20">
+                                    <div className="absolute top-[23%] left-[80%] w-[260px] bg-white/95 backdrop-blur-sm p-3 rounded-lg border-l-4 border-orange-500 shadow-md text-xs group hover:scale-[1.02] transition-transform z-20 ml-8">
                                         <p className="font-bold text-slate-700 mb-2 border-b border-slate-100 pb-1">2. Desistência</p>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
@@ -1054,7 +1054,7 @@ export const CommercialView: React.FC = () => {
                                     </div>
 
                                     {/* LEVEL 3: STUDY (PINK) */}
-                                    <div className="absolute top-[46%] -right-24 w-[240px] bg-white/95 backdrop-blur-sm p-3 rounded-lg border-l-4 border-pink-500 shadow-md text-xs group hover:scale-[1.02] transition-transform z-30">
+                                    <div className="absolute top-[41%] left-[80%] w-[260px] bg-white/95 backdrop-blur-sm p-3 rounded-lg border-l-4 border-pink-500 shadow-md text-xs group hover:scale-[1.02] transition-transform z-30 ml-8">
                                         <p className="font-bold text-slate-700 mb-2 border-b border-slate-100 pb-1">3. Em Estudo</p>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
@@ -1075,7 +1075,7 @@ export const CommercialView: React.FC = () => {
                                     </div>
 
                                     {/* LEVEL 4: FAILURE (PURPLE) */}
-                                    <div className="absolute top-[64%] -right-24 w-[240px] bg-white/95 backdrop-blur-sm p-3 rounded-lg border-l-4 border-purple-600 shadow-md text-xs group hover:scale-[1.02] transition-transform z-40">
+                                    <div className="absolute top-[59%] left-[80%] w-[260px] bg-white/95 backdrop-blur-sm p-3 rounded-lg border-l-4 border-purple-600 shadow-md text-xs group hover:scale-[1.02] transition-transform z-40 ml-8">
                                         <p className="font-bold text-slate-700 mb-2 border-b border-slate-100 pb-1">4. Perdida (Insucesso)</p>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
@@ -1096,7 +1096,7 @@ export const CommercialView: React.FC = () => {
                                     </div>
 
                                     {/* LEVEL 5: SUCCESS (GREEN/EMERALD) */}
-                                    <div className="absolute top-[82%] -right-24 w-[240px] bg-white/95 backdrop-blur-sm p-3 rounded-lg border-l-4 border-emerald-500 shadow-md text-xs group hover:scale-[1.02] transition-transform z-50">
+                                    <div className="absolute top-[77%] left-[80%] w-[260px] bg-white/95 backdrop-blur-sm p-3 rounded-lg border-l-4 border-emerald-500 shadow-md text-xs group hover:scale-[1.02] transition-transform z-50 ml-8">
                                         <p className="font-bold text-slate-700 mb-2 border-b border-slate-100 pb-1">5. Venda (Sucesso)</p>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
