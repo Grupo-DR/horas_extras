@@ -22,6 +22,7 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({ bids, refreshBids,
     const [contactFilter, setContactFilter] = React.useState('');
     const [ownerFilter, setOwnerFilter] = React.useState('');
     const [priorityFilter, setPriorityFilter] = React.useState('');
+    const [yearFilter, setYearFilter] = React.useState('');
 
     // Derived Lists for Select Options
     const { clients = [], contacts = [] } = { clients: [], contacts: [] }; // Mock if Context not available, or derive from bids
@@ -36,6 +37,15 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({ bids, refreshBids,
         return ownerIds.map(id => users.find(u => u.id === id)).filter(Boolean) as User[];
     }, [bids, users]);
 
+    // Extract Years from Bids
+    const uniqueYears = React.useMemo(() => {
+        const years = new Set(bids.map(b => {
+            const date = b.date ? new Date(b.date) : (b.createdAt ? new Date(b.createdAt) : null);
+            return date ? date.getFullYear() : null;
+        }).filter(Boolean));
+        return Array.from(years).sort((a, b) => (b as number) - (a as number)); // Descending
+    }, [bids]);
+
     // FILTER LOGIC
     const filteredBids = React.useMemo(() => {
         return bids.filter(bid => {
@@ -43,9 +53,16 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({ bids, refreshBids,
             if (contactFilter && bid.contactName !== contactFilter) return false;
             if (ownerFilter && bid.ownerId !== ownerFilter) return false;
             if (priorityFilter && bid.priority !== priorityFilter) return false;
+
+            if (yearFilter) {
+                const date = bid.date ? new Date(bid.date) : (bid.createdAt ? new Date(bid.createdAt) : null);
+                const year = date ? date.getFullYear().toString() : '';
+                if (year !== yearFilter) return false;
+            }
+
             return true;
         });
-    }, [bids, clientFilter, contactFilter, ownerFilter, priorityFilter]);
+    }, [bids, clientFilter, contactFilter, ownerFilter, priorityFilter, yearFilter]);
 
 
     // Filter Opportunities/Bids by Stage and Sort by Priority
@@ -145,6 +162,16 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({ bids, refreshBids,
                 <div className="text-slate-400 mr-2">
                     <FilterIcon size={16} />
                 </div>
+
+                {/* Year Filter */}
+                <select
+                    className="text-xs border border-slate-200 rounded-md px-2 py-1 bg-white text-slate-600 focus:outline-none focus:border-blue-400 max-w-[100px] font-medium"
+                    value={yearFilter}
+                    onChange={(e) => setYearFilter(e.target.value)}
+                >
+                    <option value="">Ano: Todos</option>
+                    {uniqueYears.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
 
                 {/* Client Filter */}
                 <select

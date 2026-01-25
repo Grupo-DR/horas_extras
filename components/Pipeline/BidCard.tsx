@@ -110,7 +110,6 @@ export const BidCard: React.FC<BidCardProps> = ({
     }).format(bid.estimatedValue || 0);
 
     return (
-    return (
         <div
             className={`
                 bg-white p-2 rounded-lg transition-all duration-300 cursor-grab active:cursor-grabbing
