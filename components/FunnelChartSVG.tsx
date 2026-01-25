@@ -70,6 +70,9 @@ interface FunnelChartSVGProps {
     connectorKneeX?: number;
     fontFamily?: string;
     showLabels?: boolean;
+    eRxFactor?: number;
+    onHover?: (index: number | null) => void;
+    hoveredIndex?: number | null;
 }
 
 export default function FunnelChartSVG({
@@ -82,6 +85,7 @@ export default function FunnelChartSVG({
     levelHeight = 90,
     gap = 12,
     topEllipseRatio = 0.22, // ellipse height = levelHeight * ratio
+    eRxFactor = 0.48, // 48% of width (flush/inside)
     stroke = "#334155", // slate-700
     strokeWidth = 2,
     circleRadius = 8,
@@ -89,6 +93,8 @@ export default function FunnelChartSVG({
     connectorKneeX = 28,
     fontFamily = "system-ui, -apple-system, Segoe UI, Roboto, Arial",
     showLabels = false,
+    onHover,
+    hoveredIndex = null,
 }: FunnelChartSVGProps) {
     const n = levels?.length ?? 0;
 
@@ -102,7 +108,8 @@ export default function FunnelChartSVG({
     const hLvl = levelHeight * scaleY;
     const g = gap * scaleY;
     const eRy = (hLvl * topEllipseRatio) * 0.65;
-    const eRxFactor = 0.48;
+
+    // Using eRxFactor from props/default
 
     const xCenter = margin.left + drawableW / 2;
     const yStart = margin.top + (drawableH - (n * hLvl + (n - 1) * g)) / 2;
@@ -177,6 +184,15 @@ export default function FunnelChartSVG({
     return (
         <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
             <defs>
+                {/** Noise Filter for Glass/Texture Effect **/}
+                <filter id="noiseFilter">
+                    <feTurbulence type="fractalNoise" baseFrequency="0.6" stitchTiles="stitch" />
+                    <feColorMatrix type="saturate" values="0" />
+                    <feComponentTransfer>
+                        <feFuncA type="linear" slope="0.15" />
+                    </feComponentTransfer>
+                </filter>
+
                 {levels.map((level, i) => {
                     const baseColor = level.color;
                     const gradId = `funnel-grad-${i}`;
@@ -200,16 +216,15 @@ export default function FunnelChartSVG({
                         <React.Fragment key={i}>
                             <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="0%">
                                 <stop offset="0%" stopColor="black" stopOpacity="0.3" />
-                                <stop offset="20%" stopColor="black" stopOpacity="0.1" />
-                                <stop offset="45%" stopColor="white" stopOpacity="0.1" />
-                                <stop offset="55%" stopColor="white" stopOpacity="0.1" />
-                                <stop offset="80%" stopColor="black" stopOpacity="0.1" />
+                                <stop offset="25%" stopColor="black" stopOpacity="0.05" />
+                                <stop offset="50%" stopColor="white" stopOpacity="0.15" />
+                                <stop offset="75%" stopColor="black" stopOpacity="0.05" />
                                 <stop offset="100%" stopColor="black" stopOpacity="0.3" />
                             </linearGradient>
 
                             <linearGradient id={capGradId} x1="0%" y1="0%" x2="0%" y2="100%">
-                                <stop offset="0%" stopColor="white" stopOpacity="0.4" />
-                                <stop offset="100%" stopColor="black" stopOpacity="0.1" />
+                                <stop offset="0%" stopColor="white" stopOpacity="0.5" />
+                                <stop offset="100%" stopColor="black" stopOpacity="0.15" />
                             </linearGradient>
                         </React.Fragment>
                     );
@@ -223,17 +238,39 @@ export default function FunnelChartSVG({
                 const fill = level.color;
                 const topFill = level.topColor || fill;
 
-                // We render the shape TWICE. 
-                // 1. The solid base color.
-                // 2. The gradient overlay for volume.
+                const isHovered = hoveredIndex === it.i;
+                const isDimmed = hoveredIndex !== null && hoveredIndex !== it.i;
+
+                // Interactive Transformations
+                const transform = isHovered ? `scale(1.03) translate(-${it.cx * 0.03}, -${it.y * 0.03})` : "";
+                const opacity = isDimmed ? 0.4 : 1;
+                const style = {
+                    transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease",
+                    transformOrigin: `${it.cx}px ${it.y}px`, // zoom from center of item
+                    cursor: "pointer"
+                };
 
                 return (
-                    <g key={it.i}>
-                        {/* Body - Base */}
+                    <g
+                        key={it.i}
+                        style={{ ...style, transform: isHovered ? "scale(1.05)" : "scale(1)", opacity }}
+                        onMouseEnter={() => onHover && onHover(it.i)}
+                        onMouseLeave={() => onHover && onHover(null)}
+                    >
+                        {/* Body - Base with Glass Opacity */}
                         <path
                             d={it.bodyPath}
                             fill={fill}
                             stroke="none"
+                            fillOpacity="0.85"
+                        />
+                        {/* Texture Overlay */}
+                        <path
+                            d={it.bodyPath}
+                            fill="transparent"
+                            filter="url(#noiseFilter)"
+                            stroke="none"
+                            opacity="0.6"
                         />
                         {/* Body - Gradient Overlay */}
                         <path
@@ -249,6 +286,7 @@ export default function FunnelChartSVG({
                             d={it.topEllipse.path}
                             fill={topFill}
                             stroke="none"
+                            fillOpacity="0.9"
                         />
                         {/* Cap - Gradient Overlay */}
                         <path
@@ -270,13 +308,18 @@ export default function FunnelChartSVG({
                 const x0 = it.connector.x0;
                 const y0 = it.connector.y0;
 
-                const x1 = x0 + connectorStartOffset;
-                const x2 = x1 + connectorKneeX;
+                // Smooth Bezier Curve (Fluid)
+                // Control points to create a nice S-curve or tension ease-out
+                const cp1x = x0 + 40;
+                const cp2x = connectorEndX - 40;
+
+                const isHovered = hoveredIndex === it.i;
+                const isDimmed = hoveredIndex !== null && !isHovered;
 
                 return (
-                    <g key={`c-${it.i}`}>
+                    <g key={`c-${it.i}`} style={{ opacity: isDimmed ? 0.3 : 1, transition: "opacity 0.3s ease" }}>
                         <path
-                            d={`M ${x0} ${y0} L ${x1} ${y0} L ${x2} ${y0} L ${connectorEndX} ${y0}`}
+                            d={`M ${x0} ${y0} C ${cp1x} ${y0}, ${cp2x} ${y0}, ${connectorEndX} ${y0}`}
                             fill="none"
                             stroke={stroke}
                             strokeWidth={strokeWidth}
@@ -286,10 +329,11 @@ export default function FunnelChartSVG({
                         <circle
                             cx={circleX}
                             cy={y0}
-                            r={circleRadius}
+                            r={isHovered ? circleRadius * 1.3 : circleRadius}
                             fill={dotColor}
                             stroke={stroke}
                             strokeWidth={strokeWidth}
+                            style={{ transition: "r 0.3s ease" }}
                         />
                         {showLabels && (
                             <text

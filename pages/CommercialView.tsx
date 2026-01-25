@@ -213,8 +213,12 @@ export const CommercialView: React.FC = () => {
     // FIX: Initial filter includes Last Month (Dec 2025) for Dashboard visibility in Jan
     const [timeFilterType, setTimeFilterType] = useState<'MONTH' | 'YTD' | 'CUSTOM'>('CUSTOM');
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+    const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
 
-    // Custom range defaults to Last Month + Current Month
+    // Funnel Interaction State
+    const [hoveredFunnelIndex, setHoveredFunnelIndex] = useState<number | null>(null);
+
+    // Initial Data Fetch defaults to Last Month + Current Month
     const [customRange, setCustomRange] = useState<{ start: Date, end: Date }>({
         start: startOfMonth(new Date(new Date().setMonth(new Date().getMonth() - 1))), // Previous Month Start
         end: endOfMonth(new Date())
@@ -1028,13 +1032,19 @@ export const CommercialView: React.FC = () => {
                                         topWidth={360}
                                         bottomWidth={50}
                                         stroke="#475569"
+                                        hoveredIndex={hoveredFunnelIndex}
+                                        onHover={setHoveredFunnelIndex}
                                     />
                                 </div>
 
                                 {/* STATS PANEL (RIGHT SIDE) */}
                                 <div className="flex flex-col gap-3 min-w-[300px]">
                                     {/* LEVEL 1: TOTAL */}
-                                    <div className="bg-white p-3 rounded-r-lg border-l-4 border-amber-400 shadow-sm text-xs hover:bg-slate-50 transition-colors">
+                                    <div
+                                        className={`bg-white p-3 rounded-r-lg border-l-4 border-amber-400 shadow-sm text-xs transition-all duration-300 cursor-pointer ${hoveredFunnelIndex === 0 ? 'scale-105 shadow-md bg-amber-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
+                                        onMouseEnter={() => setHoveredFunnelIndex(0)}
+                                        onMouseLeave={() => setHoveredFunnelIndex(null)}
+                                    >
                                         <p className="font-bold text-slate-700 mb-2 border-b border-slate-100 pb-1">1. Total (propostas)</p>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
@@ -1050,7 +1060,11 @@ export const CommercialView: React.FC = () => {
                                     </div>
 
                                     {/* LEVEL 2: WITHDRAWAL */}
-                                    <div className="bg-white p-3 rounded-r-lg border-l-4 border-orange-500 shadow-sm text-xs hover:bg-slate-50 transition-colors">
+                                    <div
+                                        className={`bg-white p-3 rounded-r-lg border-l-4 border-orange-500 shadow-sm text-xs transition-all duration-300 cursor-pointer ${hoveredFunnelIndex === 1 ? 'scale-105 shadow-md bg-orange-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
+                                        onMouseEnter={() => setHoveredFunnelIndex(1)}
+                                        onMouseLeave={() => setHoveredFunnelIndex(null)}
+                                    >
                                         <p className="font-bold text-slate-700 mb-2 border-b border-slate-100 pb-1">2. Desistência</p>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
@@ -1068,7 +1082,11 @@ export const CommercialView: React.FC = () => {
                                     </div>
 
                                     {/* LEVEL 3: STUDY */}
-                                    <div className="bg-white p-3 rounded-r-lg border-l-4 border-pink-500 shadow-sm text-xs hover:bg-slate-50 transition-colors">
+                                    <div
+                                        className={`bg-white p-3 rounded-r-lg border-l-4 border-pink-500 shadow-sm text-xs transition-all duration-300 cursor-pointer ${hoveredFunnelIndex === 2 ? 'scale-105 shadow-md bg-pink-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
+                                        onMouseEnter={() => setHoveredFunnelIndex(2)}
+                                        onMouseLeave={() => setHoveredFunnelIndex(null)}
+                                    >
                                         <p className="font-bold text-slate-700 mb-2 border-b border-slate-100 pb-1">3. Em Estudo</p>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
@@ -1086,7 +1104,11 @@ export const CommercialView: React.FC = () => {
                                     </div>
 
                                     {/* LEVEL 4: FAILURE */}
-                                    <div className="bg-white p-3 rounded-r-lg border-l-4 border-purple-600 shadow-sm text-xs hover:bg-slate-50 transition-colors">
+                                    <div
+                                        className={`bg-white p-3 rounded-r-lg border-l-4 border-purple-600 shadow-sm text-xs transition-all duration-300 cursor-pointer ${hoveredFunnelIndex === 3 ? 'scale-105 shadow-md bg-purple-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
+                                        onMouseEnter={() => setHoveredFunnelIndex(3)}
+                                        onMouseLeave={() => setHoveredFunnelIndex(null)}
+                                    >
                                         <p className="font-bold text-slate-700 mb-2 border-b border-slate-100 pb-1">4. Perdida (Insucesso)</p>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
@@ -1104,7 +1126,11 @@ export const CommercialView: React.FC = () => {
                                     </div>
 
                                     {/* LEVEL 5: SUCCESS */}
-                                    <div className="bg-white p-3 rounded-r-lg border-l-4 border-emerald-500 shadow-sm text-xs hover:bg-slate-50 transition-colors">
+                                    <div
+                                        className={`bg-white p-3 rounded-r-lg border-l-4 border-emerald-500 shadow-sm text-xs transition-all duration-300 cursor-pointer ${hoveredFunnelIndex === 4 ? 'scale-105 shadow-md bg-emerald-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
+                                        onMouseEnter={() => setHoveredFunnelIndex(4)}
+                                        onMouseLeave={() => setHoveredFunnelIndex(null)}
+                                    >
                                         <p className="font-bold text-slate-700 mb-2 border-b border-slate-100 pb-1">5. Venda (Sucesso)</p>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
@@ -1117,9 +1143,6 @@ export const CommercialView: React.FC = () => {
                                             <div className="text-right">
                                                 <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
                                                 <span className="font-bold text-emerald-600">R$ {(dashboardStats.outcomes.success / 1000).toFixed(0)}k</span>
-                                                <span className="text-[10px] text-slate-400 ml-1 block">
-                                                    ({dashboardStats.totalPipelineValue > 0 ? (dashboardStats.outcomes.success / dashboardStats.totalPipelineValue * 100).toFixed(0) : 0}%)
-                                                </span>
                                             </div>
                                         </div>
                                     </div>
