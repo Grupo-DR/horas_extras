@@ -1011,8 +1011,8 @@ export const CommercialView: React.FC = () => {
                                 <Filter size={20} className="text-slate-600" />
                                 Funil de Vendas (Conversão)
                             </h3>
-                            <div className="flex-1 min-h-[450px] relative flex justify-center items-center py-8">
-                                <div className="relative w-full max-w-[600px]">
+                            <div className="flex-1 min-h-[320px] relative flex justify-center items-center py-8">
+                                <div className="relative w-full max-w-[420px]">
                                     <img src={funnelBg} alt="Funil de Vendas" className="w-full h-auto drop-shadow-lg" />
 
                                     {/* LEVEL 1: TOP (TOTAL / VISITANTES) */}
