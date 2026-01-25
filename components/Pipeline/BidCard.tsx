@@ -110,9 +110,10 @@ export const BidCard: React.FC<BidCardProps> = ({
     }).format(bid.estimatedValue || 0);
 
     return (
+    return (
         <div
             className={`
-                bg-white p-4 rounded-lg transition-all duration-300 cursor-grab active:cursor-grabbing
+                bg-white p-2 rounded-lg transition-all duration-300 cursor-grab active:cursor-grabbing
                 ${styles.border} ${styles.container}
                 border-y border-r
                 group relative
@@ -143,20 +144,20 @@ export const BidCard: React.FC<BidCardProps> = ({
                 `}</style>
             )}
 
-            {/* Won Trophy & Badge Overlay */}
+            {/* Won Trophy & Badge Overlay - Compact */}
             {isWon && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none z-10 opacity-90">
-                    <div className="bg-amber-100/50 p-2 rounded-full mb-1 border border-amber-200 backdrop-blur-sm">
-                        <Trophy size={28} className="text-amber-600 fill-amber-500 animate-bounce" />
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none z-10 opacity-90">
+                    <div className="bg-amber-100/50 p-1.5 rounded-full mb-0.5 border border-amber-200 backdrop-blur-sm">
+                        <Trophy size={20} className="text-amber-600 fill-amber-500 animate-bounce" />
                     </div>
-                    <span className="text-[10px] font-extrabold bg-amber-500 text-white px-2 py-0.5 rounded shadow-sm tracking-wider">
+                    <span className="text-[8px] font-extrabold bg-amber-500 text-white px-1.5 py-0.5 rounded shadow-sm tracking-wider">
                         VENCEDORA
                     </span>
                 </div>
             )}
 
-            <div className="flex justify-between items-start mb-2 relative z-20">
-                <h3 className={`font-semibold text-slate-800 text-sm line-clamp-2 ${isWon ? 'max-w-[70%]' : 'max-w-[85%]'} flex items-center gap-1`}>
+            <div className="flex justify-between items-start mb-1 relative z-20">
+                <h3 className={`font-semibold text-slate-800 text-[10px] line-clamp-2 leading-tight ${isWon ? 'max-w-[70%]' : 'max-w-[85%]'} flex items-center gap-1`}>
                     {bid.title}
                 </h3>
                 {onDelete && (
@@ -165,53 +166,54 @@ export const BidCard: React.FC<BidCardProps> = ({
                             e.stopPropagation();
                             onDelete(bid.id);
                         }}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-all absolute top-0 right-0"
+                        className="opacity-0 group-hover:opacity-100 p-0.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-all absolute top-0 right-0"
                         title="Excluir"
                     >
-                        <Trash2 size={14} />
+                        <Trash2 size={12} />
                     </button>
                 )}
             </div>
 
-            <div className={`text-xs text-slate-500 mb-3 font-medium ${isWon ? 'max-w-[70%]' : ''}`}>
+            <div className={`text-[10px] text-slate-500 mb-2 font-medium leading-tight ${isWon ? 'max-w-[70%]' : ''}`}>
                 {bid.clientName || 'Cliente desconhecido'}
             </div>
 
-            <div className="space-y-2">
-                <div className="flex items-center text-xs text-slate-600">
-                    <DollarSign className="w-3 h-3 mr-1 text-emerald-600" />
+            <div className="space-y-1">
+                <div className="flex items-center text-[8px] text-slate-600">
+                    <DollarSign className="w-2.5 h-2.5 mr-1 text-emerald-600" />
                     <span className="font-semibold">{formattedValue}</span>
                 </div>
 
                 {/* External Contact (Client Side) */}
-                <div className="flex items-center text-xs text-slate-500">
-                    <User className="w-3 h-3 mr-1" />
+                <div className="flex items-center text-[8px] text-slate-500">
+                    <User className="w-2.5 h-2.5 mr-1" />
                     <span className="truncate max-w-[150px]" title={bid.contactName || 'N/A'}>
                         {bid.contactName || 'Contato N/A'}
                     </span>
                 </div>
 
-                <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                <div className="flex justify-between items-center pt-1 border-t border-slate-100 mt-1">
                     {/* Creation Date & Duration */}
                     <div className="flex flex-col">
-                        <div className="flex items-center text-[10px] text-slate-400" title="Chegada da Oportunidade">
-                            <Calendar className="w-3 h-3 mr-1" />
+                        <div className="flex items-center text-[8px] text-slate-400" title="Chegada da Oportunidade">
+                            <Calendar className="w-2.5 h-2.5 mr-1" />
                             <span>{format(creationDate, "dd/MM/yyyy", { locale: ptBR })}</span>
                         </div>
-                        <span className="text-[10px] font-bold text-slate-500 pl-4 mt-0.5">
+                        <span className="text-[8px] font-bold text-slate-500 pl-3.5 leading-none">
                             {daysOpen} dias em aberto
                         </span>
                     </div>
 
                     {/* Internal Owner & Priority Badge */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                         {bid.priority && (
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${styles.badge}`}>
+                            <span className={`text-[8px] font-bold px-1.5 py-0 rounded uppercase tracking-wider ${styles.badge}`}>
                                 {bid.priority}
                             </span>
                         )}
                         <div title={internalOwner ? internalOwner.name : 'Sem dono'}>
-                            <UserAvatar user={internalOwner} size="sm" />
+                            <UserAvatar user={internalOwner} size="xs" />
+                            {/* Might need to adjust size="xs" implementation if 32px is too big, but usually sm is 24px */}
                         </div>
                     </div>
                 </div>
