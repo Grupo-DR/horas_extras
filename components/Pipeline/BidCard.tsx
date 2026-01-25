@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Bid, TaskOutcome } from '../../types';
+import { Bid, TaskOutcome, PipelineStage } from '../../types';
 import { Calendar, DollarSign, User, Trash2, Trophy } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -26,16 +26,62 @@ export const BidCard: React.FC<BidCardProps> = ({
     const creationDate = bid.date ? new Date(bid.date) : new Date(bid.createdAt);
     const daysOpen = Math.max(0, Math.floor((now.getTime() - creationDate.getTime()) / (1000 * 60 * 60 * 24)));
     const isWon = bid.result === TaskOutcome.SUCCESS;
+    const isOutcomeStage = bid.pipelineStage === PipelineStage.RESULTADO;
 
-    // Priority Colors & Effects
-    const getPriorityStyles = () => {
+    // Priority & Outcome Colors
+    const getCardStyles = () => {
+        // SPECIAL HANDLING FOR OUTCOME STAGE
+        if (isOutcomeStage) {
+            switch (bid.result) {
+                case TaskOutcome.SUCCESS:
+                    return {
+                        border: 'border-l-4 border-transparent', // Handled by RGB Pulse
+                        container: 'shadow-md border-slate-100 bg-white transition-all',
+                        badge: 'bg-emerald-100 text-emerald-700',
+                        neon: true, // RGB Neon
+                        outcomeColor: 'rgb' // Custom flag
+                    };
+                case TaskOutcome.FAILURE:
+                    return {
+                        border: 'border-l-4 border-l-slate-400',
+                        container: 'hover:shadow-md border-slate-200 bg-slate-50/50',
+                        badge: 'bg-slate-100 text-slate-600',
+                        neon: false
+                    };
+                case TaskOutcome.STUDY:
+                    return {
+                        border: 'border-l-4 border-l-orange-400',
+                        container: 'hover:shadow-md border-slate-200',
+                        badge: 'bg-orange-100 text-orange-700',
+                        neon: false
+                    };
+                case TaskOutcome.WITHDRAWAL:
+                    return {
+                        border: 'border-l-4 border-l-blue-400',
+                        container: 'hover:shadow-md border-slate-200',
+                        badge: 'bg-blue-100 text-blue-700',
+                        neon: false
+                    };
+                default:
+                    // Fallback for Outcome stage without result (treat as inactive)
+                    return {
+                        border: 'border-l-4 border-l-slate-300',
+                        container: 'border-slate-200',
+                        badge: 'bg-slate-100 text-slate-500',
+                        neon: false
+                    };
+            }
+        }
+
+        // STANDARD PRIORITY STYLES (Active Stages)
         switch (bid.priority) {
             case 'ALTA':
                 return {
                     border: 'border-l-4 border-l-red-500',
                     container: 'shadow-[0_0_15px_rgba(239,68,68,0.4)] hover:shadow-[0_0_20px_rgba(239,68,68,0.6)] border-red-200',
                     badge: 'bg-red-100 text-red-700',
-                    neon: true
+                    neon: true,
+                    outcomeColor: 'red'
                 };
             case 'MÉDIA':
                 return {
@@ -55,7 +101,7 @@ export const BidCard: React.FC<BidCardProps> = ({
         }
     };
 
-    const styles = getPriorityStyles();
+    const styles = getCardStyles();
 
     // Format currency
     const formattedValue = new Intl.NumberFormat('pt-BR', {
@@ -70,10 +116,13 @@ export const BidCard: React.FC<BidCardProps> = ({
                 ${styles.border} ${styles.container}
                 border-y border-r
                 group relative
-                ${styles.neon ? 'animate-pulse-slow' : ''} 
-                ${isWon ? 'ring-2 ring-emerald-400 bg-emerald-50/30' : ''}
+                ${styles.neon && styles.outcomeColor === 'red' ? 'animate-pulse-slow' : ''} 
+                ${styles.neon && styles.outcomeColor === 'rgb' ? 'animate-rgb-pulse' : ''}
             `}
-            style={styles.neon ? { animation: 'pulse-glow 2s infinite' } : {}}
+            style={
+                styles.neon && styles.outcomeColor === 'red' ? { animation: 'pulse-glow 2s infinite' } :
+                    styles.neon && styles.outcomeColor === 'rgb' ? { animation: 'rgb-glow 3s infinite linear' } : {}
+            }
             draggable
             onDragStart={(e) => onDragStart(e, bid.id)}
             onClick={() => onClick(bid.id)}
@@ -84,6 +133,12 @@ export const BidCard: React.FC<BidCardProps> = ({
                     @keyframes pulse-glow {
                         0%, 100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.3); }
                         50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.6); }
+                    }
+                    @keyframes rgb-glow {
+                        0% { box-shadow: 0 0 15px rgba(255, 0, 0, 0.5); border-left-color: #ff0000; }
+                        33% { box-shadow: 0 0 15px rgba(0, 255, 0, 0.5); border-left-color: #00ff00; }
+                        66% { box-shadow: 0 0 15px rgba(0, 0, 255, 0.5); border-left-color: #0000ff; }
+                        100% { box-shadow: 0 0 15px rgba(255, 0, 0, 0.5); border-left-color: #ff0000; }
                     }
                 `}</style>
             )}
@@ -128,7 +183,7 @@ export const BidCard: React.FC<BidCardProps> = ({
                 <div className="flex justify-between items-center pt-2 border-t border-slate-100">
                     {/* Creation Date & Duration */}
                     <div className="flex flex-col">
-                        <div className="flex items-center text-[10px] text-slate-400" title="Data de Criação">
+                        <div className="flex items-center text-[10px] text-slate-400" title="Chegada da Oportunidade">
                             <Calendar className="w-3 h-3 mr-1" />
                             <span>{format(creationDate, "dd/MM/yyyy", { locale: ptBR })}</span>
                         </div>

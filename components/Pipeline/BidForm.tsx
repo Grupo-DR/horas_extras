@@ -249,7 +249,7 @@ export const BidForm: React.FC<OpportunityFormProps> = ({ initialData, linkedTas
 
                             {/* Deadline */}
                             <div>
-                                <label className="block text-sm font-medium text-slate-600 mb-1">Prazo Limite</label>
+                                <label className="block text-sm font-medium text-slate-600 mb-1">Chegada da Oportunidade</label>
                                 <input
                                     required
                                     type="date"

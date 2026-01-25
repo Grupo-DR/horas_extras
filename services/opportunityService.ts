@@ -27,7 +27,7 @@ export const OpportunityService = {
         const bidPayload = {
             ...data,
             title: data.title,
-            clientId: data.clientName || 'LEGACY_UNKNOWN', // Ideally real ID
+            clientId: data.clientId || data.clientName || 'LEGACY_UNKNOWN',
 
             // Map legacy 'responsibleId' to 'ownerId' if needed, but data usually has ownerId
             contactId: data.contactId || '',
