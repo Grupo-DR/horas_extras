@@ -18,9 +18,10 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, B
 import { Toaster, toast } from 'sonner';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useCrm } from '../contexts/CrmContext';
+import { useAuth } from '../contexts/AuthContext';
 import { migrateOpportunitiesToBidsOnce } from '../utils/migrationUtils';
-import { useAuth } from '../contexts/AuthContext'; // Import useAuth
-import funnelBg from '../src/assets/funnel-bg.png'; // Custom Funnel Background
+import FunnelChartSVG from '../components/FunnelChartSVG';
+import dashboardStats from '../pdf_dump.txt';
 
 // THEME COLORS
 const COLORS = {
@@ -1012,8 +1013,22 @@ export const CommercialView: React.FC = () => {
                                 Funil de Vendas (Conversão)
                             </h3>
                             <div className="flex-1 min-h-[420px] flex flex-row items-center justify-center gap-16 py-8">
-                                <div className="w-full max-w-[420px]">
-                                    <img src={funnelBg} alt="Funil de Vendas" className="w-full h-auto drop-shadow-lg" />
+                                <div className="w-full max-w-[500px] flex justify-center">
+                                    <FunnelChartSVG
+                                        width={500}
+                                        height={500}
+                                        levels={[
+                                            { label: "Total", color: "#fbbf24", topColor: "#d97706" }, // Amber-400 / Amber-600
+                                            { label: "Desistência", color: "#f97316", topColor: "#c2410c" }, // Orange-500 / Orange-700
+                                            { label: "Em Estudo", color: "#ec4899", topColor: "#be185d" }, // Pink-500 / Pink-700
+                                            { label: "Perdida", color: "#9333ea", topColor: "#7e22ce" }, // Purple-600 / Purple-700
+                                            { label: "Venda", color: "#10b981", topColor: "#047857" }, // Emerald-500 / Emerald-700
+                                        ]}
+                                        margin={{ top: 20, right: 120, bottom: 20, left: 20 }}
+                                        topWidth={360}
+                                        bottomWidth={50}
+                                        stroke="#475569"
+                                    />
                                 </div>
 
                                 {/* STATS PANEL (RIGHT SIDE) */}
