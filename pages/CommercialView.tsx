@@ -1455,10 +1455,10 @@ export const CommercialView: React.FC = () => {
                 {
                     view === 'STRATEGIC' && (
                         <div
-                            className="h-full flex flex-col gap-6"
+                            className="flex-1 flex flex-col gap-6 overflow-hidden min-h-0"
                         >
                             {/* NEW PIPELINE BOARD - Task 4: Fixed Height */}
-                            <div className="h-[calc(100vh-200px)] bg-white rounded-xl border border-slate-200 shadow-sm p-4 overflow-hidden flex flex-col">
+                            <div className="h-full bg-white rounded-xl border border-slate-200 shadow-sm p-4 overflow-hidden flex flex-col">
                                 <h3 className="font-bold text-slate-700 flex items-center gap-2 mb-4 text-xl flex-shrink-0">
                                     <Activity size={24} className="text-purple-600" /> Pipeline de Vendas
                                 </h3>

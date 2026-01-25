@@ -38,8 +38,8 @@ export const BidCard: React.FC<BidCardProps> = ({
                         border: 'border-l-4 border-transparent', // Handled by RGB Pulse
                         container: 'shadow-md border-slate-100 bg-white transition-all',
                         badge: 'bg-emerald-100 text-emerald-700',
-                        neon: true, // RGB Neon
-                        outcomeColor: 'rgb' // Custom flag
+                        neon: true, // Gold Neon
+                        outcomeColor: 'gold' // Custom flag
                     };
                 case TaskOutcome.FAILURE:
                     return {
@@ -117,11 +117,11 @@ export const BidCard: React.FC<BidCardProps> = ({
                 border-y border-r
                 group relative
                 ${styles.neon && styles.outcomeColor === 'red' ? 'animate-pulse-slow' : ''} 
-                ${styles.neon && styles.outcomeColor === 'rgb' ? 'animate-rgb-pulse' : ''}
+                ${styles.neon && styles.outcomeColor === 'gold' ? 'animate-pulse' : ''}
             `}
             style={
                 styles.neon && styles.outcomeColor === 'red' ? { animation: 'pulse-glow 2s infinite' } :
-                    styles.neon && styles.outcomeColor === 'rgb' ? { animation: 'rgb-glow 3s infinite linear' } : {}
+                    styles.neon && styles.outcomeColor === 'gold' ? { animation: 'gold-glow 2s infinite ease-in-out' } : {}
             }
             draggable
             onDragStart={(e) => onDragStart(e, bid.id)}
@@ -134,11 +134,9 @@ export const BidCard: React.FC<BidCardProps> = ({
                         0%, 100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.3); }
                         50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.6); }
                     }
-                    @keyframes rgb-glow {
-                        0% { box-shadow: 0 0 15px rgba(255, 0, 0, 0.5); border-left-color: #ff0000; }
-                        33% { box-shadow: 0 0 15px rgba(0, 255, 0, 0.5); border-left-color: #00ff00; }
-                        66% { box-shadow: 0 0 15px rgba(0, 0, 255, 0.5); border-left-color: #0000ff; }
-                        100% { box-shadow: 0 0 15px rgba(255, 0, 0, 0.5); border-left-color: #ff0000; }
+                    @keyframes gold-glow {
+                        0%, 100% { box-shadow: 0 0 15px rgba(234, 179, 8, 0.4); border-left-color: #eab308; } /* Amber-500 */
+                        50% { box-shadow: 0 0 25px rgba(250, 204, 21, 0.7); border-left-color: #facc15; } /* Yellow-400 */
                     }
                 `}</style>
             )}
