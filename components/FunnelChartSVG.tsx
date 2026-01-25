@@ -12,12 +12,15 @@ function clamp(n: number, a: number, b: number) {
     return Math.max(a, Math.min(b, n));
 }
 
-function trapezoidPath(x: number, y: number, wTop: number, wBottom: number, h: number, rx = 10) {
-    // Trapezoid with slightly rounded corners
-    const leftTop = x + (wTop - wBottom) / 2;
-    const rightTop = leftTop + wTop;
-    const leftBottom = x;
-    const rightBottom = x + wBottom;
+function trapezoidPath(cx: number, y: number, wTop: number, wBottom: number, h: number, rx = 10) {
+    // Trapezoid with slightly rounded corners, centered at cx
+    const halfTop = wTop / 2;
+    const halfBottom = wBottom / 2;
+
+    const leftTop = cx - halfTop;
+    const rightTop = cx + halfTop;
+    const leftBottom = cx - halfBottom;
+    const rightBottom = cx + halfBottom;
 
     const r = clamp(rx, 0, Math.min(wTop, wBottom, h) / 2);
 
@@ -129,8 +132,7 @@ export default function FunnelChartSVG({
             const rx = (wTop * eRxFactor);
             const cy = y + eRy;
 
-            // Body aligned by bottom width (wBottom) at center
-            const xBottom = cx - wBottom / 2;
+
 
             items.push({
                 i,
@@ -138,7 +140,7 @@ export default function FunnelChartSVG({
                 cx,
                 wTop,
                 wBottom,
-                bodyPath: trapezoidPath(xBottom, bodyY, wTop, wBottom, bodyH, 14),
+                bodyPath: trapezoidPath(cx, bodyY, wTop, wBottom, bodyH, 14),
                 topEllipse: {
                     path: ellipsePath(cx, cy, rx, eRy),
                     cx,
