@@ -20,6 +20,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useCrm } from '../contexts/CrmContext';
 import { migrateOpportunitiesToBidsOnce } from '../utils/migrationUtils';
 import { useAuth } from '../contexts/AuthContext'; // Import useAuth
+import funnelBg from '../src/assets/funnel-bg.png'; // Custom Funnel Background
 
 // THEME COLORS
 const COLORS = {
@@ -1055,61 +1056,55 @@ export const CommercialView: React.FC = () => {
                                     <Filter size={20} className="text-slate-600" />
                                     Funil de Vendas (Conversão)
                                 </h3>
-                                <div className="flex-1 min-h-[350px]">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <FunnelChart>
-                                            <RechartsTooltip
-                                                formatter={(value: any) => [`R$ ${Number(value).toLocaleString()}`, 'Valor']}
-                                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                            />
-                                            <Funnel
-                                                dataKey="value"
-                                                data={[
-                                                    {
-                                                        name: '1. Visitantes (Total)',
-                                                        value: dashboardStats.totalPipelineValue,
-                                                        fill: '#f43f5e', // rose-500
-                                                        count: dashboardStats.totalOpsCount
-                                                    },
-                                                    {
-                                                        name: '2. Desistência',
-                                                        value: dashboardStats.outcomes.withdrawal,
-                                                        fill: '#f59e0b', // amber-500
-                                                        count: opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length
-                                                    },
-                                                    {
-                                                        name: '3. Em Estudo',
-                                                        value: dashboardStats.outcomes.study,
-                                                        fill: '#22c55e', // green-500 (Image has green here)
-                                                        count: opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length
-                                                    },
-                                                    {
-                                                        name: '4. Perdida',
-                                                        value: dashboardStats.outcomes.failure,
-                                                        fill: '#6366f1', // indigo-500 (Purple in image)
-                                                        count: opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length
-                                                    },
-                                                    {
-                                                        name: '5. Venda (Sucesso)',
-                                                        value: dashboardStats.outcomes.success,
-                                                        fill: '#4f46e5', // indigo-600 (Dark purple)
-                                                        count: opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length
-                                                    }
-                                                ]}
-                                                isAnimationActive
-                                            >
-                                                <LabelList position="right" fill="#000" stroke="none" dataKey="name" />
-                                                <LabelList
-                                                    position="center"
-                                                    fill="#fff"
-                                                    stroke="none"
-                                                    dataKey="value"
-                                                    formatter={(val: any) => `R$${(Number(val) / 1000).toFixed(0)}k`}
-                                                    style={{ fontWeight: 'bold' }}
-                                                />
-                                            </Funnel>
-                                        </FunnelChart>
-                                    </ResponsiveContainer>
+                                <div className="flex-1 min-h-[450px] relative flex justify-center items-center py-8">
+                                    <div className="relative w-full max-w-[600px]">
+                                        <img src={funnelBg} alt="Funil de Vendas" className="w-full h-auto drop-shadow-lg" />
+
+                                        {/* LEVEL 1: TOP (TOTAL / VISITANTES) */}
+                                        <div className="absolute top-[18%] -right-4 w-[180px] bg-white/90 backdrop-blur-sm p-2 rounded-lg border-l-4 border-rose-500 shadow-sm text-sm">
+                                            <p className="font-bold text-slate-700">1. Total (Propostas)</p>
+                                            <div className="flex justify-between items-end mt-1">
+                                                <span className="text-xs text-slate-500">{dashboardStats.totalOpsCount} opps</span>
+                                                <span className="font-bold text-rose-600">R$ {(dashboardStats.totalPipelineValue / 1000).toFixed(0)}k</span>
+                                            </div>
+                                        </div>
+
+                                        {/* LEVEL 2: WITHDRAWAL (ORANGE) */}
+                                        <div className="absolute top-[35%] -right-4 w-[180px] bg-white/90 backdrop-blur-sm p-2 rounded-lg border-l-4 border-amber-500 shadow-sm text-sm">
+                                            <p className="font-bold text-slate-700">2. Desistência</p>
+                                            <div className="flex justify-between items-end mt-1">
+                                                <span className="text-xs text-slate-500">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length} opps</span>
+                                                <span className="font-bold text-amber-600">R$ {(dashboardStats.outcomes.withdrawal / 1000).toFixed(0)}k</span>
+                                            </div>
+                                        </div>
+
+                                        {/* LEVEL 3: STUDY */}
+                                        <div className="absolute top-[52%] -right-4 w-[180px] bg-white/90 backdrop-blur-sm p-2 rounded-lg border-l-4 border-emerald-500 shadow-sm text-sm">
+                                            <p className="font-bold text-slate-700">3. Em Estudo</p>
+                                            <div className="flex justify-between items-end mt-1">
+                                                <span className="text-xs text-slate-500">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length} opps</span>
+                                                <span className="font-bold text-emerald-600">R$ {(dashboardStats.outcomes.study / 1000).toFixed(0)}k</span>
+                                            </div>
+                                        </div>
+
+                                        {/* LEVEL 4: FAILURE (INDIGO/PURPLE) */}
+                                        <div className="absolute top-[69%] -right-4 w-[180px] bg-white/90 backdrop-blur-sm p-2 rounded-lg border-l-4 border-indigo-500 shadow-sm text-sm">
+                                            <p className="font-bold text-slate-700">4. Perdida (Insucesso)</p>
+                                            <div className="flex justify-between items-end mt-1">
+                                                <span className="text-xs text-slate-500">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length} opps</span>
+                                                <span className="font-bold text-indigo-600">R$ {(dashboardStats.outcomes.failure / 1000).toFixed(0)}k</span>
+                                            </div>
+                                        </div>
+
+                                        {/* LEVEL 5: SUCCESS (DARK PURPLE/BOTTOM) */}
+                                        <div className="absolute top-[86%] -right-4 w-[180px] bg-white/90 backdrop-blur-sm p-2 rounded-lg border-l-4 border-violet-700 shadow-sm text-sm">
+                                            <p className="font-bold text-slate-700">5. Venda (Sucesso)</p>
+                                            <div className="flex justify-between items-end mt-1">
+                                                <span className="text-xs text-slate-500">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length} opps</span>
+                                                <span className="font-bold text-violet-700">R$ {(dashboardStats.outcomes.success / 1000).toFixed(0)}k</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
