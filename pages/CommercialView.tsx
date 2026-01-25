@@ -1011,103 +1011,96 @@ export const CommercialView: React.FC = () => {
                                 <Filter size={20} className="text-slate-600" />
                                 Funil de Vendas (Conversão)
                             </h3>
-                            <div className="flex-1 min-h-[600px] relative flex justify-start items-center py-8 pl-10">
-                                <div className="relative w-full max-w-[420px]">
+                            <div className="flex-1 min-h-[420px] flex flex-row items-center justify-center gap-16 py-8">
+                                <div className="w-full max-w-[420px]">
                                     <img src={funnelBg} alt="Funil de Vendas" className="w-full h-auto drop-shadow-lg" />
+                                </div>
 
-                                    {/* LEVEL 1: TOP (TOTAL / VISITANTES) - YELLOW/AMBER */}
-                                    <div className="absolute top-[5%] left-[80%] w-[260px] bg-white/95 backdrop-blur-sm p-3 rounded-lg border-l-4 border-amber-400 shadow-md text-xs group hover:scale-[1.02] transition-transform z-10 ml-8">
-                                        <p className="font-bold text-slate-700 mb-2 border-b border-slate-100 pb-1">1. Total (Propostas)</p>
+                                {/* STATS PANEL (RIGHT SIDE) */}
+                                <div className="flex flex-col gap-3 min-w-[300px]">
+                                    {/* LEVEL 1: TOTAL */}
+                                    <div className="bg-white p-3 rounded-r-lg border-l-4 border-amber-400 shadow-sm text-xs hover:bg-slate-50 transition-colors">
+                                        <p className="font-bold text-slate-700 mb-2 border-b border-slate-100 pb-1">1. Total (propostas)</p>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
-                                                <span className="block text-slate-400 text-[10px] uppercase">Qtd</span>
+                                                <span className="block text-slate-400 text-[10px] uppercase">QTD</span>
                                                 <span className="font-bold text-slate-700">{dashboardStats.totalOpsCount}</span>
-                                                <span className="text-[10px] text-slate-400 ml-1">(100%)</span>
+                                                <span className="text-[10px] text-slate-400 ml-1 font-medium">(100%)</span>
                                             </div>
                                             <div className="text-right">
-                                                <span className="block text-slate-400 text-[10px] uppercase">Valor</span>
+                                                <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
                                                 <span className="font-bold text-amber-600">R$ {(dashboardStats.totalPipelineValue / 1000).toFixed(0)}k</span>
-                                                <span className="text-[10px] text-slate-400 ml-1 block">(100%)</span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* LEVEL 2: WITHDRAWAL (ORANGE) */}
-                                    <div className="absolute top-[23%] left-[80%] w-[260px] bg-white/95 backdrop-blur-sm p-3 rounded-lg border-l-4 border-orange-500 shadow-md text-xs group hover:scale-[1.02] transition-transform z-20 ml-8">
+                                    {/* LEVEL 2: WITHDRAWAL */}
+                                    <div className="bg-white p-3 rounded-r-lg border-l-4 border-orange-500 shadow-sm text-xs hover:bg-slate-50 transition-colors">
                                         <p className="font-bold text-slate-700 mb-2 border-b border-slate-100 pb-1">2. Desistência</p>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
-                                                <span className="block text-slate-400 text-[10px] uppercase">Qtd</span>
+                                                <span className="block text-slate-400 text-[10px] uppercase">QTD</span>
                                                 <span className="font-bold text-slate-700">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length}</span>
-                                                <span className="text-[10px] text-slate-400 ml-1">
+                                                <span className="text-[10px] text-slate-400 ml-1 font-medium">
                                                     ({dashboardStats.totalOpsCount > 0 ? (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length / dashboardStats.totalOpsCount * 100).toFixed(0) : 0}%)
                                                 </span>
                                             </div>
                                             <div className="text-right">
-                                                <span className="block text-slate-400 text-[10px] uppercase">Valor</span>
+                                                <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
                                                 <span className="font-bold text-orange-600">R$ {(dashboardStats.outcomes.withdrawal / 1000).toFixed(0)}k</span>
-                                                <span className="text-[10px] text-slate-400 ml-1 block">
-                                                    ({dashboardStats.totalPipelineValue > 0 ? (dashboardStats.outcomes.withdrawal / dashboardStats.totalPipelineValue * 100).toFixed(0) : 0}%)
-                                                </span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* LEVEL 3: STUDY (PINK) */}
-                                    <div className="absolute top-[41%] left-[80%] w-[260px] bg-white/95 backdrop-blur-sm p-3 rounded-lg border-l-4 border-pink-500 shadow-md text-xs group hover:scale-[1.02] transition-transform z-30 ml-8">
+                                    {/* LEVEL 3: STUDY */}
+                                    <div className="bg-white p-3 rounded-r-lg border-l-4 border-pink-500 shadow-sm text-xs hover:bg-slate-50 transition-colors">
                                         <p className="font-bold text-slate-700 mb-2 border-b border-slate-100 pb-1">3. Em Estudo</p>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
-                                                <span className="block text-slate-400 text-[10px] uppercase">Qtd</span>
+                                                <span className="block text-slate-400 text-[10px] uppercase">QTD</span>
                                                 <span className="font-bold text-slate-700">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length}</span>
-                                                <span className="text-[10px] text-slate-400 ml-1">
+                                                <span className="text-[10px] text-slate-400 ml-1 font-medium">
                                                     ({dashboardStats.totalOpsCount > 0 ? (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length / dashboardStats.totalOpsCount * 100).toFixed(0) : 0}%)
                                                 </span>
                                             </div>
                                             <div className="text-right">
-                                                <span className="block text-slate-400 text-[10px] uppercase">Valor</span>
+                                                <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
                                                 <span className="font-bold text-pink-600">R$ {(dashboardStats.outcomes.study / 1000).toFixed(0)}k</span>
-                                                <span className="text-[10px] text-slate-400 ml-1 block">
-                                                    ({dashboardStats.totalPipelineValue > 0 ? (dashboardStats.outcomes.study / dashboardStats.totalPipelineValue * 100).toFixed(0) : 0}%)
-                                                </span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* LEVEL 4: FAILURE (PURPLE) */}
-                                    <div className="absolute top-[59%] left-[80%] w-[260px] bg-white/95 backdrop-blur-sm p-3 rounded-lg border-l-4 border-purple-600 shadow-md text-xs group hover:scale-[1.02] transition-transform z-40 ml-8">
+                                    {/* LEVEL 4: FAILURE */}
+                                    <div className="bg-white p-3 rounded-r-lg border-l-4 border-purple-600 shadow-sm text-xs hover:bg-slate-50 transition-colors">
                                         <p className="font-bold text-slate-700 mb-2 border-b border-slate-100 pb-1">4. Perdida (Insucesso)</p>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
-                                                <span className="block text-slate-400 text-[10px] uppercase">Qtd</span>
+                                                <span className="block text-slate-400 text-[10px] uppercase">QTD</span>
                                                 <span className="font-bold text-slate-700">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length}</span>
-                                                <span className="text-[10px] text-slate-400 ml-1">
+                                                <span className="text-[10px] text-slate-400 ml-1 font-medium">
                                                     ({dashboardStats.totalOpsCount > 0 ? (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length / dashboardStats.totalOpsCount * 100).toFixed(0) : 0}%)
                                                 </span>
                                             </div>
                                             <div className="text-right">
-                                                <span className="block text-slate-400 text-[10px] uppercase">Valor</span>
+                                                <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
                                                 <span className="font-bold text-purple-600">R$ {(dashboardStats.outcomes.failure / 1000).toFixed(0)}k</span>
-                                                <span className="text-[10px] text-slate-400 ml-1 block">
-                                                    ({dashboardStats.totalPipelineValue > 0 ? (dashboardStats.outcomes.failure / dashboardStats.totalPipelineValue * 100).toFixed(0) : 0}%)
-                                                </span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* LEVEL 5: SUCCESS (GREEN/EMERALD) */}
-                                    <div className="absolute top-[77%] left-[80%] w-[260px] bg-white/95 backdrop-blur-sm p-3 rounded-lg border-l-4 border-emerald-500 shadow-md text-xs group hover:scale-[1.02] transition-transform z-50 ml-8">
+                                    {/* LEVEL 5: SUCCESS */}
+                                    <div className="bg-white p-3 rounded-r-lg border-l-4 border-emerald-500 shadow-sm text-xs hover:bg-slate-50 transition-colors">
                                         <p className="font-bold text-slate-700 mb-2 border-b border-slate-100 pb-1">5. Venda (Sucesso)</p>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
-                                                <span className="block text-slate-400 text-[10px] uppercase">Qtd</span>
+                                                <span className="block text-slate-400 text-[10px] uppercase">QTD</span>
                                                 <span className="font-bold text-slate-700">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length}</span>
-                                                <span className="text-[10px] text-slate-400 ml-1">
+                                                <span className="text-[10px] text-slate-400 ml-1 font-medium">
                                                     ({dashboardStats.totalOpsCount > 0 ? (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length / dashboardStats.totalOpsCount * 100).toFixed(0) : 0}%)
                                                 </span>
                                             </div>
                                             <div className="text-right">
-                                                <span className="block text-slate-400 text-[10px] uppercase">Valor</span>
+                                                <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
                                                 <span className="font-bold text-emerald-600">R$ {(dashboardStats.outcomes.success / 1000).toFixed(0)}k</span>
                                                 <span className="text-[10px] text-slate-400 ml-1 block">
                                                     ({dashboardStats.totalPipelineValue > 0 ? (dashboardStats.outcomes.success / dashboardStats.totalPipelineValue * 100).toFixed(0) : 0}%)
