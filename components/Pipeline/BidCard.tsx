@@ -143,9 +143,20 @@ export const BidCard: React.FC<BidCardProps> = ({
                 `}</style>
             )}
 
-            <div className="flex justify-between items-start mb-2">
-                <h3 className="font-semibold text-slate-800 text-sm line-clamp-2 max-w-[85%] flex items-center gap-1">
-                    {isWon && <Trophy size={14} className="text-amber-500 fill-amber-500 animate-bounce" />}
+            {/* Won Trophy & Badge Overlay */}
+            {isWon && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none z-10 opacity-90">
+                    <div className="bg-amber-100/50 p-2 rounded-full mb-1 border border-amber-200 backdrop-blur-sm">
+                        <Trophy size={28} className="text-amber-600 fill-amber-500 animate-bounce" />
+                    </div>
+                    <span className="text-[10px] font-extrabold bg-amber-500 text-white px-2 py-0.5 rounded shadow-sm tracking-wider">
+                        VENCEDORA
+                    </span>
+                </div>
+            )}
+
+            <div className="flex justify-between items-start mb-2 relative z-20">
+                <h3 className={`font-semibold text-slate-800 text-sm line-clamp-2 ${isWon ? 'max-w-[70%]' : 'max-w-[85%]'} flex items-center gap-1`}>
                     {bid.title}
                 </h3>
                 {onDelete && (
@@ -154,7 +165,7 @@ export const BidCard: React.FC<BidCardProps> = ({
                             e.stopPropagation();
                             onDelete(bid.id);
                         }}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-all absolute top-2 right-2"
+                        className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-all absolute top-0 right-0"
                         title="Excluir"
                     >
                         <Trash2 size={14} />
@@ -162,7 +173,7 @@ export const BidCard: React.FC<BidCardProps> = ({
                 )}
             </div>
 
-            <div className="text-xs text-slate-500 mb-3 font-medium">
+            <div className={`text-xs text-slate-500 mb-3 font-medium ${isWon ? 'max-w-[70%]' : ''}`}>
                 {bid.clientName || 'Cliente desconhecido'}
             </div>
 
