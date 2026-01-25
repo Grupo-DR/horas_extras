@@ -877,46 +877,7 @@ export const CommercialView: React.FC = () => {
 
 
 
-                        {/* 0.5. EVOLUTION CHART (NEW) */}
-                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col h-[400px]">
-                            <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                                <TrendingUp size={20} className="text-amber-500" />
-                                Evolução de Propostas (Acumulado x Mensal)
-                            </h3>
-                            <div className="flex-1 min-h-0">
-                                <EvolutionChart
-                                    data={(() => {
-                                        // Aggregate Data
-                                        const groups = new Map<string, { month: string, date: number, entered: number, won: number }>();
 
-                                        // Sort opportunities by date first to ensure correct accumulation
-                                        const sortedOps = [...opportunities].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-                                        sortedOps.forEach(op => {
-                                            const d = new Date(op.date);
-                                            if (isNaN(d.getTime())) return;
-                                            const key = format(d, 'MMM/yy', { locale: ptBR });
-
-                                            if (!groups.has(key)) {
-                                                groups.set(key, { month: key.charAt(0).toUpperCase() + key.slice(1), date: d.getTime(), entered: 0, won: 0 });
-                                            }
-                                            const g = groups.get(key)!;
-                                            g.entered += 1;
-                                            if (op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS) {
-                                                g.won += 1;
-                                            }
-                                        });
-
-                                        const sorted = Array.from(groups.values()).sort((a, b) => a.date - b.date);
-                                        let acc = 0;
-                                        return sorted.map(item => {
-                                            acc += item.entered;
-                                            return { ...item, accumulated: acc };
-                                        });
-                                    })()}
-                                />
-                            </div>
-                        </div>
 
                         {/* 1. QUANTITATIVE SUMMARY TABLE (REFORMED) */}
                         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
