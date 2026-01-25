@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { Bid } from '../../types';
-import { Calendar, DollarSign, User, Trash2 } from 'lucide-react';
+import { Bid, TaskOutcome } from '../../types';
+import { Calendar, DollarSign, User, Trash2, Trophy } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { UserAvatar } from '../ui/UserAvatar';
@@ -14,7 +14,6 @@ interface BidCardProps {
     onDelete?: (id: string) => void;
 }
 
-
 export const BidCard: React.FC<BidCardProps> = ({
     bid,
     onDragStart,
@@ -26,6 +25,7 @@ export const BidCard: React.FC<BidCardProps> = ({
     const now = new Date();
     const creationDate = bid.date ? new Date(bid.date) : new Date(bid.createdAt);
     const daysOpen = Math.max(0, Math.floor((now.getTime() - creationDate.getTime()) / (1000 * 60 * 60 * 24)));
+    const isWon = bid.result === TaskOutcome.SUCCESS;
 
     // Priority Colors & Effects
     const getPriorityStyles = () => {
@@ -71,6 +71,7 @@ export const BidCard: React.FC<BidCardProps> = ({
                 border-y border-r
                 group relative
                 ${styles.neon ? 'animate-pulse-slow' : ''} 
+                ${isWon ? 'ring-2 ring-emerald-400 bg-emerald-50/30' : ''}
             `}
             style={styles.neon ? { animation: 'pulse-glow 2s infinite' } : {}}
             draggable
@@ -88,7 +89,8 @@ export const BidCard: React.FC<BidCardProps> = ({
             )}
 
             <div className="flex justify-between items-start mb-2">
-                <h3 className="font-semibold text-slate-800 text-sm line-clamp-2 max-w-[85%]">
+                <h3 className="font-semibold text-slate-800 text-sm line-clamp-2 max-w-[85%] flex items-center gap-1">
+                    {isWon && <Trophy size={14} className="text-amber-500 fill-amber-500 animate-bounce" />}
                     {bid.title}
                 </h3>
                 {onDelete && (
