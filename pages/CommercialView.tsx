@@ -21,6 +21,7 @@ import { useCrm } from '../contexts/CrmContext';
 import { useAuth } from '../contexts/AuthContext';
 import { migrateOpportunitiesToBidsOnce } from '../utils/migrationUtils';
 import FunnelChartSVG from '../components/FunnelChartSVG';
+import EvolutionChart from '../components/EvolutionChart';
 import dashboardStats from '../pdf_dump.txt';
 
 // THEME COLORS
@@ -874,6 +875,49 @@ export const CommercialView: React.FC = () => {
                         </div>
 
 
+
+
+                        {/* 0.5. EVOLUTION CHART (NEW) */}
+                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col h-[400px]">
+                            <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                <TrendingUp size={20} className="text-amber-500" />
+                                Evolução de Propostas (Acumulado x Mensal)
+                            </h3>
+                            <div className="flex-1 min-h-0">
+                                <EvolutionChart
+                                    data={(() => {
+                                        // Aggregate Data
+                                        const groups = new Map<string, { month: string, date: number, entered: number, won: number }>();
+
+                                        // Sort opportunities by date first to ensure correct accumulation
+                                        const sortedOps = [...opportunities].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+                                        sortedOps.forEach(op => {
+                                            const d = new Date(op.date);
+                                            if (isNaN(d.getTime())) return;
+                                            const key = format(d, 'MMM/yy', { locale: ptBR });
+
+                                            if (!groups.has(key)) {
+                                                groups.set(key, { month: key.charAt(0).toUpperCase() + key.slice(1), date: d.getTime(), entered: 0, won: 0 });
+                                            }
+                                            const g = groups.get(key)!;
+                                            g.entered += 1;
+                                            if (op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS) {
+                                                g.won += 1;
+                                            }
+                                        });
+
+                                        const sorted = Array.from(groups.values()).sort((a, b) => a.date - b.date);
+                                        let acc = 0;
+                                        return sorted.map(item => {
+                                            acc += item.entered;
+                                            return { ...item, accumulated: acc };
+                                        });
+                                    })()}
+                                />
+                            </div>
+                        </div>
+
                         {/* 1. QUANTITATIVE SUMMARY TABLE (REFORMED) */}
                         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                             <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
@@ -1007,167 +1051,6 @@ export const CommercialView: React.FC = () => {
                                         </tr>
                                     </tbody>
                                 </table>
-                            </div>
-                        </div>
-
-                        {/* FUNNEL CHART - Sales Funnel (Substitutes Client Analysis) - FULL WIDTH CONTAINER */}
-                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
-                            <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                                <Filter size={20} className="text-slate-600" />
-                                Funil de Vendas (Conversão)
-                            </h3>
-                            <div className="flex-1 min-h-[420px] flex flex-row items-center justify-center gap-3 py-8">
-                                <div className="w-full max-w-[500px] flex justify-center">
-                                    <FunnelChartSVG
-                                        width={500}
-                                        height={500}
-                                        levels={[
-                                            {
-                                                label: "Total",
-                                                subLabel: "(100%)",
-                                                color: "#fbbf24",
-                                                topColor: "#d97706"
-                                            },
-                                            {
-                                                label: "Desistência",
-                                                subLabel: dashboardStats.totalOpsCount > 0 ? `${(opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length / dashboardStats.totalOpsCount * 100).toFixed(0)}%` : "0%",
-                                                color: "#f97316",
-                                                topColor: "#c2410c"
-                                            },
-                                            {
-                                                label: "Em Estudo",
-                                                subLabel: dashboardStats.totalOpsCount > 0 ? `${(opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length / dashboardStats.totalOpsCount * 100).toFixed(0)}%` : "0%",
-                                                color: "#ec4899",
-                                                topColor: "#be185d"
-                                            },
-                                            {
-                                                label: "Perdida",
-                                                subLabel: dashboardStats.totalOpsCount > 0 ? `${(opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length / dashboardStats.totalOpsCount * 100).toFixed(0)}%` : "0%",
-                                                color: "#9333ea",
-                                                topColor: "#7e22ce"
-                                            },
-                                            {
-                                                label: "Venda",
-                                                subLabel: dashboardStats.totalOpsCount > 0 ? `${(opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length / dashboardStats.totalOpsCount * 100).toFixed(0)}%` : "0%",
-                                                color: "#10b981",
-                                                topColor: "#047857"
-                                            },
-                                        ]}
-                                        margin={{ top: 20, right: 0, bottom: 20, left: 20 }} // Zero right margin to touch edge
-                                        topWidth={360}
-                                        bottomWidth={50}
-                                        stroke="#475569"
-                                        hoveredIndex={hoveredFunnelIndex}
-                                        onHover={setHoveredFunnelIndex}
-                                        renderLabelsInside={true}
-                                        extendConnectors={true}
-                                        gap={12} // Explicit gap matching CSS gap-3 (12px)
-                                        levelHeight={90} // Explicit height matching CSS h-[90px]
-                                    />
-                                </div>
-
-                                {/* STATS PANEL (RIGHT SIDE) */}
-                                <div className="flex flex-col gap-3 min-w-[300px] pl-4">
-                                    {/* LEVEL 1: TOTAL */}
-                                    <div
-                                        className={`h-[90px] bg-white p-3 rounded-r-lg border-l-4 border-amber-400 shadow-sm text-xs transition-all duration-300 cursor-pointer flex flex-col justify-center ${hoveredFunnelIndex === 0 ? 'scale-105 shadow-md bg-amber-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
-                                        onMouseEnter={() => setHoveredFunnelIndex(0)}
-                                        onMouseLeave={() => setHoveredFunnelIndex(null)}
-                                    >
-                                        <div className="grid grid-cols-2 gap-2 items-center">
-                                            <div>
-                                                <span className="block text-slate-400 text-[10px] uppercase">QTD</span>
-                                                <span className="font-bold text-slate-700 text-xl">{dashboardStats.totalOpsCount}</span>
-                                            </div>
-                                            <div className="text-right">
-                                                <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
-                                                <span className="font-bold text-amber-600 text-lg">
-                                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(dashboardStats.totalPipelineValue)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* LEVEL 2: WITHDRAWAL */}
-                                    <div
-                                        className={`h-[90px] bg-white p-3 rounded-r-lg border-l-4 border-orange-500 shadow-sm text-xs transition-all duration-300 cursor-pointer flex flex-col justify-center ${hoveredFunnelIndex === 1 ? 'scale-105 shadow-md bg-orange-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
-                                        onMouseEnter={() => setHoveredFunnelIndex(1)}
-                                        onMouseLeave={() => setHoveredFunnelIndex(null)}
-                                    >
-                                        <div className="grid grid-cols-2 gap-2 items-center">
-                                            <div>
-                                                <span className="block text-slate-400 text-[10px] uppercase">QTD</span>
-                                                <span className="font-bold text-slate-700 text-xl">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length}</span>
-                                            </div>
-                                            <div className="text-right">
-                                                <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
-                                                <span className="font-bold text-orange-600 text-lg">
-                                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(dashboardStats.outcomes.withdrawal)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* LEVEL 3: STUDY */}
-                                    <div
-                                        className={`h-[90px] bg-white p-3 rounded-r-lg border-l-4 border-pink-500 shadow-sm text-xs transition-all duration-300 cursor-pointer flex flex-col justify-center ${hoveredFunnelIndex === 2 ? 'scale-105 shadow-md bg-pink-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
-                                        onMouseEnter={() => setHoveredFunnelIndex(2)}
-                                        onMouseLeave={() => setHoveredFunnelIndex(null)}
-                                    >
-                                        <div className="grid grid-cols-2 gap-2 items-center">
-                                            <div>
-                                                <span className="block text-slate-400 text-[10px] uppercase">QTD</span>
-                                                <span className="font-bold text-slate-700 text-xl">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length}</span>
-                                            </div>
-                                            <div className="text-right">
-                                                <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
-                                                <span className="font-bold text-pink-600 text-lg">
-                                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(dashboardStats.outcomes.study)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* LEVEL 4: FAILURE */}
-                                    <div
-                                        className={`h-[90px] bg-white p-3 rounded-r-lg border-l-4 border-purple-600 shadow-sm text-xs transition-all duration-300 cursor-pointer flex flex-col justify-center ${hoveredFunnelIndex === 3 ? 'scale-105 shadow-md bg-purple-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
-                                        onMouseEnter={() => setHoveredFunnelIndex(3)}
-                                        onMouseLeave={() => setHoveredFunnelIndex(null)}
-                                    >
-                                        <div className="grid grid-cols-2 gap-2 items-center">
-                                            <div>
-                                                <span className="block text-slate-400 text-[10px] uppercase">QTD</span>
-                                                <span className="font-bold text-slate-700 text-xl">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length}</span>
-                                            </div>
-                                            <div className="text-right">
-                                                <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
-                                                <span className="font-bold text-purple-600 text-lg">
-                                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(dashboardStats.outcomes.failure)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* LEVEL 5: SUCCESS */}
-                                    <div
-                                        className={`h-[90px] bg-white p-3 rounded-r-lg border-l-4 border-emerald-500 shadow-sm text-xs transition-all duration-300 cursor-pointer flex flex-col justify-center ${hoveredFunnelIndex === 4 ? 'scale-105 shadow-md bg-emerald-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
-                                        onMouseEnter={() => setHoveredFunnelIndex(4)}
-                                        onMouseLeave={() => setHoveredFunnelIndex(null)}
-                                    >
-                                        <div className="grid grid-cols-2 gap-2 items-center">
-                                            <div>
-                                                <span className="block text-slate-400 text-[10px] uppercase">QTD</span>
-                                                <span className="font-bold text-slate-700 text-xl">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length}</span>
-                                            </div>
-                                            <div className="text-right">
-                                                <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
-                                                <span className="font-bold text-emerald-600 text-lg">
-                                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(dashboardStats.outcomes.success)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                         </div>
 
@@ -1403,6 +1286,168 @@ export const CommercialView: React.FC = () => {
                             </div>
                         </div>
 
+
+
+                        {/* FUNNEL CHART - Sales Funnel (Substitutes Client Analysis) - FULL WIDTH CONTAINER */}
+                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+                            <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                <Filter size={20} className="text-slate-600" />
+                                Funil de Vendas (Conversão)
+                            </h3>
+                            <div className="flex-1 min-h-[420px] flex flex-row items-center justify-center gap-3 py-8">
+                                <div className="w-full max-w-[500px] flex justify-center">
+                                    <FunnelChartSVG
+                                        width={500}
+                                        height={500}
+                                        levels={[
+                                            {
+                                                label: "Total",
+                                                subLabel: "(100%)",
+                                                color: "#fbbf24",
+                                                topColor: "#d97706"
+                                            },
+                                            {
+                                                label: "Desistência",
+                                                subLabel: dashboardStats.totalOpsCount > 0 ? `${(opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length / dashboardStats.totalOpsCount * 100).toFixed(0)}%` : "0%",
+                                                color: "#f97316",
+                                                topColor: "#c2410c"
+                                            },
+                                            {
+                                                label: "Em Estudo",
+                                                subLabel: dashboardStats.totalOpsCount > 0 ? `${(opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length / dashboardStats.totalOpsCount * 100).toFixed(0)}%` : "0%",
+                                                color: "#ec4899",
+                                                topColor: "#be185d"
+                                            },
+                                            {
+                                                label: "Perdida",
+                                                subLabel: dashboardStats.totalOpsCount > 0 ? `${(opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length / dashboardStats.totalOpsCount * 100).toFixed(0)}%` : "0%",
+                                                color: "#9333ea",
+                                                topColor: "#7e22ce"
+                                            },
+                                            {
+                                                label: "Venda",
+                                                subLabel: dashboardStats.totalOpsCount > 0 ? `${(opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length / dashboardStats.totalOpsCount * 100).toFixed(0)}%` : "0%",
+                                                color: "#10b981",
+                                                topColor: "#047857"
+                                            },
+                                        ]}
+                                        margin={{ top: 20, right: 0, bottom: 20, left: 20 }} // Zero right margin to touch edge
+                                        topWidth={360}
+                                        bottomWidth={50}
+                                        stroke="#475569"
+                                        hoveredIndex={hoveredFunnelIndex}
+                                        onHover={setHoveredFunnelIndex}
+                                        renderLabelsInside={true}
+                                        extendConnectors={true}
+                                        gap={12} // Explicit gap matching CSS gap-3 (12px)
+                                        levelHeight={90} // Explicit height matching CSS h-[90px]
+                                    />
+                                </div>
+
+                                {/* STATS PANEL (RIGHT SIDE) */}
+                                <div className="flex flex-col gap-3 min-w-[300px] pl-4">
+                                    {/* LEVEL 1: TOTAL */}
+                                    <div
+                                        className={`h-[90px] bg-white p-3 rounded-r-lg border-l-4 border-amber-400 shadow-sm text-xs transition-all duration-300 cursor-pointer flex flex-col justify-center ${hoveredFunnelIndex === 0 ? 'scale-105 shadow-md bg-amber-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
+                                        onMouseEnter={() => setHoveredFunnelIndex(0)}
+                                        onMouseLeave={() => setHoveredFunnelIndex(null)}
+                                    >
+                                        <div className="grid grid-cols-2 gap-2 items-center">
+                                            <div>
+                                                <span className="block text-slate-400 text-[10px] uppercase">QTD</span>
+                                                <span className="font-bold text-slate-700 text-xl">{dashboardStats.totalOpsCount}</span>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
+                                                <span className="font-bold text-amber-600 text-lg">
+                                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(dashboardStats.totalPipelineValue)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* LEVEL 2: WITHDRAWAL */}
+                                    <div
+                                        className={`h-[90px] bg-white p-3 rounded-r-lg border-l-4 border-orange-500 shadow-sm text-xs transition-all duration-300 cursor-pointer flex flex-col justify-center ${hoveredFunnelIndex === 1 ? 'scale-105 shadow-md bg-orange-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
+                                        onMouseEnter={() => setHoveredFunnelIndex(1)}
+                                        onMouseLeave={() => setHoveredFunnelIndex(null)}
+                                    >
+                                        <div className="grid grid-cols-2 gap-2 items-center">
+                                            <div>
+                                                <span className="block text-slate-400 text-[10px] uppercase">QTD</span>
+                                                <span className="font-bold text-slate-700 text-xl">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length}</span>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
+                                                <span className="font-bold text-orange-600 text-lg">
+                                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(dashboardStats.outcomes.withdrawal)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* LEVEL 3: STUDY */}
+                                    <div
+                                        className={`h-[90px] bg-white p-3 rounded-r-lg border-l-4 border-pink-500 shadow-sm text-xs transition-all duration-300 cursor-pointer flex flex-col justify-center ${hoveredFunnelIndex === 2 ? 'scale-105 shadow-md bg-pink-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
+                                        onMouseEnter={() => setHoveredFunnelIndex(2)}
+                                        onMouseLeave={() => setHoveredFunnelIndex(null)}
+                                    >
+                                        <div className="grid grid-cols-2 gap-2 items-center">
+                                            <div>
+                                                <span className="block text-slate-400 text-[10px] uppercase">QTD</span>
+                                                <span className="font-bold text-slate-700 text-xl">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length}</span>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
+                                                <span className="font-bold text-pink-600 text-lg">
+                                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(dashboardStats.outcomes.study)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* LEVEL 4: FAILURE */}
+                                    <div
+                                        className={`h-[90px] bg-white p-3 rounded-r-lg border-l-4 border-purple-600 shadow-sm text-xs transition-all duration-300 cursor-pointer flex flex-col justify-center ${hoveredFunnelIndex === 3 ? 'scale-105 shadow-md bg-purple-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
+                                        onMouseEnter={() => setHoveredFunnelIndex(3)}
+                                        onMouseLeave={() => setHoveredFunnelIndex(null)}
+                                    >
+                                        <div className="grid grid-cols-2 gap-2 items-center">
+                                            <div>
+                                                <span className="block text-slate-400 text-[10px] uppercase">QTD</span>
+                                                <span className="font-bold text-slate-700 text-xl">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length}</span>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
+                                                <span className="font-bold text-purple-600 text-lg">
+                                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(dashboardStats.outcomes.failure)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* LEVEL 5: SUCCESS */}
+                                    <div
+                                        className={`h-[90px] bg-white p-3 rounded-r-lg border-l-4 border-emerald-500 shadow-sm text-xs transition-all duration-300 cursor-pointer flex flex-col justify-center ${hoveredFunnelIndex === 4 ? 'scale-105 shadow-md bg-emerald-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
+                                        onMouseEnter={() => setHoveredFunnelIndex(4)}
+                                        onMouseLeave={() => setHoveredFunnelIndex(null)}
+                                    >
+                                        <div className="grid grid-cols-2 gap-2 items-center">
+                                            <div>
+                                                <span className="block text-slate-400 text-[10px] uppercase">QTD</span>
+                                                <span className="font-bold text-slate-700 text-xl">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length}</span>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
+                                                <span className="font-bold text-emerald-600 text-lg">
+                                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(dashboardStats.outcomes.success)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
                     </div>
                 )
