@@ -102,7 +102,7 @@ export default function FunnelChartSVG({
     const hLvl = levelHeight * scaleY;
     const g = gap * scaleY;
     const eRy = (hLvl * topEllipseRatio) * 0.65;
-    const eRxFactor = 0.52;
+    const eRxFactor = 0.50;
 
     const xCenter = margin.left + drawableW / 2;
     const yStart = margin.top + (drawableH - (n * hLvl + (n - 1) * g)) / 2;
