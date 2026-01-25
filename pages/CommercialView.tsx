@@ -870,182 +870,124 @@ export const CommercialView: React.FC = () => {
 
 
                         {/* 1. QUANTITATIVE SUMMARY TABLE (REFORMED) */}
-                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                            <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                                <Activity size={20} className="text-blue-600" />
-                                Resumo Quantitativo do Pipeline
-                            </h3>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
-                                        <tr>
-                                            <th className="px-6 py-3 rounded-tl-lg">Categoria</th>
-                                            <th className="px-6 py-3 text-center">Quantidade</th>
-                                            <th className="px-6 py-3 text-center">% Qtd</th>
-                                            <th className="px-6 py-3 text-right">Valor (R$)</th>
-                                            <th className="px-6 py-3 text-right rounded-tr-lg">% Valor</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100 font-medium">
-                                        {/* IN PROGRESS (NEW) */}
-                                        <tr className="hover:bg-purple-50/30 transition-colors group">
-                                            <td className="px-6 py-4 text-purple-700 flex items-center gap-2">
-                                                <div className="p-1.5 bg-purple-100 rounded text-purple-600 group-hover:bg-purple-200 transition-colors"><Activity size={14} /></div>
-                                                Em Andamento
-                                            </td>
-                                            <td className="px-6 py-4 text-center font-bold text-slate-700">
-                                                {opportunities.filter(op => op.pipelineStage !== PipelineStage.RESULTADO).length}
-                                            </td>
-                                            <td className="px-6 py-4 text-center text-slate-500 text-xs">
-                                                {dashboardStats.totalOpsCount > 0 ?
-                                                    (opportunities.filter(op => op.pipelineStage !== PipelineStage.RESULTADO).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
-                                                    : '0%'}
-                                            </td>
-                                            <td className="px-6 py-4 text-right font-bold text-purple-700">
-                                                R$ {dashboardStats.outcomes.inProgress.toLocaleString()}
-                                            </td>
-                                            <td className="px-6 py-4 text-right text-slate-500 text-xs">
-                                                {dashboardStats.totalPipelineValue > 0 ? (dashboardStats.outcomes.inProgress / dashboardStats.totalPipelineValue * 100).toFixed(1) + '%' : '0%'}
-                                            </td>
-                                        </tr>
-                                        {/* SUCCESS */}
-                                        <tr className="hover:bg-emerald-50/30 transition-colors group">
-                                            <td className="px-6 py-4 text-emerald-700 flex items-center gap-2">
-                                                <div className="p-1.5 bg-emerald-100 rounded text-emerald-600 group-hover:bg-emerald-200 transition-colors"><CheckCircle size={14} /></div>
-                                                Sucesso
-                                            </td>
-                                            <td className="px-6 py-4 text-center font-bold text-slate-700">
-                                                {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length}
-                                            </td>
-                                            <td className="px-6 py-4 text-center text-slate-500 text-xs">
-                                                {dashboardStats.totalOpsCount > 0 ?
-                                                    (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
-                                                    : '0%'}
-                                            </td>
-                                            <td className="px-6 py-4 text-right font-bold text-emerald-700">
-                                                R$ {dashboardStats.outcomes.success.toLocaleString()}
-                                            </td>
-                                            <td className="px-6 py-4 text-right text-slate-500 text-xs">
-                                                {dashboardStats.totalPipelineValue > 0 ? (dashboardStats.outcomes.success / dashboardStats.totalPipelineValue * 100).toFixed(1) + '%' : '0%'}
-                                            </td>
-                                        </tr>
-                                        {/* FAILURE */}
-                                        <tr className="hover:bg-red-50/30 transition-colors group">
-                                            <td className="px-6 py-4 text-red-700 flex items-center gap-2">
-                                                <div className="p-1.5 bg-red-100 rounded text-red-600 group-hover:bg-red-200 transition-colors"><AlertTriangle size={14} /></div>
-                                                Insucesso
-                                            </td>
-                                            <td className="px-6 py-4 text-center font-bold text-slate-700">
-                                                {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length}
-                                            </td>
-                                            <td className="px-6 py-4 text-center text-slate-500 text-xs">
-                                                {dashboardStats.totalOpsCount > 0 ?
-                                                    (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
-                                                    : '0%'}
-                                            </td>
-                                            <td className="px-6 py-4 text-right font-bold text-red-700">
-                                                R$ {dashboardStats.outcomes.failure.toLocaleString()}
-                                            </td>
-                                            <td className="px-6 py-4 text-right text-slate-500 text-xs">
-                                                {dashboardStats.totalPipelineValue > 0 ? (dashboardStats.outcomes.failure / dashboardStats.totalPipelineValue * 100).toFixed(1) + '%' : '0%'}
-                                            </td>
-                                        </tr>
-                                        {/* STUDY */}
-                                        <tr className="hover:bg-blue-50/30 transition-colors group">
-                                            <td className="px-6 py-4 text-blue-700 flex items-center gap-2">
-                                                <div className="p-1.5 bg-blue-100 rounded text-blue-600 group-hover:bg-blue-200 transition-colors"><Bot size={14} /></div>
-                                                Em Estudo
-                                            </td>
-                                            <td className="px-6 py-4 text-center font-bold text-slate-700">
-                                                {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length}
-                                            </td>
-                                            <td className="px-6 py-4 text-center text-slate-500 text-xs">
-                                                {dashboardStats.totalOpsCount > 0 ?
-                                                    (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
-                                                    : '0%'}
-                                            </td>
-                                            <td className="px-6 py-4 text-right font-bold text-blue-700">
-                                                R$ {dashboardStats.outcomes.study.toLocaleString()}
-                                            </td>
-                                            <td className="px-6 py-4 text-right text-slate-500 text-xs">
-                                                {dashboardStats.totalPipelineValue > 0 ? (dashboardStats.outcomes.study / dashboardStats.totalPipelineValue * 100).toFixed(1) + '%' : '0%'}
-                                            </td>
-                                        </tr>
-                                        {/* WITHDRAWAL */}
-                                        <tr className="hover:bg-slate-50/50 transition-colors group">
-                                            <td className="px-6 py-4 text-slate-600 flex items-center gap-2">
-                                                <div className="p-1.5 bg-slate-100 rounded text-slate-500 group-hover:bg-slate-200 transition-colors"><LogOut size={14} /></div>
-                                                Desistência
-                                            </td>
-                                            <td className="px-6 py-4 text-center font-bold text-slate-700">
-                                                {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length}
-                                            </td>
-                                            <td className="px-6 py-4 text-center text-slate-500 text-xs">
-                                                {dashboardStats.totalOpsCount > 0 ?
-                                                    (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
-                                                    : '0%'}
-                                            </td>
-                                            <td className="px-6 py-4 text-right font-bold text-slate-600">
-                                                R$ {dashboardStats.outcomes.withdrawal.toLocaleString()}
-                                            </td>
-                                            <td className="px-6 py-4 text-right text-slate-500 text-xs">
-                                                {dashboardStats.totalPipelineValue > 0 ? (dashboardStats.outcomes.withdrawal / dashboardStats.totalPipelineValue * 100).toFixed(1) + '%' : '0%'}
-                                            </td>
-                                        </tr>
-                                        {/* TOTAL */}
-                                        <tr className="bg-slate-50 border-t-2 border-slate-100 font-bold">
-                                            <td className="px-6 py-4 text-slate-800">TOTAL</td>
-                                            <td className="px-6 py-4 text-center text-slate-800">{dashboardStats.totalOpsCount}</td>
-                                            <td className="px-6 py-4 text-center text-slate-800">100%</td>
-                                            <td className="px-6 py-4 text-right text-slate-800">R$ {dashboardStats.totalPipelineValue.toLocaleString()}</td>
-                                            <td className="px-6 py-4 text-right text-slate-800">100%</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                        {/* 1. QUANTITATIVE SUMMARY TABLE (Moved to Grid) */}
 
 
                         {/* CHARTS ROW */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {/* BAR CHART - OUTCOMES distribution */}
+                            {/* 1. QUANTITATIVE SUMMARY TABLE (Moved Here) */}
                             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
-                                <h3 className="font-bold text-slate-700 mb-4">Distribuição de Resultados (Financeiro)</h3>
-                                <div className="flex-1 min-h-[350px]">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart
-                                            data={[
-                                                { name: 'Sucesso', value: dashboardStats.outcomes.success, fill: COLORS.success },
-                                                { name: 'Insucesso', value: dashboardStats.outcomes.failure, fill: COLORS.failure },
-                                                { name: 'Estudo', value: dashboardStats.outcomes.study, fill: COLORS.study },
-                                                { name: 'Desistência', value: dashboardStats.outcomes.withdrawal, fill: COLORS.withdrawal }
-                                            ]}
-                                            layout="horizontal"
-                                            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                                            barSize={40}
-                                        >
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                            <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                                            <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`} />
-                                            <RechartsTooltip
-                                                cursor={{ fill: '#f8fafc' }}
-                                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                                formatter={(value: number | undefined) => [`R$ ${value?.toLocaleString() || '0'}`, 'Valor'] as [string, string]}
-                                            />
-                                            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                                                {
-                                                    [
-                                                        { name: 'Sucesso', value: dashboardStats.outcomes.success, fill: COLORS.success },
-                                                        { name: 'Insucesso', value: dashboardStats.outcomes.failure, fill: COLORS.failure },
-                                                        { name: 'Estudo', value: dashboardStats.outcomes.study, fill: COLORS.study },
-                                                        { name: 'Desistência', value: dashboardStats.outcomes.withdrawal, fill: COLORS.withdrawal }
-                                                    ].map((entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                                                    ))
-                                                }
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
+                                <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                    <Activity size={20} className="text-blue-600" />
+                                    Resumo Quantitativo
+                                </h3>
+                                {/* Used h-full for harmony with Funnel */}
+                                <div className="flex-1 overflow-x-auto flex flex-col justify-center">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
+                                            <tr>
+                                                <th className="px-4 py-3 rounded-tl-lg">Categoria</th>
+                                                <th className="px-4 py-3 text-center">Qtd</th>
+                                                <th className="px-4 py-3 text-center">%</th>
+                                                <th className="px-4 py-3 text-right">Valor (R$)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 font-medium">
+                                            {/* IN PROGRESS */}
+                                            <tr className="hover:bg-purple-50/30 transition-colors">
+                                                <td className="px-4 py-3 text-purple-700 flex items-center gap-2">
+                                                    <Activity size={14} /> Em Andamento
+                                                </td>
+                                                <td className="px-4 py-3 text-center font-bold text-slate-700">
+                                                    {opportunities.filter(op => op.pipelineStage !== PipelineStage.RESULTADO).length}
+                                                </td>
+                                                <td className="px-4 py-3 text-center text-slate-500 text-xs">
+                                                    {dashboardStats.totalOpsCount > 0 ?
+                                                        (opportunities.filter(op => op.pipelineStage !== PipelineStage.RESULTADO).length / dashboardStats.totalOpsCount * 100).toFixed(0) + '%'
+                                                        : '0%'}
+                                                </td>
+                                                <td className="px-4 py-3 text-right font-bold text-purple-700">
+                                                    {parseFloat((dashboardStats.outcomes.inProgress / 1000).toFixed(0)).toLocaleString()}k
+                                                </td>
+                                            </tr>
+                                            {/* SUCCESS */}
+                                            <tr className="hover:bg-emerald-50/30 transition-colors">
+                                                <td className="px-4 py-3 text-emerald-700 flex items-center gap-2">
+                                                    <CheckCircle size={14} /> Sucesso
+                                                </td>
+                                                <td className="px-4 py-3 text-center font-bold text-slate-700">
+                                                    {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length}
+                                                </td>
+                                                <td className="px-4 py-3 text-center text-slate-500 text-xs">
+                                                    {dashboardStats.totalOpsCount > 0 ?
+                                                        (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length / dashboardStats.totalOpsCount * 100).toFixed(0) + '%'
+                                                        : '0%'}
+                                                </td>
+                                                <td className="px-4 py-3 text-right font-bold text-emerald-700">
+                                                    {parseFloat((dashboardStats.outcomes.success / 1000).toFixed(0)).toLocaleString()}k
+                                                </td>
+                                            </tr>
+                                            {/* FAILURE */}
+                                            <tr className="hover:bg-red-50/30 transition-colors">
+                                                <td className="px-4 py-3 text-red-700 flex items-center gap-2">
+                                                    <AlertTriangle size={14} /> Insucesso
+                                                </td>
+                                                <td className="px-4 py-3 text-center font-bold text-slate-700">
+                                                    {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length}
+                                                </td>
+                                                <td className="px-4 py-3 text-center text-slate-500 text-xs">
+                                                    {dashboardStats.totalOpsCount > 0 ?
+                                                        (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length / dashboardStats.totalOpsCount * 100).toFixed(0) + '%'
+                                                        : '0%'}
+                                                </td>
+                                                <td className="px-4 py-3 text-right font-bold text-red-700">
+                                                    {parseFloat((dashboardStats.outcomes.failure / 1000).toFixed(0)).toLocaleString()}k
+                                                </td>
+                                            </tr>
+                                            {/* STUDY */}
+                                            <tr className="hover:bg-blue-50/30 transition-colors">
+                                                <td className="px-4 py-3 text-blue-700 flex items-center gap-2">
+                                                    <Bot size={14} /> Em Estudo
+                                                </td>
+                                                <td className="px-4 py-3 text-center font-bold text-slate-700">
+                                                    {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length}
+                                                </td>
+                                                <td className="px-4 py-3 text-center text-slate-500 text-xs">
+                                                    {dashboardStats.totalOpsCount > 0 ?
+                                                        (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length / dashboardStats.totalOpsCount * 100).toFixed(0) + '%'
+                                                        : '0%'}
+                                                </td>
+                                                <td className="px-4 py-3 text-right font-bold text-blue-700">
+                                                    {parseFloat((dashboardStats.outcomes.study / 1000).toFixed(0)).toLocaleString()}k
+                                                </td>
+                                            </tr>
+                                            {/* WITHDRAWAL */}
+                                            <tr className="hover:bg-slate-50/50 transition-colors">
+                                                <td className="px-4 py-3 text-slate-600 flex items-center gap-2">
+                                                    <LogOut size={14} /> Desistência
+                                                </td>
+                                                <td className="px-4 py-3 text-center font-bold text-slate-700">
+                                                    {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length}
+                                                </td>
+                                                <td className="px-4 py-3 text-center text-slate-500 text-xs">
+                                                    {dashboardStats.totalOpsCount > 0 ?
+                                                        (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length / dashboardStats.totalOpsCount * 100).toFixed(0) + '%'
+                                                        : '0%'}
+                                                </td>
+                                                <td className="px-4 py-3 text-right font-bold text-slate-600">
+                                                    {parseFloat((dashboardStats.outcomes.withdrawal / 1000).toFixed(0)).toLocaleString()}k
+                                                </td>
+                                            </tr>
+                                            {/* TOTAL */}
+                                            <tr className="bg-slate-50 border-t-2 border-slate-100 font-bold">
+                                                <td className="px-4 py-3 text-slate-800">TOTAL</td>
+                                                <td className="px-4 py-3 text-center text-slate-800">{dashboardStats.totalOpsCount}</td>
+                                                <td className="px-4 py-3 text-center text-slate-800">100%</td>
+                                                <td className="px-4 py-3 text-right text-slate-800">{parseFloat((dashboardStats.totalPipelineValue / 1000).toFixed(0)).toLocaleString()}k</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
 
