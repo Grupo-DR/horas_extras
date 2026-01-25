@@ -134,6 +134,18 @@ export default function FunnelChartSVG({
 
 
 
+            // Connector start point calculation
+            // We need to find the X coordinate of the right wall at the vertical position y0.
+            // Wall is a line from (cx + wTop/2, bodyY) to (cx + wBottom/2, bodyY + bodyH).
+            // y0 = bodyY + bodyH * 0.55;
+            // The interpolation factor 't' is 0.55.
+            const t = 0.55;
+
+            const xRightTop = cx + wTop / 2;
+            const xRightBottom = cx + wBottom / 2;
+
+            const wallXAtT = xRightTop + (xRightBottom - xRightTop) * t;
+
             items.push({
                 i,
                 y,
@@ -149,9 +161,9 @@ export default function FunnelChartSVG({
                     ry: eRy,
                 },
                 connector: {
-                    // exit point on the right side of the module (body middle)
-                    x0: cx + Math.max(wTop, wBottom) * 0.5 - 6,
-                    y0: bodyY + bodyH * 0.55,
+                    // Start exactly at the wall edge, no manual offset needed, maybe -2px for overlap cleanliness
+                    x0: wallXAtT,
+                    y0: bodyY + bodyH * t,
                 },
             });
         }
