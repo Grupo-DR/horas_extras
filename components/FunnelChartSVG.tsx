@@ -47,14 +47,13 @@ function ellipsePath(cx: number, cy: number, rx: number, ry: number) {
     ].join(" ");
 }
 
-interface Level {
-    label: string;
-    color: string;
-    topColor?: string;
-}
-
 interface FunnelChartSVGProps {
-    levels: Level[];
+    levels: {
+        label: string;
+        subLabel?: string;
+        color: string;
+        topColor?: string;
+    }[];
     width?: number;
     height?: number;
     margin?: { top: number; right: number; bottom: number; left: number };
@@ -89,7 +88,7 @@ export default function FunnelChartSVG({
     topEllipseRatio = 0.22, // ellipse height = levelHeight * ratio
     eRxFactor = 0.48, // 48% of width (flush/inside)
     stroke = "#334155", // slate-700
-    strokeWidth = 2,
+    strokeWidth = 1, // Thinner lines
     circleRadius = 8,
     connectorStartOffset = 18,
     connectorKneeX = 28,
@@ -301,20 +300,37 @@ export default function FunnelChartSVG({
                             strokeWidth={strokeWidth}
                         />
 
-                        {/* Inner Label */}
+                        {/* Inner Label + Percentage */}
                         {renderLabelsInside && (
-                            <text
-                                x={it.cx}
-                                y={it.bodyY + it.bodyH * 0.45}
-                                textAnchor="middle"
-                                fontFamily={fontFamily}
-                                fontSize={14}
-                                fontWeight="600"
-                                fill="white"
-                                style={{ pointerEvents: 'none', textShadow: '0px 1px 2px rgba(0,0,0,0.5)' }}
-                            >
-                                {level.label}
-                            </text>
+                            <>
+                                <text
+                                    x={it.cx}
+                                    y={it.bodyY + it.bodyH * (level.subLabel ? 0.40 : 0.45)}
+                                    textAnchor="middle"
+                                    fontFamily={fontFamily}
+                                    fontSize={14}
+                                    fontWeight="600"
+                                    fill="white"
+                                    style={{ pointerEvents: 'none', textShadow: '0px 1px 2px rgba(0,0,0,0.5)' }}
+                                >
+                                    {level.label}
+                                </text>
+                                {level.subLabel && (
+                                    <text
+                                        x={it.cx}
+                                        y={it.bodyY + it.bodyH * 0.40 + 16}
+                                        textAnchor="middle"
+                                        fontFamily={fontFamily}
+                                        fontSize={11}
+                                        fontWeight="500"
+                                        fill="white"
+                                        fillOpacity="0.9"
+                                        style={{ pointerEvents: 'none', textShadow: '0px 1px 2px rgba(0,0,0,0.5)' }}
+                                    >
+                                        {level.subLabel}
+                                    </text>
+                                )}
+                            </>
                         )}
                     </g>
                 );

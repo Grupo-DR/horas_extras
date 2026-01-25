@@ -1016,17 +1016,42 @@ export const CommercialView: React.FC = () => {
                                 <Filter size={20} className="text-slate-600" />
                                 Funil de Vendas (Conversão)
                             </h3>
-                            <div className="flex-1 min-h-[420px] flex flex-row items-center justify-center gap-0 py-8">
+                            <div className="flex-1 min-h-[420px] flex flex-row items-center justify-center gap-3 py-8">
                                 <div className="w-full max-w-[500px] flex justify-center">
                                     <FunnelChartSVG
                                         width={500}
                                         height={500}
                                         levels={[
-                                            { label: "Total", color: "#fbbf24", topColor: "#d97706" }, // Amber-400 / Amber-600
-                                            { label: "Desistência", color: "#f97316", topColor: "#c2410c" }, // Orange-500 / Orange-700
-                                            { label: "Em Estudo", color: "#ec4899", topColor: "#be185d" }, // Pink-500 / Pink-700
-                                            { label: "Perdida", color: "#9333ea", topColor: "#7e22ce" }, // Purple-600 / Purple-700
-                                            { label: "Venda", color: "#10b981", topColor: "#047857" }, // Emerald-500 / Emerald-700
+                                            {
+                                                label: "Total",
+                                                subLabel: "(100%)",
+                                                color: "#fbbf24",
+                                                topColor: "#d97706"
+                                            },
+                                            {
+                                                label: "Desistência",
+                                                subLabel: dashboardStats.totalOpsCount > 0 ? `${(opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length / dashboardStats.totalOpsCount * 100).toFixed(0)}%` : "0%",
+                                                color: "#f97316",
+                                                topColor: "#c2410c"
+                                            },
+                                            {
+                                                label: "Em Estudo",
+                                                subLabel: dashboardStats.totalOpsCount > 0 ? `${(opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length / dashboardStats.totalOpsCount * 100).toFixed(0)}%` : "0%",
+                                                color: "#ec4899",
+                                                topColor: "#be185d"
+                                            },
+                                            {
+                                                label: "Perdida",
+                                                subLabel: dashboardStats.totalOpsCount > 0 ? `${(opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length / dashboardStats.totalOpsCount * 100).toFixed(0)}%` : "0%",
+                                                color: "#9333ea",
+                                                topColor: "#7e22ce"
+                                            },
+                                            {
+                                                label: "Venda",
+                                                subLabel: dashboardStats.totalOpsCount > 0 ? `${(opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length / dashboardStats.totalOpsCount * 100).toFixed(0)}%` : "0%",
+                                                color: "#10b981",
+                                                topColor: "#047857"
+                                            },
                                         ]}
                                         margin={{ top: 20, right: 0, bottom: 20, left: 20 }} // Zero right margin to touch edge
                                         topWidth={360}
@@ -1036,6 +1061,8 @@ export const CommercialView: React.FC = () => {
                                         onHover={setHoveredFunnelIndex}
                                         renderLabelsInside={true}
                                         extendConnectors={true}
+                                        gap={12} // Explicit gap matching CSS gap-3 (12px)
+                                        levelHeight={90} // Explicit height matching CSS h-[90px]
                                     />
                                 </div>
 
@@ -1043,91 +1070,100 @@ export const CommercialView: React.FC = () => {
                                 <div className="flex flex-col gap-3 min-w-[300px] pl-4">
                                     {/* LEVEL 1: TOTAL */}
                                     <div
-                                        className={`bg-white p-3 rounded-r-lg border-l-4 border-amber-400 shadow-sm text-xs transition-all duration-300 cursor-pointer ${hoveredFunnelIndex === 0 ? 'scale-105 shadow-md bg-amber-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
+                                        className={`h-[90px] bg-white p-3 rounded-r-lg border-l-4 border-amber-400 shadow-sm text-xs transition-all duration-300 cursor-pointer flex flex-col justify-center ${hoveredFunnelIndex === 0 ? 'scale-105 shadow-md bg-amber-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
                                         onMouseEnter={() => setHoveredFunnelIndex(0)}
                                         onMouseLeave={() => setHoveredFunnelIndex(null)}
                                     >
-                                        <div className="grid grid-cols-2 gap-2">
+                                        <div className="grid grid-cols-2 gap-2 items-center">
                                             <div>
                                                 <span className="block text-slate-400 text-[10px] uppercase">QTD</span>
-                                                <span className="font-bold text-slate-700 text-lg">{dashboardStats.totalOpsCount}</span>
-                                                {/* <span className="text-[10px] text-slate-400 ml-1 font-medium">(100%)</span> */}
+                                                <span className="font-bold text-slate-700 text-xl">{dashboardStats.totalOpsCount}</span>
                                             </div>
                                             <div className="text-right">
                                                 <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
-                                                <span className="font-bold text-amber-600 text-lg">R$ {(dashboardStats.totalPipelineValue / 1000).toFixed(0)}k</span>
+                                                <span className="font-bold text-amber-600 text-lg">
+                                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(dashboardStats.totalPipelineValue)}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* LEVEL 2: WITHDRAWAL */}
                                     <div
-                                        className={`bg-white p-3 rounded-r-lg border-l-4 border-orange-500 shadow-sm text-xs transition-all duration-300 cursor-pointer ${hoveredFunnelIndex === 1 ? 'scale-105 shadow-md bg-orange-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
+                                        className={`h-[90px] bg-white p-3 rounded-r-lg border-l-4 border-orange-500 shadow-sm text-xs transition-all duration-300 cursor-pointer flex flex-col justify-center ${hoveredFunnelIndex === 1 ? 'scale-105 shadow-md bg-orange-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
                                         onMouseEnter={() => setHoveredFunnelIndex(1)}
                                         onMouseLeave={() => setHoveredFunnelIndex(null)}
                                     >
-                                        <div className="grid grid-cols-2 gap-2">
+                                        <div className="grid grid-cols-2 gap-2 items-center">
                                             <div>
                                                 <span className="block text-slate-400 text-[10px] uppercase">QTD</span>
-                                                <span className="font-bold text-slate-700 text-lg">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length}</span>
+                                                <span className="font-bold text-slate-700 text-xl">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length}</span>
                                             </div>
                                             <div className="text-right">
                                                 <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
-                                                <span className="font-bold text-orange-600 text-lg">R$ {(dashboardStats.outcomes.withdrawal / 1000).toFixed(0)}k</span>
+                                                <span className="font-bold text-orange-600 text-lg">
+                                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(dashboardStats.outcomes.withdrawal)}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* LEVEL 3: STUDY */}
                                     <div
-                                        className={`bg-white p-3 rounded-r-lg border-l-4 border-pink-500 shadow-sm text-xs transition-all duration-300 cursor-pointer ${hoveredFunnelIndex === 2 ? 'scale-105 shadow-md bg-pink-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
+                                        className={`h-[90px] bg-white p-3 rounded-r-lg border-l-4 border-pink-500 shadow-sm text-xs transition-all duration-300 cursor-pointer flex flex-col justify-center ${hoveredFunnelIndex === 2 ? 'scale-105 shadow-md bg-pink-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
                                         onMouseEnter={() => setHoveredFunnelIndex(2)}
                                         onMouseLeave={() => setHoveredFunnelIndex(null)}
                                     >
-                                        <div className="grid grid-cols-2 gap-2">
+                                        <div className="grid grid-cols-2 gap-2 items-center">
                                             <div>
                                                 <span className="block text-slate-400 text-[10px] uppercase">QTD</span>
-                                                <span className="font-bold text-slate-700 text-lg">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length}</span>
+                                                <span className="font-bold text-slate-700 text-xl">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length}</span>
                                             </div>
                                             <div className="text-right">
                                                 <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
-                                                <span className="font-bold text-pink-600 text-lg">R$ {(dashboardStats.outcomes.study / 1000).toFixed(0)}k</span>
+                                                <span className="font-bold text-pink-600 text-lg">
+                                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(dashboardStats.outcomes.study)}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* LEVEL 4: FAILURE */}
                                     <div
-                                        className={`bg-white p-3 rounded-r-lg border-l-4 border-purple-600 shadow-sm text-xs transition-all duration-300 cursor-pointer ${hoveredFunnelIndex === 3 ? 'scale-105 shadow-md bg-purple-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
+                                        className={`h-[90px] bg-white p-3 rounded-r-lg border-l-4 border-purple-600 shadow-sm text-xs transition-all duration-300 cursor-pointer flex flex-col justify-center ${hoveredFunnelIndex === 3 ? 'scale-105 shadow-md bg-purple-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
                                         onMouseEnter={() => setHoveredFunnelIndex(3)}
                                         onMouseLeave={() => setHoveredFunnelIndex(null)}
                                     >
-                                        <div className="grid grid-cols-2 gap-2">
+                                        <div className="grid grid-cols-2 gap-2 items-center">
                                             <div>
                                                 <span className="block text-slate-400 text-[10px] uppercase">QTD</span>
-                                                <span className="font-bold text-slate-700 text-lg">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length}</span>
+                                                <span className="font-bold text-slate-700 text-xl">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length}</span>
                                             </div>
                                             <div className="text-right">
                                                 <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
-                                                <span className="font-bold text-purple-600 text-lg">R$ {(dashboardStats.outcomes.failure / 1000).toFixed(0)}k</span>
+                                                <span className="font-bold text-purple-600 text-lg">
+                                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(dashboardStats.outcomes.failure)}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* LEVEL 5: SUCCESS */}
                                     <div
-                                        className={`bg-white p-3 rounded-r-lg border-l-4 border-emerald-500 shadow-sm text-xs transition-all duration-300 cursor-pointer ${hoveredFunnelIndex === 4 ? 'scale-105 shadow-md bg-emerald-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
+                                        className={`h-[90px] bg-white p-3 rounded-r-lg border-l-4 border-emerald-500 shadow-sm text-xs transition-all duration-300 cursor-pointer flex flex-col justify-center ${hoveredFunnelIndex === 4 ? 'scale-105 shadow-md bg-emerald-50' : hoveredFunnelIndex !== null ? 'opacity-50' : 'hover:bg-slate-50'}`}
                                         onMouseEnter={() => setHoveredFunnelIndex(4)}
                                         onMouseLeave={() => setHoveredFunnelIndex(null)}
                                     >
-                                        <div className="grid grid-cols-2 gap-2">
+                                        <div className="grid grid-cols-2 gap-2 items-center">
                                             <div>
                                                 <span className="block text-slate-400 text-[10px] uppercase">QTD</span>
-                                                <span className="font-bold text-slate-700 text-lg">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length}</span>
+                                                <span className="font-bold text-slate-700 text-xl">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length}</span>
                                             </div>
                                             <div className="text-right">
                                                 <span className="block text-slate-400 text-[10px] uppercase">VALOR</span>
-                                                <span className="font-bold text-emerald-600 text-lg">R$ {(dashboardStats.outcomes.success / 1000).toFixed(0)}k</span>
+                                                <span className="font-bold text-emerald-600 text-lg">
+                                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(dashboardStats.outcomes.success)}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
