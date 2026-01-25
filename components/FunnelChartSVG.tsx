@@ -164,6 +164,45 @@ export default function FunnelChartSVG({
 
     return (
         <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+            <defs>
+                {levels.map((level, i) => {
+                    const baseColor = level.color;
+                    const gradId = `funnel-grad-${i}`;
+                    const capGradId = `funnel-cap-${i}`;
+
+                    // Simple logic to darken/lighten simply by relying on opacity or overlay, 
+                    // but here we assume 'baseColor' is a Hex. 
+                    // To do proper gradients without color manipulation lib, we'll try a generic overlay approach 
+                    // OR just use the baseColor as the "mid" and assume the user passed a good color.
+                    // Let's us standard SVG filters or multiple stops if we can't compute "darker" hex easily without a lib.
+                    // Strategy: Use the base color but add a black/white overlay gradient, 
+                    // OR rely on the fact that we can't easily darken the hex string without a helper.
+                    // Improved Strategy: Just use the base color for the center, and use shadow for sides via a mask? 
+                    // No, let's keep it simple: 
+                    // We will use the provided `color` as the MAIN color.
+                    // We will define a gradient that goes: Color (Darker) -> Color (Normal) -> Color (Darker).
+                    // Since we don't have a color manipulator, we will use a trick:
+                    // Solid fill with the color, PLUS an overlay gradient of black with low opacity.
+
+                    return (
+                        <React.Fragment key={i}>
+                            <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor="black" stopOpacity="0.3" />
+                                <stop offset="20%" stopColor="black" stopOpacity="0.1" />
+                                <stop offset="45%" stopColor="white" stopOpacity="0.1" />
+                                <stop offset="55%" stopColor="white" stopOpacity="0.1" />
+                                <stop offset="80%" stopColor="black" stopOpacity="0.1" />
+                                <stop offset="100%" stopColor="black" stopOpacity="0.3" />
+                            </linearGradient>
+
+                            <linearGradient id={capGradId} x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" stopColor="white" stopOpacity="0.4" />
+                                <stop offset="100%" stopColor="black" stopOpacity="0.1" />
+                            </linearGradient>
+                        </React.Fragment>
+                    );
+                })}
+            </defs>
 
             {/* Funnel */}
             {geometry.map((it) => {
@@ -172,21 +211,37 @@ export default function FunnelChartSVG({
                 const fill = level.color;
                 const topFill = level.topColor || fill;
 
+                // We render the shape TWICE. 
+                // 1. The solid base color.
+                // 2. The gradient overlay for volume.
+
                 return (
                     <g key={it.i}>
-                        {/* Body */}
+                        {/* Body - Base */}
                         <path
                             d={it.bodyPath}
                             fill={fill}
+                            stroke="none"
+                        />
+                        {/* Body - Gradient Overlay */}
+                        <path
+                            d={it.bodyPath}
+                            fill={`url(#funnel-grad-${it.i})`}
                             stroke={stroke}
                             strokeWidth={strokeWidth}
                             strokeLinejoin="round"
                         />
 
-                        {/* Cap (top ellipse of module) */}
+                        {/* Cap - Base */}
                         <path
                             d={it.topEllipse.path}
                             fill={topFill}
+                            stroke="none"
+                        />
+                        {/* Cap - Gradient Overlay */}
+                        <path
+                            d={it.topEllipse.path}
+                            fill={`url(#funnel-cap-${it.i})`}
                             stroke={stroke}
                             strokeWidth={strokeWidth}
                         />
