@@ -27,5 +27,12 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "include": [
+    "src",
+    "pages",
+    "components",
+    "*.ts",
+    "*.tsx"
+  ]
 }
