@@ -1,5 +1,5 @@
 import React from 'react';
-import { PipelineStage, Bid, Task, User } from '../../types';
+import { PipelineStage, Bid, Task, User, TaskOutcome } from '../../types';
 import { BidService } from '../../services/bidService';
 import { PipelineColumn } from './PipelineColumn';
 import { toast } from 'sonner';
@@ -52,13 +52,32 @@ export const PipelineBoard: React.FC<PipelineBoardProps> = ({ bids, refreshBids,
     const getBidsByStage = (stage: PipelineStage) => {
         const priorityOrder = { 'ALTA': 0, 'MÉDIA': 1, 'BAIXA': 2, undefined: 1 };
 
-        return filteredBids // Use Filtered Bids here
-            .filter(op => op.pipelineStage === stage)
-            .sort((a, b) => {
-                const pA = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 1;
-                const pB = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 1;
-                return pA - pB;
+        const stageBids = filteredBids.filter(op => op.pipelineStage === stage);
+
+        // Custom Sort for RESULTADO (Outcome) Stage
+        if (stage === PipelineStage.RESULTADO) {
+            return stageBids.sort((a, b) => {
+                const isWinA = a.result === TaskOutcome.SUCCESS;
+                const isWinB = b.result === TaskOutcome.SUCCESS;
+
+                // 1. Winners First
+                if (isWinA && !isWinB) return -1;
+                if (!isWinA && isWinB) return 1;
+
+                // 2. Sort by Date (Most Recent first) - using 'date' or 'createdAt'
+                const dateA = a.date ? new Date(a.date).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+                const dateB = b.date ? new Date(b.date).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+
+                return dateB - dateA;
             });
+        }
+
+        // Default Sort (Priority) for Active Stages
+        return stageBids.sort((a, b) => {
+            const pA = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 1;
+            const pB = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 1;
+            return pA - pB;
+        });
     };
 
     // Drag Handlers
