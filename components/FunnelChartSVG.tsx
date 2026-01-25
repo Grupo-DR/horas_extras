@@ -73,6 +73,8 @@ interface FunnelChartSVGProps {
     eRxFactor?: number;
     onHover?: (index: number | null) => void;
     hoveredIndex?: number | null;
+    renderLabelsInside?: boolean;
+    extendConnectors?: boolean;
 }
 
 export default function FunnelChartSVG({
@@ -95,6 +97,8 @@ export default function FunnelChartSVG({
     showLabels = false,
     onHover,
     hoveredIndex = null,
+    renderLabelsInside = false,
+    extendConnectors = false,
 }: FunnelChartSVGProps) {
     const n = levels?.length ?? 0;
 
@@ -139,8 +143,6 @@ export default function FunnelChartSVG({
             const rx = (wTop * eRxFactor);
             const cy = y + eRy;
 
-
-
             // Connector start point calculation
             // We need to find the X coordinate of the right wall at the vertical position y0.
             // Wall is a line from (cx + wTop/2, bodyY) to (cx + wBottom/2, bodyY + bodyH).
@@ -159,6 +161,8 @@ export default function FunnelChartSVG({
                 cx,
                 wTop,
                 wBottom,
+                bodyH,
+                bodyY,
                 bodyPath: trapezoidPath(cx, bodyY, wTop, wBottom, bodyH, 14),
                 topEllipse: {
                     path: ellipsePath(cx, cy, rx, eRy),
@@ -178,11 +182,12 @@ export default function FunnelChartSVG({
     }, [n, topWidth, bottomWidth, hLvl, g, eRy, xCenter, yStart, eRxFactor]);
 
     // Connectors to the right
-    const connectorEndX = width - margin.right + 40; // Adjusted for component width
-    const circleX = width - margin.right + 60; // Adjusted for component width
+    // If extendConnectors is true, we go all the way to 'width'
+    const connectorEndX = extendConnectors ? width : width - margin.right + 40;
+    const circleX = width - margin.right + 60;
 
     return (
-        <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+        <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ overflow: 'visible' }}>
             <defs>
                 {/** Noise Filter for Glass/Texture Effect **/}
                 <filter id="noiseFilter">
@@ -295,6 +300,22 @@ export default function FunnelChartSVG({
                             stroke={stroke}
                             strokeWidth={strokeWidth}
                         />
+
+                        {/* Inner Label */}
+                        {renderLabelsInside && (
+                            <text
+                                x={it.cx}
+                                y={it.bodyY + it.bodyH * 0.45}
+                                textAnchor="middle"
+                                fontFamily={fontFamily}
+                                fontSize={14}
+                                fontWeight="600"
+                                fill="white"
+                                style={{ pointerEvents: 'none', textShadow: '0px 1px 2px rgba(0,0,0,0.5)' }}
+                            >
+                                {level.label}
+                            </text>
+                        )}
                     </g>
                 );
             })}
@@ -326,16 +347,19 @@ export default function FunnelChartSVG({
                             strokeLinecap="round"
                             strokeLinejoin="round"
                         />
-                        <circle
-                            cx={circleX}
-                            cy={y0}
-                            r={isHovered ? circleRadius * 1.3 : circleRadius}
-                            fill={dotColor}
-                            stroke={stroke}
-                            strokeWidth={strokeWidth}
-                            style={{ transition: "r 0.3s ease" }}
-                        />
-                        {showLabels && (
+                        {/* Only show circle if NOT extending connectors */}
+                        {!extendConnectors && (
+                            <circle
+                                cx={circleX}
+                                cy={y0}
+                                r={isHovered ? circleRadius * 1.3 : circleRadius}
+                                fill={dotColor}
+                                stroke={stroke}
+                                strokeWidth={strokeWidth}
+                                style={{ transition: "r 0.3s ease" }}
+                            />
+                        )}
+                        {showLabels && !renderLabelsInside && (
                             <text
                                 x={circleX + circleRadius + 10}
                                 y={y0 + 6}
