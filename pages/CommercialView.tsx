@@ -870,183 +870,196 @@ export const CommercialView: React.FC = () => {
 
 
                         {/* 1. QUANTITATIVE SUMMARY TABLE (REFORMED) */}
-                        {/* 1. QUANTITATIVE SUMMARY TABLE (Moved to Grid) */}
-
-
-                        {/* CHARTS ROW */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* BAR CHART - OUTCOMES distribution */}
-                            {/* 1. QUANTITATIVE SUMMARY TABLE (Moved Here) */}
-                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
-                                <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                                    <Activity size={20} className="text-blue-600" />
-                                    Resumo Quantitativo
-                                </h3>
-                                {/* Used h-full for harmony with Funnel */}
-                                <div className="flex-1 overflow-x-auto flex flex-col justify-center">
-                                    <table className="w-full text-sm text-left">
-                                        <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
-                                            <tr>
-                                                <th className="px-4 py-3 rounded-tl-lg">Categoria</th>
-                                                <th className="px-4 py-3 text-center">Qtd</th>
-                                                <th className="px-4 py-3 text-center">%</th>
-                                                <th className="px-4 py-3 text-right">Valor (R$)</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100 font-medium">
-                                            {/* IN PROGRESS */}
-                                            <tr className="hover:bg-purple-50/30 transition-colors">
-                                                <td className="px-4 py-3 text-purple-700 flex items-center gap-2">
-                                                    <Activity size={14} /> Em Andamento
-                                                </td>
-                                                <td className="px-4 py-3 text-center font-bold text-slate-700">
-                                                    {opportunities.filter(op => op.pipelineStage !== PipelineStage.RESULTADO).length}
-                                                </td>
-                                                <td className="px-4 py-3 text-center text-slate-500 text-xs">
-                                                    {dashboardStats.totalOpsCount > 0 ?
-                                                        (opportunities.filter(op => op.pipelineStage !== PipelineStage.RESULTADO).length / dashboardStats.totalOpsCount * 100).toFixed(0) + '%'
-                                                        : '0%'}
-                                                </td>
-                                                <td className="px-4 py-3 text-right font-bold text-purple-700">
-                                                    {parseFloat((dashboardStats.outcomes.inProgress / 1000).toFixed(0)).toLocaleString()}k
-                                                </td>
-                                            </tr>
-                                            {/* SUCCESS */}
-                                            <tr className="hover:bg-emerald-50/30 transition-colors">
-                                                <td className="px-4 py-3 text-emerald-700 flex items-center gap-2">
-                                                    <CheckCircle size={14} /> Sucesso
-                                                </td>
-                                                <td className="px-4 py-3 text-center font-bold text-slate-700">
-                                                    {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length}
-                                                </td>
-                                                <td className="px-4 py-3 text-center text-slate-500 text-xs">
-                                                    {dashboardStats.totalOpsCount > 0 ?
-                                                        (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length / dashboardStats.totalOpsCount * 100).toFixed(0) + '%'
-                                                        : '0%'}
-                                                </td>
-                                                <td className="px-4 py-3 text-right font-bold text-emerald-700">
-                                                    {parseFloat((dashboardStats.outcomes.success / 1000).toFixed(0)).toLocaleString()}k
-                                                </td>
-                                            </tr>
-                                            {/* FAILURE */}
-                                            <tr className="hover:bg-red-50/30 transition-colors">
-                                                <td className="px-4 py-3 text-red-700 flex items-center gap-2">
-                                                    <AlertTriangle size={14} /> Insucesso
-                                                </td>
-                                                <td className="px-4 py-3 text-center font-bold text-slate-700">
-                                                    {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length}
-                                                </td>
-                                                <td className="px-4 py-3 text-center text-slate-500 text-xs">
-                                                    {dashboardStats.totalOpsCount > 0 ?
-                                                        (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length / dashboardStats.totalOpsCount * 100).toFixed(0) + '%'
-                                                        : '0%'}
-                                                </td>
-                                                <td className="px-4 py-3 text-right font-bold text-red-700">
-                                                    {parseFloat((dashboardStats.outcomes.failure / 1000).toFixed(0)).toLocaleString()}k
-                                                </td>
-                                            </tr>
-                                            {/* STUDY */}
-                                            <tr className="hover:bg-blue-50/30 transition-colors">
-                                                <td className="px-4 py-3 text-blue-700 flex items-center gap-2">
-                                                    <Bot size={14} /> Em Estudo
-                                                </td>
-                                                <td className="px-4 py-3 text-center font-bold text-slate-700">
-                                                    {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length}
-                                                </td>
-                                                <td className="px-4 py-3 text-center text-slate-500 text-xs">
-                                                    {dashboardStats.totalOpsCount > 0 ?
-                                                        (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length / dashboardStats.totalOpsCount * 100).toFixed(0) + '%'
-                                                        : '0%'}
-                                                </td>
-                                                <td className="px-4 py-3 text-right font-bold text-blue-700">
-                                                    {parseFloat((dashboardStats.outcomes.study / 1000).toFixed(0)).toLocaleString()}k
-                                                </td>
-                                            </tr>
-                                            {/* WITHDRAWAL */}
-                                            <tr className="hover:bg-slate-50/50 transition-colors">
-                                                <td className="px-4 py-3 text-slate-600 flex items-center gap-2">
-                                                    <LogOut size={14} /> Desistência
-                                                </td>
-                                                <td className="px-4 py-3 text-center font-bold text-slate-700">
-                                                    {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length}
-                                                </td>
-                                                <td className="px-4 py-3 text-center text-slate-500 text-xs">
-                                                    {dashboardStats.totalOpsCount > 0 ?
-                                                        (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length / dashboardStats.totalOpsCount * 100).toFixed(0) + '%'
-                                                        : '0%'}
-                                                </td>
-                                                <td className="px-4 py-3 text-right font-bold text-slate-600">
-                                                    {parseFloat((dashboardStats.outcomes.withdrawal / 1000).toFixed(0)).toLocaleString()}k
-                                                </td>
-                                            </tr>
-                                            {/* TOTAL */}
-                                            <tr className="bg-slate-50 border-t-2 border-slate-100 font-bold">
-                                                <td className="px-4 py-3 text-slate-800">TOTAL</td>
-                                                <td className="px-4 py-3 text-center text-slate-800">{dashboardStats.totalOpsCount}</td>
-                                                <td className="px-4 py-3 text-center text-slate-800">100%</td>
-                                                <td className="px-4 py-3 text-right text-slate-800">{parseFloat((dashboardStats.totalPipelineValue / 1000).toFixed(0)).toLocaleString()}k</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
+                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                            <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                <Activity size={20} className="text-blue-600" />
+                                Resumo Quantitativo do Pipeline
+                            </h3>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
+                                        <tr>
+                                            <th className="px-6 py-3 rounded-tl-lg">Categoria</th>
+                                            <th className="px-6 py-3 text-center">Quantidade</th>
+                                            <th className="px-6 py-3 text-center">% Qtd</th>
+                                            <th className="px-6 py-3 text-right">Valor (R$)</th>
+                                            <th className="px-6 py-3 text-right rounded-tr-lg">% Valor</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 font-medium">
+                                        {/* IN PROGRESS */}
+                                        <tr className="hover:bg-purple-50/30 transition-colors group">
+                                            <td className="px-6 py-4 text-purple-700 flex items-center gap-2">
+                                                <div className="p-1.5 bg-purple-100 rounded text-purple-600 group-hover:bg-purple-200 transition-colors"><Activity size={14} /></div>
+                                                Em Andamento
+                                            </td>
+                                            <td className="px-6 py-4 text-center font-bold text-slate-700">
+                                                {opportunities.filter(op => op.pipelineStage !== PipelineStage.RESULTADO).length}
+                                            </td>
+                                            <td className="px-6 py-4 text-center text-slate-500 text-xs">
+                                                {dashboardStats.totalOpsCount > 0 ?
+                                                    (opportunities.filter(op => op.pipelineStage !== PipelineStage.RESULTADO).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
+                                                    : '0%'}
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-bold text-purple-700">
+                                                R$ {dashboardStats.outcomes.inProgress.toLocaleString()}
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-slate-500 text-xs">
+                                                {dashboardStats.totalPipelineValue > 0 ? (dashboardStats.outcomes.inProgress / dashboardStats.totalPipelineValue * 100).toFixed(1) + '%' : '0%'}
+                                            </td>
+                                        </tr>
+                                        {/* SUCCESS */}
+                                        <tr className="hover:bg-emerald-50/30 transition-colors group">
+                                            <td className="px-6 py-4 text-emerald-700 flex items-center gap-2">
+                                                <div className="p-1.5 bg-emerald-100 rounded text-emerald-600 group-hover:bg-emerald-200 transition-colors"><CheckCircle size={14} /></div>
+                                                Sucesso
+                                            </td>
+                                            <td className="px-6 py-4 text-center font-bold text-slate-700">
+                                                {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length}
+                                            </td>
+                                            <td className="px-6 py-4 text-center text-slate-500 text-xs">
+                                                {dashboardStats.totalOpsCount > 0 ?
+                                                    (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
+                                                    : '0%'}
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-bold text-emerald-700">
+                                                R$ {dashboardStats.outcomes.success.toLocaleString()}
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-slate-500 text-xs">
+                                                {dashboardStats.totalPipelineValue > 0 ? (dashboardStats.outcomes.success / dashboardStats.totalPipelineValue * 100).toFixed(1) + '%' : '0%'}
+                                            </td>
+                                        </tr>
+                                        {/* FAILURE */}
+                                        <tr className="hover:bg-red-50/30 transition-colors group">
+                                            <td className="px-6 py-4 text-red-700 flex items-center gap-2">
+                                                <div className="p-1.5 bg-red-100 rounded text-red-600 group-hover:bg-red-200 transition-colors"><AlertTriangle size={14} /></div>
+                                                Insucesso
+                                            </td>
+                                            <td className="px-6 py-4 text-center font-bold text-slate-700">
+                                                {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length}
+                                            </td>
+                                            <td className="px-6 py-4 text-center text-slate-500 text-xs">
+                                                {dashboardStats.totalOpsCount > 0 ?
+                                                    (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
+                                                    : '0%'}
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-bold text-red-700">
+                                                R$ {dashboardStats.outcomes.failure.toLocaleString()}
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-slate-500 text-xs">
+                                                {dashboardStats.totalPipelineValue > 0 ? (dashboardStats.outcomes.failure / dashboardStats.totalPipelineValue * 100).toFixed(1) + '%' : '0%'}
+                                            </td>
+                                        </tr>
+                                        {/* STUDY */}
+                                        <tr className="hover:bg-blue-50/30 transition-colors group">
+                                            <td className="px-6 py-4 text-blue-700 flex items-center gap-2">
+                                                <div className="p-1.5 bg-blue-100 rounded text-blue-600 group-hover:bg-blue-200 transition-colors"><Bot size={14} /></div>
+                                                Em Estudo
+                                            </td>
+                                            <td className="px-6 py-4 text-center font-bold text-slate-700">
+                                                {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length}
+                                            </td>
+                                            <td className="px-6 py-4 text-center text-slate-500 text-xs">
+                                                {dashboardStats.totalOpsCount > 0 ?
+                                                    (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
+                                                    : '0%'}
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-bold text-blue-700">
+                                                R$ {dashboardStats.outcomes.study.toLocaleString()}
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-slate-500 text-xs">
+                                                {dashboardStats.totalPipelineValue > 0 ? (dashboardStats.outcomes.study / dashboardStats.totalPipelineValue * 100).toFixed(1) + '%' : '0%'}
+                                            </td>
+                                        </tr>
+                                        {/* WITHDRAWAL */}
+                                        <tr className="hover:bg-slate-50/50 transition-colors group">
+                                            <td className="px-6 py-4 text-slate-600 flex items-center gap-2">
+                                                <div className="p-1.5 bg-slate-100 rounded text-slate-500 group-hover:bg-slate-200 transition-colors"><LogOut size={14} /></div>
+                                                Desistência
+                                            </td>
+                                            <td className="px-6 py-4 text-center font-bold text-slate-700">
+                                                {opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length}
+                                            </td>
+                                            <td className="px-6 py-4 text-center text-slate-500 text-xs">
+                                                {dashboardStats.totalOpsCount > 0 ?
+                                                    (opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length / dashboardStats.totalOpsCount * 100).toFixed(1) + '%'
+                                                    : '0%'}
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-bold text-slate-600">
+                                                R$ {dashboardStats.outcomes.withdrawal.toLocaleString()}
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-slate-500 text-xs">
+                                                {dashboardStats.totalPipelineValue > 0 ? (dashboardStats.outcomes.withdrawal / dashboardStats.totalPipelineValue * 100).toFixed(1) + '%' : '0%'}
+                                            </td>
+                                        </tr>
+                                        {/* TOTAL */}
+                                        <tr className="bg-slate-50 border-t-2 border-slate-100 font-bold">
+                                            <td className="px-6 py-4 text-slate-800">TOTAL</td>
+                                            <td className="px-6 py-4 text-center text-slate-800">{dashboardStats.totalOpsCount}</td>
+                                            <td className="px-6 py-4 text-center text-slate-800">100%</td>
+                                            <td className="px-6 py-4 text-right text-slate-800">R$ {dashboardStats.totalPipelineValue.toLocaleString()}</td>
+                                            <td className="px-6 py-4 text-right text-slate-800">100%</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
+                        </div>
 
-                            {/* TABLE - CLIENT ANALYSIS (REFORMED: All Clients + Segmented Values) */}
-                            {/* FUNNEL CHART - Sales Funnel (Substitutes Client Analysis) */}
-                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
-                                <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                                    <Filter size={20} className="text-slate-600" />
-                                    Funil de Vendas (Conversão)
-                                </h3>
-                                <div className="flex-1 min-h-[450px] relative flex justify-center items-center py-8">
-                                    <div className="relative w-full max-w-[600px]">
-                                        <img src={funnelBg} alt="Funil de Vendas" className="w-full h-auto drop-shadow-lg" />
+                        {/* FUNNEL CHART - Sales Funnel (Substitutes Client Analysis) - FULL WIDTH CONTAINER */}
+                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+                            <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                <Filter size={20} className="text-slate-600" />
+                                Funil de Vendas (Conversão)
+                            </h3>
+                            <div className="flex-1 min-h-[450px] relative flex justify-center items-center py-8">
+                                <div className="relative w-full max-w-[600px]">
+                                    <img src={funnelBg} alt="Funil de Vendas" className="w-full h-auto drop-shadow-lg" />
 
-                                        {/* LEVEL 1: TOP (TOTAL / VISITANTES) */}
-                                        <div className="absolute top-[18%] -right-4 w-[180px] bg-white/90 backdrop-blur-sm p-2 rounded-lg border-l-4 border-rose-500 shadow-sm text-sm">
-                                            <p className="font-bold text-slate-700">1. Total (Propostas)</p>
-                                            <div className="flex justify-between items-end mt-1">
-                                                <span className="text-xs text-slate-500">{dashboardStats.totalOpsCount} opps</span>
-                                                <span className="font-bold text-rose-600">R$ {(dashboardStats.totalPipelineValue / 1000).toFixed(0)}k</span>
-                                            </div>
-                                        </div>
-
-                                        {/* LEVEL 2: WITHDRAWAL (ORANGE) */}
-                                        <div className="absolute top-[35%] -right-4 w-[180px] bg-white/90 backdrop-blur-sm p-2 rounded-lg border-l-4 border-amber-500 shadow-sm text-sm">
-                                            <p className="font-bold text-slate-700">2. Desistência</p>
-                                            <div className="flex justify-between items-end mt-1">
-                                                <span className="text-xs text-slate-500">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length} opps</span>
-                                                <span className="font-bold text-amber-600">R$ {(dashboardStats.outcomes.withdrawal / 1000).toFixed(0)}k</span>
-                                            </div>
-                                        </div>
-
-                                        {/* LEVEL 3: STUDY */}
-                                        <div className="absolute top-[52%] -right-4 w-[180px] bg-white/90 backdrop-blur-sm p-2 rounded-lg border-l-4 border-emerald-500 shadow-sm text-sm">
-                                            <p className="font-bold text-slate-700">3. Em Estudo</p>
-                                            <div className="flex justify-between items-end mt-1">
-                                                <span className="text-xs text-slate-500">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length} opps</span>
-                                                <span className="font-bold text-emerald-600">R$ {(dashboardStats.outcomes.study / 1000).toFixed(0)}k</span>
-                                            </div>
-                                        </div>
-
-                                        {/* LEVEL 4: FAILURE (INDIGO/PURPLE) */}
-                                        <div className="absolute top-[69%] -right-4 w-[180px] bg-white/90 backdrop-blur-sm p-2 rounded-lg border-l-4 border-indigo-500 shadow-sm text-sm">
-                                            <p className="font-bold text-slate-700">4. Perdida (Insucesso)</p>
-                                            <div className="flex justify-between items-end mt-1">
-                                                <span className="text-xs text-slate-500">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length} opps</span>
-                                                <span className="font-bold text-indigo-600">R$ {(dashboardStats.outcomes.failure / 1000).toFixed(0)}k</span>
-                                            </div>
-                                        </div>
-
-                                        {/* LEVEL 5: SUCCESS (DARK PURPLE/BOTTOM) */}
-                                        <div className="absolute top-[86%] -right-4 w-[180px] bg-white/90 backdrop-blur-sm p-2 rounded-lg border-l-4 border-violet-700 shadow-sm text-sm">
-                                            <p className="font-bold text-slate-700">5. Venda (Sucesso)</p>
-                                            <div className="flex justify-between items-end mt-1">
-                                                <span className="text-xs text-slate-500">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length} opps</span>
-                                                <span className="font-bold text-violet-700">R$ {(dashboardStats.outcomes.success / 1000).toFixed(0)}k</span>
-                                            </div>
+                                    {/* LEVEL 1: TOP (TOTAL / VISITANTES) */}
+                                    <div className="absolute top-[18%] -right-4 w-[180px] bg-white/90 backdrop-blur-sm p-2 rounded-lg border-l-4 border-rose-500 shadow-sm text-sm">
+                                        <p className="font-bold text-slate-700">1. Total (Propostas)</p>
+                                        <div className="flex justify-between items-end mt-1">
+                                            <span className="text-xs text-slate-500">{dashboardStats.totalOpsCount} opps</span>
+                                            <span className="font-bold text-rose-600">R$ {(dashboardStats.totalPipelineValue / 1000).toFixed(0)}k</span>
                                         </div>
                                     </div>
+
+                                    {/* LEVEL 2: WITHDRAWAL (ORANGE) */}
+                                    <div className="absolute top-[35%] -right-4 w-[180px] bg-white/90 backdrop-blur-sm p-2 rounded-lg border-l-4 border-amber-500 shadow-sm text-sm">
+                                        <p className="font-bold text-slate-700">2. Desistência</p>
+                                        <div className="flex justify-between items-end mt-1">
+                                            <span className="text-xs text-slate-500">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.WITHDRAWAL).length} opps</span>
+                                            <span className="font-bold text-amber-600">R$ {(dashboardStats.outcomes.withdrawal / 1000).toFixed(0)}k</span>
+                                        </div>
+                                    </div>
+
+                                    {/* LEVEL 3: STUDY */}
+                                    <div className="absolute top-[52%] -right-4 w-[180px] bg-white/90 backdrop-blur-sm p-2 rounded-lg border-l-4 border-emerald-500 shadow-sm text-sm">
+                                        <p className="font-bold text-slate-700">3. Em Estudo</p>
+                                        <div className="flex justify-between items-end mt-1">
+                                            <span className="text-xs text-slate-500">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.STUDY).length} opps</span>
+                                            <span className="font-bold text-emerald-600">R$ {(dashboardStats.outcomes.study / 1000).toFixed(0)}k</span>
+                                        </div>
+                                    </div>
+
+                                    {/* LEVEL 4: FAILURE (INDIGO/PURPLE) */}
+                                    <div className="absolute top-[69%] -right-4 w-[180px] bg-white/90 backdrop-blur-sm p-2 rounded-lg border-l-4 border-indigo-500 shadow-sm text-sm">
+                                        <p className="font-bold text-slate-700">4. Perdida (Insucesso)</p>
+                                        <div className="flex justify-between items-end mt-1">
+                                            <span className="text-xs text-slate-500">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.FAILURE).length} opps</span>
+                                            <span className="font-bold text-indigo-600">R$ {(dashboardStats.outcomes.failure / 1000).toFixed(0)}k</span>
+                                        </div>
+                                    </div>
+
+                                    {/* LEVEL 5: SUCCESS (DARK PURPLE/BOTTOM) */}
+                                    <div className="absolute top-[86%] -right-4 w-[180px] bg-white/90 backdrop-blur-sm p-2 rounded-lg border-l-4 border-violet-700 shadow-sm text-sm">
+                                        <p className="font-bold text-slate-700">5. Venda (Sucesso)</p>
+                                        <div className="flex justify-between items-end mt-1">
+                                            <span className="text-xs text-slate-500">{opportunities.filter(op => op.pipelineStage === PipelineStage.RESULTADO && op.result === TaskOutcome.SUCCESS).length} opps</span>
+                                            <span className="font-bold text-violet-700">R$ {(dashboardStats.outcomes.success / 1000).toFixed(0)}k</span>
+                                        </div>
+                                    </div>
+
                                 </div>
                             </div>
                         </div>
@@ -1285,81 +1298,88 @@ export const CommercialView: React.FC = () => {
 
 
                     </div>
-                )}
+                )
+                }
 
                 {/* STRATEGIC VIEW (PIPELINE) */}
-                {view === 'STRATEGIC' && (
-                    <div
-                        className="h-full flex flex-col gap-6"
-                    >
-                        {/* NEW PIPELINE BOARD - Task 4: Fixed Height */}
-                        <div className="h-[calc(100vh-200px)] bg-white rounded-xl border border-slate-200 shadow-sm p-4 overflow-hidden flex flex-col">
-                            <h3 className="font-bold text-slate-700 flex items-center gap-2 mb-4 text-xl flex-shrink-0">
-                                <Activity size={24} className="text-purple-600" /> Pipeline de Vendas
-                            </h3>
-                            <div className="flex-1 overflow-hidden">
-                                <PipelineBoard
-                                    bids={(opportunities || [])} // Corrected prop name from 'opportunities' to 'bids'
-                                    refreshBids={refresh}
-                                    onEditBid={(op) => { setEditingOpportunity(op); setIsOpportunityModalOpen(true); }}
-                                    onDeleteBid={handleDeleteOpportunity}
-                                    onTaskCreated={(newTask) => {
-                                        setTasks(prev => [...prev, newTask]);
-                                        toast.success("Ação criada a partir do pipeline!");
-                                    }}
-                                />
+                {
+                    view === 'STRATEGIC' && (
+                        <div
+                            className="h-full flex flex-col gap-6"
+                        >
+                            {/* NEW PIPELINE BOARD - Task 4: Fixed Height */}
+                            <div className="h-[calc(100vh-200px)] bg-white rounded-xl border border-slate-200 shadow-sm p-4 overflow-hidden flex flex-col">
+                                <h3 className="font-bold text-slate-700 flex items-center gap-2 mb-4 text-xl flex-shrink-0">
+                                    <Activity size={24} className="text-purple-600" /> Pipeline de Vendas
+                                </h3>
+                                <div className="flex-1 overflow-hidden">
+                                    <PipelineBoard
+                                        bids={(opportunities || [])} // Corrected prop name from 'opportunities' to 'bids'
+                                        refreshBids={refresh}
+                                        onEditBid={(op) => { setEditingOpportunity(op); setIsOpportunityModalOpen(true); }}
+                                        onDeleteBid={handleDeleteOpportunity}
+                                        onTaskCreated={(newTask) => {
+                                            setTasks(prev => [...prev, newTask]);
+                                            toast.success("Ação criada a partir do pipeline!");
+                                        }}
+                                    />
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )
+                }
 
 
                 {/* SETTINGS VIEW */}
-                {view === 'SETTINGS' && (
-                    <div
-                        className="max-w-4xl mx-auto space-y-8"
-                    >
-                        <EscalationSettings chain={helpChain} onSave={setHelpChain} />
+                {
+                    view === 'SETTINGS' && (
+                        <div
+                            className="max-w-4xl mx-auto space-y-8"
+                        >
+                            <EscalationSettings chain={helpChain} onSave={setHelpChain} />
 
-                        {/* MIGRATION TOOL (Admin) */}
-                        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-                            <h3 className="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
-                                <AlertTriangle className="text-yellow-500" /> Ferramentas de Migração
-                            </h3>
-                            <p className="text-sm text-slate-500 mb-4">
-                                Use esta ferramenta para migrar dados legados ("Opportunities") para a nova estrutura unificada ("Bids").
-                                A operação é segura e não duplica dados já migrados.
-                            </p>
-                            <button
-                                onClick={async () => {
-                                    if (confirm("Deseja iniciar a migração de dados? Isso pode levar alguns instantes.")) {
-                                        try {
-                                            const result = await migrateOpportunitiesToBidsOnce();
-                                            alert(`Migração Concluída!\nMigrados: ${result.migratedCount}\nPulados: ${result.skippedCount}\nErros: ${result.errorsCount}`);
-                                            refresh(); // Refresh context
-                                        } catch (e) {
-                                            alert("Erro na migração: " + e);
+                            {/* MIGRATION TOOL (Admin) */}
+                            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+                                <h3 className="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
+                                    <AlertTriangle className="text-yellow-500" /> Ferramentas de Migração
+                                </h3>
+                                <p className="text-sm text-slate-500 mb-4">
+                                    Use esta ferramenta para migrar dados legados ("Opportunities") para a nova estrutura unificada ("Bids").
+                                    A operação é segura e não duplica dados já migrados.
+                                </p>
+                                <button
+                                    onClick={async () => {
+                                        if (confirm("Deseja iniciar a migração de dados? Isso pode levar alguns instantes.")) {
+                                            try {
+                                                const result = await migrateOpportunitiesToBidsOnce();
+                                                alert(`Migração Concluída!\nMigrados: ${result.migratedCount}\nPulados: ${result.skippedCount}\nErros: ${result.errorsCount}`);
+                                                refresh(); // Refresh context
+                                            } catch (e) {
+                                                alert("Erro na migração: " + e);
+                                            }
                                         }
-                                    }
-                                }}
-                                className="px-4 py-2 bg-slate-800 text-white font-bold rounded-lg hover:bg-slate-900 transition-colors"
-                            >
-                                Executar Migração (Opportunities -&gt; Bids)
-                            </button>
+                                    }}
+                                    className="px-4 py-2 bg-slate-800 text-white font-bold rounded-lg hover:bg-slate-900 transition-colors"
+                                >
+                                    Executar Migração (Opportunities -&gt; Bids)
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )
+                }
             </div >
 
             {/* MODAL OVERLAYS */}
-            {isOpportunityModalOpen && (
-                <OpportunityForm
-                    initialData={editingOpportunity}
-                    linkedTasks={(tasks || []).filter(t => t.opportunityId === editingOpportunity?.id)}
-                    onClose={() => { setIsOpportunityModalOpen(false); setEditingOpportunity(undefined); }}
-                    onSuccess={refresh}
-                />
-            )}
+            {
+                isOpportunityModalOpen && (
+                    <OpportunityForm
+                        initialData={editingOpportunity}
+                        linkedTasks={(tasks || []).filter(t => t.opportunityId === editingOpportunity?.id)}
+                        onClose={() => { setIsOpportunityModalOpen(false); setEditingOpportunity(undefined); }}
+                        onSuccess={refresh}
+                    />
+                )
+            }
             <TaskForm
                 isOpen={isTaskModalOpen}
                 initialData={editingTask || (
