@@ -224,31 +224,86 @@ export const TeamDetailsModal: React.FC<Props> = ({ isOpen, onClose, team, onDel
                                         <h3 className="font-bold text-slate-700 flex items-center gap-2">
                                             <Truck size={18} className="text-slate-400" /> Equipamentos
                                         </h3>
+                                        <span className="bg-slate-200 text-slate-600 px-2 py-1 rounded-full text-xs font-bold">
+                                            {selectedRDO.equipamentos?.length || 0}
+                                        </span>
                                     </div>
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-sm text-left">
                                             <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
                                                 <tr>
-                                                    <th className="px-6 py-3">Equipamento</th>
+                                                    <th className="px-6 py-3">Código</th>
+                                                    <th className="px-6 py-3">Descrição</th>
                                                     <th className="px-6 py-3 text-center">Qtd</th>
                                                     <th className="px-6 py-3 text-right">Horário/Tempo</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
                                                 {selectedRDO.equipamentos?.map((eq: any, idx) => {
-                                                    // Handle string vs object format (though it should be object after import)
-                                                    const name = typeof eq === 'string' ? eq : (eq.nome || eq.descricao);
-                                                    const qtd = typeof eq === 'string' ? 1 : eq.quantidade;
-                                                    const time = typeof eq === 'string' ? '' : (eq.tempo || eq.horario);
+                                                    // Handle string vs object format safely
+                                                    const isString = typeof eq === 'string';
+                                                    const codigo = isString ? '-' : eq.nome;
+                                                    const descricao = isString ? eq : eq.descricao;
+                                                    const qtd = isString ? 1 : eq.quantidade;
+                                                    const horario = isString ? '' : eq.horario;
+                                                    const tempo = isString ? '' : eq.tempo;
 
                                                     return (
                                                         <tr key={idx} className="hover:bg-slate-50">
-                                                            <td className="px-6 py-3 text-slate-700">{name}</td>
+                                                            <td className="px-6 py-3 font-mono text-xs text-blue-600 font-bold">{codigo}</td>
+                                                            <td className="px-6 py-3 text-slate-700">{descricao}</td>
                                                             <td className="px-6 py-3 text-center text-slate-600">{qtd}</td>
-                                                            <td className="px-6 py-3 text-right text-slate-600 font-mono">{time}</td>
+                                                            <td className="px-6 py-3 text-right text-slate-600 font-mono">
+                                                                <div className="flex flex-col items-end">
+                                                                    <span>{horario}</span>
+                                                                    {tempo && <span className="text-xs font-bold">({tempo})</span>}
+                                                                </div>
+                                                            </td>
                                                         </tr>
                                                     );
                                                 })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                {/* 5. ACTIVITIES */}
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                                    <div className="px-6 py-4 border-b bg-slate-50 flex justify-between items-center">
+                                        <h3 className="font-bold text-slate-700 flex items-center gap-2">
+                                            <FileText size={18} className="text-slate-400" /> Atividades Executadas
+                                        </h3>
+                                        <span className="bg-slate-200 text-slate-600 px-2 py-1 rounded-full text-xs font-bold">
+                                            {selectedRDO.atividades?.length || 0}
+                                        </span>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm text-left">
+                                            <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
+                                                <tr>
+                                                    <th className="px-6 py-3 w-2/3">Descrição</th>
+                                                    <th className="px-6 py-3 text-center">Unid.</th>
+                                                    <th className="px-6 py-3 text-center">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {selectedRDO.atividades?.map((act, idx) => (
+                                                    <tr key={idx} className="hover:bg-slate-50">
+                                                        <td className="px-6 py-3 text-slate-700">{act.descricao}</td>
+                                                        <td className="px-6 py-3 text-center text-slate-500 text-xs">{act.unidade}</td>
+                                                        <td className="px-6 py-3 text-center">
+                                                            <span className="px-2 py-1 rounded-full bg-green-100 text-green-700 text-[10px] font-bold uppercase border border-green-200">
+                                                                {act.status || 'EXEC'}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                )) || (
+                                                        <tr>
+                                                            <td colSpan={3} className="px-6 py-8 text-center text-slate-400 italic">
+                                                                Nenhuma atividade registrada.
+                                                            </td>
+                                                        </tr>
+                                                    )}
                                             </tbody>
                                         </table>
                                     </div>
