@@ -209,6 +209,20 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
 
 
 
+                                    {/* HEADER: FILENAME & INFO (Universal) */}
+                                    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                                        <div className="flex flex-col gap-2">
+                                            <label className="block text-xs font-bold text-slate-400 uppercase">Arquivo Original (Referência)</label>
+                                            <input
+                                                type="text"
+                                                className="w-full text-sm font-semibold text-slate-700 border-b border-dashed border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent"
+                                                value={formData.filename || ''}
+                                                onChange={(e) => setFormData({ ...formData, filename: e.target.value })}
+                                                placeholder="Nome do arquivo..."
+                                            />
+                                        </div>
+                                    </div>
+
                                     {/* AUDIT MATRIX EDITOR (BM Only) */}
                                     {formData.itens && (
                                         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
