@@ -96,6 +96,46 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
         setFormData({ ...formData, itens: newItems });
     };
 
+    // Helper to parse "Code Description Qty Range (Time)"
+    const parseEquipmentString = (str: string) => {
+        if (!str) return { nome: '', descricao: '', quantidade: 0, horario: '', tempo: '' };
+
+        // Try regex match
+        // "CB-053 Caminhão Casinha 1 07:00 - 17:00 (10h)"
+        // Pattern: ^(\S+) (.*) (\d+) (\d{2}:\d{2}\s*-\s*\d{2}:\d{2})\s*(\(.*\))$
+        const match = str.match(/^(\S+)\s+(.+)\s+(\d+)\s+(\d{2}:\d{2}\s*-\s*\d{2}:\d{2})\s*(\(.*\))$/);
+
+        if (match) {
+            return {
+                nome: match[1],
+                descricao: match[2],
+                quantidade: parseInt(match[3]),
+                horario: match[4],
+                tempo: match[5]
+            };
+        }
+
+        // Fallback if loose format
+        return { nome: str, descricao: '', quantidade: 1, horario: '', tempo: '' };
+    };
+
+    const updateEquipment = (index: number, field: string, value: string) => {
+        const currentList = [...(formData.equipamentos || [])];
+        let item = currentList[index];
+
+        // If it's a string, we first parse it fully
+        if (typeof item === 'string') {
+            item = parseEquipmentString(item);
+        }
+
+        // Update field
+        item = { ...item, [field]: value };
+
+        // Update list
+        currentList[index] = item;
+        setFormData({ ...formData, equipamentos: currentList });
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -167,37 +207,7 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
 
                                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
 
-                                    {/* HEADER CARD */}
-                                    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                                        <div className="grid grid-cols-4 gap-6">
-                                            <div>
-                                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Tipo Identificado</label>
-                                                <div className="font-bold text-blue-600">{data?.type || (formData.itens ? 'BM' : 'RDO?')}</div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Período</label>
-                                                <input
-                                                    type="text"
-                                                    className="w-full text-sm font-semibold text-slate-700 border-b border-dashed border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent"
-                                                    value={formData.periodo || ''}
-                                                    onChange={(e) => setFormData({ ...formData, periodo: e.target.value })}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Valor Medição (R$)</label>
-                                                <input
-                                                    type="number"
-                                                    className="w-full text-lg font-bold text-green-600 border-b border-dashed border-slate-300 focus:border-green-500 focus:outline-none bg-transparent"
-                                                    value={formData.valor_medicao_cabecalho || 0}
-                                                    onChange={(e) => setFormData({ ...formData, valor_medicao_cabecalho: parseFloat(e.target.value) })}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Contrato</label>
-                                                <div className="font-bold text-slate-400">{formData.contrato}</div>
-                                            </div>
-                                        </div>
-                                    </div>
+
 
                                     {/* AUDIT MATRIX EDITOR (BM Only) */}
                                     {formData.itens && (
@@ -284,45 +294,109 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
                                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                                                     <div>
                                                         <label className="block text-[10px] uppercase text-slate-400 font-bold">RDO Nº</label>
-                                                        <div className="font-bold text-slate-700">{formData.relatorio?.numero || '-'}</div>
+                                                        <input
+                                                            type="text"
+                                                            className="w-full text-sm font-bold text-slate-700 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent"
+                                                            value={formData.relatorio?.numero || ''}
+                                                            onChange={(e) => setFormData({ ...formData, relatorio: { ...formData.relatorio, numero: e.target.value } })}
+                                                        />
                                                     </div>
                                                     <div>
                                                         <label className="block text-[10px] uppercase text-slate-400 font-bold">Dia da Semana</label>
-                                                        <div className="font-bold text-slate-700">{formData.relatorio?.dia_semana || '-'}</div>
+                                                        <input
+                                                            type="text"
+                                                            className="w-full text-sm font-bold text-slate-700 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent"
+                                                            value={formData.relatorio?.dia_semana || ''}
+                                                            onChange={(e) => setFormData({ ...formData, relatorio: { ...formData.relatorio, dia_semana: e.target.value } })}
+                                                        />
                                                     </div>
-                                                    <div>
+                                                    <div className="lg:col-span-2">
                                                         <label className="block text-[10px] uppercase text-slate-400 font-bold">Obra (Local)</label>
-                                                        <div className="font-bold text-slate-700 truncate" title={formData.relatorio?.obra}>{formData.relatorio?.obra || '-'}</div>
-                                                        {formData.relatorio?.local && <div className="text-[10px] text-slate-500 truncate" title={formData.relatorio.local}>{formData.relatorio.local}</div>}
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-[10px] uppercase text-slate-400 font-bold">Horário</label>
-                                                        <div className="font-mono text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded inline-block">
-                                                            {formData.horario_trabalho?.entrada_saida || '-'}
-                                                            <span className="text-slate-400 mx-1">|</span>
-                                                            {formData.horario_trabalho?.horas_trabalhadas || '-'}h
+                                                        <div className="flex gap-2">
+                                                            <input
+                                                                type="text"
+                                                                placeholder="Obra"
+                                                                className="w-full text-sm font-bold text-slate-700 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent truncate"
+                                                                value={formData.relatorio?.obra || ''}
+                                                                onChange={(e) => setFormData({ ...formData, relatorio: { ...formData.relatorio, obra: e.target.value } })}
+                                                            />
+                                                            {formData.relatorio?.local && (
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="Local"
+                                                                    className="w-1/3 text-xs text-slate-500 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent truncate"
+                                                                    value={formData.relatorio?.local || ''}
+                                                                    onChange={(e) => setFormData({ ...formData, relatorio: { ...formData.relatorio, local: e.target.value } })}
+                                                                />
+                                                            )}
                                                         </div>
                                                     </div>
 
                                                     {/* Row 2: Contract Details */}
-                                                    <div>
+                                                    <div className="lg:col-span-2">
                                                         <label className="block text-[10px] uppercase text-slate-400 font-bold">Contratante</label>
-                                                        <div className="font-bold text-slate-700 truncate" title={formData.relatorio?.contratante}>{formData.relatorio?.contratante || '-'}</div>
+                                                        <input
+                                                            type="text"
+                                                            className="w-full text-sm font-bold text-slate-700 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent"
+                                                            value={formData.relatorio?.contratante || ''}
+                                                            onChange={(e) => setFormData({ ...formData, relatorio: { ...formData.relatorio, contratante: e.target.value } })}
+                                                        />
                                                     </div>
                                                     <div>
                                                         <label className="block text-[10px] uppercase text-slate-400 font-bold">Responsável</label>
-                                                        <div className="font-bold text-slate-700 truncate" title={formData.relatorio?.responsavel}>{formData.relatorio?.responsavel || '-'}</div>
+                                                        <input
+                                                            type="text"
+                                                            className="w-full text-sm font-bold text-slate-700 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent"
+                                                            value={formData.relatorio?.responsavel || ''}
+                                                            onChange={(e) => setFormData({ ...formData, relatorio: { ...formData.relatorio, responsavel: e.target.value } })}
+                                                        />
                                                     </div>
                                                     <div>
+                                                        <label className="block text-[10px] uppercase text-slate-400 font-bold">Horário</label>
+                                                        <div className="flex gap-1 items-center">
+                                                            <input
+                                                                type="text"
+                                                                className="w-20 font-mono text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded border-none focus:ring-1 focus:ring-blue-500"
+                                                                value={formData.horario_trabalho?.entrada_saida || ''}
+                                                                onChange={(e) => setFormData({ ...formData, horario_trabalho: { ...formData.horario_trabalho, entrada_saida: e.target.value } })}
+                                                            />
+                                                            <span className="text-slate-400">|</span>
+                                                            <input
+                                                                type="text"
+                                                                className="w-12 font-mono text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded border-none focus:ring-1 focus:ring-blue-500 text-center"
+                                                                value={formData.horario_trabalho?.horas_trabalhadas || ''}
+                                                                onChange={(e) => setFormData({ ...formData, horario_trabalho: { ...formData.horario_trabalho, horas_trabalhadas: e.target.value } })}
+                                                            />
+                                                            <span className="text-xs text-slate-400">h</span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Row 3: Deadlines */}
+                                                    <div>
                                                         <label className="block text-[10px] uppercase text-slate-400 font-bold">Prazo Contratual</label>
-                                                        <div className="font-bold text-slate-700">{formData.relatorio?.prazo_contratual || '-'}</div>
+                                                        <input
+                                                            type="text"
+                                                            className="w-full text-sm font-bold text-slate-700 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent"
+                                                            value={formData.relatorio?.prazo_contratual || ''}
+                                                            onChange={(e) => setFormData({ ...formData, relatorio: { ...formData.relatorio, prazo_contratual: e.target.value } })}
+                                                        />
                                                     </div>
                                                     <div>
                                                         <label className="block text-[10px] uppercase text-slate-400 font-bold">A Vencer / Decorrido</label>
-                                                        <div className="text-xs font-bold text-slate-700">
-                                                            <span className="text-orange-600">{formData.relatorio?.prazo_a_vencer || '-'}</span>
-                                                            <span className="text-slate-300 mx-1">/</span>
-                                                            <span className="text-slate-500">{formData.relatorio?.prazo_decorrido || '-'}</span>
+                                                        <div className="flex items-center gap-1">
+                                                            <input
+                                                                type="text"
+                                                                className="w-full text-xs font-bold text-orange-600 border-b border-transparent hover:border-orange-300 focus:border-orange-500 focus:outline-none bg-transparent"
+                                                                value={formData.relatorio?.prazo_a_vencer || ''}
+                                                                onChange={(e) => setFormData({ ...formData, relatorio: { ...formData.relatorio, prazo_a_vencer: e.target.value } })}
+                                                            />
+                                                            <span className="text-slate-300">/</span>
+                                                            <input
+                                                                type="text"
+                                                                className="w-full text-xs font-medium text-slate-500 border-b border-transparent hover:border-slate-300 focus:border-slate-500 focus:outline-none bg-transparent"
+                                                                value={formData.relatorio?.prazo_decorrido || ''}
+                                                                onChange={(e) => setFormData({ ...formData, relatorio: { ...formData.relatorio, prazo_decorrido: e.target.value } })}
+                                                            />
                                                         </div>
                                                     </div>
                                                 </div>
@@ -393,18 +467,72 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
                                             </div>
 
                                             {/* 4. Equipment */}
-                                            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                                                <h4 className="text-xs font-bold text-slate-400 uppercase mb-3 border-b pb-2">Equipamentos</h4>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {formData.equipamentos?.length > 0 ? (
-                                                        formData.equipamentos.map((eq: string, idx: number) => (
-                                                            <span key={idx} className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs border border-slate-200 font-medium">
-                                                                {eq}
-                                                            </span>
-                                                        ))
-                                                    ) : (
-                                                        <span className="text-xs text-slate-400 italic">Nenhum equipamento listado.</span>
-                                                    )}
+                                            {/* 4. Equipment */}
+                                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                                                <div className="p-3 bg-slate-50 border-b flex justify-between items-center">
+                                                    <h3 className="font-bold text-slate-700 text-sm">Equipamentos</h3>
+                                                </div>
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full text-sm text-left">
+                                                        <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b">
+                                                            <tr>
+                                                                <th className="px-4 py-2">Código</th>
+                                                                <th className="px-4 py-2">Descrição</th>
+                                                                <th className="px-4 py-2 text-center">Qtd</th>
+                                                                <th className="px-4 py-2 text-right">Horário/Tempo</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-slate-100">
+                                                            {formData.equipamentos?.map((eq: any, idx: number) => {
+                                                                // Parse on fly if string, or use object
+                                                                let item = typeof eq === 'string' ? parseEquipmentString(eq) : eq;
+
+                                                                return (
+                                                                    <tr key={idx} className="hover:bg-slate-50">
+                                                                        <td className="px-4 py-2 font-mono text-xs text-blue-600">
+                                                                            <input
+                                                                                className="bg-transparent w-full focus:outline-none"
+                                                                                value={item.nome || ''}
+                                                                                onChange={(e) => updateEquipment(idx, 'nome', e.target.value)}
+                                                                            />
+                                                                        </td>
+                                                                        <td className="px-4 py-2">
+                                                                            <input
+                                                                                className="bg-transparent w-full focus:outline-none"
+                                                                                value={item.descricao || ''}
+                                                                                onChange={(e) => updateEquipment(idx, 'descricao', e.target.value)}
+                                                                            />
+                                                                        </td>
+                                                                        <td className="px-4 py-2 text-center">
+                                                                            <input
+                                                                                className="bg-transparent w-12 text-center focus:outline-none"
+                                                                                value={item.quantidade || ''}
+                                                                                onChange={(e) => updateEquipment(idx, 'quantidade', e.target.value)}
+                                                                            />
+                                                                        </td>
+                                                                        <td className="px-4 py-2 text-right text-xs text-slate-500">
+                                                                            <div className="flex flex-col items-end gap-1">
+                                                                                <input
+                                                                                    className="bg-transparent text-right focus:outline-none w-full"
+                                                                                    value={item.horario || ''}
+                                                                                    onChange={(e) => updateEquipment(idx, 'horario', e.target.value)}
+                                                                                    placeholder="00:00 - 00:00"
+                                                                                />
+                                                                                <input
+                                                                                    className="bg-transparent text-right focus:outline-none font-bold text-slate-600 w-full"
+                                                                                    value={item.tempo || ''}
+                                                                                    onChange={(e) => updateEquipment(idx, 'tempo', e.target.value)}
+                                                                                    placeholder="(0h)"
+                                                                                />
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            }) || (
+                                                                    <tr><td colSpan={4} className="p-4 text-center text-slate-400 italic">Nenhum equipamento registrado.</td></tr>
+                                                                )}
+                                                        </tbody>
+                                                    </table>
                                                 </div>
                                             </div>
 

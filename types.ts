@@ -83,6 +83,14 @@ export interface RDOAtividade {
   status: string;
 }
 
+export interface RDOEquipamento {
+  nome: string;
+  descricao: string;
+  quantidade: number;
+  horario: string;
+  tempo: string;
+}
+
 export interface ExtractedRDO {
   filename: string;
   relatorio: {
@@ -107,7 +115,7 @@ export interface ExtractedRDO {
     tarde: RDOClimaPeriodo;
   };
   mao_de_obra: RDOMaoDeObra[];
-  equipamentos: string[];
+  equipamentos: (string | RDOEquipamento)[];
   atividades: RDOAtividade[];
   ocorrencias: string[];
   comentarios: string[];
