@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { Upload, FileText, BarChart3, Calculator, Building, Calendar, DollarSign, ArrowRight } from 'lucide-react';
 import { ExtractedBM } from '../types';
+import { DocumentImportModal } from '../components/DocumentImportModal';
+import { toast } from 'sonner';
 
 export const ContractsView: React.FC = () => {
     const [importedData, setImportedData] = useState<ExtractedBM | null>(null);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
     const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -22,6 +25,19 @@ export const ContractsView: React.FC = () => {
         reader.readAsText(file);
     };
 
+    const handleImportSuccess = (data: any) => {
+        console.log("Imported Data:", data);
+        if (data.type === 'RDO' || data.documentType === 'RDO' || data.relatorio) { // Robust check
+            toast.success("RDO Visualizado com Sucesso!", {
+                description: `Obra: ${data.relatorio?.obra || 'N/A'} - Data: ${data.relatorio?.data || 'N/A'}`
+            });
+            // We could also setImportedData(data) if we wanted to show it in the main view, 
+            // but the main view is designed for BM currently. 
+            // The Modal already showed the "Projected Data".
+        }
+        setIsImportModalOpen(false);
+    };
+
     const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const formatPercent = (val: number) => `${(val * 100).toFixed(2)}%`;
 
@@ -35,16 +51,24 @@ export const ContractsView: React.FC = () => {
                         Módulo de Contratos
                     </h1>
                     <p className="text-slate-500 text-sm mt-1">
-                        Visualização de Boletins de Medição (BM) via JSON
+                        Visualização de Boletins e RDOs
                     </p>
                 </div>
 
-                {/* UPLOAD AREA */}
-                {!importedData && (
-                    <div className="flex items-center gap-3">
+                {/* HEADER ACTIONS */}
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setIsImportModalOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium transition-colors shadow-sm"
+                    >
+                        <FileText size={18} />
+                        Importar RDO
+                    </button>
+
+                    {!importedData && (
                         <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer font-medium transition-colors shadow-sm active:translate-y-px">
                             <Upload size={18} />
-                            Carregar JSON
+                            Carregar BM (JSON)
                             <input
                                 type="file"
                                 accept=".json"
@@ -52,8 +76,8 @@ export const ContractsView: React.FC = () => {
                                 className="hidden"
                             />
                         </label>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
 
             {/* CONTENT AREA */}
@@ -183,9 +207,17 @@ export const ContractsView: React.FC = () => {
                         </div>
                         <h2 className="text-xl font-bold text-slate-600 mb-2">Nenhum Contrato Carregado</h2>
                         <p className="text-slate-400 max-w-sm text-center mb-8">
-                            Faça o upload de um arquivo JSON extraído dos sistemas de gestão para visualizar o Boletim de Medição.
+                            Faça o upload de um BM (JSON) para visualizar o contrato ou teste a importação de RDO.
                         </p>
                         <div className="flex gap-4">
+                            <button
+                                onClick={() => setIsImportModalOpen(true)}
+                                className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 cursor-pointer font-bold shadow-sm transition-all flex items-center gap-2"
+                            >
+                                <FileText size={18} />
+                                Testar Importação RDO
+                            </button>
+
                             <label className="px-6 py-3 bg-white border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 hover:border-slate-400 cursor-pointer font-bold shadow-sm transition-all flex items-center gap-2">
                                 <Upload size={18} />
                                 Selecionar Arquivo JSON
@@ -200,6 +232,12 @@ export const ContractsView: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            <DocumentImportModal
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
+                onImport={handleImportSuccess}
+            />
         </div>
     );
 };
