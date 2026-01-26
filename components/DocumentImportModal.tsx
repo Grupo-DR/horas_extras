@@ -280,12 +280,175 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
 
                                     {/* RDO SECTIONS (Dynamic) */}
                                     {data?.type === 'RDO' && (
-                                        <div className="space-y-4">
-                                            {/* Similar logic for RDO tables if needed, for now just JSON on left covers it, 
-                                                but we can add specific editable tables for 'mao_de_obra' etc later */}
-                                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 text-blue-800 text-sm">
-                                                Para RDOs, verifique os dados no JSON à esquerda. A edição tabular completa de RDO estará disponível em breve.
+                                        <div className="space-y-6">
+
+                                            {/* 1. Header Info Override (Since the generic header might miss deep RDO fields) */}
+                                            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                                                <h4 className="text-xs font-bold text-slate-400 uppercase mb-3 border-b pb-2">Detalhes do Relatório</h4>
+                                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                                    <div>
+                                                        <label className="block text-[10px] uppercase text-slate-400 font-bold">RDO Nº</label>
+                                                        <div className="font-bold text-slate-700">{formData.relatorio?.numero || '-'}</div>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[10px] uppercase text-slate-400 font-bold">Dia da Semana</label>
+                                                        <div className="font-bold text-slate-700">{formData.relatorio?.dia_semana || '-'}</div>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[10px] uppercase text-slate-400 font-bold">Obra</label>
+                                                        <div className="font-bold text-slate-700 truncate" title={formData.relatorio?.obra}>{formData.relatorio?.obra || '-'}</div>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[10px] uppercase text-slate-400 font-bold">Horário</label>
+                                                        <div className="font-mono text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded inline-block">
+                                                            {formData.horario_trabalho?.entrada_saida || '-'}
+                                                            <span className="text-slate-400 mx-1">|</span>
+                                                            {formData.horario_trabalho?.horas_trabalhadas || '-'}h
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
+
+                                            {/* 2. Weather */}
+                                            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                                                <h4 className="text-xs font-bold text-slate-400 uppercase mb-3 border-b pb-2 flex items-center gap-2">
+                                                    <span className="p-1 bg-sky-100 text-sky-600 rounded"><Database size={12} /></span>
+                                                    Condições Climáticas
+                                                </h4>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="bg-sky-50 p-3 rounded-lg border border-sky-100">
+                                                        <div className="text-xs font-bold text-sky-700 uppercase mb-1">Manhã</div>
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-sm font-medium text-slate-700">{formData.clima?.manha?.tempo || '-'}</span>
+                                                            <span className="text-xs bg-white px-2 py-0.5 rounded text-slate-500 border">{formData.clima?.manha?.condicao || '-'}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="bg-orange-50 p-3 rounded-lg border border-orange-100">
+                                                        <div className="text-xs font-bold text-orange-700 uppercase mb-1">Tarde</div>
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-sm font-medium text-slate-700">{formData.clima?.tarde?.tempo || '-'}</span>
+                                                            <span className="text-xs bg-white px-2 py-0.5 rounded text-slate-500 border">{formData.clima?.tarde?.condicao || '-'}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* 3. Manpower (Labor) */}
+                                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                                                <div
+                                                    className="p-3 bg-slate-50 border-b flex justify-between items-center cursor-pointer hover:bg-slate-100 transition-colors"
+                                                    onClick={() => setExpandedItems(!expandedItems)}
+                                                >
+                                                    <h3 className="font-bold text-slate-700 text-sm flex items-center gap-2">
+                                                        <ChevronDown size={16} className={`transform transition-transform ${expandedItems ? '' : '-rotate-90'}`} />
+                                                        Mão de Obra
+                                                        <span className="text-xs font-normal bg-slate-200 px-2 py-0.5 rounded text-slate-600">
+                                                            {formData.mao_de_obra?.length || 0}
+                                                        </span>
+                                                    </h3>
+                                                </div>
+                                                {expandedItems && (
+                                                    <div className="overflow-x-auto max-h-60 overflow-y-auto custom-scrollbar">
+                                                        <table className="w-full text-sm text-left">
+                                                            <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b sticky top-0">
+                                                                <tr>
+                                                                    <th className="px-4 py-2">Colaborador</th>
+                                                                    <th className="px-4 py-2">Função</th>
+                                                                    <th className="px-4 py-2 text-right">Horas</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-slate-100">
+                                                                {formData.mao_de_obra?.map((mo: any, idx: number) => (
+                                                                    <tr key={idx} className="hover:bg-slate-50">
+                                                                        <td className="px-4 py-2 font-medium text-slate-700">{mo.nome}</td>
+                                                                        <td className="px-4 py-2 text-xs text-slate-500">{mo.funcao}</td>
+                                                                        <td className="px-4 py-2 text-right font-mono text-slate-600">{mo.horas}</td>
+                                                                    </tr>
+                                                                )) || (
+                                                                        <tr><td colSpan={3} className="p-4 text-center text-slate-400 italic">Nenhum registro found.</td></tr>
+                                                                    )}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* 4. Equipment */}
+                                            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                                                <h4 className="text-xs font-bold text-slate-400 uppercase mb-3 border-b pb-2">Equipamentos</h4>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {formData.equipamentos?.length > 0 ? (
+                                                        formData.equipamentos.map((eq: string, idx: number) => (
+                                                            <span key={idx} className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs border border-slate-200 font-medium">
+                                                                {eq}
+                                                            </span>
+                                                        ))
+                                                    ) : (
+                                                        <span className="text-xs text-slate-400 italic">Nenhum equipamento listado.</span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* 5. Activities */}
+                                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                                                <div className="p-3 bg-slate-50 border-b flex justify-between items-center">
+                                                    <h3 className="font-bold text-slate-700 text-sm">Atividades Executadas</h3>
+                                                </div>
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full text-sm text-left">
+                                                        <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b">
+                                                            <tr>
+                                                                <th className="px-4 py-2">Descrição</th>
+                                                                <th className="px-4 py-2 w-20">Unid.</th>
+                                                                <th className="px-4 py-2 w-32">Status</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-slate-100">
+                                                            {formData.atividades?.map((act: any, idx: number) => (
+                                                                <tr key={idx} className="hover:bg-slate-50">
+                                                                    <td className="px-4 py-2 text-slate-700">{act.descricao}</td>
+                                                                    <td className="px-4 py-2 text-xs text-slate-500">{act.unidade}</td>
+                                                                    <td className="px-4 py-2">
+                                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200 uppercase">
+                                                                            {act.status || 'EXEC'}
+                                                                        </span>
+                                                                    </td>
+                                                                </tr>
+                                                            )) || (
+                                                                    <tr><td colSpan={3} className="p-4 text-center text-slate-400 italic">Nenhuma atividade registrada.</td></tr>
+                                                                )}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+
+                                            {/* 6. Occurrences & Comments */}
+                                            {(formData.ocorrencias?.length > 0 || formData.comentarios?.length > 0) && (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {formData.ocorrencias?.length > 0 && (
+                                                        <div className="bg-red-50 p-4 rounded-xl border border-red-100">
+                                                            <h4 className="text-xs font-bold text-red-700 uppercase mb-2 flex items-center gap-2">
+                                                                <AlertTriangle size={12} /> Ocorrências
+                                                            </h4>
+                                                            <ul className="list-disc list-inside space-y-1 text-xs text-red-800">
+                                                                {formData.ocorrencias.map((oc: string, i: number) => (
+                                                                    <li key={i}>{oc}</li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+                                                    {formData.comentarios?.length > 0 && (
+                                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                                            <h4 className="text-xs font-bold text-slate-600 uppercase mb-2">Comentários</h4>
+                                                            <ul className="list-disc list-inside space-y-1 text-xs text-slate-600">
+                                                                {formData.comentarios.map((c: string, i: number) => (
+                                                                    <li key={i}>{c}</li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 

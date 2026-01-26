@@ -25,7 +25,9 @@ export const RemoteBMParser = {
             // The backend should ideally return exactly what the JSON structure is (ExtractedBM or ExtractedRDO)
             // For now, let's assume `data.fields` or `data` IS the object we want.
 
-            const result = data.fields || data;
+            // We want the full raw object (which matches the JSON structure)
+            // The backend puts 'fields' inside it, but we want the top-level keys like 'itens', 'relatorio', etc.
+            const result = data;
 
             // Helper to tag it so frontend knows which one it is, if strict checking is needed
             // But strict ExtractedBM has 'itens', ExtractedRDO has 'relatorio'.
