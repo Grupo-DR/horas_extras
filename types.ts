@@ -257,6 +257,11 @@ export interface Task {
   // Links
   opportunityId?: string; // Legacy
   bidId?: string; // Canonical
+  interactionId?: string;
+  clientName?: string;
+  contractId?: string;
+  solutionId?: string;
+  kpiId?: string;
 
   // Assignment
   assigneeId: string;
@@ -281,4 +286,69 @@ export interface Task {
 
   createdAt: Date;
   updatedAt: Date;
+}
+
+// --- ADDED MISSING CRM TYPES ---
+
+export enum InteractionType {
+  REUNIAO = 'REUNIAO',
+  LIGACAO = 'LIGACAO',
+  VISITA = 'VISITA',
+  EMAIL = 'EMAIL',
+  WHATSAPP = 'WHATSAPP'
+}
+
+export interface ClientContact {
+  id: string;
+  clientId: string;
+  name: string;
+  role: string;
+  department?: string;
+  email?: string;
+  phone?: string;
+  address?: {
+    city?: string;
+    state?: string;
+  };
+  notes?: string;
+}
+
+export interface Interaction {
+  id: string;
+  clientId: string;
+  type: InteractionType;
+  title?: string;
+  date: string; // ISO
+  description: string;
+  notes?: string;
+  tags?: string[];
+  createdBy: {
+    id: string;
+    name: string;
+  };
+  participants?: {
+    id: string;
+    name: string;
+  }[];
+}
+
+export interface Client {
+  id: string;
+  tradeName: string;
+  corporateName?: string;
+  cnpj?: string;
+  segment?: string;
+  clientType?: string;
+  origin?: string;
+  website?: string;
+  primaryEmail?: string;
+  address?: {
+    street?: string;
+    number?: string;
+    complement?: string;
+    district?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+  };
 }

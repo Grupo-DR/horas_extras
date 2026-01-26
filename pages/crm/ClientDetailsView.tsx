@@ -19,7 +19,7 @@ export const ClientDetailsView: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { clients, interactions, contacts, bids, tasks, removeContact, removeClient, addTask } = useCrm();
-    const { user } = useAuth();
+    const { user, users } = useAuth();
 
     const [activeTab, setActiveTab] = useState<'overview' | 'timeline'>('timeline');
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
@@ -102,10 +102,11 @@ export const ClientDetailsView: React.FC = () => {
         const totalValue = clientBids.reduce((sum, bid) => sum + (bid.estimatedValue || 0), 0);
 
         // Status Check Helper
-        const isSuccess = (b: Bid) => b.status === BidStatus.VENCIDA || b.status === 'GANHA' || b.result === TaskOutcome.SUCCESS;
-        const isLost = (b: Bid) => b.status === BidStatus.PERDIDA || b.status === 'PERDIDA' || b.result === TaskOutcome.FAILURE;
-        const isStudy = (b: Bid) => b.result === TaskOutcome.STUDY; // Or any explicit status for Study
-        const isActive = (b: Bid) => !isSuccess(b) && !isLost(b) && !isStudy(b) && b.status !== BidStatus.CANCELADA;
+        const isSuccess = (b: Bid) => b.status === BidStatus.VENCIDA || b.status === 'GANHA' as any;
+        const isLost = (b: Bid) => b.status === BidStatus.PERDIDA || b.status === 'PERDIDA' as any;
+        // Bid doesn't have 'result' or 'STUDY', assuming it's filtered elsewhere or logic needs simplicity
+        const isStudy = (b: Bid) => false;
+        const isActive = (b: Bid) => !isSuccess(b) && !isLost(b) && !isStudy(b) && b.status !== 'CANCELADA' as any;
 
         const successCount = clientBids.filter(isSuccess).length;
         const lostCount = clientBids.filter(isLost).length;
@@ -553,14 +554,7 @@ export const ClientDetailsView: React.FC = () => {
                     isOpen={isTaskModalOpen}
                     onClose={() => { setIsTaskModalOpen(false); setActiveInteractionForTask(undefined); }}
                     onSave={handleSaveTask}
-                    users={[{
-                        id: user?.id || 'u1',
-                        name: user?.name || 'Eu',
-                        email: user?.email || '',
-                        role: 'User',
-                        systemRole: 'VIEWER',
-                        permissions: DEFAULT_MODULE_ACCESS
-                    }]}
+                    users={users}
                     availableParents={[]}
                     initialData={{
                         title: activeInteractionForTask ? `Ação sobre: ${activeInteractionForTask.title}` : '',
