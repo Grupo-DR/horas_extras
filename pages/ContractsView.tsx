@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Upload, FileText, BarChart3, Calculator, Building, Calendar, DollarSign, ArrowRight, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { NewContractModal } from '../components/NewContractModal';
 import { ExtractedBM, Contract } from '../types';
 import { DocumentImportModal } from '../components/DocumentImportModal';
@@ -7,6 +8,7 @@ import { toast } from 'sonner';
 import { useContracts } from '../contexts/ContractsContext';
 
 export const ContractsView: React.FC = () => {
+    const navigate = useNavigate();
     const { contracts, addContract } = useContracts();
     const [importedData, setImportedData] = useState<ExtractedBM | null>(null);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -99,7 +101,11 @@ export const ContractsView: React.FC = () => {
                     const financialProgress = calculateFinancialProgress(contract);
 
                     return (
-                        <div key={contract.id} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow cursor-pointer group relative overflow-hidden flex flex-col justify-between h-full">
+                        <div
+                            key={contract.id}
+                            onClick={() => navigate(`/contratos/${contract.id}`)}
+                            className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow cursor-pointer group relative overflow-hidden flex flex-col justify-between h-full"
+                        >
                             <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-100 transition-opacity">
                                 <ArrowRight size={20} className="text-blue-500" />
                             </div>

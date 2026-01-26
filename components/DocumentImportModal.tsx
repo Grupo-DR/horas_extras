@@ -2,16 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { X, Upload, FileText, CheckCircle, AlertTriangle, ArrowRight, Save, Database, Eye, ChevronRight, ChevronDown } from 'lucide-react';
 import { LocalBMParser } from '../services/LocalBMParser';
 
-import { ImportedData, ExtractedBM, ExtractedRDO } from '../types';
+import { ImportedData, ExtractedBM, ExtractedRDO, ContractTeam } from '../types';
 import { toast } from 'sonner';
 
 interface Props {
     isOpen: boolean;
     onClose: () => void;
     onImport: (data: any) => void;
+    teams?: ContractTeam[]; // Optional list of teams for RDO linking
 }
 
-export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport }) => {
+export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport, teams }) => {
     const [step, setStep] = useState<'UPLOAD' | 'REVIEW'>('UPLOAD');
     const [file, setFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
@@ -19,6 +20,7 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
 
     // Form State (Editable)
     const [formData, setFormData] = useState<any>({});
+    const [selectedTeamId, setSelectedTeamId] = useState<string>('');
 
     // UI State
     const [expandedItems, setExpandedItems] = useState<boolean>(true);
@@ -56,6 +58,12 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
 
                     setData(extractedData);
                     setFormData(extractedData); // Flattened state is just the object itself now
+
+                    // Auto-select first team if available and RDO
+                    if (extractedData.type === 'RDO' && teams && teams.length > 0) {
+                        setSelectedTeamId(teams[0].id);
+                    }
+
                     setStep('REVIEW');
                 } else {
                     toast.error("Formato de arquivo não suportado. Por favor, carregue um arquivo .json.");
@@ -70,18 +78,27 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
     };
 
     const handleSave = () => {
+        if (data?.type === 'RDO' && teams && teams.length > 0 && !selectedTeamId) {
+            toast.error("Por favor, selecione uma Equipe para vincular este RDO.");
+            return;
+        }
+
         onImport({
             ...formData,
             // Keep specific metadata useful for the system
             sourceFile: file?.name,
-            documentType: data?.type
+            documentType: data?.type,
+            teamId: selectedTeamId // Pass linked team ID
         });
         onClose();
         // Reset state
         setStep('UPLOAD');
         setFile(null);
         setData(null);
+        setSelectedTeamId('');
     };
+
+    // ... (rest of helper functions same as original)
 
     const updateItemValue = (index: number, field: string, value: string) => {
         // Only applicable for BM Itens currently
@@ -207,7 +224,24 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
 
                                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
 
-
+                                    {/* TEAM SELECTION FOR RDO */}
+                                    {data?.type === 'RDO' && teams && teams.length > 0 && (
+                                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-4 animate-in fade-in slide-in-from-top-2">
+                                            <label className="block text-xs font-bold text-blue-700 uppercase mb-2 flex items-center gap-2">
+                                                <Database size={12} /> Vincular à Equipe (Obrigatório)
+                                            </label>
+                                            <select
+                                                value={selectedTeamId}
+                                                onChange={(e) => setSelectedTeamId(e.target.value)}
+                                                className="w-full p-2 border border-blue-200 rounded-lg bg-white text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                            >
+                                                <option value="" disabled>Selecione uma equipe...</option>
+                                                {teams.map(team => (
+                                                    <option key={team.id} value={team.id}>{team.name} - {team.location}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
 
                                     {/* HEADER: FILENAME & INFO (Universal) */}
                                     <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">

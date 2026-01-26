@@ -168,6 +168,14 @@ export interface ContractMeasurement {
   entityType?: EntityType;
 }
 
+export interface ContractTeam {
+  id: string;
+  name: string; // "Equipe A", "Frente 1"...
+  location: string; // "Trecho/Local"
+  leaderName: string; // "Líder da Equipe"
+  rdos?: ExtractedRDO[]; // RDOs linked to this team
+}
+
 export interface Contract {
   id: string;
   contractNumber: string; // Nº do Contrato
@@ -187,6 +195,7 @@ export interface Contract {
 
   measurements?: ContractMeasurement[];
   events?: ContractEvent[];
+  teams?: ContractTeam[]; // Teams working on this contract
 }
 
 export enum ContractEventType {
