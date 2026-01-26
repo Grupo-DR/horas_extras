@@ -59,9 +59,17 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
                     setData(extractedData);
                     setFormData(extractedData); // Flattened state is just the object itself now
 
+
                     // Auto-select first team if available and RDO
-                    if (extractedData.type === 'RDO' && teams && teams.length > 0) {
-                        setSelectedTeamId(teams[0].id);
+                    if (extractedData.type === 'RDO') {
+                        // Fix for Local field containing metadata
+                        if (extractedData.relatorio?.local && extractedData.relatorio.local.toLowerCase().includes('prazo decorrido')) {
+                            extractedData.relatorio.local = '';
+                        }
+
+                        if (teams && teams.length > 0) {
+                            setSelectedTeamId(teams[0].id);
+                        }
                     }
 
                     setStep('REVIEW');
@@ -117,46 +125,82 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
     const parseEquipmentString = (str: string) => {
         if (!str) return { nome: '', descricao: '', quantidade: 0, horario: '', tempo: '' };
 
-        // Attempt 1: Strict Match with Parentheses for time duration
-        // Pattern: Code Description Qty TimeRange (Duration)
-        // ex: CB-053 Caminhão Casinha 1 07:00 - 17:00 (10h)
-        const matchStrict = str.match(/^([A-Z0-9-]+)\s+(.+)\s+(\d+)\s+(\d{2}:\d{2}\s*-\s*\d{2}:\d{2})\s*(\(.*\))$/i);
-        if (matchStrict) {
+        const cleanStr = str.trim();
+
+        // Regex for Right-to-Left parsing for maximum stability
+        // Matches: Prefix (Description) Qty (TimeRange) (Duration)
+        // Description can contain anything including numbers, so we anchor other fields better.
+        // TimeRange: \d{2}:\d{2}\s*[-–]\s*\d{2}:\d{2}  (standard or unicode dash)
+        // Duration: \(.*\) at end
+
+        // Strategy: 
+        // 1. Extract Quantity, TimeRange, Duration from the END.
+        // 2. Extract Prefix from START.
+        // 3. Remainder is Description.
+
+        // Pattern: ...SPACE(Qty)SPACE(Start-End)SPACE(Duration)$
+        // Note: Regex is greedy by default for the first part matches.
+
+        // This regex looks for:
+        // Group 1: Everything Else (Prefix + Desc)
+        // Group 2: Quantity (Digits)
+        // Group 3: Time Range (HH:MM - HH:MM)
+        // Group 4: Duration ((...))
+        const endParamsMatch = cleanStr.match(/^(.*)\s+(\d+)\s+([\d]{2}:[\d]{2}\s*[-–]\s*[\d]{2}:[\d]{2})\s*(\(.*\))$/);
+
+        if (endParamsMatch) {
+            const prefixAndDesc = endParamsMatch[1].trim();
+            const qty = parseInt(endParamsMatch[2]);
+            const timeRange = endParamsMatch[3];
+            const duration = endParamsMatch[4];
+
+            // Split Prefix and Desc
+            // Assume Prefix is the first word.
+            const firstSpaceIdx = prefixAndDesc.indexOf(' ');
+            let nome = prefixAndDesc;
+            let descricao = '';
+
+            if (firstSpaceIdx > 0) {
+                nome = prefixAndDesc.substring(0, firstSpaceIdx);
+                descricao = prefixAndDesc.substring(firstSpaceIdx).trim();
+            }
+
             return {
-                nome: matchStrict[1],
-                descricao: matchStrict[2],
-                quantidade: parseInt(matchStrict[3]),
-                horario: matchStrict[4],
-                tempo: matchStrict[5]
+                nome: nome,
+                descricao: descricao,
+                quantidade: qty,
+                horario: timeRange,
+                tempo: duration
             };
         }
 
-        // Attempt 2: Match without parens/duration at end
-        // ex: CB-053 Caminhão Casinha 1 07:00 - 17:00
-        const matchLoose = str.match(/^([A-Z0-9-]+)\s+(.+)\s+(\d+)\s+(\d{2}:\d{2}\s*-\s*\d{2}:\d{2})/i);
-        if (matchLoose) {
+        // Fallback for missing parts (e.g. missing duration)
+        // Try Qty + TimeRange only
+        const midParamsMatch = cleanStr.match(/^(.*)\s+(\d+)\s+([\d]{2}:[\d]{2}\s*[-–]\s*[\d]{2}:[\d]{2})$/);
+        if (midParamsMatch) {
+            const prefixAndDesc = midParamsMatch[1].trim();
+            const qty = parseInt(midParamsMatch[2]);
+            const timeRange = midParamsMatch[3];
+
+            const firstSpaceIdx = prefixAndDesc.indexOf(' ');
+            let nome = prefixAndDesc;
+            let descricao = '';
+
+            if (firstSpaceIdx > 0) {
+                nome = prefixAndDesc.substring(0, firstSpaceIdx);
+                descricao = prefixAndDesc.substring(firstSpaceIdx).trim();
+            }
+
             return {
-                nome: matchLoose[1],
-                descricao: matchLoose[2],
-                quantidade: parseInt(matchLoose[3]),
-                horario: matchLoose[4],
+                nome: nome,
+                descricao: descricao,
+                quantidade: qty,
+                horario: timeRange,
                 tempo: ''
             };
         }
 
-        // Attempt 3: Simple split by spaces (Fallback for very clean data)
-        // This is risky if description has spaces, so we trust the regexes more.
-        // But let's try to extract at least the code if possible.
-        const firstSpace = str.indexOf(' ');
-        if (firstSpace > 0) {
-            const potentialCode = str.substring(0, firstSpace);
-            // If code looks like a code (alphanumeric + dash)
-            if (/^[A-Z0-9-]+$/i.test(potentialCode)) {
-                return { nome: potentialCode, descricao: str.substring(firstSpace).trim(), quantidade: 1, horario: '', tempo: '' };
-            }
-        }
-
-        // Fallback: Dump everything in Name
+        // Fallback: Just dump into Name if parsing fails completely
         return { nome: str, descricao: '', quantidade: 1, horario: '', tempo: '' };
     };
 

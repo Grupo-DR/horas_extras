@@ -1,17 +1,17 @@
 {
-    "filename": "Relatório Diário de Obra (RDO) n° 4 - 11-09-2025.pdf",
+    "filename": "Relatório Diário de Obra (RDO) n° 5 - 12-09-2025.pdf",
     "relatorio": {
-        "numero": "4",
-        "data": "11/09/2025",
-        "dia_semana": "Quinta-Feira",
+        "numero": "5",
+        "data": "12/09/2025",
+        "dia_semana": "Sexta-Feira",
         "contrato": "CW61180",
         "obra": "Infra Norte - Trecho ZAR-TMI (Equipe - Flavio)",
         "prazo_contratual": "437 dias",
         "local": "Prazo decorrido",
-        "prazo_decorrido": "114 dias",
+        "prazo_decorrido": "115 dias",
         "contratante": "Rumo Malha Paulista",
         "responsavel": "Mivleder Dumont",
-        "prazo_a_vencer": "323 dias"
+        "prazo_a_vencer": "322 dias"
     },
     "horario_trabalho": {
         "entrada_saida": "07:00 - 17:00",
@@ -76,6 +76,13 @@
             "entrada_saida": "07:00 - 17:00",
             "intervalo": "01:00",
             "horas": "09:00"
+        },
+        {
+            "nome": "Olenir Jose Chaves De Matos Junior",
+            "funcao": "Líder de Obras",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
         }
     ],
     "equipamentos": [
@@ -84,20 +91,15 @@
     ],
     "atividades": [
         {
-            "descricao": "3004279 - SERV CORTE PODA DE ARVORES Km 359,810 ao 359,980 = 170 metros Km 359,980 ao 360,290 = 310 metros Km 360,290 ao 360,390 = 100 metros",
+            "descricao": "3004279 - SERV CORTE PODA DE ARVORES Km 360,290 ao 360,540",
             "unidade": "0 UR",
             "status": "0.67% - Em andamento"
-        },
-        {
-            "descricao": "Equipe desmobilizou do km 358,710 Para o km 359,600.",
-            "unidade": "",
-            "status": "Em Andamento"
         }
     ],
     "ocorrencias": [
-        "Avaria de máquina escavadeira EH 069 Horas Improdutivas"
+        "Avaria de máquina escavadeira EH 069 Avaria em equipamento"
     ],
     "comentarios": [
-        "Flavio Alves 12/09/2025 07:47 O dono da propriedade pediu pra turma se retirar do local onde nós estávamos no km 358,710. Montamos a área de vivência no km 359,600."
+        "Flavio Alves 15/09/2025 06:20 Muito dormentação velho jogado ao lado da via, material de espurgo jogado na crista do talude."
     ]
 }

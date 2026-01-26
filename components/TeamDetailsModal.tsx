@@ -83,7 +83,7 @@ export const TeamDetailsModal: React.FC<Props> = ({ isOpen, onClose, team, onDel
                                             </span>
                                         </div>
                                         <div className="text-xs text-slate-500 flex items-center gap-1">
-                                            <span className={`w-2 h-2 rounded-full ${rdo.relatorio?.condicao_climatica?.toLowerCase().includes('chuva') ? 'bg-red-400' : 'bg-green-400'}`}></span>
+                                            <span className={`w-2 h-2 rounded-full ${(rdo.clima?.manha?.condicao?.toLowerCase().includes('chuva') || rdo.clima?.tarde?.condicao?.toLowerCase().includes('chuva')) ? 'bg-red-400' : 'bg-green-400'}`}></span>
                                             {rdo.relatorio?.dia_semana || 'Dia N/D'}
                                         </div>
                                     </div>
@@ -198,6 +198,8 @@ export const TeamDetailsModal: React.FC<Props> = ({ isOpen, onClose, team, onDel
                                                 <tr>
                                                     <th className="px-6 py-3">Nome</th>
                                                     <th className="px-6 py-3">Função</th>
+                                                    <th className="px-6 py-3 text-center">Início/Fim</th>
+                                                    <th className="px-6 py-3 text-center">Intervalo</th>
                                                     <th className="px-6 py-3 text-right">Horas</th>
                                                 </tr>
                                             </thead>
@@ -206,6 +208,8 @@ export const TeamDetailsModal: React.FC<Props> = ({ isOpen, onClose, team, onDel
                                                     <tr key={idx} className="hover:bg-slate-50">
                                                         <td className="px-6 py-3 text-slate-700 font-medium">{mo.nome}</td>
                                                         <td className="px-6 py-3 text-slate-500 text-xs">{mo.funcao}</td>
+                                                        <td className="px-6 py-3 text-center text-slate-400 font-mono text-xs">{mo.entrada_saida || '-'}</td>
+                                                        <td className="px-6 py-3 text-center text-slate-400 font-mono text-xs">{mo.intervalo || '-'}</td>
                                                         <td className="px-6 py-3 text-right text-slate-600 font-mono">{mo.horas}</td>
                                                     </tr>
                                                 ))}

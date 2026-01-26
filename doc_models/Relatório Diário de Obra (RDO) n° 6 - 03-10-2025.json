@@ -1,0 +1,132 @@
+{
+    "filename": "Relatório Diário de Obra (RDO) n° 6 - 03-10-2025.pdf",
+    "relatorio": {
+        "numero": "6",
+        "data": "03/10/2025",
+        "dia_semana": "Sexta-Feira",
+        "contrato": "CW61180",
+        "obra": "Infra Norte - Trecho ZAR-TMI (Equipe - Flavio)",
+        "prazo_contratual": "437 dias",
+        "local": "Prazo decorrido",
+        "prazo_decorrido": "136 dias",
+        "contratante": "Rumo Malha Paulista",
+        "responsavel": "Mivleder Dumont",
+        "prazo_a_vencer": "301 dias"
+    },
+    "horario_trabalho": {
+        "entrada_saida": "07:00 - 16:00",
+        "horas_trabalhadas": "08:00"
+    },
+    "clima": {
+        "manha": {
+            "tempo": "Claro",
+            "condicao": "Praticável"
+        },
+        "tarde": {
+            "tempo": "Claro",
+            "condicao": "Praticável"
+        }
+    },
+    "mao_de_obra": [
+        {
+            "nome": "Fabio Goncalves Dos Santos",
+            "funcao": "Operador de Máquinas III",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Flávio José Alves",
+            "funcao": "Líder de Obras",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Jefferson Da Silva Leocadio",
+            "funcao": "Assistente de Boletim",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Jose Welson Dos Santos",
+            "funcao": "Operador de Máquinas Leves I",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Lucas Mateus Lopes",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Valdeci Aparecido Bongiovani",
+            "funcao": "Motorista II",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "David Robson da Silva Santos",
+            "funcao": "Operador de Máquinas III",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Fernando Ramos dos Santos",
+            "funcao": "Operador de Máquinas Leves I",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Jozivaldo Eduardo da Silva",
+            "funcao": "Operador de Máquinas Leves I",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Karlos Lovyck Da Silva Araujo",
+            "funcao": "Motorista II",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Maicon Igor de Almeida Ferreira",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Romero Rivaldo Luiz",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        }
+    ],
+    "equipamentos": [
+        "CB-053 Caminhão Casinha 1 07:00 - 16:00 (9h)",
+        "CB-052 Caminhão Casinha 1 07:00 - 16:00 (9h)",
+        "EH-022 Escavadeira Hidráulica Rodoferroviária 1 07:00 - 16:00 (9h)"
+    ],
+    "atividades": [
+        {
+            "descricao": "3004199 - SERV CONST CIVIL KM MANUT PREV CORTE Limpeza preventiva em corte Km inicial 424+900 Km final 424+612 288 mts Limpeza canaleta de crista 35 mts finalizada",
+            "unidade": "0.29 KM",
+            "status": "0.91% - Em andamento"
+        }
+    ],
+    "ocorrencias": [
+        "Flavio Alves 06/10/2025 09:39 Faltando finalizar o acabamento Limpeza de canaleta no manual"
+    ],
+    "comentarios": []
+}
