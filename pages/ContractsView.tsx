@@ -70,41 +70,98 @@ export const ContractsView: React.FC = () => {
         </div>
     );
 
+    const calculateTimeProgress = (start: string, end: string) => {
+        const startDate = new Date(start).getTime();
+        const endDate = new Date(end).getTime();
+        const today = new Date().getTime();
+
+        if (today < startDate) return 0;
+        if (today > endDate) return 100;
+
+        const totalDuration = endDate - startDate;
+        const elapsed = today - startDate;
+        return Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
+    };
+
+    const calculateFinancialProgress = (contract: Contract) => {
+        if (!contract.totalValue || contract.totalValue === 0) return 0;
+        // Assuming measurements have a 'value' field and we sum them up. 
+        // If measurements are undefined, it's 0.
+        const totalMeasured = contract.measurements?.reduce((acc, m) => acc + m.value, 0) || 0;
+        return Math.min(100, (totalMeasured / contract.totalValue) * 100);
+    };
+
     const renderContractList = () => (
         <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {contracts.map(contract => (
-                    <div key={contract.id} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow cursor-pointer group relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-100 transition-opacity">
-                            <ArrowRight size={20} className="text-blue-500" />
-                        </div>
+                {contracts.map(contract => {
+                    const timeProgress = calculateTimeProgress(contract.startDate, contract.endDate);
+                    const financialProgress = calculateFinancialProgress(contract);
 
-                        <div className="mb-4">
-                            <span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded mb-2">
-                                {contract.contractNumber}
-                            </span>
-                            <h3 className="text-lg font-bold text-slate-800 truncate" title={contract.siteName}>
-                                {contract.siteName}
-                            </h3>
-                            <p className="text-sm text-slate-500 truncate">{contract.clientName}</p>
-                        </div>
+                    return (
+                        <div key={contract.id} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow cursor-pointer group relative overflow-hidden flex flex-col justify-between h-full">
+                            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-100 transition-opacity">
+                                <ArrowRight size={20} className="text-blue-500" />
+                            </div>
 
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-2 text-sm text-slate-600">
-                                <Building size={14} className="text-slate-400" />
-                                <span className="truncate">{contract.contractorName}</span>
+                            <div>
+                                <div className="mb-4">
+                                    <span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded mb-2">
+                                        {contract.contractNumber}
+                                    </span>
+                                    <h3 className="text-lg font-bold text-slate-800 truncate" title={contract.siteName}>
+                                        {contract.siteName}
+                                    </h3>
+                                    <p className="text-sm text-slate-500 truncate">{contract.clientName}</p>
+                                </div>
+
+                                <div className="space-y-3 mb-6">
+                                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                                        <Building size={14} className="text-slate-400" />
+                                        <span className="truncate">{contract.contractorName}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                                        <Calendar size={14} className="text-slate-400" />
+                                        <span>{new Date(contract.startDate).toLocaleDateString('pt-BR')} - {new Date(contract.endDate).toLocaleDateString('pt-BR')}</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2 text-sm text-slate-600">
-                                <Calendar size={14} className="text-slate-400" />
-                                <span>{new Date(contract.startDate).toLocaleDateString('pt-BR')} - {new Date(contract.endDate).toLocaleDateString('pt-BR')}</span>
-                            </div>
-                            <div className="pt-3 border-t border-slate-100 mt-3">
-                                <p className="text-xs text-slate-400 uppercase font-bold mb-1">Valor Total</p>
-                                <p className="text-xl font-bold text-green-600">{formatCurrency(contract.totalValue)}</p>
+
+                            <div className="pt-4 border-t border-slate-100 space-y-4">
+                                {/* Time Progress */}
+                                <div>
+                                    <div className="flex justify-between text-xs mb-1">
+                                        <span className="text-slate-500 font-medium">Prazo Decorrido</span>
+                                        <span className="text-slate-700 font-bold">{timeProgress.toFixed(0)}%</span>
+                                    </div>
+                                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                        <div
+                                            className={`h-full rounded-full ${timeProgress > 90 ? 'bg-red-500' : timeProgress > 75 ? 'bg-amber-500' : 'bg-blue-500'}`}
+                                            style={{ width: `${timeProgress}%` }}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Financial Progress */}
+                                <div>
+                                    <div className="flex justify-between text-xs mb-1">
+                                        <span className="text-slate-500 font-medium">Saldo Financeiro</span>
+                                        <span className="text-slate-700 font-bold">{formatCurrency(contract.totalValue)}</span>
+                                    </div>
+                                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-green-500 rounded-full"
+                                            style={{ width: `${financialProgress}%` }}
+                                        />
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 mt-1 text-right">
+                                        Medido: {formatCurrency((contract.measurements?.reduce((acc, m) => acc + m.value, 0) || 0))}
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );
