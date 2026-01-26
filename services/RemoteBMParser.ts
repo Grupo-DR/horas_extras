@@ -1,11 +1,7 @@
-import { ExtractedData } from './LocalBMParser';
-
-// Re-using the ExtractedData interface essentially, 
-// though the backend might return slightly different snake_case which we might need to normalize if we really cared about strict typing,
-// but for now we expect the backend to return the "fields" object structure we need.
+import { ImportedData } from '../types';
 
 export const RemoteBMParser = {
-    async parsePDF(file: File): Promise<ExtractedData> {
+    async parsePDF(file: File): Promise<ImportedData> {
         const formData = new FormData();
         formData.append('file', file);
 
@@ -24,13 +20,17 @@ export const RemoteBMParser = {
 
             const data = await response.json();
 
-            // Map Valid Backend Response to ExtractedData
-            return {
-                type: data.fields?.entityType ? 'BM' : 'RDO', // Simple heuristic or use data.type from backend
-                rawText: "Processado via Backend Python (pdfplumber)",
-                confidence: 1.0,
-                fields: data.fields || {}
-            };
+            // The Backend returns { fields: ... } or just the object.
+            // But since we want to align with the "JSON as Source of Truth",
+            // The backend should ideally return exactly what the JSON structure is (ExtractedBM or ExtractedRDO)
+            // For now, let's assume `data.fields` or `data` IS the object we want.
+
+            const result = data.fields || data;
+
+            // Helper to tag it so frontend knows which one it is, if strict checking is needed
+            // But strict ExtractedBM has 'itens', ExtractedRDO has 'relatorio'.
+            return result as ImportedData;
+
         } catch (error) {
             console.error("Remote Parse Error:", error);
             throw error;

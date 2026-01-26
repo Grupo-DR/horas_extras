@@ -1,0 +1,103 @@
+{
+    "filename": "Relatório Diário de Obra (RDO) n° 4 - 11-09-2025.pdf",
+    "relatorio": {
+        "numero": "4",
+        "data": "11/09/2025",
+        "dia_semana": "Quinta-Feira",
+        "contrato": "CW61180",
+        "obra": "Contrato",
+        "prazo_contratual": "437 dias",
+        "local": "Prazo decorrido",
+        "prazo_decorrido": "114 dias",
+        "contratante": "Rumo Malha Paulista",
+        "responsavel": "Mivleder Dumont",
+        "prazo_a_vencer": "323 dias"
+    },
+    "horario_trabalho": {
+        "entrada_saida": "07:00 - 17:00",
+        "horas_trabalhadas": "09:00"
+    },
+    "clima": {
+        "manha": {
+            "tempo": "Claro",
+            "condicao": "Praticável"
+        },
+        "tarde": {
+            "tempo": "Claro",
+            "condicao": "Praticável"
+        }
+    },
+    "mao_de_obra": [
+        {
+            "nome": "Fabio Goncalves Dos Santos",
+            "funcao": "Operador de Máquinas III",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Fernando Dos Santos Oliveira",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Flávio José Alves",
+            "funcao": "Líder de Obras",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Jefferson Da Silva Leocadio",
+            "funcao": "Assistente de Boletim",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Jose Welson Dos Santos",
+            "funcao": "Operador de Máquinas Leves I",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Lucas Mateus Lopes",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Valdeci Aparecido Bongiovani",
+            "funcao": "Motorista II",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        }
+    ],
+    "equipamentos": [
+        "CB-053 Caminhão Casinha 1 07:00 - 17:00 (10h)",
+        "EH-069 Escavadeira Hidráulica 1 07:00 - 17:00 (10h)"
+    ],
+    "atividades": [
+        {
+            "descricao": "3004279 - SERV CORTE PODA DE ARVORES Km 359,810 ao 359,980 = 170 metros Km 359,980 ao 360,290 = 310 metros Km 360,290 ao 360,390 = 100 metros",
+            "unidade": "0 UR",
+            "status": "0.67% - Em andamento"
+        },
+        {
+            "descricao": "Equipe desmobilizou do km 358,710 Para o km 359,600.",
+            "unidade": "",
+            "status": "Em Andamento"
+        }
+    ],
+    "ocorrencias": [
+        "Avaria de máquina escavadeira EH 069 Horas Improdutivas"
+    ],
+    "comentarios": [
+        "Flavio Alves 12/09/2025 07:47 O dono da propriedade pediu pra turma se retirar do local onde nós estávamos no km 358,710. Montamos a área de vivência no km 359,600."
+    ]
+}

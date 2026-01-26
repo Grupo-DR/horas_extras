@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, Upload, FileText, CheckCircle, AlertTriangle, ArrowRight, Save, Database, Eye, ChevronRight, ChevronDown } from 'lucide-react';
-import { LocalBMParser, ExtractedData } from '../services/LocalBMParser';
+import { LocalBMParser } from '../services/LocalBMParser';
 import { RemoteBMParser } from '../services/RemoteBMParser';
+import { ImportedData, ExtractedBM, ExtractedRDO } from '../types';
 import { toast } from 'sonner';
 
 interface Props {
@@ -14,7 +15,7 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
     const [step, setStep] = useState<'UPLOAD' | 'REVIEW'>('UPLOAD');
     const [file, setFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
-    const [data, setData] = useState<ExtractedData | null>(null);
+    const [data, setData] = useState<ImportedData | null>(null);
 
     // Form State (Editable)
     const [formData, setFormData] = useState<any>({});
@@ -34,37 +35,33 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
                     const text = await selectedFile.text();
                     const json = JSON.parse(text);
 
-                    // Auto-detect type from JSON content if possible
-                    const type = json.type || (json.filename?.includes('RDO') ? 'RDO' : 'BM');
+                    // Check if it's BM or RDO based on keys
+                    let extractedData: ImportedData;
 
-                    const extractedData: ExtractedData = {
-                        type: type as any,
-                        rawText: "Importado via JSON",
-                        confidence: 1.0,
-                        fields: {
+                    if (json.itens) {
+                        // It's likely a BM
+                        extractedData = {
                             ...json,
-                            // Ensure mapping if the JSON structure varies slightly
-                            // But assuming the user uploads the EXACT JSON their script generates, which matches what we designed in Python backend
-                        }
-                    };
-
-                    // For BM, ensure audit matrix is mapped if keys differ
-                    if (extractedData.type === 'BM' && json.itens && !extractedData.fields.auditMatrix) {
-                        extractedData.fields.auditMatrix = json.itens;
-                    }
-                    // For RDO, ensure fields map
-                    if (extractedData.type === 'RDO' && !extractedData.fields.rdoDetails) {
-                        extractedData.fields.rdoDetails = json; // Store full object as details
+                            type: 'BM' // Force tag if missing
+                        } as ExtractedBM;
+                    } else if (json.relatorio) {
+                        // It's likely an RDO
+                        extractedData = {
+                            ...json,
+                            type: 'RDO' // Force tag if missing
+                        } as ExtractedRDO;
+                    } else {
+                        throw new Error("Formato JSON desconhecido. Precisa ter 'itens' (BM) ou 'relatorio' (RDO).");
                     }
 
                     setData(extractedData);
-                    setFormData(extractedData.fields);
+                    setFormData(extractedData); // Flattened state is just the object itself now
                     setStep('REVIEW');
                 } else {
                     // Try Remote Parsing First (Python Backend)
                     const result = await RemoteBMParser.parsePDF(selectedFile);
                     setData(result);
-                    setFormData(result.fields);
+                    setFormData(result); // Flattened state
                     setStep('REVIEW');
                 }
             } catch (error) {
@@ -91,14 +88,16 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
     };
 
     const updateItemValue = (index: number, field: string, value: string) => {
-        const newItems = [...(formData.auditMatrix || [])];
-        // Handle numeric conversion
-        const numVal = parseFloat(value.replace(/\./g, '').replace(',', '.')); // Input format specific? Or standard HTML number input?
-        // Let's assume standard text input for currency editing or number input
+        // Only applicable for BM Itens currently
+        if (data?.type !== 'BM') return;
 
-        // If it's a direct property on the item
+        const newItems = [...(formData.itens || [])];
+        // Handle numeric conversion
+        // Brazilian format to float
+        const numVal = parseFloat(value.replace(/\./g, '').replace(',', '.'));
+
         newItems[index] = { ...newItems[index], [field]: numVal };
-        setFormData({ ...formData, auditMatrix: newItems });
+        setFormData({ ...formData, itens: newItems });
     };
 
     if (!isOpen) return null;
@@ -154,11 +153,11 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
                             <div className="w-1/3 border-r bg-slate-900 text-slate-300 flex flex-col overflow-hidden">
                                 <div className="p-3 bg-slate-950 border-b border-slate-800 text-xs font-bold uppercase tracking-wide flex justify-between items-center shrink-0">
                                     <span className="flex items-center gap-2"><FileText size={14} /> JSON Gerado (Read-Only)</span>
-                                    <span className="bg-slate-800 px-2 py-0.5 rounded text-xs text-slate-400">{(data?.confidence || 0) * 100}% Confiança</span>
+                                    <span className="bg-slate-800 px-2 py-0.5 rounded text-xs text-slate-400">100% Confiança</span>
                                 </div>
                                 <div className="flex-1 overflow-auto p-4">
                                     <pre className="text-xs font-mono font-medium leading-relaxed">
-                                        {JSON.stringify(data?.fields, null, 2)}
+                                        {JSON.stringify(data, null, 2)}
                                     </pre>
                                 </div>
                             </div>
@@ -177,15 +176,15 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
                                         <div className="grid grid-cols-4 gap-6">
                                             <div>
                                                 <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Tipo Identificado</label>
-                                                <div className="font-bold text-blue-600">{data?.type}</div>
+                                                <div className="font-bold text-blue-600">{data?.type || (formData.itens ? 'BM' : 'RDO?')}</div>
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Período</label>
                                                 <input
                                                     type="text"
                                                     className="w-full text-sm font-semibold text-slate-700 border-b border-dashed border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent"
-                                                    value={formData.period || ''}
-                                                    onChange={(e) => setFormData({ ...formData, period: e.target.value })}
+                                                    value={formData.periodo || ''}
+                                                    onChange={(e) => setFormData({ ...formData, periodo: e.target.value })}
                                                 />
                                             </div>
                                             <div>
@@ -193,19 +192,19 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
                                                 <input
                                                     type="number"
                                                     className="w-full text-lg font-bold text-green-600 border-b border-dashed border-slate-300 focus:border-green-500 focus:outline-none bg-transparent"
-                                                    value={formData.value || 0}
-                                                    onChange={(e) => setFormData({ ...formData, value: parseFloat(e.target.value) })}
+                                                    value={formData.valor_medicao_cabecalho || 0}
+                                                    onChange={(e) => setFormData({ ...formData, valor_medicao_cabecalho: parseFloat(e.target.value) })}
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Saldo Final</label>
-                                                <div className="font-bold text-slate-400">Calculado Automaticamente</div>
+                                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Contrato</label>
+                                                <div className="font-bold text-slate-400">{formData.contrato}</div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* AUDIT MATRIX EDITOR */}
-                                    {formData.auditMatrix && (
+                                    {/* AUDIT MATRIX EDITOR (BM Only) */}
+                                    {formData.itens && (
                                         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                                             <div
                                                 className="p-4 bg-slate-50 border-b flex justify-between items-center cursor-pointer hover:bg-slate-100 transition-colors"
@@ -213,7 +212,7 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
                                             >
                                                 <h3 className="font-bold text-slate-700 flex items-center gap-2">
                                                     {expandedItems ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                                                    Itens da Medição ({formData.auditMatrix.length})
+                                                    Itens da Medição ({formData.itens.length})
                                                 </h3>
                                             </div>
 
@@ -232,18 +231,18 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
                                                             </tr>
                                                         </thead>
                                                         <tbody className="divide-y divide-slate-100">
-                                                            {formData.auditMatrix.map((item: any, idx: number) => (
+                                                            {formData.itens.map((item: any, idx: number) => (
                                                                 <tr key={idx} className="hover:bg-slate-50 group">
                                                                     <td className="px-4 py-2 font-medium text-slate-600">{item.item}</td>
-                                                                    <td className="px-4 py-2 text-blue-600 font-mono text-xs">{item.codeVLI}</td>
+                                                                    <td className="px-4 py-2 text-blue-600 font-mono text-xs">{item.codigo}</td>
                                                                     <td className="px-4 py-2 text-slate-600 max-w-xs truncate" title={item.description}>
                                                                         <input
                                                                             type="text"
                                                                             value={item.description}
                                                                             onChange={(e) => {
-                                                                                const newItems = [...formData.auditMatrix];
+                                                                                const newItems = [...formData.itens];
                                                                                 newItems[idx].description = e.target.value;
-                                                                                setFormData({ ...formData, auditMatrix: newItems });
+                                                                                setFormData({ ...formData, itens: newItems });
                                                                             }}
                                                                             className="w-full bg-transparent border-none focus:ring-0 text-slate-600 p-0 text-sm"
                                                                         />
@@ -251,24 +250,24 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
                                                                     <td className="px-4 py-2 text-right">
                                                                         <input
                                                                             type="number"
-                                                                            value={item.qtyMonth}
-                                                                            onChange={(e) => updateItemValue(idx, 'qtyMonth', e.target.value)}
+                                                                            value={item.qtd_mes}
+                                                                            onChange={(e) => updateItemValue(idx, 'qtd_mes', e.target.value)}
                                                                             className="w-16 text-right bg-slate-50 border border-transparent hover:border-slate-300 focus:border-blue-500 rounded px-1 py-0.5"
                                                                         />
                                                                     </td>
                                                                     <td className="px-4 py-2 text-right text-slate-500">
-                                                                        {item.unitPrice?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                                        {item.preco_unitario?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                                                     </td>
                                                                     <td className="px-4 py-2 text-right font-bold text-slate-700">
                                                                         <input
                                                                             type="number"
-                                                                            value={item.currentMonth}
-                                                                            onChange={(e) => updateItemValue(idx, 'currentMonth', e.target.value)}
+                                                                            value={item.valor_mes}
+                                                                            onChange={(e) => updateItemValue(idx, 'valor_mes', e.target.value)}
                                                                             className="w-24 text-right bg-slate-50 border border-transparent hover:border-slate-300 focus:border-green-500 rounded px-1 py-0.5 font-bold text-slate-700"
                                                                         />
                                                                     </td>
                                                                     <td className="px-4 py-2 text-right text-slate-400">
-                                                                        {item.balance?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                                        {item.saldo?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                                                     </td>
                                                                 </tr>
                                                             ))}

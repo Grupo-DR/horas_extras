@@ -1,233 +1,107 @@
-export enum TaskStatus {
-  PENDING = 'PENDING',       // Pendente
-  IN_PROGRESS = 'IN_PROGRESS', // Em Andamento
-  COMPLETED = 'COMPLETED',   // Concluído
-  LATE = 'LATE',             // Atrasado
-}
-
-/**
- * @deprecated Use User from types/auth instead.
- */
-export interface LegacyUser {
-  id: string;
-  name: string;
-  role: string;
-  email: string;
-}
-
-// Re-export User from the auth source of truth
-export type { User } from './types/auth';
-
-export interface HelpChainLevel {
-  level: number;
-  roleName: string; // e.g., "Gerente Comercial", "Diretor"
-  contactEmail: string;
-  triggerDaysBefore: number; // Days before deadline to trigger
-  triggerWhenLate: boolean;  // Trigger when status becomes LATE
-}
-
-export interface HistoryLog {
-  id: string;
-  taskId: string;
-  action: string;
-  timestamp: Date;
-  details?: string;
-  user: string;
-}
-
-export interface Notification {
-  id: string;
-  taskId: string;
-  taskTitle: string;
-  type: 'START' | 'END' | 'LATE_WARNING' | 'ESCALATION';
-  recipient: string;
-  subject: string;
-  content?: string; // Conteúdo do email (opcional)
-  sentAt: Date;
-}
-
-export enum TaskOutcome {
-  SUCCESS = 'SUCCESS',       // Sucesso (Vencemos)
-  FAILURE = 'FAILURE',       // Insucesso (Perdemos)
-  STUDY = 'STUDY',           // Estudo (Análise)
-  WITHDRAWAL = 'WITHDRAWAL'  // Desistência
-}
-
-
-// --- OPPORTUNITY & PIPELINE TYPES ---
-
-export enum PipelineStage {
-  LEAD_RECEBIDO = 'LEAD_RECEBIDO',
-  DECISAO_PARTICIPACAO = 'DECISAO_PARTICIPACAO',
-  ORCAMENTO_PREVIO = 'ORCAMENTO_PREVIO',
-  MEMORIA_COMPOSICOES = 'MEMORIA_COMPOSICOES',
-  PROPOSTA_TECNICA = 'PROPOSTA_TECNICA',
-  PROPOSTA_COMERCIAL = 'PROPOSTA_COMERCIAL',
-  REVISAO_FINAL = 'REVISAO_FINAL',
-  ENVIO_PROPOSTA = 'ENVIO_PROPOSTA',
-  AGUARDANDO_RESULTADO = 'AGUARDANDO_RESULTADO',
-  RESULTADO = 'RESULTADO'
-}
-
-export enum BidStatus {
-  PROCESSANDO = 'PROCESSANDO', // Generic active status
-  ABERTA = 'ABERTA',
-  EM_ANDAMENTO = 'EM_ANDAMENTO',
-  DECLINADA = 'DECLINADA',
-  PERDIDA = 'PERDIDA',
-  VENCIDA = 'VENCIDA',
-  CANCELADA = 'CANCELADA'
-}
-
-// Deprecated alias for backward compatibility until code is fully cleaned
-export enum OpportunityStatus {
-  ATIVA = 'ATIVA',
-  GANHA = 'GANHA',
-  PERDIDA = 'PERDIDA',
-  CANCELADA = 'CANCELADA'
-}
-
-export interface Bid {
-  // Core Identifiers
-  id: string;
-  clientId: string;
-  clientName?: string; // Denormalized for lists/legacy support
-
-  // Basic Info
-  title: string;
-  description?: string;
-
-  // Pipeline & Status
-  pipelineStage: PipelineStage;
-  status: BidStatus | OpportunityStatus; // Compatibility union
-  probability: number;
-  priority?: 'BAIXA' | 'MÉDIA' | 'ALTA';
-
-  // Values & Dates
-  estimatedValue?: number; // Canonically 'estimatedValue' OR 'value'. Let's stick to estimatedValue as per request 3.4
-  value?: number; // Keep for compatibility if needed, but prefer estimatedValue
-
-  date: Date; // Data do convite/entrada
-  deadline?: Date; // Prazo limite
-  openedAt?: Date; // Same as date usually?
-  closedAt?: Date;
-  submissionDate?: Date;
-
-  // Relations
-  contactId?: string;
-  contactName?: string;
-  ownerId?: string;
-  ownerName?: string;
-
-  // Outcome
-  decision?: 'GO' | 'NO_GO';
-  result?: TaskOutcome;
-
-  // Details
-  scopeSummary?: string;
-  preliminaryValue?: number;
-  technicalAttachments?: string[];
-  proposalVersion?: string;
-  finalChecklistDone?: boolean;
-
-  // Meta
-  createdAt: Date;
-  updatedAt: Date;
-
-  // Legacy fields
-  legacyOpportunityId?: string;
-  opportunityId?: string; // Also legacy
-}
-
-/**
- * @deprecated Use Bid instead. This is a compatibility alias.
- */
-export type Opportunity = Bid;
-
-export type ModuleCategory = 'COMERCIAL' | 'CONTRATOS' | 'DADOS' | 'KPI' | 'GERAL';
-
-export interface Task {
-  id: string;
-  title: string;
-  description: string;
-  assigneeId: string;
-  status: TaskStatus;
-  startDate: Date;
-  endDate: Date;
-  observations: string;
-  priority: 'BAIXO' | 'MEDIO' | 'ALTO';
-  category?: string;
-  moduleCategory: ModuleCategory;
-  progress: number;
-
-  // Link to Opportunity/Bid & Automation
-  opportunityId?: string; // KEEP for compatibility, points to Bid.id
-  bidId?: string; // Canonical reference
-  contractId?: string;
-  solutionId?: string;
-  kpiId?: string;
-  interactionId?: string; // Link to Interaction
-  stageAtCreation?: PipelineStage;
-  needsDetails?: boolean;
-  outcome?: TaskOutcome;
-
-  // Legacy / Compatibility Fields
-  parentId?: string;
-  value?: number;
-  interestScore?: number;
-  proposalName?: string;
-  clientName?: string;
-  responsibleName?: string;
-  contactEmail?: string;
-  contactPhone?: string;
-}
-
-export enum AppModule {
-  COMMERCIAL = 'COMMERCIAL',
-  CONTRACTS = 'CONTRACTS',
-  DATA_CENTER = 'DATA_CENTER',
-  KPI = 'KPI'
-}
-
-// --- CONTRACT TYPES ---
-
-export enum ContractEventType {
-  ADITIVO_PRAZO = 'ADITIVO_PRAZO',
-  ADITIVO_VALOR = 'ADITIVO_VALOR',
-  ADITIVO_MISTO = 'ADITIVO_MISTO',
-  REAJUSTE = 'REAJUSTE'
-}
-
-export interface ContractEvent {
-  id: string;
-  contractId: string;
-  date: Date;
-  type: ContractEventType;
-  valueDelta: number;
-  termDeltaDays: number;
-  description: string;
-  createdAt: Date;
-  createdBy: string;
-}
-
 export enum ContractStatus {
   ACTIVE = 'ACTIVE',
   FINISHED = 'FINISHED',
   SUSPENDED = 'SUSPENDED'
 }
 
-export enum ContractMeasurementEntity {
-  RENTAL = 'RENTAL',
-  CONSTRUTORA = 'CONSTRUTORA'
+export type EntityType = 'CONSTRUTORA' | 'RENTAL';
+
+// --- STRICT JSON MODELS (Source of Truth) ---
+
+export interface BMItem {
+  item: string;
+  codigo: string;
+  descricao: string;
+  unidade: string;
+  preco_unitario: number;
+
+  // Quantities
+  qtd_contrato: number;
+  qtd_anterior: number;
+  qtd_mes: number;
+  qtd_acumulado: number;
+
+  // Values
+  valor_contrato: number; // Planned Contract Value for item?
+  valor_anterior: number;
+  valor_mes: number;
+  valor_acumulado: number;
+  saldo: number;
 }
 
-// --- AUDIT TYPES ---
+export interface ExtractedBM {
+  arquivo: string;
+  contrato: string;
+  contratada: string;
+  data_emissao: string;
+  periodo: string;
+  valor_medicao_cabecalho: number;
+  itens: BMItem[];
+  total_extraido: number;
+
+  // Optional mappings for UI convenience if needed, but keeping strict first
+  type?: 'BM';
+}
+
+export interface RDOClimaPeriodo {
+  tempo: string;
+  condicao: string;
+}
+
+export interface RDOMaoDeObra {
+  nome: string;
+  funcao: string;
+  entrada_saida: string;
+  intervalo: string;
+  horas: string;
+}
+
+export interface RDOAtividade {
+  descricao: string;
+  unidade: string;
+  status: string;
+}
+
+export interface ExtractedRDO {
+  filename: string;
+  relatorio: {
+    numero: string;
+    data: string;
+    dia_semana: string;
+    contrato: string;
+    obra: string;
+    prazo_contratual?: string;
+    local?: string;
+    prazo_decorrido?: string;
+    contratante?: string;
+    responsavel?: string;
+    prazo_a_vencer?: string;
+  };
+  horario_trabalho: {
+    entrada_saida: string;
+    horas_trabalhadas: string;
+  };
+  clima: {
+    manha: RDOClimaPeriodo;
+    tarde: RDOClimaPeriodo;
+  };
+  mao_de_obra: RDOMaoDeObra[];
+  equipamentos: string[];
+  atividades: RDOAtividade[];
+  ocorrencias: string[];
+  comentarios: string[];
+
+  type?: 'RDO';
+}
+
+export type ImportedData = ExtractedBM | ExtractedRDO;
+
+// --- DOMAIN MODELS ---
 
 export interface ScopeAuditItem {
-  item?: string; // e.g. "3.1"
   codeVLI: string;
   description: string;
-  unit?: string; // e.g. "VB", "H"
+  unit?: string;
   unitPrice?: number;
 
   // Quantities
@@ -236,7 +110,7 @@ export interface ScopeAuditItem {
   qtyMonth?: number;
   qtyAccumulated?: number;
 
-  // Values
+  // Financial
   prevAccumulated: number;
   currentMonth: number;
   totalAccumulated: number;
@@ -245,229 +119,52 @@ export interface ScopeAuditItem {
 }
 
 export interface ContractMeasurement {
-  id?: string;
-  date: Date;
-  period: string;
-  contractor: string;
-  entityType: 'RENTAL' | 'CONSTRUTORA';
-  value: number; // Valor desta medição
-  contractTotalValue: number;
-  contractBalance: number;
-  auditMatrix: ScopeAuditItem[];
-  importedAt: Date;
-  status: 'PROCESSADO' | 'PENDENTE_REVISAO';
-}
+  id: string;
+  date: string; // ISO Date of the measurement input
+  period: string; // "01/01/2024 a 31/01/2024"
+  value: number; // Total Measured Value
 
-export interface ScopeItem {
-  code: string;
-  description: string;
-  unit: string;
-  unitPrice: number;
-  totalQuantity: number;
+  // Details
+  contractTotalValue: number; // Snapshot of contract total at this time/item sum
+  contractBalance: number;    // Snapshot of balance
+
+  // Structured Data
+  auditMatrix?: ScopeAuditItem[];
+
+  // RDO Specifics stored loosely or structured?
+  // For now, if we import RDO, we might want to store it here too?
+  // Or RDOs are separate events? User said "Nova Medição" -> "Arraste PDF", implies RDO might be a type of Measurement or Support Doc.
+  rdoDetails?: ExtractedRDO;
+
+  entityType?: EntityType;
 }
 
 export interface Contract {
   id: string;
   name: string;
-  siteName: string; // Nome da Obra
-  clientName: string;
-  // Legacy/Active Fields (Primary Source for List Views)
-  totalValue: number;
-  startDate: Date;
-  endDate: Date;
-
-  // Evolution Events Support
-  initialValue: number;
-  initialEndDate: Date;
-
-  // Current Status (Calculated/Cached)
-  currentValue: number;
-  currentEndDate: Date;
-
-  measurements: ContractMeasurement[];
-  events: ContractEvent[];      // New: Additives & Readjustments
-  scopeItems?: ScopeItem[];     // Master List
   status: ContractStatus;
-
-  // Timestamps for Metadata
-  createdAt?: Date;
-  updatedAt?: Date;
-}
-
-export interface DataSolution {
-  id: string;
-  name: string;
-  stakeholders: string[];
-  deadline: Date;
-  responsibleId: string;
-  responsibleName?: string;
-  status: 'ACTIVE' | 'COMPLETED' | 'ON_HOLD' | 'TODO' | 'REVIEW';
-
+  clientName: string;
+  siteName: string;
+  startDate: string;
+  endDate: string;
+  totalValue: number;
   description?: string;
-  pmcData?: {
-    justificativas: string[];
-    objetivoSmart: string[];
-    beneficios: string[];
-    solucao: string[];
-    requisitos: string[];
-    stakeholders: string[];
-    equipe: string[];
-    entregas: string[];
-    premissas: string[];
-    manutencao: string[];
-    riscos: string[];
-    cronograma: string[];
-    custo: string[];
-    contractId?: string;
-    startDate?: Date;
-    endDate?: Date;
-  };
-  createdAt?: Date;
-  updatedAt?: Date;
+  measurements?: ContractMeasurement[];
+  events?: ContractEvent[];
 }
 
-export interface KPIHistory {
-  date?: Date;
-  referenceDate: Date;
-  value: number;
-  updatedBy: string;
+export enum ContractEventType {
+  ADITIVO_PRAZO = 'ADITIVO_PRAZO',
+  ADITIVO_VALOR = 'ADITIVO_VALOR',
+  REAJUSTE = 'REAJUSTE',
+  PARALISACAO = 'PARALISACAO'
 }
 
-export interface KPI {
+export interface ContractEvent {
   id: string;
-  name: string;
+  date: string;
+  type: ContractEventType;
   description: string;
-  unit: 'R$' | '%' | 'N' | 'BRL';
-  targetValue: number;
-  currentValue: number;
-  responsibleId: string;
-  responsibleName?: string;
-
-  history: KPIHistory[];
-
-  startDate?: Date;
-  endDate?: Date;
-
-  updatedAt?: Date;
-}
-
-// --- CRM (RELATIONSHIP MANAGEMENT) TYPES ---
-
-export interface Client {
-  id: string;
-  corporateName: string; // Razão Social
-  tradeName: string; // Nome Fantasia
-  cnpj: string;
-  segment?: string;
-  status: 'ATIVA' | 'INATIVA' | 'PROSPECT';
-
-  // New Fields
-  clientType?: 'PRIVADA' | 'PUBLICA';
-  origin?: 'PROSPECCAO_INTERNA' | 'INDICACAO' | 'CONTATO_PASSIVO';
-  primaryEmail?: string;
-  website?: string;
-
-  address?: {
-    street: string;
-    number?: string;
-    complement?: string;
-    neighborhood: string;
-    city: string;
-    state: string;
-    zipCode: string; // CEP
-  };
-
-  // Legacy fields to optionally support or map
-  name?: string; // Alias for tradeName?
-  document?: string; // Alias for CNPJ?
-  industry?: string; // Alias for segment?
-
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export type InteractionType = 'REUNIAO' | 'LIGACAO' | 'VISITA' | 'EMAIL' | 'WHATSAPP';
-
-export interface UserSummary {
-  id: string;
-  name: string;
-  email?: string;
-  avatar?: string;
-}
-
-export interface Interaction {
-  id: string;
-  clientId: string;
-  contactId?: string;
-  bidId?: string;
-  type: InteractionType;
-  title: string;
-  date: Date;
-  notes: string;
-  nextSteps?: string;
-  tags?: string[];
-  participants?: {
-    id: string; // User ID or Contact ID
-    name: string;
-    type: 'USER' | 'CONTACT';
-    role?: string;
-  }[];
-  createdBy: UserSummary;
-  createdAt: Date;
-}
-
-export type ContactProfile = 'CHAVE' | 'OCASIONAL' | 'SILENCIOSA';
-
-export interface ClientContact {
-  id: string;
-  clientId: string;
-  name: string;
-  role: string;
-  email?: string;
-  phone?: string;
-  department?: string;
-  notes?: string;
-  isActive: boolean;
-
-  address?: {
-    street: string;
-    number?: string;
-    complement?: string;
-    neighborhood: string;
-    city: string;
-    state: string;
-    zipCode: string; // CEP
-  };
-
-  createdAt: Date;
-  updatedAt: Date;
-
-  // Campos calculados no frontend (não persistidos)
-  analytics?: {
-    profile: ContactProfile;
-    lastInteraction: Date | null;
-    totalInteractions90d: number;
-    daysSinceLastInteraction: number;
-    // New Scoring Metrics
-    score?: number;
-    conversionRate?: number;
-    opportunityCount?: number;
-    successCount?: number;
-    totalValue?: number;
-    successValue?: number;
-    // 3-Axis Indexes
-    relationshipIndex?: 'MUITO_PROXIMO' | 'PROXIMO' | 'DISTANTE';
-    commercialIndex?: 'ALTO_VOLUME' | 'MEDIO_VOLUME' | 'BAIXO_VOLUME';
-    qualityIndex?: 'CAMPEAO' | 'PROMISSOR' | 'NEUTRO';
-  };
-}
-
-export interface ClientHealthMetrics {
-  score: number;
-  status: 'ATIVA' | 'ATENCAO' | 'EM_RISCO' | 'PERDIDA';
-  lastInteraction: Date | null;
-  lastBid: Date | null;
-  silenceDays: number;
-  activeContacts90d: number;
-  bidTrend: 'CRESCENTE' | 'ESTAVEL' | 'CAINDO' | 'ZEROU';
+  valueDelta: number; // R$ change (+ or -)
+  termDeltaDays: number; // Days added/removed
 }
