@@ -224,8 +224,11 @@ export enum ContractMeasurementEntity {
 // --- AUDIT TYPES ---
 
 export interface ScopeAuditItem {
+  item?: string; // e.g. "3.1"
   codeVLI: string;
   description: string;
+  unit?: string; // e.g. "VB", "H"
+  unitPrice?: number;
   prevAccumulated: number;
   currentMonth: number;
   totalAccumulated: number;
