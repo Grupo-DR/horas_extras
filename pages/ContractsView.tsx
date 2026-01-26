@@ -109,38 +109,57 @@ export const ContractsView: React.FC = () => {
                             </div>
 
                             <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left">
+                                <table className="w-full text-sm text-left whitespace-nowrap">
                                     <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
+                                        <tr className="uppercase text-[10px] tracking-wider text-slate-400">
+                                            <th colSpan={5} className="px-6 py-2 border-r border-slate-200">Básico</th>
+                                            <th colSpan={4} className="px-6 py-2 text-center border-r border-slate-200 bg-blue-50/20">Quantidades</th>
+                                            <th colSpan={5} className="px-6 py-2 text-center bg-green-50/20">Valores (R$)</th>
+                                        </tr>
                                         <tr>
-                                            <th className="px-6 py-3 w-20">Item</th>
-                                            <th className="px-6 py-3 w-32">Código</th>
-                                            <th className="px-6 py-3">Descrição</th>
-                                            <th className="px-6 py-3 w-24">Unid.</th>
-                                            <th className="px-6 py-3 text-right">Preço Unit.</th>
-                                            <th className="px-6 py-3 text-right bg-blue-50/50">Qtd. Mês</th>
-                                            <th className="px-6 py-3 text-right bg-green-50/50">Valor Mês</th>
-                                            <th className="px-6 py-3 text-right">Saldo</th>
+                                            <th className="px-4 py-3 min-w-[60px]">Item</th>
+                                            <th className="px-4 py-3 min-w-[100px]">Código</th>
+                                            <th className="px-4 py-3 min-w-[300px]">Descrição</th>
+                                            <th className="px-4 py-3">Unid.</th>
+                                            <th className="px-4 py-3 text-right">Preço Unit.</th>
+
+                                            {/* Quantities */}
+                                            <th className="px-4 py-3 text-right bg-blue-50/10 text-blue-700">Contrato</th>
+                                            <th className="px-4 py-3 text-right bg-blue-50/10 text-slate-500">Anterior</th>
+                                            <th className="px-4 py-3 text-right bg-blue-50/30 text-blue-700 font-bold border-l border-r border-blue-100">Mês</th>
+                                            <th className="px-4 py-3 text-right bg-blue-50/10 text-slate-700">Acum.</th>
+
+                                            {/* Values */}
+                                            <th className="px-4 py-3 text-right bg-green-50/10 text-green-700">Contrato</th>
+                                            <th className="px-4 py-3 text-right bg-green-50/10 text-slate-500">Anterior</th>
+                                            <th className="px-4 py-3 text-right bg-green-50/30 text-green-700 font-bold border-l border-r border-green-100">Mês</th>
+                                            <th className="px-4 py-3 text-right bg-green-50/10 text-slate-700">Acum.</th>
+                                            <th className="px-4 py-3 text-right text-slate-500 font-bold">Saldo</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
                                         {importedData.itens?.map((item, idx) => (
                                             <tr key={idx} className="hover:bg-slate-50 transition-colors group">
-                                                <td className="px-6 py-3 font-medium text-slate-600">{item.item}</td>
-                                                <td className="px-6 py-3 font-mono text-xs text-slate-500">{item.codigo}</td>
-                                                <td className="px-6 py-3 text-slate-700 font-medium max-w-md truncate" title={item.descricao}>
+                                                <td className="px-4 py-2 font-medium text-slate-600">{item.item}</td>
+                                                <td className="px-4 py-2 font-mono text-xs text-slate-400">{item.codigo}</td>
+                                                <td className="px-4 py-2 text-slate-700 max-w-xs truncate" title={item.descricao}>
                                                     {item.descricao}
                                                 </td>
-                                                <td className="px-6 py-3 text-slate-500">{item.unidade}</td>
-                                                <td className="px-6 py-3 text-right font-mono text-slate-600">{formatCurrency(item.preco_unitario)}</td>
-                                                <td className="px-6 py-3 text-right font-bold text-blue-700 bg-blue-50/30 group-hover:bg-blue-50/50">
-                                                    {item.qtd_mes}
-                                                </td>
-                                                <td className="px-6 py-3 text-right font-bold text-green-700 bg-green-50/30 group-hover:bg-green-50/50">
-                                                    {formatCurrency(item.valor_mes)}
-                                                </td>
-                                                <td className="px-6 py-3 text-right font-mono text-slate-500">
-                                                    {formatCurrency(item.saldo)}
-                                                </td>
+                                                <td className="px-4 py-2 text-slate-500 text-xs">{item.unidade}</td>
+                                                <td className="px-4 py-2 text-right font-mono text-slate-600 border-r border-slate-100">{formatCurrency(item.preco_unitario)}</td>
+
+                                                {/* Quantities */}
+                                                <td className="px-4 py-2 text-right font-mono text-xs text-blue-900 bg-blue-50/10">{item.qtd_contrato}</td>
+                                                <td className="px-4 py-2 text-right font-mono text-xs text-slate-400 bg-blue-50/10">{item.qtd_anterior}</td>
+                                                <td className="px-4 py-2 text-right font-mono text-sm text-blue-700 font-bold bg-blue-50/30 border-l border-r border-blue-100">{item.qtd_mes}</td>
+                                                <td className="px-4 py-2 text-right font-mono text-xs text-slate-600 bg-blue-50/10 border-r border-slate-100">{item.qtd_acumulado}</td>
+
+                                                {/* Values */}
+                                                <td className="px-4 py-2 text-right font-mono text-xs text-green-800 bg-green-50/10">{formatCurrency(item.valor_contrato)}</td>
+                                                <td className="px-4 py-2 text-right font-mono text-xs text-slate-400 bg-green-50/10">{formatCurrency(item.valor_anterior)}</td>
+                                                <td className="px-4 py-2 text-right font-mono text-sm text-green-700 font-bold bg-green-50/30 border-l border-r border-green-100">{formatCurrency(item.valor_mes)}</td>
+                                                <td className="px-4 py-2 text-right font-mono text-xs text-slate-600 bg-green-50/10">{formatCurrency(item.valor_acumulado)}</td>
+                                                <td className="px-4 py-2 text-right font-mono text-xs text-slate-400 font-bold border-l border-slate-100">{formatCurrency(item.saldo)}</td>
                                             </tr>
                                         ))}
                                     </tbody>
