@@ -46,6 +46,14 @@ export const ContractCard: React.FC<Props> = ({ contract, onViewDetails, onEdit,
                 <div>
                     <h3 className="font-bold text-slate-800 text-lg line-clamp-1" title={contract.name}>{contract.name}</h3>
                     <p className="text-sm text-slate-500 font-medium line-clamp-1">{contract.siteName} • {contract.clientName}</p>
+                    <div className="flex gap-4 mt-2 text-xs text-slate-500">
+                        <div>
+                            <span className="font-bold text-slate-700">Contrato:</span> {contract.contractNumber}
+                        </div>
+                        <div>
+                            <span className="font-bold text-slate-700">Contratada:</span> {contract.contractorName}
+                        </div>
+                    </div>
                 </div>
                 <div className="flex items-center gap-2">
                     <button
