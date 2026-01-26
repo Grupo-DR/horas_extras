@@ -147,10 +147,10 @@ export const ClientDetailsView: React.FC = () => {
     const handleSaveTask = async (taskPartial: Partial<Task>) => {
         if (activeInteractionForTask) {
             const newTask = {
-                ...taskPartial,
                 interactionId: activeInteractionForTask.id,
                 clientName: client.tradeName, // Denormalize for list ease
-                responsibleName: user?.name || 'Sistema'
+                responsibleName: user?.name || 'Sistema',
+                moduleCategory: 'COMERCIAL' // Ensure it falls under Commercial filters
             };
             // @ts-ignore
             await addTask(newTask);
