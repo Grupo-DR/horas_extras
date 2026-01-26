@@ -7,6 +7,7 @@ import { MainLayout } from './layout/MainLayout';
 import { Toaster } from 'sonner';
 import { AuthProvider } from './contexts/AuthContext';
 import { CrmProvider } from './contexts/CrmContext';
+import { ContractsProvider } from './contexts/ContractsContext';
 import { PrivateRoute } from './components/PrivateRoute';
 import { RequireAdmin } from './components/RequireAdmin';
 import RequireModuleAccess from './components/auth/RequireModuleAccess';
@@ -40,57 +41,55 @@ const App: React.FC = () => {
       <Toaster position="top-right" richColors />
       <AuthProvider>
         <CrmProvider>
-          <Suspense fallback={<LoadingFallback />}>
-            <Routes>
-              {/* PUBLIC */}
-              <Route path="/login" element={<LoginPage />} />
+          <ContractsProvider>
+            <Suspense fallback={<LoadingFallback />}>
+              <Routes>
+                {/* PUBLIC */}
+                <Route path="/login" element={<LoginPage />} />
 
-              {/* PRIVATE */}
-              <Route element={<PrivateRoute />}>
-                <Route path="/" element={<MainLayout />}>
-                  import RequireModuleAccess from './components/auth/RequireModuleAccess'; // Import
+                {/* PRIVATE */}
+                <Route element={<PrivateRoute />}>
+                  <Route path="/" element={<MainLayout />}>
+                    <Route index element={<Navigate to="/comercial" replace />} />
 
-                  // ... inside Routes ...
+                    <Route element={<RequireModuleAccess module="commercial_dashboard" />}>
+                      <Route path="comercial" element={<CommercialView />} />
+                    </Route>
 
-                  <Route index element={<Navigate to="/comercial" replace />} />
+                    <Route element={<RequireModuleAccess module="contracts" />}>
+                      <Route path="contratos" element={<ContractsView />} />
+                    </Route>
 
-                  <Route element={<RequireModuleAccess module="commercial_dashboard" />}>
-                    <Route path="comercial" element={<CommercialView />} />
+
+
+                    <Route element={<RequireModuleAccess module="operational_planning" />}>
+                      <Route path="acoes" element={<ActionsView />} />
+                    </Route>
+
+                    {/* CRM Module */}
+                    <Route element={<RequireModuleAccess module="crm" />}>
+                      <Route path="crm" element={<Navigate to="/crm/clients" replace />} />
+                      <Route path="crm/clients" element={<ClientsView />} />
+                      <Route path="crm/clients/:id" element={<ClientDetailsView />} />
+                    </Route>
+
+                    {/* Account Settings */}
+                    <Route path="config/conta" element={<AccountSettings />} />
+
+                    {/* Config Module (Admin Only - kept as RequireAdmin for extra safety or use users module) */}
+                    <Route
+                      path="config/equipe"
+                      element={
+                        <RequireAdmin>
+                          <TeamSettings />
+                        </RequireAdmin>
+                      }
+                    />
                   </Route>
-
-                  <Route element={<RequireModuleAccess module="contracts" />}>
-                    <Route path="contratos" element={<ContractsView />} />
-                  </Route>
-
-
-
-                  <Route element={<RequireModuleAccess module="operational_planning" />}>
-                    <Route path="acoes" element={<ActionsView />} />
-                  </Route>
-
-                  {/* CRM Module */}
-                  <Route element={<RequireModuleAccess module="crm" />}>
-                    <Route path="crm" element={<Navigate to="/crm/clients" replace />} />
-                    <Route path="crm/clients" element={<ClientsView />} />
-                    <Route path="crm/clients/:id" element={<ClientDetailsView />} />
-                  </Route>
-
-                  {/* Account Settings */}
-                  <Route path="config/conta" element={<AccountSettings />} />
-
-                  {/* Config Module (Admin Only - kept as RequireAdmin for extra safety or use users module) */}
-                  <Route
-                    path="config/equipe"
-                    element={
-                      <RequireAdmin>
-                        <TeamSettings />
-                      </RequireAdmin>
-                    }
-                  />
                 </Route>
-              </Route>
-            </Routes>
-          </Suspense>
+              </Routes>
+            </Suspense>
+          </ContractsProvider>
         </CrmProvider>
       </AuthProvider>
     </BrowserRouter>

@@ -170,14 +170,21 @@ export interface ContractMeasurement {
 
 export interface Contract {
   id: string;
-  name: string;
+  contractNumber: string; // Nº do Contrato
+  name: string; // Nome (maybe same as SiteName or internal name)
   status: ContractStatus;
-  clientName: string;
-  siteName: string;
+
+  // Parties
+  clientName: string; // Contratante
+  contractorName: string; // Contratada
+  siteName: string; // Nome da Obra
+
+  // Details
   startDate: string;
   endDate: string;
   totalValue: number;
   description?: string;
+
   measurements?: ContractMeasurement[];
   events?: ContractEvent[];
 }
