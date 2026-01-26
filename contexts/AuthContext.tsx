@@ -117,7 +117,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
-            const loadedUsers = snapshot.docs.map(doc => doc.data() as User);
+            const loadedUsers = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }) as User);
             setUsers(loadedUsers);
         });
 
