@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Upload, FileText, CheckCircle, AlertTriangle, ArrowRight, Save, Database, Eye, ChevronRight, ChevronDown } from 'lucide-react';
 import { LocalBMParser, ExtractedData } from '../services/LocalBMParser';
+import { RemoteBMParser } from '../services/RemoteBMParser';
 import { toast } from 'sonner';
 
 interface Props {
@@ -28,13 +29,14 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
             setLoading(true);
 
             try {
-                const result = await LocalBMParser.parsePDF(selectedFile);
+                // Try Remote Parsing First (Python Backend)
+                const result = await RemoteBMParser.parsePDF(selectedFile);
                 setData(result);
-                setFormData(result.fields); // Initialize form with extracted fields
+                setFormData(result.fields);
                 setStep('REVIEW');
             } catch (error) {
                 console.error(error);
-                toast.error("Erro ao ler PDF. Verifique se é um arquivo válido.");
+                toast.error("Erro ao processar arquivo. Verifique se o backend Python está rodando.");
             } finally {
                 setLoading(false);
             }

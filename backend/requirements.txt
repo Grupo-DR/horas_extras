@@ -6,3 +6,4 @@ xlrd
 rapidfuzz
 pydantic
 python-dateutil
+pdfplumber
