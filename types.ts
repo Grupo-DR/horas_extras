@@ -249,16 +249,32 @@ export interface Bid {
   updatedAt: Date;
 }
 
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  photoURL?: string;
+}
+
 export interface Task {
   id: string;
   title: string;
   description?: string;
+  parentId?: string; // Add legacy ParentId support
 
   // Links
   opportunityId?: string; // Legacy
   bidId?: string; // Canonical
   interactionId?: string;
+
+  // Denomalized Context
   clientName?: string;
+  proposalName?: string;
+  responsibleName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+
   contractId?: string;
   solutionId?: string;
   kpiId?: string;
@@ -268,7 +284,8 @@ export interface Task {
 
   // State
   status: TaskStatus;
-  priority: 'BAIXA' | 'MEDIA' | 'ALTA';
+  priority: 'BAIXO' | 'MEDIO' | 'ALTO'; // Fixed typo MEDIA -> MEDIO to match form
+  category?: string; // Add category
 
   // Planning
   startDate: Date;
@@ -281,6 +298,13 @@ export interface Task {
   needsDetails?: boolean;
   progress: number;
   observations?: string;
+
+  // Outcome
+  outcome?: TaskOutcome; // Add outcome
+
+  // Financials
+  value?: number;
+  interestScore?: number;
 
   moduleCategory?: string;
 

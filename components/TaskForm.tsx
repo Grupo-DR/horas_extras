@@ -51,7 +51,8 @@ export const TaskForm: React.FC<Props> = ({
   useEffect(() => {
     if (initialData) {
       // SANITIZATION & DEFAULTS MERGE
-      const safeData = {
+      // 1. Define Defaults
+      const defaults = {
         title: '',
         description: '',
         assigneeId: users[0]?.id || '',
@@ -64,13 +65,23 @@ export const TaskForm: React.FC<Props> = ({
         endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         value: 0,
         interestScore: 0,
-        moduleCategory: 'GERAL',
-        ...initialData,
-        // sanitize strings
+        moduleCategory: 'GERAL'
+      };
+
+      // 2. Prepare Sanitized Overrides
+      const sanitized = {
         title: typeof initialData.title === 'object' ? JSON.stringify(initialData.title) : initialData.title || '',
         description: typeof initialData.description === 'object' ? JSON.stringify(initialData.description) : initialData.description || '',
         category: typeof initialData.category === 'object' ? '' : initialData.category,
       };
+
+      // 3. Merge: Defaults -> Initial Data -> Sanitized Overrides
+      const safeData = {
+        ...defaults,
+        ...initialData,
+        ...sanitized
+      };
+
       setFormData(safeData as Task);
       setIsChild(!!safeData.parentId || !!safeData.opportunityId);
     } else {
