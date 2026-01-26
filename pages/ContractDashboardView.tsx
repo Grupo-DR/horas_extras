@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FileText, Users, ArrowLeft, Building, Calendar, DollarSign, Plus } from 'lucide-react';
+import { FileText, Users, ArrowLeft, Building, Calendar, DollarSign, Plus, Pencil, Trash2 } from 'lucide-react';
 import { useContracts } from '../contexts/ContractsContext';
 import { DocumentImportModal } from '../components/DocumentImportModal';
 import { ContractTeamModal } from '../components/ContractTeamModal';
@@ -20,6 +20,7 @@ export const ContractDashboardView: React.FC = () => {
 
     // Placeholder for Team Modal
     const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+    const [teamToEdit, setTeamToEdit] = useState<ContractTeam | null>(null);
     const [selectedTeam, setSelectedTeam] = useState<ContractTeam | null>(null);
 
     if (!contract) {
@@ -63,13 +64,31 @@ export const ContractDashboardView: React.FC = () => {
     };
 
     const handleCreateTeam = (team: ContractTeam) => {
+        let updatedTeams = contract.teams || [];
+
+        const existingIndex = updatedTeams.findIndex(t => t.id === team.id);
+        if (existingIndex >= 0) {
+            updatedTeams = updatedTeams.map(t => t.id === team.id ? team : t);
+            toast.success("Equipe atualizada!");
+        } else {
+            updatedTeams = [...updatedTeams, team];
+            toast.success("Equipe criada com sucesso!");
+        }
+
         const updatedContract = {
             ...contract,
-            teams: [...(contract.teams || []), team]
+            teams: updatedTeams
         };
         updateContract(updatedContract);
         setIsTeamModalOpen(false);
+        setTeamToEdit(null);
     };
+
+    // When opening modal for new team, clear edit state
+    const openNewTeamModal = () => {
+        setTeamToEdit(null);
+        setIsTeamModalOpen(true);
+    }
 
     return (
         <div className="flex h-full flex-col bg-slate-50 overflow-hidden">
@@ -107,7 +126,7 @@ export const ContractDashboardView: React.FC = () => {
                             Inserir Boletim
                         </button>
                         <button
-                            onClick={() => setIsTeamModalOpen(true)}
+                            onClick={openNewTeamModal}
                             className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium transition-colors shadow-sm"
                         >
                             <Users size={18} className="block text-slate-400" />
@@ -160,7 +179,7 @@ export const ContractDashboardView: React.FC = () => {
                             <p className="text-slate-500 font-medium mb-1">Nenhuma equipe cadastrada</p>
                             <p className="text-xs text-slate-400 mb-4">Cadastre equipes para vincular os RDOs e gerenciar atividades.</p>
                             <button
-                                onClick={() => setIsTeamModalOpen(true)}
+                                onClick={openNewTeamModal}
                                 className="text-blue-600 text-sm font-bold hover:underline"
                             >
                                 + Cadastrar Primeira Equipe
@@ -172,18 +191,48 @@ export const ContractDashboardView: React.FC = () => {
                                 <div
                                     key={team.id}
                                     onClick={() => setSelectedTeam(team)}
-                                    className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:shadow-md transition-shadow cursor-pointer group"
+                                    className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:shadow-md transition-shadow cursor-pointer group relative"
                                 >
-                                    <div className="flex justify-between items-start mb-2">
+                                    <div className="absolute top-2 right-2 flex gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setTeamToEdit(team);
+                                                setIsTeamModalOpen(true);
+                                            }}
+                                            className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 hover:text-blue-600"
+                                            title="Editar Equipe"
+                                        >
+                                            <Pencil size={14} />
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (confirm('Tem certeza que deseja excluir esta equipe?')) {
+                                                    const updatedTeams = contract.teams?.filter(t => t.id !== team.id);
+                                                    updateContract({ ...contract, teams: updatedTeams });
+                                                    toast.success("Equipe excluída com sucesso!");
+                                                }
+                                            }}
+                                            className="p-1.5 hover:bg-red-50 rounded-full text-slate-400 hover:text-red-600"
+                                            title="Excluir Equipe"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+
+                                    <div className="flex justify-between items-start mb-2 pr-16">
                                         <div>
                                             <h4 className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{team.name}</h4>
                                             <p className="text-sm text-slate-500">{team.location}</p>
                                         </div>
+                                    </div>
+                                    <div className="flex justify-between items-end mt-2">
+                                        <p className="text-xs text-slate-400">Líder: {team.leaderName}</p>
                                         <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-full">
                                             {team.rdos?.length || 0} RDOs
                                         </span>
                                     </div>
-                                    <p className="text-xs text-slate-400 mt-2">Líder: {team.leaderName}</p>
                                 </div>
                             ))}
                         </div>
@@ -237,6 +286,7 @@ export const ContractDashboardView: React.FC = () => {
                 isOpen={isTeamModalOpen}
                 onClose={() => setIsTeamModalOpen(false)}
                 onSave={handleCreateTeam}
+                initialData={teamToEdit}
             />
 
             <TeamDetailsModal

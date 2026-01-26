@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Contract } from '../types';
+import { toast } from 'sonner';
 
 interface ContractsContextType {
     contracts: Contract[];
@@ -25,12 +26,13 @@ export const ContractsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setContracts(prev => [...prev, contract]);
     };
 
-    const updateContract = (updated: Contract) => {
-        setContracts(prev => prev.map(c => c.id === updated.id ? updated : c));
+    const updateContract = (updatedContract: Contract) => {
+        setContracts(prev => prev.map(c => c.id === updatedContract.id ? updatedContract : c));
     };
 
     const deleteContract = (id: string) => {
         setContracts(prev => prev.filter(c => c.id !== id));
+        toast.success("Contrato excluído com sucesso!");
     };
 
     return (

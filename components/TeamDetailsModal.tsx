@@ -59,8 +59,8 @@ export const TeamDetailsModal: React.FC<Props> = ({ isOpen, onClose, team }) => 
                                         key={idx}
                                         onClick={() => setSelectedRDO(rdo)}
                                         className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedRDO === rdo
-                                                ? 'bg-white border-blue-500 shadow-md ring-1 ring-blue-500'
-                                                : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm'
+                                            ? 'bg-white border-blue-500 shadow-md ring-1 ring-blue-500'
+                                            : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm'
                                             }`}
                                     >
                                         <div className="flex justify-between items-start mb-2">
@@ -108,6 +108,42 @@ export const TeamDetailsModal: React.FC<Props> = ({ isOpen, onClose, team }) => 
                                             {selectedRDO.relatorio?.obra}
                                             {selectedRDO.relatorio?.local && <span className="text-slate-500"> - {selectedRDO.relatorio?.local}</span>}
                                         </p>
+                                    </div>
+
+                                    {/* Additional Fields */}
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Contratante</label>
+                                        <p className="text-sm font-medium text-slate-700">{selectedRDO.relatorio?.contratante || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Responsável</label>
+                                        <p className="text-sm font-medium text-slate-700">{selectedRDO.relatorio?.responsavel || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Prazo Contratual</label>
+                                        <p className="text-sm font-medium text-slate-700">{selectedRDO.relatorio?.prazo_contratual || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Prazo (Vencer/Decor)</label>
+                                        <div className="text-sm font-medium text-slate-700 flex items-center gap-1">
+                                            <span className="text-orange-600">{selectedRDO.relatorio?.prazo_a_vencer || '-'}</span>
+                                            <span className="text-slate-300">/</span>
+                                            <span>{selectedRDO.relatorio?.prazo_decorrido || '-'}</span>
+                                        </div>
+                                    </div>
+                                    <div className="md:col-span-4 border-t pt-4 mt-2 flex items-center gap-6">
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Horário Trabalho</label>
+                                            <p className="text-sm font-mono font-medium text-slate-700 bg-slate-100 px-2 py-1 rounded w-fit">
+                                                {selectedRDO.horario_trabalho?.entrada_saida || '-'}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Horas Trab.</label>
+                                            <p className="text-sm font-bold text-slate-700">
+                                                {selectedRDO.horario_trabalho?.horas_trabalhadas || '-'}h
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
 

@@ -117,22 +117,46 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
     const parseEquipmentString = (str: string) => {
         if (!str) return { nome: '', descricao: '', quantidade: 0, horario: '', tempo: '' };
 
-        // Try regex match
-        // "CB-053 Caminhão Casinha 1 07:00 - 17:00 (10h)"
-        // Pattern: ^(\S+) (.*) (\d+) (\d{2}:\d{2}\s*-\s*\d{2}:\d{2})\s*(\(.*\))$
-        const match = str.match(/^(\S+)\s+(.+)\s+(\d+)\s+(\d{2}:\d{2}\s*-\s*\d{2}:\d{2})\s*(\(.*\))$/);
-
-        if (match) {
+        // Attempt 1: Strict Match with Parentheses for time duration
+        // Pattern: Code Description Qty TimeRange (Duration)
+        // ex: CB-053 Caminhão Casinha 1 07:00 - 17:00 (10h)
+        const matchStrict = str.match(/^([A-Z0-9-]+)\s+(.+)\s+(\d+)\s+(\d{2}:\d{2}\s*-\s*\d{2}:\d{2})\s*(\(.*\))$/i);
+        if (matchStrict) {
             return {
-                nome: match[1],
-                descricao: match[2],
-                quantidade: parseInt(match[3]),
-                horario: match[4],
-                tempo: match[5]
+                nome: matchStrict[1],
+                descricao: matchStrict[2],
+                quantidade: parseInt(matchStrict[3]),
+                horario: matchStrict[4],
+                tempo: matchStrict[5]
             };
         }
 
-        // Fallback if loose format
+        // Attempt 2: Match without parens/duration at end
+        // ex: CB-053 Caminhão Casinha 1 07:00 - 17:00
+        const matchLoose = str.match(/^([A-Z0-9-]+)\s+(.+)\s+(\d+)\s+(\d{2}:\d{2}\s*-\s*\d{2}:\d{2})/i);
+        if (matchLoose) {
+            return {
+                nome: matchLoose[1],
+                descricao: matchLoose[2],
+                quantidade: parseInt(matchLoose[3]),
+                horario: matchLoose[4],
+                tempo: ''
+            };
+        }
+
+        // Attempt 3: Simple split by spaces (Fallback for very clean data)
+        // This is risky if description has spaces, so we trust the regexes more.
+        // But let's try to extract at least the code if possible.
+        const firstSpace = str.indexOf(' ');
+        if (firstSpace > 0) {
+            const potentialCode = str.substring(0, firstSpace);
+            // If code looks like a code (alphanumeric + dash)
+            if (/^[A-Z0-9-]+$/i.test(potentialCode)) {
+                return { nome: potentialCode, descricao: str.substring(firstSpace).trim(), quantidade: 1, horario: '', tempo: '' };
+            }
+        }
+
+        // Fallback: Dump everything in Name
         return { nome: str, descricao: '', quantidade: 1, horario: '', tempo: '' };
     };
 

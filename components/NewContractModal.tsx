@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Save, Building, Calendar, DollarSign, FileText, Briefcase } from 'lucide-react';
 import { Contract, ContractStatus } from '../types';
 import { toast } from 'sonner';
@@ -6,16 +6,51 @@ import { toast } from 'sonner';
 interface Props {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (contract: Contract) => void;
+    onSave: (contract: any) => void;
+    initialData?: Contract | null;
 }
 
-export const NewContractModal: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
-    const [formData, setFormData] = useState<Partial<Contract>>({
-        status: ContractStatus.ACTIVE,
-        contractorName: 'DR Construtora e Serviços Ltda', // Default?
+export const NewContractModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData }) => {
+    const [formData, setFormData] = useState({
+        contractNumber: '',
+        clientName: '',
+        siteName: '',
+        startDate: '',
+        endDate: '',
+        totalValue: 0,
+        contractorName: '',
+        description: ''
     });
 
-    const handleChange = (field: keyof Contract, value: any) => {
+    useEffect(() => {
+        if (isOpen) {
+            if (initialData) {
+                setFormData({
+                    contractNumber: initialData.contractNumber,
+                    clientName: initialData.clientName,
+                    siteName: initialData.siteName,
+                    startDate: initialData.startDate,
+                    endDate: initialData.endDate || '',
+                    totalValue: initialData.totalValue,
+                    contractorName: initialData.contractorName || '',
+                    description: initialData.description || ''
+                });
+            } else {
+                setFormData({
+                    contractNumber: '',
+                    clientName: '',
+                    siteName: '',
+                    startDate: '',
+                    endDate: '',
+                    totalValue: 0,
+                    contractorName: 'DR Construtora e Serviços Ltda', // Default value for new contracts
+                    description: ''
+                });
+            }
+        }
+    }, [isOpen, initialData]);
+
+    const handleChange = (field: keyof typeof formData, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
