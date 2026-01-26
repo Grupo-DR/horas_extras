@@ -27,6 +27,13 @@ export const Sidebar: React.FC = () => {
             path: '/comercial',
             authModule: 'commercial_dashboard' as ModuleKey
         },
+        {
+            module: AppModule.CONTRACTS,
+            label: 'Contratos',
+            icon: FileText,
+            path: '/contratos',
+            authModule: 'contracts' as ModuleKey
+        },
 
         {
             module: 'ACTIONS',

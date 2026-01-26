@@ -10,7 +10,8 @@ export type ModuleKey =
     | 'strategic_planning'
     | 'operational_planning'
     | 'settings'
-    | 'users';
+    | 'users'
+    | 'contracts';
 
 export interface ModuleAccess {
     crm: AccessLevel;
@@ -20,6 +21,7 @@ export interface ModuleAccess {
     operational_planning: AccessLevel;
     settings: AccessLevel;
     users: AccessLevel;
+    contracts: AccessLevel;
 }
 
 export const DEFAULT_MODULE_ACCESS: ModuleAccess = {
@@ -29,7 +31,8 @@ export const DEFAULT_MODULE_ACCESS: ModuleAccess = {
     strategic_planning: 'VIEW',
     operational_planning: 'VIEW',
     settings: 'NONE',
-    users: 'NONE'
+    users: 'NONE',
+    contracts: 'VIEW'
 };
 
 export interface User {

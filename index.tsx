@@ -23,6 +23,7 @@ const ClientDetailsView = React.lazy(() => import('./pages/crm/ClientDetailsView
 // Config Pages
 const TeamSettings = React.lazy(() => import('./pages/config/TeamSettings').then(module => ({ default: module.TeamSettings })));
 const AccountSettings = React.lazy(() => import('./pages/config/AccountSettings').then(module => ({ default: module.AccountSettings })));
+const ContractsView = React.lazy(() => import('./pages/ContractsView').then(module => ({ default: module.ContractsView })));
 
 const LoadingFallback = () => (
   <div className="flex h-screen w-full items-center justify-center bg-slate-50">
@@ -55,6 +56,10 @@ const App: React.FC = () => {
 
                   <Route element={<RequireModuleAccess module="commercial_dashboard" />}>
                     <Route path="comercial" element={<CommercialView />} />
+                  </Route>
+
+                  <Route element={<RequireModuleAccess module="contracts" />}>
+                    <Route path="contratos" element={<ContractsView />} />
                   </Route>
 
 
