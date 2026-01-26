@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Upload, FileText, CheckCircle, AlertTriangle, ArrowRight, Save, Database, Eye, ChevronRight, ChevronDown } from 'lucide-react';
 import { LocalBMParser } from '../services/LocalBMParser';
-import { RemoteBMParser } from '../services/RemoteBMParser';
+
 import { ImportedData, ExtractedBM, ExtractedRDO } from '../types';
 import { toast } from 'sonner';
 
@@ -58,15 +58,11 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
                     setFormData(extractedData); // Flattened state is just the object itself now
                     setStep('REVIEW');
                 } else {
-                    // Try Remote Parsing First (Python Backend)
-                    const result = await RemoteBMParser.parsePDF(selectedFile);
-                    setData(result);
-                    setFormData(result); // Flattened state
-                    setStep('REVIEW');
+                    toast.error("Formato de arquivo não suportado. Por favor, carregue um arquivo .json.");
                 }
             } catch (error) {
                 console.error(error);
-                toast.error("Erro ao processar arquivo. Se for PDF, verifique o backend. Se for JSON, verifique a formatação.");
+                toast.error("Erro ao processar arquivo. Verifique se é um JSON válido.");
             } finally {
                 setLoading(false);
             }
@@ -136,10 +132,10 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
                                             <FileText size={32} className="text-slate-400 group-hover:text-blue-500" />
                                         </div>
                                         <span className="text-slate-600 font-medium">Clique para selecionar</span>
-                                        <span className="text-slate-400 text-xs mt-1">PDF (Medição/RDO) ou JSON</span>
+                                        <span className="text-slate-400 text-xs mt-1">JSON (Medição/RDO)</span>
                                     </>
                                 )}
-                                <input type="file" accept=".pdf,.json" className="hidden" onChange={handleFileChange} disabled={loading} />
+                                <input type="file" accept=".json" className="hidden" onChange={handleFileChange} disabled={loading} />
                             </label>
 
                             <div className="flex gap-4 text-xs text-slate-400">
@@ -295,8 +291,9 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
                                                         <div className="font-bold text-slate-700">{formData.relatorio?.dia_semana || '-'}</div>
                                                     </div>
                                                     <div>
-                                                        <label className="block text-[10px] uppercase text-slate-400 font-bold">Obra</label>
+                                                        <label className="block text-[10px] uppercase text-slate-400 font-bold">Obra (Local)</label>
                                                         <div className="font-bold text-slate-700 truncate" title={formData.relatorio?.obra}>{formData.relatorio?.obra || '-'}</div>
+                                                        {formData.relatorio?.local && <div className="text-[10px] text-slate-500 truncate" title={formData.relatorio.local}>{formData.relatorio.local}</div>}
                                                     </div>
                                                     <div>
                                                         <label className="block text-[10px] uppercase text-slate-400 font-bold">Horário</label>
@@ -304,6 +301,28 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
                                                             {formData.horario_trabalho?.entrada_saida || '-'}
                                                             <span className="text-slate-400 mx-1">|</span>
                                                             {formData.horario_trabalho?.horas_trabalhadas || '-'}h
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Row 2: Contract Details */}
+                                                    <div>
+                                                        <label className="block text-[10px] uppercase text-slate-400 font-bold">Contratante</label>
+                                                        <div className="font-bold text-slate-700 truncate" title={formData.relatorio?.contratante}>{formData.relatorio?.contratante || '-'}</div>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[10px] uppercase text-slate-400 font-bold">Responsável</label>
+                                                        <div className="font-bold text-slate-700 truncate" title={formData.relatorio?.responsavel}>{formData.relatorio?.responsavel || '-'}</div>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[10px] uppercase text-slate-400 font-bold">Prazo Contratual</label>
+                                                        <div className="font-bold text-slate-700">{formData.relatorio?.prazo_contratual || '-'}</div>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[10px] uppercase text-slate-400 font-bold">A Vencer / Decorrido</label>
+                                                        <div className="text-xs font-bold text-slate-700">
+                                                            <span className="text-orange-600">{formData.relatorio?.prazo_a_vencer || '-'}</span>
+                                                            <span className="text-slate-300 mx-1">/</span>
+                                                            <span className="text-slate-500">{formData.relatorio?.prazo_decorrido || '-'}</span>
                                                         </div>
                                                     </div>
                                                 </div>
