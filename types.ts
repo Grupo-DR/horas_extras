@@ -189,3 +189,80 @@ export interface ContractEvent {
   valueDelta: number; // R$ change (+ or -)
   termDeltaDays: number; // Days added/removed
 }
+
+// --- COMMERCIAL / CRM MODELS ---
+
+export enum BidStatus {
+  ABERTA = 'ABERTA',
+  PROCESSANDO = 'PROCESSANDO',
+  VENCIDA = 'VENCIDA',
+  PERDIDA = 'PERDIDA',
+  GANHA = 'GANHA'
+}
+
+export enum TaskStatus {
+  PENDING = 'PENDING',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  CANCELED = 'CANCELED'
+}
+
+export interface Bid {
+  id: string;
+  clientId: string;
+  title: string;
+  ownerId?: string;
+
+  // Pipeline & Status
+  status: BidStatus;
+  pipelineStage: PipelineStage;
+  probability: number; // 0-100
+
+  // Financials
+  estimatedValue: number;
+  value?: number; // Alias often used
+
+  // Important Dates
+  date?: Date; // Data de recebimento
+  deadline?: Date; // Prazo
+  openedAt?: Date;
+  closedAt?: Date;
+  submissionDate?: Date;
+
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  description?: string;
+
+  // Links
+  opportunityId?: string; // Legacy
+  bidId?: string; // Canonical
+
+  // Assignment
+  assigneeId: string;
+
+  // State
+  status: TaskStatus;
+  priority: 'BAIXA' | 'MEDIA' | 'ALTA';
+
+  // Planning
+  startDate: Date;
+  endDate: Date;
+
+  // Pipeline Link
+  stageAtCreation?: PipelineStage;
+
+  // Progress
+  needsDetails?: boolean;
+  progress: number;
+  observations?: string;
+
+  moduleCategory?: string;
+
+  createdAt: Date;
+  updatedAt: Date;
+}

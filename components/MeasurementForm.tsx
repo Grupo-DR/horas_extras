@@ -42,7 +42,7 @@ export const MeasurementForm: React.FC<MeasurementFormProps> = ({ isOpen, onClos
             } else {
                 // PDF - Use Remote Parser
                 const data = await RemoteBMParser.parsePDF(file);
-                setPreviewData(data.fields);
+                setPreviewData(data);
                 toast.success("Dados do PDF extraídos com sucesso (Via Backend)!");
             }
         } catch (error) {
