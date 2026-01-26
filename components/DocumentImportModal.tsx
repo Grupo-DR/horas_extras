@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { X, Upload, FileText, CheckCircle, AlertTriangle, ArrowRight, Save, Database, Eye } from 'lucide-react';
+import { X, Upload, FileText, CheckCircle, AlertTriangle, ArrowRight, Save, Database, Eye, ChevronRight, ChevronDown } from 'lucide-react';
 import { LocalBMParser, ExtractedData } from '../services/LocalBMParser';
 import { toast } from 'sonner';
 
@@ -18,6 +17,9 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
 
     // Form State (Editable)
     const [formData, setFormData] = useState<any>({});
+
+    // UI State
+    const [expandedItems, setExpandedItems] = useState<boolean>(true);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -53,22 +55,33 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
         setData(null);
     };
 
+    const updateItemValue = (index: number, field: string, value: string) => {
+        const newItems = [...(formData.auditMatrix || [])];
+        // Handle numeric conversion
+        const numVal = parseFloat(value.replace(/\./g, '').replace(',', '.')); // Input format specific? Or standard HTML number input?
+        // Let's assume standard text input for currency editing or number input
+
+        // If it's a direct property on the item
+        newItems[index] = { ...newItems[index], [field]: numVal };
+        setFormData({ ...formData, auditMatrix: newItems });
+    };
+
     if (!isOpen) return null;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className={`bg-white rounded-2xl shadow-2xl w-full transition-all duration-300 ${step === 'REVIEW' ? 'max-w-6xl h-[85vh]' : 'max-w-md'
+            <div className={`bg-white rounded-2xl shadow-2xl w-full transition-all duration-300 ${step === 'REVIEW' ? 'max-w-[95vw] h-[90vh]' : 'max-w-md'
                 } flex flex-col`}>
 
                 {/* HEADER */}
-                <div className="flex justify-between items-center p-6 border-b">
+                <div className="flex justify-between items-center p-6 border-b shrink-0">
                     <div>
                         <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                             {step === 'UPLOAD' ? <Upload className="text-blue-600" /> : <Eye className="text-purple-600" />}
                             {step === 'UPLOAD' ? 'Importar Documento' : 'Validar Leitura (Human-in-the-Loop)'}
                         </h2>
                         <p className="text-sm text-slate-500">
-                            {step === 'UPLOAD' ? 'Carregue um PDF de Medição ou RDO.' : 'Compare o texto extraído com os dados detectados e corrija se necessário.'}
+                            {step === 'UPLOAD' ? 'Carregue um PDF de Medição ou RDO.' : 'Compare o JSON gerado com os dados editáveis.'}
                         </p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
@@ -77,7 +90,7 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
                 </div>
 
                 {/* CONTENT */}
-                <div className="flex-1 overflow-hidden p-0 relative">
+                <div className="flex-1 overflow-hidden p-0 relative flex flex-col">
                     {step === 'UPLOAD' ? (
                         <div className="p-8 flex flex-col items-center justify-center h-full space-y-6">
                             <label className="w-full h-48 border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all group">
@@ -101,134 +114,143 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
                             </div>
                         </div>
                     ) : (
-                        <div className="flex h-full">
-                            {/* --- LEFT: RAW TEXT PREVIEW --- */}
-                            <div className="w-1/2 border-r bg-slate-50 flex flex-col">
-                                <div className="p-3 bg-slate-100 border-b text-xs font-bold text-slate-500 uppercase tracking-wide flex justify-between">
-                                    <span>Texto Extraído (Leitura Bruta)</span>
-                                    <span className="bg-slate-200 px-2 rounded text-slate-600">Confiança: {(data?.confidence || 0) * 100}%</span>
+                        <div className="flex flex-1 overflow-hidden">
+                            {/* --- LEFT: JSON PREVIEW (READ ONLY) --- */}
+                            <div className="w-1/3 border-r bg-slate-900 text-slate-300 flex flex-col overflow-hidden">
+                                <div className="p-3 bg-slate-950 border-b border-slate-800 text-xs font-bold uppercase tracking-wide flex justify-between items-center shrink-0">
+                                    <span className="flex items-center gap-2"><FileText size={14} /> JSON Gerado (Read-Only)</span>
+                                    <span className="bg-slate-800 px-2 py-0.5 rounded text-xs text-slate-400">{(data?.confidence || 0) * 100}% Confiança</span>
                                 </div>
-                                <textarea
-                                    className="flex-1 w-full p-4 font-mono text-xs text-slate-600 bg-transparent resize-none focus:outline-none"
-                                    value={data?.rawText}
-                                    readOnly
-                                />
+                                <div className="flex-1 overflow-auto p-4">
+                                    <pre className="text-xs font-mono font-medium leading-relaxed">
+                                        {JSON.stringify(data?.fields, null, 2)}
+                                    </pre>
+                                </div>
                             </div>
 
-                            {/* --- RIGHT: FORM EDITOR --- */}
-                            <div className="w-1/2 flex flex-col bg-white">
-                                <div className="p-3 bg-white border-b text-xs font-bold text-slate-500 uppercase tracking-wide border-l-4 border-l-purple-500">
-                                    Dados Detectados (Editável)
+                            {/* --- RIGHT: FORM EDITOR (EDITABLE) --- */}
+                            <div className="w-2/3 flex flex-col bg-slate-50 overflow-hidden">
+                                <div className="p-3 bg-white border-b text-xs font-bold text-slate-500 uppercase tracking-wide border-l-4 border-l-purple-500 shrink-0 shadow-sm flex justify-between items-center">
+                                    <span>Dados Editáveis para Importação</span>
+                                    <span className="text-xs font-normal normal-case text-slate-400">Edite os valores abaixo se a leitura estiver incorreta</span>
                                 </div>
 
                                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                                    {/* TYPE DETECTION */}
-                                    <div className="mb-4">
-                                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Tipo de Documento</label>
-                                        <div className="flex items-center gap-3">
-                                            <span className={`px-3 py-1 rounded-full text-sm font-bold ${data?.type === 'BM' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
-                                                {data?.type === 'BM' ? 'Boletim de Medição' : data?.type === 'RDO' ? 'Relatório Diário de Obra' : 'Desconhecido'}
-                                            </span>
+
+                                    {/* HEADER CARD */}
+                                    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                                        <div className="grid grid-cols-4 gap-6">
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Tipo Identificado</label>
+                                                <div className="font-bold text-blue-600">{data?.type}</div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Período</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full text-sm font-semibold text-slate-700 border-b border-dashed border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent"
+                                                    value={formData.period || ''}
+                                                    onChange={(e) => setFormData({ ...formData, period: e.target.value })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Valor Medição (R$)</label>
+                                                <input
+                                                    type="number"
+                                                    className="w-full text-lg font-bold text-green-600 border-b border-dashed border-slate-300 focus:border-green-500 focus:outline-none bg-transparent"
+                                                    value={formData.value || 0}
+                                                    onChange={(e) => setFormData({ ...formData, value: parseFloat(e.target.value) })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Saldo Final</label>
+                                                <div className="font-bold text-slate-400">Calculado Automaticamente</div>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* DYNAMIC FORM BASED ON TYPE */}
-                                    {data?.type === 'BM' ? (
-                                        <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-slate-700 mb-1">Contrato / Pedido</label>
-                                                    <input
-                                                        type="text"
-                                                        className="w-full p-2 border border-slate-300 rounded bg-slate-50 focus:bg-white transition-colors"
-                                                        value={formData.contractId || ''}
-                                                        onChange={(e) => setFormData({ ...formData, contractId: e.target.value })}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-slate-700 mb-1">Entidade</label>
-                                                    <select
-                                                        className="w-full p-2 border border-slate-300 rounded"
-                                                        value={formData.entityType || 'CONSTRUTORA'}
-                                                        onChange={(e) => setFormData({ ...formData, entityType: e.target.value })}
-                                                    >
-                                                        <option value="CONSTRUTORA">DR Construtora</option>
-                                                        <option value="RENTAL">DR Rental</option>
-                                                    </select>
-                                                </div>
+                                    {/* AUDIT MATRIX EDITOR */}
+                                    {formData.auditMatrix && (
+                                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                                            <div
+                                                className="p-4 bg-slate-50 border-b flex justify-between items-center cursor-pointer hover:bg-slate-100 transition-colors"
+                                                onClick={() => setExpandedItems(!expandedItems)}
+                                            >
+                                                <h3 className="font-bold text-slate-700 flex items-center gap-2">
+                                                    {expandedItems ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                                                    Itens da Medição ({formData.auditMatrix.length})
+                                                </h3>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-slate-700 mb-1">Data Referência</label>
-                                                    <input
-                                                        type="text"
-                                                        className="w-full p-2 border border-slate-300 rounded"
-                                                        placeholder="DD/MM/AAAA"
-                                                        value={formData.date || ''}
-                                                        onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-slate-700 mb-1">Valor Total (R$)</label>
-                                                    <input
-                                                        type="text"
-                                                        className="w-full p-2 border border-slate-300 rounded font-bold text-slate-800"
-                                                        value={formData.value || ''}
-                                                        onChange={(e) => setFormData({ ...formData, value: e.target.value })}
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            {formData.possibleValues && Array.isArray(formData.possibleValues) && (
-                                                <div className="mt-2 p-2 bg-yellow-50 rounded border border-yellow-100">
-                                                    <p className="text-xs font-bold text-yellow-700 mb-1">Outros valores encontrados:</p>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {formData.possibleValues.slice(0, 5).map((v: string, i: number) => (
-                                                            <button
-                                                                key={i}
-                                                                type="button"
-                                                                onClick={() => setFormData({ ...formData, value: v })}
-                                                                className="text-xs bg-white border border-yellow-200 px-2 py-1 rounded hover:bg-yellow-100"
-                                                            >
-                                                                {v}
-                                                            </button>
-                                                        ))}
-                                                    </div>
+                                            {expandedItems && (
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full text-sm text-left">
+                                                        <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b">
+                                                            <tr>
+                                                                <th className="px-4 py-3">Item</th>
+                                                                <th className="px-4 py-3">Cód. VLI</th>
+                                                                <th className="px-4 py-3 w-1/3">Descrição</th>
+                                                                <th className="px-4 py-3 text-right">Qtd Mês</th>
+                                                                <th className="px-4 py-3 text-right">Valor Unit.</th>
+                                                                <th className="px-4 py-3 text-right">Valor Mês (R$)</th>
+                                                                <th className="px-4 py-3 text-right">Saldo (R$)</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-slate-100">
+                                                            {formData.auditMatrix.map((item: any, idx: number) => (
+                                                                <tr key={idx} className="hover:bg-slate-50 group">
+                                                                    <td className="px-4 py-2 font-medium text-slate-600">{item.item}</td>
+                                                                    <td className="px-4 py-2 text-blue-600 font-mono text-xs">{item.codeVLI}</td>
+                                                                    <td className="px-4 py-2 text-slate-600 max-w-xs truncate" title={item.description}>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={item.description}
+                                                                            onChange={(e) => {
+                                                                                const newItems = [...formData.auditMatrix];
+                                                                                newItems[idx].description = e.target.value;
+                                                                                setFormData({ ...formData, auditMatrix: newItems });
+                                                                            }}
+                                                                            className="w-full bg-transparent border-none focus:ring-0 text-slate-600 p-0 text-sm"
+                                                                        />
+                                                                    </td>
+                                                                    <td className="px-4 py-2 text-right">
+                                                                        <input
+                                                                            type="number"
+                                                                            value={item.qtyMonth}
+                                                                            onChange={(e) => updateItemValue(idx, 'qtyMonth', e.target.value)}
+                                                                            className="w-16 text-right bg-slate-50 border border-transparent hover:border-slate-300 focus:border-blue-500 rounded px-1 py-0.5"
+                                                                        />
+                                                                    </td>
+                                                                    <td className="px-4 py-2 text-right text-slate-500">
+                                                                        {item.unitPrice?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                                    </td>
+                                                                    <td className="px-4 py-2 text-right font-bold text-slate-700">
+                                                                        <input
+                                                                            type="number"
+                                                                            value={item.currentMonth}
+                                                                            onChange={(e) => updateItemValue(idx, 'currentMonth', e.target.value)}
+                                                                            className="w-24 text-right bg-slate-50 border border-transparent hover:border-slate-300 focus:border-green-500 rounded px-1 py-0.5 font-bold text-slate-700"
+                                                                        />
+                                                                    </td>
+                                                                    <td className="px-4 py-2 text-right text-slate-400">
+                                                                        {item.balance?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
                                                 </div>
                                             )}
                                         </div>
-                                    ) : (
-                                        <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-slate-700 mb-1">Data do RDO</label>
-                                                    <input
-                                                        type="text"
-                                                        className="w-full p-2 border border-slate-300 rounded"
-                                                        placeholder="DD/MM/AAAA"
-                                                        value={formData.date || ''}
-                                                        onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-slate-700 mb-1">Número RDO</label>
-                                                    <input
-                                                        type="text"
-                                                        className="w-full p-2 border border-slate-300 rounded"
-                                                        value={formData.number || ''}
-                                                        onChange={(e) => setFormData({ ...formData, number: e.target.value })}
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-1">Obra / Local</label>
-                                                <input
-                                                    type="text"
-                                                    className="w-full p-2 border border-slate-300 rounded"
-                                                    value={formData.siteName || ''}
-                                                    onChange={(e) => setFormData({ ...formData, siteName: e.target.value })}
-                                                />
+                                    )}
+
+                                    {/* RDO SECTIONS (Dynamic) */}
+                                    {data?.type === 'RDO' && (
+                                        <div className="space-y-4">
+                                            {/* Similar logic for RDO tables if needed, for now just JSON on left covers it, 
+                                                but we can add specific editable tables for 'mao_de_obra' etc later */}
+                                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 text-blue-800 text-sm">
+                                                Para RDOs, verifique os dados no JSON à esquerda. A edição tabular completa de RDO estará disponível em breve.
                                             </div>
                                         </div>
                                     )}
@@ -236,7 +258,7 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
                                 </div>
 
                                 {/* FOOTER ACTIONS */}
-                                <div className="p-6 border-t bg-slate-50 flex justify-end gap-3">
+                                <div className="p-6 border-t bg-slate-50 flex justify-end gap-3 shrink-0">
                                     <button
                                         onClick={() => setStep('UPLOAD')}
                                         className="px-4 py-2 text-slate-500 hover:text-slate-700 font-medium"

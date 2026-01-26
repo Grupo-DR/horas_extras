@@ -335,6 +335,14 @@ export const LocalBMParser = {
                         description: itemObj.description,
                         unit: itemObj.unidade,
                         unitPrice: itemObj['preco_unitario'] || 0,
+
+                        // Quantities
+                        qtyContract: itemObj['qtd_contrato'] || 0,
+                        qtyPrev: itemObj['qtd_anterior'] || 0,
+                        qtyMonth: itemObj['qtd_mes'] || 0,
+                        qtyAccumulated: itemObj['qtd_acumulado'] || 0,
+
+                        // Values
                         prevAccumulated: itemObj['valor_anterior'] || 0,
                         currentMonth: itemObj['valor_mes'] || 0,
                         totalAccumulated: itemObj['valor_acumulado'] || 0,

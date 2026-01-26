@@ -229,6 +229,14 @@ export interface ScopeAuditItem {
   description: string;
   unit?: string; // e.g. "VB", "H"
   unitPrice?: number;
+
+  // Quantities
+  qtyContract?: number;
+  qtyPrev?: number;
+  qtyMonth?: number;
+  qtyAccumulated?: number;
+
+  // Values
   prevAccumulated: number;
   currentMonth: number;
   totalAccumulated: number;
