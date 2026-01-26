@@ -12,6 +12,89 @@ interface Props {
     teams?: ContractTeam[]; // Optional list of teams for RDO linking
 }
 
+// Helper to parse "Code Description Qty Range (Time)"
+const parseEquipmentString = (str: string) => {
+    if (!str) return { nome: '', descricao: '', quantidade: 0, horario: '', tempo: '' };
+
+    const cleanStr = str.trim();
+
+    // Regex for Right-to-Left parsing for maximum stability
+    // Matches: Prefix (Description) Qty (TimeRange) (Duration)
+    // Description can contain anything including numbers, so we anchor other fields better.
+    // TimeRange: \d{2}:\d{2}\s*[-–]\s*\d{2}:\d{2}  (standard or unicode dash)
+    // Duration: \(.*\) at end
+
+    // Strategy: 
+    // 1. Extract Quantity, TimeRange, Duration from the END.
+    // 2. Extract Prefix from START.
+    // 3. Remainder is Description.
+
+    // Pattern: ...SPACE(Qty)SPACE(Start-End)SPACE(Duration)$
+    // Note: Regex is greedy by default for the first part matches.
+
+    // This regex looks for:
+    // Group 1: Everything Else (Prefix + Desc)
+    // Group 2: Quantity (Digits)
+    // Group 3: Time Range (HH:MM - HH:MM)
+    // Group 4: Duration ((...))
+    const endParamsMatch = cleanStr.match(/^(.*)\s+(\d+)\s+([\d]{2}:[\d]{2}\s*[-–]\s*[\d]{2}:[\d]{2})\s*(\(.*\))$/);
+
+    if (endParamsMatch) {
+        const prefixAndDesc = endParamsMatch[1].trim();
+        const qty = parseInt(endParamsMatch[2]);
+        const timeRange = endParamsMatch[3];
+        const duration = endParamsMatch[4];
+
+        // Split Prefix and Desc
+        // Assume Prefix is the first word.
+        const firstSpaceIdx = prefixAndDesc.indexOf(' ');
+        let nome = prefixAndDesc;
+        let descricao = '';
+
+        if (firstSpaceIdx > 0) {
+            nome = prefixAndDesc.substring(0, firstSpaceIdx);
+            descricao = prefixAndDesc.substring(firstSpaceIdx).trim();
+        }
+
+        return {
+            nome: nome,
+            descricao: descricao,
+            quantidade: qty,
+            horario: timeRange,
+            tempo: duration
+        };
+    }
+
+    // Fallback for missing parts (e.g. missing duration)
+    // Try Qty + TimeRange only
+    const midParamsMatch = cleanStr.match(/^(.*)\s+(\d+)\s+([\d]{2}:[\d]{2}\s*[-–]\s*[\d]{2}:[\d]{2})$/);
+    if (midParamsMatch) {
+        const prefixAndDesc = midParamsMatch[1].trim();
+        const qty = parseInt(midParamsMatch[2]);
+        const timeRange = midParamsMatch[3];
+
+        const firstSpaceIdx = prefixAndDesc.indexOf(' ');
+        let nome = prefixAndDesc;
+        let descricao = '';
+
+        if (firstSpaceIdx > 0) {
+            nome = prefixAndDesc.substring(0, firstSpaceIdx);
+            descricao = prefixAndDesc.substring(firstSpaceIdx).trim();
+        }
+
+        return {
+            nome: nome,
+            descricao: descricao,
+            quantidade: qty,
+            horario: timeRange,
+            tempo: ''
+        };
+    }
+
+    // Fallback: Just dump into Name if parsing fails completely
+    return { nome: str, descricao: '', quantidade: 1, horario: '', tempo: '' };
+};
+
 export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport, teams }) => {
     const [step, setStep] = useState<'UPLOAD' | 'REVIEW'>('UPLOAD');
     const [file, setFile] = useState<File | null>(null);
@@ -57,6 +140,22 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
                     }
 
                     setData(extractedData);
+
+
+                    // Proactively parse equipments to ensure they are objects, not strings
+                    // We check for 'relatorio' because that is the defining trait of RDO data before it's fully cast
+                    if (extractedData.type === 'RDO' && 'equipamentos' in extractedData && Array.isArray(extractedData.equipamentos)) {
+                        // We need to cast it or let TS infer from the type guard.
+                        // But importedData is Union.
+                        // Let's rely on the runtime check and cast if needed for TS.
+                        (extractedData as ExtractedRDO).equipamentos = (extractedData as ExtractedRDO).equipamentos.map(eq => {
+                            if (typeof eq === 'string') {
+                                return parseEquipmentString(eq);
+                            }
+                            return eq;
+                        });
+                    }
+
                     setFormData(extractedData); // Flattened state is just the object itself now
 
 
@@ -121,88 +220,28 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
         setFormData({ ...formData, itens: newItems });
     };
 
-    // Helper to parse "Code Description Qty Range (Time)"
-    const parseEquipmentString = (str: string) => {
-        if (!str) return { nome: '', descricao: '', quantidade: 0, horario: '', tempo: '' };
 
-        const cleanStr = str.trim();
 
-        // Regex for Right-to-Left parsing for maximum stability
-        // Matches: Prefix (Description) Qty (TimeRange) (Duration)
-        // Description can contain anything including numbers, so we anchor other fields better.
-        // TimeRange: \d{2}:\d{2}\s*[-–]\s*\d{2}:\d{2}  (standard or unicode dash)
-        // Duration: \(.*\) at end
+    // Regex for Right-to-Left parsing for maximum stability
+    // Matches: Prefix (Description) Qty (TimeRange) (Duration)
+    // Description can contain anything including numbers, so we anchor other fields better.
+    // TimeRange: \d{2}:\d{2}\s*[-–]\s*\d{2}:\d{2}  (standard or unicode dash)
+    // Duration: \(.*\) at end
 
-        // Strategy: 
-        // 1. Extract Quantity, TimeRange, Duration from the END.
-        // 2. Extract Prefix from START.
-        // 3. Remainder is Description.
+    // Strategy: 
+    // 1. Extract Quantity, TimeRange, Duration from the END.
+    // 2. Extract Prefix from START.
+    // 3. Remainder is Description.
 
-        // Pattern: ...SPACE(Qty)SPACE(Start-End)SPACE(Duration)$
-        // Note: Regex is greedy by default for the first part matches.
+    // Pattern: ...SPACE(Qty)SPACE(Start-End)SPACE(Duration)$
+    // Note: Regex is greedy by default for the first part matches.
 
-        // This regex looks for:
-        // Group 1: Everything Else (Prefix + Desc)
-        // Group 2: Quantity (Digits)
-        // Group 3: Time Range (HH:MM - HH:MM)
-        // Group 4: Duration ((...))
-        const endParamsMatch = cleanStr.match(/^(.*)\s+(\d+)\s+([\d]{2}:[\d]{2}\s*[-–]\s*[\d]{2}:[\d]{2})\s*(\(.*\))$/);
+    // This regex looks for:
+    // Group 1: Everything Else (Prefix + Desc)
+    // Group 2: Quantity (Digits)
+    // Group 3: Time Range (HH:MM - HH:MM)
+    // Group 4: Duration ((...))
 
-        if (endParamsMatch) {
-            const prefixAndDesc = endParamsMatch[1].trim();
-            const qty = parseInt(endParamsMatch[2]);
-            const timeRange = endParamsMatch[3];
-            const duration = endParamsMatch[4];
-
-            // Split Prefix and Desc
-            // Assume Prefix is the first word.
-            const firstSpaceIdx = prefixAndDesc.indexOf(' ');
-            let nome = prefixAndDesc;
-            let descricao = '';
-
-            if (firstSpaceIdx > 0) {
-                nome = prefixAndDesc.substring(0, firstSpaceIdx);
-                descricao = prefixAndDesc.substring(firstSpaceIdx).trim();
-            }
-
-            return {
-                nome: nome,
-                descricao: descricao,
-                quantidade: qty,
-                horario: timeRange,
-                tempo: duration
-            };
-        }
-
-        // Fallback for missing parts (e.g. missing duration)
-        // Try Qty + TimeRange only
-        const midParamsMatch = cleanStr.match(/^(.*)\s+(\d+)\s+([\d]{2}:[\d]{2}\s*[-–]\s*[\d]{2}:[\d]{2})$/);
-        if (midParamsMatch) {
-            const prefixAndDesc = midParamsMatch[1].trim();
-            const qty = parseInt(midParamsMatch[2]);
-            const timeRange = midParamsMatch[3];
-
-            const firstSpaceIdx = prefixAndDesc.indexOf(' ');
-            let nome = prefixAndDesc;
-            let descricao = '';
-
-            if (firstSpaceIdx > 0) {
-                nome = prefixAndDesc.substring(0, firstSpaceIdx);
-                descricao = prefixAndDesc.substring(firstSpaceIdx).trim();
-            }
-
-            return {
-                nome: nome,
-                descricao: descricao,
-                quantidade: qty,
-                horario: timeRange,
-                tempo: ''
-            };
-        }
-
-        // Fallback: Just dump into Name if parsing fails completely
-        return { nome: str, descricao: '', quantidade: 1, horario: '', tempo: '' };
-    };
 
     const updateEquipment = (index: number, field: string, value: string) => {
         const currentList = [...(formData.equipamentos || [])];
