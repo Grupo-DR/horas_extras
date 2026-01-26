@@ -267,19 +267,8 @@ export const TaskForm: React.FC<Props> = ({
                   />
                 </div>
 
-                <div className="md:col-span-1">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Vincular ao Módulo</label>
-                  <select
-                    className="w-full p-2 border border-slate-300 rounded-lg"
-                    value={formData.moduleCategory || 'GERAL'}
-                    onChange={(e) => setFormData({ ...formData, moduleCategory: e.target.value as ModuleCategory })}
-                  >
-                    <option value="GERAL">Geral (Sem Vínculo)</option>
-                    <option value="COMERCIAL">Comercial</option>
-                    <option value="CONTRATOS">Contratos (Obras)</option>
-                    <option value="DADOS">Dados e Soluções</option>
-                    <option value="KPI">Gestão de KPIs</option>
-                  </select>
+                <div className="hidden">
+                  <input type="hidden" value="GERAL" />
                 </div>
 
                 {isChild ? (

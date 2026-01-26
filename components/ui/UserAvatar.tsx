@@ -6,7 +6,7 @@ interface UserAvatarProps {
         avatarUrl?: string;
         email?: string;
     } | null;
-    size?: 'sm' | 'md' | 'lg';
+    size?: 'xs' | 'sm' | 'md' | 'lg';
     showName?: boolean;
 }
 
@@ -23,6 +23,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({ user, size = 'md', showN
 
     // Helper for size classes
     const sizeClasses = {
+        xs: 'w-5 h-5 text-[10px]',
         sm: 'w-6 h-6 text-xs',
         md: 'w-8 h-8 text-sm',
         lg: 'w-10 h-10 text-base'

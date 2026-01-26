@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { DocumentImportModal } from '../components/DocumentImportModal';
 import { Task, User, TaskStatus, HelpChainLevel, HistoryLog, Notification, TaskOutcome, Bid, PipelineStage } from '../types';
 import { TaskForm } from '../components/TaskForm';
+import { TaskCard } from '../components/TaskCard'; // Import TaskCard
 import { OpportunityForm } from '../components/Pipeline/OpportunityForm'; // Import OpportunityForm
 
 import { PipelineBoard } from '../components/Pipeline/PipelineBoard';
@@ -95,6 +96,11 @@ export const CommercialView: React.FC = () => {
 
     // --- NEW IMPORT MODAL STATE ---
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+    // ACTION FILTERS
+    const [actionPriorityFilter, setActionPriorityFilter] = useState('');
+    const [actionUserFilter, setActionUserFilter] = useState('');
+    const [actionClientFilter, setActionClientFilter] = useState('');
 
     const handleImportData = (data: any) => {
         console.log("Imported Data:", data);
@@ -1447,9 +1453,109 @@ export const CommercialView: React.FC = () => {
                             </div>
                         </div>
 
+                        {/* 2. GESTÃO DE AÇÕES OPERACIONAIS (NEW SECTION) */}
+                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-6">
+                            <div className="flex items-center justify-between flex-wrap gap-4">
+                                <h3 className="font-bold text-slate-700 text-lg flex items-center gap-2">
+                                    <Target size={24} className="text-red-600" />
+                                    Gestão de Ações
+                                </h3>
+
+                                {/* ACTION FILTERS */}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    {/* Priority Filter */}
+                                    <select
+                                        className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-slate-50 text-slate-600 focus:outline-none focus:border-blue-400"
+                                        value={actionPriorityFilter}
+                                        onChange={(e) => setActionPriorityFilter(e.target.value)}
+                                    >
+                                        <option value="">Prioridade: Todas</option>
+                                        <option value="ALTO">Alta</option>
+                                        <option value="MEDIO">Média</option>
+                                        <option value="BAIXO">Baixa</option>
+                                    </select>
+
+                                    {/* User Filter (Sanitized) */}
+                                    <select
+                                        className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-slate-50 text-slate-600 focus:outline-none focus:border-blue-400 max-w-[150px]"
+                                        value={actionUserFilter}
+                                        onChange={(e) => setActionUserFilter(e.target.value)}
+                                    >
+                                        <option value="">Responsável: Todos</option>
+                                        {users
+                                            .filter(u => u.name && u.name !== 'Sistema')
+                                            .sort((a, b) => a.name.localeCompare(b.name))
+                                            .map(u => (
+                                                <option key={u.id} value={u.id}>{u.name}</option>
+                                            ))
+                                        }
+                                    </select>
+
+                                    {/* Client Filter */}
+                                    <select
+                                        className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-slate-50 text-slate-600 focus:outline-none focus:border-blue-400 max-w-[150px]"
+                                        value={actionClientFilter}
+                                        onChange={(e) => setActionClientFilter(e.target.value)}
+                                    >
+                                        <option value="">Cliente: Todos</option>
+                                        {Array.from(new Set(tasks.map(t => t.clientName).filter(Boolean))).sort().map(c => (
+                                            <option key={String(c)} value={String(c)}>{String(c)}</option>
+                                        ))}
+                                    </select>
+
+                                    {/* Clear Filters */}
+                                    {(actionPriorityFilter || actionUserFilter || actionClientFilter) && (
+                                        <button
+                                            onClick={() => { setActionPriorityFilter(''); setActionUserFilter(''); setActionClientFilter(''); }}
+                                            className="text-xs text-red-500 font-bold hover:underline"
+                                        >
+                                            <X size={12} className="inline mr-1" /> Limpar
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* TASKS GRID */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                {(() => {
+                                    // Filter Logic
+                                    const filteredActions = getFilteredTasks(tasks || []).filter(task => { // Use date filter base
+                                        // 1. Priority
+                                        if (actionPriorityFilter && task.priority !== actionPriorityFilter) return false;
+                                        // 2. User
+                                        if (actionUserFilter && task.assigneeId !== actionUserFilter) return false;
+                                        // 3. Client
+                                        if (actionClientFilter && task.clientName !== actionClientFilter) return false;
+
+                                        return true;
+                                    });
+
+                                    if (filteredActions.length === 0) {
+                                        return (
+                                            <div className="col-span-full py-10 flex flex-col items-center justify-center text-slate-400">
+                                                <Target size={40} className="mb-2 opacity-50" />
+                                                <p>Nenhuma ação encontrada para os filtros selecionados.</p>
+                                            </div>
+                                        );
+                                    }
+
+                                    return filteredActions.map(task => (
+                                        <TaskCard
+                                            key={task.id}
+                                            task={task}
+                                            assignee={users.find(u => u.id === task.assigneeId)}
+                                            onEdit={(t) => { setEditingTask(t); setIsTaskModalOpen(true); }}
+                                            onStatusChange={() => { }} // Handle internal status change via edit
+                                            onDelete={handleDeleteTask}
+                                            simple={false}
+                                        />
+                                    ))
+                                })()}
+                            </div>
+                        </div>
+
                     </div>
-                )
-                }
+                )}
 
                 {/* STRATEGIC VIEW (PIPELINE) */}
                 {
