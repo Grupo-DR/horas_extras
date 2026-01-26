@@ -1,0 +1,104 @@
+{
+    "filename": "Relatório Diário de Obra (RDO) n 19 - 22-11-2025.pdf",
+    "relatorio": {
+        "numero": "19",
+        "data": "22/11/2025",
+        "dia_semana": "Sábado",
+        "contrato": "CW61180",
+        "obra": "Infra Norte - Trecho ZAR-TMI (Equipe - Flavio)",
+        "prazo_contratual": "437 dias",
+        "local": "Prazo decorrido",
+        "prazo_decorrido": "186 dias",
+        "contratante": "Rumo Malha Paulista",
+        "responsavel": "Mivleder Dumont",
+        "prazo_a_vencer": "251 dias"
+    },
+    "horario_trabalho": {
+        "entrada_saida": "07:00 - 16:00",
+        "horas_trabalhadas": "08:00"
+    },
+    "clima": {
+        "manha": {
+            "tempo": "Claro",
+            "condicao": "Praticável"
+        },
+        "tarde": {
+            "tempo": "Claro",
+            "condicao": "Praticável"
+        }
+    },
+    "mao_de_obra": [
+        {
+            "nome": "Flávio José Alves",
+            "funcao": "Líder de Obras",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Fabio Goncalves Dos Santos",
+            "funcao": "Operador de Máquinas III",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Fernando Dos Santos Oliveira",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Jefferson Da Silva Leocadio",
+            "funcao": "Assistente de Boletim",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Jose Welson Dos Santos",
+            "funcao": "Operador de Máquinas Leves I",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Lucas Mateus Lopes",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Edson Gomes de Sousa",
+            "funcao": "Motorista II",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Eriky Matheus Guimaraes Oliveira",
+            "funcao": "Operador de Máquinas II",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        }
+    ],
+    "equipamentos": [
+        "CB-053 Caminhão Casinha 1",
+        "EH-069 Escavadeira Hidráulica 1",
+        "EH-016 Escavadeira Hidráulica 1"
+    ],
+    "atividades": [
+        {
+            "descricao": "3004199 - SERV CONST CIVIL KM MANUT PREV CORTE Lim.prev.em corte Km 429,820 a 429,920",
+            "unidade": "0.1 KM",
+            "status": "07:00 até 16:00\n(9h)\n2% - Em andamento"
+        }
+    ],
+    "ocorrencias": [
+        "Flavio Alves 24/11/2025 07:42 Bota fora em andamento"
+    ],
+    "comentarios": []
+}

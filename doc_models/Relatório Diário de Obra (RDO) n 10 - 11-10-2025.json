@@ -1,0 +1,123 @@
+{
+    "filename": "Relatório Diário de Obra (RDO) n 10 - 11-10-2025.pdf",
+    "relatorio": {
+        "numero": "10",
+        "data": "11/10/2025",
+        "dia_semana": "Sábado",
+        "contrato": "CW61180",
+        "obra": "Infra Norte - Trecho ZAR-TMI (Equipe - Flavio)",
+        "prazo_contratual": "437 dias",
+        "local": "Prazo decorrido",
+        "prazo_decorrido": "144 dias",
+        "contratante": "Rumo Malha Paulista",
+        "responsavel": "Mivleder Dumont",
+        "prazo_a_vencer": "293 dias"
+    },
+    "horario_trabalho": {
+        "entrada_saida": "07:00 - 17:00",
+        "horas_trabalhadas": "09:00"
+    },
+    "clima": {
+        "manha": {
+            "tempo": "Claro",
+            "condicao": "Praticável"
+        },
+        "tarde": {
+            "tempo": "Claro",
+            "condicao": "Praticável"
+        }
+    },
+    "mao_de_obra": [
+        {
+            "nome": "Flávio José Alves",
+            "funcao": "Líder de Obras",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Erick Ferreira Santana",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Eriky Matheus Guimaraes Oliveira",
+            "funcao": "Operador de Máquinas II",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Geovane Junio Barbosa De Lima",
+            "funcao": "Operador de Máquinas I",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Gilberto Alves dos Santos",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Maicon Guarniere Golçalves dos Santos",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Mauro Sergio Pires Barros",
+            "funcao": "Motorista II",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Odair Jose de Matos Portes",
+            "funcao": "Assistente de Boletim",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        }
+    ],
+    "equipamentos": [
+        "CB-052 Caminhão Casinha 1 07:00 - 17:00 (10h)",
+        "EH-016 Escavadeira Hidráulica 1 07:00 - 17:00 (10h)",
+        "EH-019 Escavadeira Hidráulica 1 07:00 - 17:00 (10h)",
+        "MGM - 107 Caminhão Traçado 1 07:00 - 17:00 (10h)",
+        "PC-019 Pá Carregadeira 1 09:00 - 17:00 (8h)"
+    ],
+    "atividades": [
+        {
+            "descricao": "3000425 - SERV EXEC DRENO LONG EM SOLO C/MANTA GEO Execução de dreno do km 132+295 a 132+265",
+            "unidade": "30 M",
+            "status": "07:00 até 17:00\n(10h)\n40% - Em Andamento"
+        },
+        {
+            "descricao": "3003983 - SERV ESCAV MAT 1 E 2 CATEG Escavação extra no dreno devido a material muito saturado km 132+295 a 132+265 Memorial de cálculo : 0,50×1,50×30= 22,5 m³ excedente 50cm de largura",
+            "unidade": "22.5 M3",
+            "status": "07:00 até 17:00\n(10h)\n0.31% - Em andamento"
+        },
+        {
+            "descricao": "3002088 - SERV FORN PEDRA Pedra extra devido a escavação extra por conta de material muito saturado km 132+295 a 132+265 Memorial de cálculo: 0,50×1,50×30= 22,5 m³ excedente 50cm de largura",
+            "unidade": "22.5 M3",
+            "status": "07:00 até 17:00\n(10h)\n15% - Em andamento"
+        },
+        {
+            "descricao": "3001477 - SERV FORN CONCRETO ESTRUTURAL FCK 25 MPA Aplicação da caixa de inspeção.",
+            "unidade": "1 UN",
+            "status": "07:00 até 17:00\n(10h)\n5% - Em Andamento"
+        }
+    ],
+    "ocorrencias": [
+        "Hora improdutiva aguardando passagem de trens 02:32 Horas Improdutivas"
+    ],
+    "comentarios": [
+        "Flavio Alves 11/10/2025 11:54 Pá carregadeira chegou na frente de trabalho as 11:26"
+    ]
+}

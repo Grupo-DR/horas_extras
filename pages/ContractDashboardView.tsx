@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FileText, Users, ArrowLeft, Building, Calendar, DollarSign, Plus, Pencil, Trash2 } from 'lucide-react';
+import { FileText, Users, ArrowLeft, Building, Calendar, DollarSign, Plus, Pencil, Trash2, HardHat } from 'lucide-react';
 import { useContracts } from '../contexts/ContractsContext';
 import { DocumentImportModal } from '../components/DocumentImportModal';
 import { ContractTeamModal } from '../components/ContractTeamModal';
@@ -137,6 +137,13 @@ export const ContractDashboardView: React.FC = () => {
                     </div>
 
                     <div className="flex gap-3">
+                        <button
+                            onClick={() => navigate(`/contratos/${id}/visao-obra`)}
+                            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium transition-colors shadow-sm"
+                        >
+                            <HardHat size={18} className="text-orange-600" />
+                            Visão da Obra
+                        </button>
                         <button
                             onClick={() => setIsImportModalOpen(true)}
                             className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium transition-colors shadow-sm"

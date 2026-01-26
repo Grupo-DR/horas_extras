@@ -1,0 +1,119 @@
+{
+    "filename": "Relatório Diário de Obra (RDO) n 12 - 14-10-2025.pdf",
+    "relatorio": {
+        "numero": "12",
+        "data": "14/10/2025",
+        "dia_semana": "Terça-Feira",
+        "contrato": "CW61180",
+        "obra": "Infra Norte - Trecho ZAR-TMI (Equipe - Flavio)",
+        "prazo_contratual": "437 dias",
+        "local": "Prazo decorrido",
+        "prazo_decorrido": "147 dias",
+        "contratante": "Rumo Malha Paulista",
+        "responsavel": "Mivleder Dumont",
+        "prazo_a_vencer": "290 dias"
+    },
+    "horario_trabalho": {
+        "entrada_saida": "07:00 - 17:00",
+        "horas_trabalhadas": "09:00"
+    },
+    "clima": {
+        "manha": {
+            "tempo": "Nublado",
+            "condicao": "Praticável"
+        },
+        "tarde": {
+            "tempo": "Nublado",
+            "condicao": "Praticável"
+        }
+    },
+    "mao_de_obra": [
+        {
+            "nome": "Flávio José Alves",
+            "funcao": "Líder de Obras",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Erick Ferreira Santana",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Eriky Matheus Guimaraes Oliveira",
+            "funcao": "Operador de Máquinas II",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Geovane Junio Barbosa De Lima",
+            "funcao": "Operador de Máquinas I",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Gilberto Alves dos Santos",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Maicon Guarniere Golçalves dos Santos",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Mauro Sergio Pires Barros",
+            "funcao": "Motorista II",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Emerson De Sales De Jesus",
+            "funcao": "Assistente de Boletim",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        }
+    ],
+    "equipamentos": [
+        "CB-052 Caminhão Casinha 1 07:00 - 17:00 (10h)",
+        "EH-016 Escavadeira Hidráulica 1 07:00 - 17:00 (10h)",
+        "MGM - 107 Caminhão Traçado 1 07:00 - 17:00 (10h)",
+        "PC-019 Pá Carregadeira 1 07:00 - 17:00 (10h)"
+    ],
+    "atividades": [
+        {
+            "descricao": "3000425 - SERV EXEC DRENO LONG EM SOLO C/MANTA GEO Execução de dreno do km 132+250 a 132+230",
+            "unidade": "20 M",
+            "status": "07:00 até 17:00\n(10h)\n63% - Em andamento"
+        },
+        {
+            "descricao": "3003983 - SERV ESCAV MAT 1 E 2 CATEG Escavação extra no dreno devido a material muito saturado km 132+250 a 132+230 Memorial de cálculo : 0,50×1,50×20= 15 m³ excedente 50cm de largura",
+            "unidade": "15 M3",
+            "status": "07:00 até 17:00\n(10h)\n0.5% - Em andamento"
+        },
+        {
+            "descricao": "3002088 - SERV FORN PEDRA Pedra extra devido a escavação extra por conta de material muito saturado km 132+250 a 132+230 Memorial de cálculo: 0,50×1,50×20=15 m³ excedente 50cm de largura",
+            "unidade": "15 M3",
+            "status": "07:00 até 17:00\n(10h)\n23% - Em andamento"
+        }
+    ],
+    "ocorrencias": [
+        "Hora improdutiva aguardando passagem de trens:03:26 Horas Improdutivas"
+    ],
+    "comentarios": [
+        "O serviço foi executado conforme especificação técnica?",
+        "Ação Imediata",
+        "Caso tenha marcado que \"Não\": Qual foi o motivo que impactou?"
+    ]
+}

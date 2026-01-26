@@ -1,0 +1,84 @@
+{
+    "filename": "Relatório Diário de Obra (RDO) n 22 - 26-11-2025.pdf",
+    "relatorio": {
+        "numero": "22",
+        "data": "26/11/2025",
+        "dia_semana": "Quarta-Feira",
+        "contrato": "CW61180",
+        "obra": "Infra Norte - Trecho ZAR-TMI (Equipe - Flavio)",
+        "prazo_contratual": "437 dias",
+        "local": "Prazo decorrido",
+        "prazo_decorrido": "190 dias",
+        "contratante": "Rumo Malha Paulista",
+        "responsavel": "Mivleder Dumont",
+        "prazo_a_vencer": "247 dias"
+    },
+    "horario_trabalho": {
+        "entrada_saida": "07:00 - 17:00",
+        "horas_trabalhadas": "09:00"
+    },
+    "clima": {
+        "manha": {
+            "tempo": "Claro",
+            "condicao": "Praticável"
+        },
+        "tarde": {
+            "tempo": "Claro",
+            "condicao": "Praticável"
+        }
+    },
+    "mao_de_obra": [
+        {
+            "nome": "Flávio José Alves",
+            "funcao": "Líder de Obras",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Fabio Goncalves Dos Santos",
+            "funcao": "Operador de Máquinas III",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Lucas Mateus Lopes",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Edson Gomes de Sousa",
+            "funcao": "Motorista II",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Guilherme Almeida Alves",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        }
+    ],
+    "equipamentos": [
+        "CB-053 Caminhão Casinha 1",
+        "EH-069 Escavadeira Hidráulica 1"
+    ],
+    "atividades": [
+        {
+            "descricao": "3004199 - SERV CONST CIVIL KM MANUT PREV CORTE Lim.prev.em corte km 430,020 a 430,034 Limp.canaleta vala em crista km 429,970 a 430,034",
+            "unidade": "0.01 KM",
+            "status": "07:00 até 17:00\n(10h)\n2% - Em Andamento"
+        }
+    ],
+    "ocorrencias": [
+        "Passou 09 trens sobre o boletim. 1h 18min. Horas Improdutivas"
+    ],
+    "comentarios": [
+        "Flavio Alves 26/11/2025 17:57 OBS: Falta regularizar alguns pontos do bota fora e vala de crista à pedido do fical. Para poder deixar todo o serviço concluído."
+    ]
+}

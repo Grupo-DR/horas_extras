@@ -1,21 +1,21 @@
 {
-    "filename": "Relatório Diário de Obra (RDO) n° 4 - 11-09-2025.pdf",
+    "filename": "Relatório Diário de Obra (RDO) n 14 - 14-11-2025.pdf",
     "relatorio": {
-        "numero": "4",
-        "data": "11/09/2025",
-        "dia_semana": "Quinta-Feira",
+        "numero": "14",
+        "data": "14/11/2025",
+        "dia_semana": "Sexta-Feira",
         "contrato": "CW61180",
         "obra": "Infra Norte - Trecho ZAR-TMI (Equipe - Flavio)",
         "prazo_contratual": "437 dias",
         "local": "Prazo decorrido",
-        "prazo_decorrido": "114 dias",
+        "prazo_decorrido": "178 dias",
         "contratante": "Rumo Malha Paulista",
         "responsavel": "Mivleder Dumont",
-        "prazo_a_vencer": "323 dias"
+        "prazo_a_vencer": "259 dias"
     },
     "horario_trabalho": {
-        "entrada_saida": "07:00 - 17:00",
-        "horas_trabalhadas": "09:00"
+        "entrada_saida": "07:00 - 18:16",
+        "horas_trabalhadas": "10:16"
     },
     "clima": {
         "manha": {
@@ -29,6 +29,13 @@
     },
     "mao_de_obra": [
         {
+            "nome": "Flávio José Alves",
+            "funcao": "Líder de Obras",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
             "nome": "Fabio Goncalves Dos Santos",
             "funcao": "Operador de Máquinas III",
             "entrada_saida": "07:00 - 17:00",
@@ -38,13 +45,6 @@
         {
             "nome": "Fernando Dos Santos Oliveira",
             "funcao": "Ajudante Geral",
-            "entrada_saida": "07:00 - 17:00",
-            "intervalo": "01:00",
-            "horas": "09:00"
-        },
-        {
-            "nome": "Flávio José Alves",
-            "funcao": "Líder de Obras",
             "entrada_saida": "07:00 - 17:00",
             "intervalo": "01:00",
             "horas": "09:00"
@@ -79,25 +79,21 @@
         }
     ],
     "equipamentos": [
-        "CB-053 Caminhão Casinha 1 07:00 - 17:00 (10h)",
-        "EH-069 Escavadeira Hidráulica 1 07:00 - 17:00 (10h)"
+        "CB-053 Caminhão Casinha 1",
+        "Caminhão Basculante 1",
+        "EH-069 Escavadeira Hidráulica 1"
     ],
     "atividades": [
         {
-            "descricao": "3004279 - SERV CORTE PODA DE ARVORES Km 359,810 ao 359,980 = 170 metros Km 359,980 ao 360,290 = 310 metros Km 360,290 ao 360,390 = 100 metros",
-            "unidade": "0 UR",
-            "status": "0.67% - Em andamento"
-        },
-        {
-            "descricao": "Equipe desmobilizou do km 358,710 Para o km 359,600.",
-            "unidade": "",
-            "status": "Em Andamento"
+            "descricao": "3004199 - SERV CONST CIVIL KM MANUT PREV CORTE Limp.prev.em corte do km 396.750 a 396.980",
+            "unidade": "0.23 KM",
+            "status": "07:00 até 16:00\n(9h)\n1% - Em andamento"
         }
     ],
     "ocorrencias": [
-        "Avaria de máquina escavadeira EH 069 Horas Improdutivas"
+        "Passou 04 trens sobre o boletim sem nenhuma parada 38min. Horas Improdutivas"
     ],
     "comentarios": [
-        "Flavio Alves 12/09/2025 07:47 O dono da propriedade pediu pra turma se retirar do local onde nós estávamos no km 358,710. Montamos a área de vivência no km 359,600."
+        "Flavio Alves 17/11/2025 13:29 Encarregado: Olenir/ Flávio Inicial: 04/11 Final: 14/11 Cidade: Santa Salete Km inicial: 395,540 Km final: 396,980 1,440 metros Limpeza preventiva corte OS Finalizada"
     ]
 }

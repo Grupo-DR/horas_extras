@@ -1,0 +1,96 @@
+{
+    "filename": "Relatório Diário de Obra (RDO) n 26 - 30-12-2025.pdf",
+    "relatorio": {
+        "numero": "26",
+        "data": "30/12/2025",
+        "dia_semana": "Terça-Feira",
+        "contrato": "CW61180",
+        "obra": "Infra Norte - Trecho ZAR-TMI (Equipe - Flavio)",
+        "prazo_contratual": "437 dias",
+        "local": "Prazo decorrido",
+        "prazo_decorrido": "224 dias",
+        "contratante": "Rumo Malha Paulista",
+        "responsavel": "Mivleder Dumont",
+        "prazo_a_vencer": "213 dias"
+    },
+    "horario_trabalho": {
+        "entrada_saida": "07:00 - 12:00",
+        "horas_trabalhadas": "04:00"
+    },
+    "clima": {
+        "manha": {
+            "tempo": "Claro",
+            "condicao": "Praticável"
+        },
+        "tarde": {
+            "tempo": "Claro",
+            "condicao": "Praticável"
+        }
+    },
+    "mao_de_obra": [
+        {
+            "nome": "Flávio José Alves",
+            "funcao": "Líder de Obras",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Emerson De Sales De Jesus",
+            "funcao": "Assistente de Boletim",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Maicon Igor de Almeida Ferreira",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Everaldo Santana",
+            "funcao": "Oficial",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Jose Domingos de Sousa Filho",
+            "funcao": "Motorista II",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Eriky Matheus Guimaraes Oliveira",
+            "funcao": "Operador de Máquinas II",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        }
+    ],
+    "equipamentos": [
+        "EH-069 Escavadeira Hidráulica 1",
+        "CB-052 Caminhão Casinha 1"
+    ],
+    "atividades": [
+        {
+            "descricao": "3001841 - SERVIÇO TURMA FIXA DE INFRA Atendimento emergencial. Foi escavado e compactado o solo, retirando os buraco dos tatuzeiro. Limp.aterro L/E sentido crescente ( 300m ) Km incio 324.220 Km final 324.520 OS CONCLUÍDA",
+            "unidade": "1 MES",
+            "status": "07:00 até 12:00\n(5h)\n16% - Em Andamento"
+        },
+        {
+            "descricao": "3000782 - SERV MO HH EXTRA ENCAR TURMA FIXA Atendimento emergencial para recuperação de erosão de formigueiro no km 320,840. Foi feito a escavação do solo e a compactação foi feita a limpeza até a entrada do bueiro. OS CONCLUÍDA",
+            "unidade": "1 HH",
+            "status": "12:00 até 17:00\n(5h)\n0.67% - Em Andamento"
+        }
+    ],
+    "ocorrencias": [
+        "Passou sobre o boletim 05 trens: 00:53min Horas Improdutivas"
+    ],
+    "comentarios": [
+        "Saco de cimento"
+    ]
+}

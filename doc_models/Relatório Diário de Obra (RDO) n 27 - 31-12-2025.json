@@ -1,0 +1,100 @@
+{
+    "filename": "Relatório Diário de Obra (RDO) n 27 - 31-12-2025.pdf",
+    "relatorio": {
+        "numero": "27",
+        "data": "31/12/2025",
+        "dia_semana": "Quarta-Feira",
+        "contrato": "CW61180",
+        "obra": "Infra Norte - Trecho ZAR-TMI (Equipe - Flavio)",
+        "prazo_contratual": "437 dias",
+        "local": "Prazo decorrido",
+        "prazo_decorrido": "225 dias",
+        "contratante": "Rumo Malha Paulista",
+        "responsavel": "Mivleder Dumont",
+        "prazo_a_vencer": "212 dias"
+    },
+    "horario_trabalho": {
+        "entrada_saida": "09:20 - 17:30",
+        "horas_trabalhadas": "07:10"
+    },
+    "clima": {
+        "manha": {
+            "tempo": "Claro",
+            "condicao": "Praticável"
+        },
+        "tarde": {
+            "tempo": "Claro",
+            "condicao": "Praticável"
+        }
+    },
+    "mao_de_obra": [
+        {
+            "nome": "Flávio José Alves",
+            "funcao": "Líder de Obras",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Emerson De Sales De Jesus",
+            "funcao": "Assistente de Boletim",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Maicon Igor de Almeida Ferreira",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Jose Domingos de Sousa Filho",
+            "funcao": "Motorista II",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Doriva Bernardo da Silva",
+            "funcao": "Operador de Máquinas III",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Ernielson da Costa Santos",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Erick Ferreira Santana",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        }
+    ],
+    "equipamentos": [
+        "CB-052 Caminhão Casinha 1",
+        "EH-022 Escavadeira Hidráulica Rodoferroviária 1"
+    ],
+    "atividades": [
+        {
+            "descricao": "Atendimento emergência, desobstrução de queda de barreira em valeta",
+            "unidade": "",
+            "status": "Em Andamento"
+        }
+    ],
+    "ocorrencias": [
+        "Flavio Alves 07/01/2026 19:46 Mobilização da equipe de são José do Rio preto para catanduva km 138+325"
+    ],
+    "comentarios": [
+        "O serviço foi executado conforme especificação técnica?",
+        "Ação Imediata",
+        "Caso tenha marcado que \"Não\": Qual foi o motivo que impactou?"
+    ]
+}

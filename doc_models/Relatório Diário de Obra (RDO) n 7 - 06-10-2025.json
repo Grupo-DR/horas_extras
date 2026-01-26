@@ -1,0 +1,96 @@
+{
+    "filename": "Relatório Diário de Obra (RDO) n 7 - 06-10-2025.pdf",
+    "relatorio": {
+        "numero": "7",
+        "data": "06/10/2025",
+        "dia_semana": "Segunda-Feira",
+        "contrato": "CW61180",
+        "obra": "Infra Norte - Trecho ZAR-TMI (Equipe - Flavio)",
+        "prazo_contratual": "437 dias",
+        "local": "Prazo decorrido",
+        "prazo_decorrido": "139 dias",
+        "contratante": "Rumo Malha Paulista",
+        "responsavel": "Mivleder Dumont",
+        "prazo_a_vencer": "298 dias"
+    },
+    "horario_trabalho": {
+        "entrada_saida": "07:00 - 17:00",
+        "horas_trabalhadas": "09:00"
+    },
+    "clima": {
+        "manha": {
+            "tempo": "Claro",
+            "condicao": "Praticável"
+        },
+        "tarde": {
+            "tempo": "Claro",
+            "condicao": "Praticável"
+        }
+    },
+    "mao_de_obra": [
+        {
+            "nome": "Fabio Goncalves Dos Santos",
+            "funcao": "Operador de Máquinas III",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Flávio José Alves",
+            "funcao": "Líder de Obras",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Jefferson Da Silva Leocadio",
+            "funcao": "Assistente de Boletim",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Jose Welson Dos Santos",
+            "funcao": "Operador de Máquinas Leves I",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Lucas Mateus Lopes",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Valdeci Aparecido Bongiovani",
+            "funcao": "Motorista II",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        }
+    ],
+    "equipamentos": [
+        "CB-053 Caminhão Casinha 1 07:00 - 17:00 (10h)",
+        "EH-022 Escavadeira Hidráulica Rodoferroviária 1 07:00 - 17:00 (10h)",
+        "EH-019 Escavadeira Hidráulica 1 07:00 - 17:00 (10h)"
+    ],
+    "atividades": [
+        {
+            "descricao": "3004199 - SERV CONST CIVIL KM MANUT PREV CORTE Limpeza preventiva em corte Acabamento Km inicial 424+900 Km final 424+700 200 mts",
+            "unidade": "0 KM",
+            "status": "0.91% - Em andamento"
+        }
+    ],
+    "ocorrencias": [
+        "Escavadeira EH 022 com avaria Avaria em equipamento"
+    ],
+    "comentarios": [
+        "Qual o tema do DSS",
+        "Verificações Técnicas (3)",
+        "O serviço foi executado conforme especificação técnica?",
+        "Ação Imediata",
+        "Caso tenha marcado que \"Não\": Qual foi o motivo que impactou?"
+    ]
+}

@@ -1,0 +1,84 @@
+{
+    "filename": "Relatório Diário de Obra (RDO) n 23 - 27-11-2025.pdf",
+    "relatorio": {
+        "numero": "23",
+        "data": "27/11/2025",
+        "dia_semana": "Quinta-Feira",
+        "contrato": "CW61180",
+        "obra": "Infra Norte - Trecho ZAR-TMI (Equipe - Flavio)",
+        "prazo_contratual": "437 dias",
+        "local": "Prazo decorrido",
+        "prazo_decorrido": "191 dias",
+        "contratante": "Rumo Malha Paulista",
+        "responsavel": "Mivleder Dumont",
+        "prazo_a_vencer": "246 dias"
+    },
+    "horario_trabalho": {
+        "entrada_saida": "07:00 - 17:00",
+        "horas_trabalhadas": "09:00"
+    },
+    "clima": {
+        "manha": {
+            "tempo": "Claro",
+            "condicao": "Praticável"
+        },
+        "tarde": {
+            "tempo": "Claro",
+            "condicao": "Praticável"
+        }
+    },
+    "mao_de_obra": [
+        {
+            "nome": "Flávio José Alves",
+            "funcao": "Líder de Obras",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Fabio Goncalves Dos Santos",
+            "funcao": "Operador de Máquinas III",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Lucas Mateus Lopes",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Edson Gomes de Sousa",
+            "funcao": "Motorista II",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Guilherme Almeida Alves",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        }
+    ],
+    "equipamentos": [
+        "CB-053 Caminhão Casinha 1",
+        "EH-069 Escavadeira Hidráulica 1"
+    ],
+    "atividades": [
+        {
+            "descricao": "Flavio Alves 01/12/2025 08:59 Obs: foi concluído os pontos do bota fora e na vala de crista. Km inicial: 429,620 Km final : 430,034 OS concluída",
+            "unidade": "",
+            "status": ""
+        }
+    ],
+    "ocorrencias": [
+        "O serviço foi executado conforme especificação técnica?",
+        "Ação Imediata",
+        "Caso tenha marcado que \"Não\": Qual foi o motivo que impactou?"
+    ],
+    "comentarios": []
+}

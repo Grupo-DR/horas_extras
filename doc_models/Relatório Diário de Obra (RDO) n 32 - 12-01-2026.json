@@ -1,0 +1,101 @@
+{
+    "filename": "Relatório Diário de Obra (RDO) n 32 - 12-01-2026.pdf",
+    "relatorio": {
+        "numero": "32",
+        "data": "12/01/2026",
+        "dia_semana": "Segunda-Feira",
+        "contrato": "CW61180",
+        "obra": "Infra Norte - Trecho ZAR-TMI (Equipe - Flavio)",
+        "prazo_contratual": "437 dias",
+        "local": "Prazo decorrido",
+        "prazo_decorrido": "237 dias",
+        "contratante": "Rumo Malha Paulista",
+        "responsavel": "Mivleder Dumont",
+        "prazo_a_vencer": "200 dias"
+    },
+    "horario_trabalho": {
+        "entrada_saida": "06:55 - 18:30",
+        "horas_trabalhadas": "10:35"
+    },
+    "clima": {
+        "manha": {
+            "tempo": "Claro",
+            "condicao": "Praticável"
+        },
+        "tarde": {
+            "tempo": "Claro",
+            "condicao": "Praticável"
+        }
+    },
+    "mao_de_obra": [
+        {
+            "nome": "Flávio José Alves",
+            "funcao": "Líder de Obras",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Erisvaldo Da Silva Santana",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Fabio Goncalves Dos Santos",
+            "funcao": "Operador de Máquinas III",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Fernando Dos Santos Oliveira",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Jefferson Da Silva Leocadio",
+            "funcao": "Assistente de Boletim",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Jose Welson Dos Santos",
+            "funcao": "Operador de Máquinas Leves I",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Valdeci Aparecido Bongiovani",
+            "funcao": "Motorista II",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        }
+    ],
+    "equipamentos": [
+        "CB-042 Caminhão Traçado 1",
+        "CB-053 Caminhão Casinha 1",
+        "EH-016 Escavadeira Hidráulica 1"
+    ],
+    "atividades": [
+        {
+            "descricao": "3004199 - SERV CONST CIVIL KM MANUT PREV CORTE Limp.prev.em corte do km 236,000 ao 236,050",
+            "unidade": "0.05 KM",
+            "status": "07:00 até 17:00\n(10h)\n3% - Em andamento"
+        }
+    ],
+    "ocorrencias": [
+        "Passaram 05 trens 01:26 min. Horas Improdutivas"
+    ],
+    "comentarios": [
+        "O serviço foi executado conforme especificação técnica?",
+        "Ação Imediata",
+        "Caso tenha marcado que \"Não\": Qual foi o motivo que impactou?"
+    ]
+}

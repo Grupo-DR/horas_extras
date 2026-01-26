@@ -1,0 +1,98 @@
+{
+    "filename": "Relatório Diário de Obra (RDO) n 25 - 29-12-2025.pdf",
+    "relatorio": {
+        "numero": "25",
+        "data": "29/12/2025",
+        "dia_semana": "Segunda-Feira",
+        "contrato": "CW61180",
+        "obra": "Infra Norte - Trecho ZAR-TMI (Equipe - Flavio)",
+        "prazo_contratual": "437 dias",
+        "local": "Prazo decorrido",
+        "prazo_decorrido": "223 dias",
+        "contratante": "Rumo Malha Paulista",
+        "responsavel": "Mivleder Dumont",
+        "prazo_a_vencer": "214 dias"
+    },
+    "horario_trabalho": {
+        "entrada_saida": "07:00 - 17:00",
+        "horas_trabalhadas": "09:00"
+    },
+    "clima": {
+        "manha": {
+            "tempo": "Claro",
+            "condicao": "Praticável"
+        },
+        "tarde": {
+            "tempo": "Claro",
+            "condicao": "Praticável"
+        }
+    },
+    "mao_de_obra": [
+        {
+            "nome": "Flávio José Alves",
+            "funcao": "Líder de Obras",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Emerson De Sales De Jesus",
+            "funcao": "Assistente de Boletim",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Erick Ferreira Santana",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Maicon Igor de Almeida Ferreira",
+            "funcao": "Ajudante Geral",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Eriky Matheus Guimaraes Oliveira",
+            "funcao": "Operador de Máquinas II",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Everaldo Santana",
+            "funcao": "Oficial",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
+        {
+            "nome": "Jose Domingos de Sousa Filho",
+            "funcao": "Motorista II",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        }
+    ],
+    "equipamentos": [
+        "EH-069 Escavadeira Hidráulica 1",
+        "CB-052 Caminhão Casinha 1"
+    ],
+    "atividades": [
+        {
+            "descricao": "3001841 - SERVIÇO TURMA FIXA DE INFRA Atendimento emergencial. Foi escavado e compactado o solo, retirando os buraco dos tatuzeiro. Limp.aterro L/D sentido crescente ( 300m ) Km incio 324.220 Km final 324.520 Em andamento",
+            "unidade": "1 MES",
+            "status": "8% - Em Andamento"
+        }
+    ],
+    "ocorrencias": [
+        "Passou sobre o boletim 03 trens: 00:31min Horas Improdutivas"
+    ],
+    "comentarios": [
+        "Flavio Alves 29/12/2025 21:37 Foi escavado e compactado o solo, retirando os buraco dos tatuzeiro"
+    ]
+}

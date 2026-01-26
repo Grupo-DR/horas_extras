@@ -1,17 +1,17 @@
 {
-    "filename": "Relatório Diário de Obra (RDO) n° 5 - 12-09-2025.pdf",
+    "filename": "Relatório Diário de Obra (RDO) n 20 - 24-11-2025.pdf",
     "relatorio": {
-        "numero": "5",
-        "data": "12/09/2025",
-        "dia_semana": "Sexta-Feira",
+        "numero": "20",
+        "data": "24/11/2025",
+        "dia_semana": "Segunda-Feira",
         "contrato": "CW61180",
         "obra": "Infra Norte - Trecho ZAR-TMI (Equipe - Flavio)",
         "prazo_contratual": "437 dias",
         "local": "Prazo decorrido",
-        "prazo_decorrido": "115 dias",
+        "prazo_decorrido": "188 dias",
         "contratante": "Rumo Malha Paulista",
         "responsavel": "Mivleder Dumont",
-        "prazo_a_vencer": "322 dias"
+        "prazo_a_vencer": "249 dias"
     },
     "horario_trabalho": {
         "entrada_saida": "07:00 - 17:00",
@@ -23,11 +23,18 @@
             "condicao": "Praticável"
         },
         "tarde": {
-            "tempo": "Claro",
-            "condicao": "Praticável"
+            "tempo": "Chuvoso",
+            "condicao": "Impraticável"
         }
     },
     "mao_de_obra": [
+        {
+            "nome": "Flávio José Alves",
+            "funcao": "Líder de Obras",
+            "entrada_saida": "07:00 - 17:00",
+            "intervalo": "01:00",
+            "horas": "09:00"
+        },
         {
             "nome": "Fabio Goncalves Dos Santos",
             "funcao": "Operador de Máquinas III",
@@ -38,13 +45,6 @@
         {
             "nome": "Fernando Dos Santos Oliveira",
             "funcao": "Ajudante Geral",
-            "entrada_saida": "07:00 - 17:00",
-            "intervalo": "01:00",
-            "horas": "09:00"
-        },
-        {
-            "nome": "Flávio José Alves",
-            "funcao": "Líder de Obras",
             "entrada_saida": "07:00 - 17:00",
             "intervalo": "01:00",
             "horas": "09:00"
@@ -71,35 +71,29 @@
             "horas": "09:00"
         },
         {
-            "nome": "Valdeci Aparecido Bongiovani",
+            "nome": "Edson Gomes de Sousa",
             "funcao": "Motorista II",
-            "entrada_saida": "07:00 - 17:00",
-            "intervalo": "01:00",
-            "horas": "09:00"
-        },
-        {
-            "nome": "Olenir Jose Chaves De Matos Junior",
-            "funcao": "Líder de Obras",
             "entrada_saida": "07:00 - 17:00",
             "intervalo": "01:00",
             "horas": "09:00"
         }
     ],
     "equipamentos": [
-        "CB-053 Caminhão Casinha 1 07:00 - 17:00 (10h)",
-        "EH-069 Escavadeira Hidráulica 1 07:00 - 17:00 (10h)"
+        "CB-053 Caminhão Casinha 1",
+        "EH-069 Escavadeira Hidráulica 1"
     ],
     "atividades": [
         {
-            "descricao": "3004279 - SERV CORTE PODA DE ARVORES Km 360,290 ao 360,540",
-            "unidade": "0 UR",
-            "status": "0.67% - Em andamento"
+            "descricao": "3004199 - SERV CONST CIVIL KM MANUT PREV CORTE Lim.prev.em corte Km 429,920 a 429,995",
+            "unidade": "0.07 KM",
+            "status": "07:00 até 16:00\n(9h)\n2% - Em andamento"
         }
     ],
     "ocorrencias": [
-        "Avaria de máquina escavadeira EH 069 Avaria em equipamento"
+        "Passou 11 trens sobre o boletim 1h 41min. 07:00 até 17:00 (10h) Horas Improdutivas",
+        "Atividades impactadas 13:00 até 17:00 (4h) Dia Chuvoso"
     ],
     "comentarios": [
-        "Flavio Alves 15/09/2025 06:20 Muito dormentação velho jogado ao lado da via, material de espurgo jogado na crista do talude."
+        "Flavio Alves 24/11/2025 20:13 Tempo chuvoso a tarde . Impossível executar as atividades com muita chuva e vento forte com granizo."
     ]
 }
