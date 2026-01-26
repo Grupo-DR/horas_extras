@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Upload, Check, Loader2 } from 'lucide-react';
-import { LocalBMParser } from '../services/LocalBMParser';
+import { Upload, Check, Loader2, Database } from 'lucide-react';
+import { RemoteBMParser } from '../services/RemoteBMParser';
+import { LocalBMParser } from '../services/LocalBMParser'; // Keep types/helpers if needed
 import { toast } from 'sonner';
 
 interface MeasurementFormProps {
@@ -20,12 +21,33 @@ export const MeasurementForm: React.FC<MeasurementFormProps> = ({ isOpen, onClos
 
         setIsProcessing(true);
         try {
-            const data = await LocalBMParser.parsePDF(file);
-            // Adapt data structure if needed, or just set it
-            setPreviewData(data.fields); // LocalBMParser returns { fields: ... }
-            toast.success("Dados extraídos com sucesso (Versão Local)!");
+            if (file.name.toLowerCase().endsWith('.json')) {
+                // Handle JSON Direct Upload
+                const text = await file.text();
+                const json = JSON.parse(text);
+
+                // Construct preview data from JSON
+                // Ensure fields match what we expect. JSON from script should have 'fields' or be the fields object itself.
+                // Our python script returns: { "fields": { ... } } or just the fields if user uploads that.
+                // Let's be robust.
+                const fields = json.fields || json;
+
+                // Ensure Audit Matrix is present
+                if (!fields.auditMatrix && fields.itens) {
+                    fields.auditMatrix = fields.itens;
+                }
+
+                setPreviewData(fields);
+                toast.success("Dados JSON carregados com sucesso!");
+            } else {
+                // PDF - Use Remote Parser
+                const data = await RemoteBMParser.parsePDF(file);
+                setPreviewData(data.fields);
+                toast.success("Dados do PDF extraídos com sucesso (Via Backend)!");
+            }
         } catch (error) {
-            toast.error("Erro ao ler PDF. Tente novamente.");
+            console.error(error);
+            toast.error("Erro ao processar arquivo. Verifique se é um arquivo válido ou se o backend está rodando.");
         } finally {
             setIsProcessing(false);
         }
@@ -54,11 +76,17 @@ export const MeasurementForm: React.FC<MeasurementFormProps> = ({ isOpen, onClos
                                 <>
                                     <Upload className="w-12 h-12 text-slate-400" />
                                     <div className="text-center">
-                                        <p className="text-slate-700 font-bold text-lg">Arraste a Medição em PDF</p>
-                                        <p className="text-slate-500 text-sm">Ou clique para selecionar o arquivo</p>
+                                        <p className="text-slate-700 font-bold text-lg">Arraste o Arquivo (PDF ou JSON)</p>
+                                        <p className="text-slate-500 text-sm">Medição em PDF ou Arquivo JSON Gerado</p>
+                                        <div className="flex gap-2 justify-center mt-2 text-xs text-blue-600 font-medium">
+                                            <span className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded"><Database size={10} /> JSON (Instantâneo)</span>
+                                            <span className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded"><Upload size={10} /> PDF (Via Backend)</span>
+                                        </div>
                                     </div>
-                                    <input type="file" className="hidden" id="pdf-upload" accept=".pdf" onChange={handleFileUpload} />
-                                    <label htmlFor="pdf-upload" className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold cursor-pointer hover:bg-blue-700 transition-all">Selecionar PDF</label>
+                                    <input type="file" className="hidden" id="pdf-upload" accept=".pdf,.json" onChange={handleFileUpload} />
+                                    <label htmlFor="pdf-upload" className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold cursor-pointer hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">
+                                        Selecionar Arquivo
+                                    </label>
                                 </>
                             )}
                         </div>
