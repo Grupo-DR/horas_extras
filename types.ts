@@ -207,6 +207,21 @@ export enum TaskStatus {
   CANCELED = 'CANCELED'
 }
 
+export enum TaskOutcome {
+  SUCCESS = 'SUCCESS',
+  FAILURE = 'FAILURE',
+  STUDY = 'STUDY',
+  WITHDRAWAL = 'WITHDRAWAL'
+}
+
+export enum ModuleCategory {
+  COMMERCIAL = 'COMMERCIAL',
+  CONTRACTS = 'CONTRACTS',
+  FINANCIAL = 'FINANCIAL',
+  SUPPLIERS = 'SUPPLIERS',
+  CRM = 'CRM'
+}
+
 export interface Bid {
   id: string;
   clientId: string;

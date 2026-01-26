@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Upload, Check, Loader2, Database } from 'lucide-react';
 import { RemoteBMParser } from '../services/RemoteBMParser';
-import { LocalBMParser } from '../services/LocalBMParser'; // Keep types/helpers if needed
+import { LocalBMParser } from '../services/LocalBMParser';
+import { ImportedData, ExtractedBM, ExtractedRDO } from '../types';
 import { toast } from 'sonner';
 
 interface MeasurementFormProps {
@@ -42,6 +43,13 @@ export const MeasurementForm: React.FC<MeasurementFormProps> = ({ isOpen, onClos
             } else {
                 // PDF - Use Remote Parser
                 const data = await RemoteBMParser.parsePDF(file);
+
+                // Ensure Audit Matrix is present (Polyfill for UI)
+                // If it's a BM (has itens), map itens to auditMatrix for the table view
+                if (!(data as any).auditMatrix && (data as ExtractedBM).itens) {
+                    (data as any).auditMatrix = (data as ExtractedBM).itens;
+                }
+
                 setPreviewData(data);
                 toast.success("Dados do PDF extraídos com sucesso (Via Backend)!");
             }
