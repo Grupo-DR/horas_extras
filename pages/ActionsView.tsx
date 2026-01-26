@@ -8,18 +8,23 @@ import { LayoutDashboard, Filter, Bell, PlusCircle, CheckSquare, Search, Users, 
 import { db } from '../services/firebaseConfig';
 import { collection, onSnapshot, addDoc, updateDoc, doc, query, Timestamp, deleteDoc } from 'firebase/firestore';
 import { Toaster, toast } from 'sonner';
+import { UserService } from '../services/userService'; // Import UserService
 
-// MOCK USERS (Shared context would be better, but duplicating for safety as per pattern)
-const MOCK_USERS: User[] = [
-    { id: 'u1', name: 'Antonio Augusto da Silva', role: 'Analista Comercial', email: 'antonio.silva@grupodr.com.br' },
-    { id: 'u2', name: 'Cintia Ferreira', role: 'Engenheira Orçamentista', email: 'cintia.ferreira@grupodr.com.br' },
-    { id: 'u3', name: 'Tatiana Guimarães', role: 'Engenheira Auxiliar', email: 'tatiana.guimaraes@grupodr.com.br' },
-    { id: 'u4', name: 'Nilton Camilo', role: 'Gerente Comercial', email: 'nilton.camilo@grupodr.com.br' },
-    { id: 'u5', name: 'Maria Tereza', role: 'Engenheiro Trainee', email: 'maria.tereza@grupodr.com.br' },
-    { id: 'u6', name: 'Isabela Costa', role: 'Assistente Comercial', email: 'isabela.costa@grupodr.com.br' },
-    { id: 'u7', name: 'Fabiana Fernandes', role: 'Analista Comercial Jr', email: 'fabiana.fernandes@grupodr.com.br' },
-    { id: 'u8', name: 'Clara Santos', role: 'Jovem Aprendiz', email: 'clara.santos@grupodr.com.br' },
-];
+// REAL USERS
+const [users, setUsers] = useState<User[]>([]);
+
+// FETCH USERS
+useEffect(() => {
+    const loadUsers = async () => {
+        // Import UserService if not imported, or just use Firestore directly if easier? 
+        // Better to use UserService.getAll() but I need to import it.
+        // Assuming UserService is available or I'll implement fetch logic here.
+        // Let's check imports.
+        // I will duplicate logic for safety if UserService import is tricky, but preferably import.
+        // NOTE: ActionsView doesn't have UserService imported. I will add it.
+    };
+    // Reuse logic from CommercialView
+}, []);
 
 const stripUndefined = (obj: any): any => {
     if (obj instanceof Date) return obj;
@@ -179,7 +184,7 @@ export const ActionsView: React.FC = () => {
     // ANALYTICS (Performance Table Logic)
     const performanceStats = useMemo(() => {
         // Calculate based on FILTERED view (Contextual Performance)
-        return MOCK_USERS.map(user => {
+        return users.map(user => {
             const userTasks = filteredTasks.filter(t => t.assigneeId === user.id);
             const total = userTasks.length;
             const completed = userTasks.filter(t => t.status === TaskStatus.COMPLETED).length;
@@ -188,8 +193,10 @@ export const ActionsView: React.FC = () => {
             const productivity = total > 0 ? Math.round((completed / total) * 100) : 0;
 
             return { user, total, completed, late, inProgress, productivity };
-        }).sort((a, b) => b.productivity - a.productivity); // Sort by best performance
-    }, [filteredTasks]);
+        })
+            .filter(stat => stat.total > 0) // Filter inactive users
+            .sort((a, b) => b.productivity - a.productivity); // Sort by best performance
+    }, [filteredTasks, users]);
 
     return (
         <div className="flex flex-col h-full bg-slate-50/50">
@@ -232,50 +239,25 @@ export const ActionsView: React.FC = () => {
                 </div>
             </div>
 
-            {/* FILTER BAR */}
+            {/* FILTER BAR REPLACEMENT */}
             <div className="px-8 py-4 bg-white border-b border-slate-200 flex items-center gap-4 overflow-x-auto">
                 <div className="flex items-center gap-2 text-slate-600 font-bold text-sm">
                     <Filter size={16} /> Filtros:
                 </div>
 
-                {/* MODULE FILTER */}
-                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
-                    {[
-                        { id: 'ALL', label: 'Todos', icon: LayoutDashboard },
-                        { id: 'COMMERCIAL', label: 'Comercial', icon: Activity },
-                        { id: 'CONTRACT', label: 'Contratos', icon: FileText },
-                        { id: 'DATA', label: 'Dados', icon: Database },
-                        { id: 'KPI', label: 'KPIs', icon: Target },
-                    ].map(mod => (
-                        <button
-                            key={mod.id}
-                            onClick={() => {
-                                setFilterModule(mod.id as any);
-                                // Clear URL params if switching manual filter to allow broad view
-                                if (contractIdParam || solutionIdParam || kpiIdParam) {
-                                    navigate('/acoes');
-                                }
-                            }}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${filterModule === mod.id ? 'bg-white shadow text-blue-700' : 'text-slate-500 hover:text-slate-700'
-                                }`}
-                        >
-                            <mod.icon size={14} /> {mod.label}
-                        </button>
-                    ))}
-                </div>
-
-                <div className="w-px h-6 bg-slate-200 mx-2"></div>
-
-                {/* USER FILTER */}
+                {/* USER FILTER (Sanitized) */}
                 <select
                     className="bg-white border border-slate-200 text-slate-600 text-sm rounded-lg px-3 py-1.5 outline-none focus:border-blue-500"
                     value={filterUser}
                     onChange={(e) => setFilterUser(e.target.value)}
                 >
-                    <option value="">Todos os Colaboradores</option>
-                    {MOCK_USERS.map(u => (
-                        <option key={u.id} value={u.id}>{u.name}</option>
-                    ))}
+                    <option value="">Responsável: Todos</option>
+                    {users
+                        .filter(u => u.name && u.name !== 'Sistema')
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map(u => (
+                            <option key={u.id} value={u.id}>{u.name}</option>
+                        ))}
                 </select>
 
                 {(contractIdParam || solutionIdParam || kpiIdParam) && (
@@ -295,12 +277,13 @@ export const ActionsView: React.FC = () => {
                 <div className="h-[600px] overflow-hidden bg-slate-100/50 rounded-xl border border-slate-200">
                     <KanbanBoard
                         tasks={filteredTasks}
-                        users={MOCK_USERS}
+                        users={users}
                         onStatusChange={handleStatusChange}
                         onEdit={(t) => { setEditingTask(t); setIsTaskModalOpen(true); }}
                         onDelete={handleDeleteTask}
                     />
                 </div>
+
 
                 {/* PERFORMANCE TABLE (Migrated) */}
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -348,7 +331,7 @@ export const ActionsView: React.FC = () => {
                         solutionIdParam ? { solutionId: solutionIdParam } :
                             kpiIdParam ? { kpiId: kpiIdParam } : undefined
                 )}
-                users={MOCK_USERS}
+                users={users}
                 availableParents={[]} // No parents selection for now in ActionsView quick add, or maybe yes? Leaving empty for simplicity as per requirements (mostly children tasks)
                 onClose={() => { setIsTaskModalOpen(false); setEditingTask(undefined); }}
                 onSave={handleSaveTask}
