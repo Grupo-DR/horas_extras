@@ -1,9 +1,11 @@
+
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FileText, Users, ArrowLeft, Building, Calendar, DollarSign, Plus } from 'lucide-react';
 import { useContracts } from '../contexts/ContractsContext';
 import { DocumentImportModal } from '../components/DocumentImportModal';
 import { ContractTeamModal } from '../components/ContractTeamModal';
+import { TeamDetailsModal } from '../components/TeamDetailsModal';
 import { ContractTeam } from '../types';
 import { toast } from 'sonner';
 
@@ -18,6 +20,7 @@ export const ContractDashboardView: React.FC = () => {
 
     // Placeholder for Team Modal
     const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+    const [selectedTeam, setSelectedTeam] = useState<ContractTeam | null>(null);
 
     if (!contract) {
         return (
@@ -166,10 +169,14 @@ export const ContractDashboardView: React.FC = () => {
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {contract.teams.map(team => (
-                                <div key={team.id} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+                                <div
+                                    key={team.id}
+                                    onClick={() => setSelectedTeam(team)}
+                                    className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:shadow-md transition-shadow cursor-pointer group"
+                                >
                                     <div className="flex justify-between items-start mb-2">
                                         <div>
-                                            <h4 className="font-bold text-slate-800">{team.name}</h4>
+                                            <h4 className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{team.name}</h4>
                                             <p className="text-sm text-slate-500">{team.location}</p>
                                         </div>
                                         <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-full">
@@ -230,6 +237,12 @@ export const ContractDashboardView: React.FC = () => {
                 isOpen={isTeamModalOpen}
                 onClose={() => setIsTeamModalOpen(false)}
                 onSave={handleCreateTeam}
+            />
+
+            <TeamDetailsModal
+                isOpen={!!selectedTeam}
+                team={selectedTeam}
+                onClose={() => setSelectedTeam(null)}
             />
         </div>
     );

@@ -1,0 +1,241 @@
+import React, { useState } from 'react';
+import { X, Calendar, User, MapPin, HardHat, Truck, AlertTriangle, FileText, ChevronRight, Database } from 'lucide-react';
+import { ContractTeam, ExtractedRDO } from '../types';
+
+interface Props {
+    isOpen: boolean;
+    onClose: () => void;
+    team: ContractTeam | null;
+}
+
+export const TeamDetailsModal: React.FC<Props> = ({ isOpen, onClose, team }) => {
+    const [selectedRDO, setSelectedRDO] = useState<ExtractedRDO | null>(null);
+
+    if (!isOpen || !team) return null;
+
+    // Reset selection when opening new team? 
+    // Effect/Memo would be better but simple logic here:
+    // If selectedRDO is not in team.rdos, reset it.
+    // However, for simplicity, we won't auto-select initially unless we want to.
+
+    const rdos = team.rdos || [];
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[95vw] h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+
+                {/* HEADER */}
+                <div className="flex justify-between items-center p-6 border-b shrink-0 bg-white z-10">
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                            <HardHat className="text-blue-600" />
+                            {team.name}
+                        </h2>
+                        <div className="flex gap-4 text-sm text-slate-500 mt-1">
+                            <span className="flex items-center gap-1"><MapPin size={14} /> {team.location}</span>
+                            <span className="flex items-center gap-1"><User size={14} /> {team.leaderName}</span>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                        <X size={20} className="text-slate-400" />
+                    </button>
+                </div>
+
+                <div className="flex flex-1 overflow-hidden">
+                    {/* SIDEBAR: RDO LIST */}
+                    <div className="w-80 border-r bg-slate-50 flex flex-col overflow-hidden shrink-0">
+                        <div className="p-4 border-b bg-slate-100/50">
+                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Histórico de RDOs</h3>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                            {rdos.length === 0 ? (
+                                <div className="text-center py-10 text-slate-400 text-sm">
+                                    <FileText size={32} className="mx-auto mb-2 opacity-50" />
+                                    Nenhum RDO vinculado.
+                                </div>
+                            ) : (
+                                rdos.map((rdo, idx) => (
+                                    <div
+                                        key={idx}
+                                        onClick={() => setSelectedRDO(rdo)}
+                                        className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedRDO === rdo
+                                                ? 'bg-white border-blue-500 shadow-md ring-1 ring-blue-500'
+                                                : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm'
+                                            }`}
+                                    >
+                                        <div className="flex justify-between items-start mb-2">
+                                            <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+                                                RDO {rdo.relatorio?.numero || 'N/A'}
+                                            </span>
+                                            <span className="text-xs text-slate-400">
+                                                {rdo.relatorio?.data || 'Data N/D'}
+                                            </span>
+                                        </div>
+                                        <div className="text-xs text-slate-500 flex items-center gap-1">
+                                            <span className={`w-2 h-2 rounded-full ${rdo.relatorio?.condicao_climatica?.toLowerCase().includes('chuva') ? 'bg-red-400' : 'bg-green-400'}`}></span>
+                                            {rdo.relatorio?.dia_semana || 'Dia N/D'}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                    {/* MAIN CONTENT: RDO DETAIL */}
+                    <div className={`flex-1 overflow-y-auto p-8 bg-slate-50/30 ${!selectedRDO ? 'flex items-center justify-center' : ''}`}>
+                        {!selectedRDO ? (
+                            <div className="text-center text-slate-400">
+                                <FileText size={48} className="mx-auto mb-4 text-slate-300" />
+                                <h3 className="text-lg font-medium text-slate-600">Selecione um RDO</h3>
+                                <p>Clique na lista ao lado para ver os detalhes.</p>
+                            </div>
+                        ) : (
+                            <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+
+                                {/* 1. HEADER INFO */}
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 grid grid-cols-2 md:grid-cols-4 gap-6">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">RDO Nº</label>
+                                        <p className="text-xl font-bold text-slate-800">{selectedRDO.relatorio?.numero}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Data</label>
+                                        <p className="text-base font-medium text-slate-800">{selectedRDO.relatorio?.data} <span className="text-sm text-slate-400">({selectedRDO.relatorio?.dia_semana})</span></p>
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Obra/Local</label>
+                                        <p className="text-base font-medium text-slate-800 truncate" title={`${selectedRDO.relatorio?.obra} - ${selectedRDO.relatorio?.local}`}>
+                                            {selectedRDO.relatorio?.obra}
+                                            {selectedRDO.relatorio?.local && <span className="text-slate-500"> - {selectedRDO.relatorio?.local}</span>}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* 2. WEATHER */}
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                                    <h3 className="text-sm font-bold text-slate-700 uppercase mb-4 flex items-center gap-2">
+                                        <span className="bg-sky-100 text-sky-600 p-1 rounded"><Database size={14} /></span>
+                                        Condições Climáticas
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="bg-sky-50 p-4 rounded-lg border border-sky-100">
+                                            <div className="text-xs font-bold text-sky-700 uppercase mb-2">Manhã</div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm font-medium text-slate-700">{selectedRDO.clima?.manha?.tempo || '-'}</span>
+                                                <span className="text-xs bg-white px-2 py-1 rounded text-slate-500 border">{selectedRDO.clima?.manha?.condicao || '-'}</span>
+                                            </div>
+                                        </div>
+                                        <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
+                                            <div className="text-xs font-bold text-orange-700 uppercase mb-2">Tarde</div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm font-medium text-slate-700">{selectedRDO.clima?.tarde?.tempo || '-'}</span>
+                                                <span className="text-xs bg-white px-2 py-1 rounded text-slate-500 border">{selectedRDO.clima?.tarde?.condicao || '-'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 3. LABOR */}
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                                    <div className="px-6 py-4 border-b bg-slate-50 flex justify-between items-center">
+                                        <h3 className="font-bold text-slate-700 flex items-center gap-2">
+                                            <User size={18} className="text-slate-400" /> Mão de Obra
+                                        </h3>
+                                        <span className="bg-slate-200 text-slate-600 px-2 py-1 rounded-full text-xs font-bold">
+                                            {selectedRDO.mao_de_obra?.length || 0}
+                                        </span>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm text-left">
+                                            <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
+                                                <tr>
+                                                    <th className="px-6 py-3">Nome</th>
+                                                    <th className="px-6 py-3">Função</th>
+                                                    <th className="px-6 py-3 text-right">Horas</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {selectedRDO.mao_de_obra?.map((mo, idx) => (
+                                                    <tr key={idx} className="hover:bg-slate-50">
+                                                        <td className="px-6 py-3 text-slate-700 font-medium">{mo.nome}</td>
+                                                        <td className="px-6 py-3 text-slate-500 text-xs">{mo.funcao}</td>
+                                                        <td className="px-6 py-3 text-right text-slate-600 font-mono">{mo.horas}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                {/* 4. EQUIPMENT */}
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                                    <div className="px-6 py-4 border-b bg-slate-50 flex justify-between items-center">
+                                        <h3 className="font-bold text-slate-700 flex items-center gap-2">
+                                            <Truck size={18} className="text-slate-400" /> Equipamentos
+                                        </h3>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm text-left">
+                                            <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
+                                                <tr>
+                                                    <th className="px-6 py-3">Equipamento</th>
+                                                    <th className="px-6 py-3 text-center">Qtd</th>
+                                                    <th className="px-6 py-3 text-right">Horário/Tempo</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {selectedRDO.equipamentos?.map((eq: any, idx) => {
+                                                    // Handle string vs object format (though it should be object after import)
+                                                    const name = typeof eq === 'string' ? eq : (eq.nome || eq.descricao);
+                                                    const qtd = typeof eq === 'string' ? 1 : eq.quantidade;
+                                                    const time = typeof eq === 'string' ? '' : (eq.tempo || eq.horario);
+
+                                                    return (
+                                                        <tr key={idx} className="hover:bg-slate-50">
+                                                            <td className="px-6 py-3 text-slate-700">{name}</td>
+                                                            <td className="px-6 py-3 text-center text-slate-600">{qtd}</td>
+                                                            <td className="px-6 py-3 text-right text-slate-600 font-mono">{time}</td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                {/* 5. OCCURRENCES */}
+                                {(selectedRDO.ocorrencias?.length > 0) && (
+                                    <div className="bg-red-50 rounded-xl shadow-sm border border-red-100 p-6">
+                                        <h3 className="font-bold text-red-700 flex items-center gap-2 mb-4">
+                                            <AlertTriangle size={18} /> Ocorrências
+                                        </h3>
+                                        <ul className="list-disc list-inside space-y-2 text-red-800 text-sm">
+                                            {selectedRDO.ocorrencias.map((oc, idx) => (
+                                                <li key={idx}>{oc}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+
+                                {/* 6. COMMENTS */}
+                                {(selectedRDO.comentarios?.length > 0) && (
+                                    <div className="bg-slate-100 rounded-xl shadow-sm border border-slate-200 p-6">
+                                        <h3 className="font-bold text-slate-700 flex items-center gap-2 mb-4">
+                                            <FileText size={18} /> Comentários
+                                        </h3>
+                                        <ul className="list-disc list-inside space-y-2 text-slate-600 text-sm">
+                                            {selectedRDO.comentarios.map((c, idx) => (
+                                                <li key={idx}>{c}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
