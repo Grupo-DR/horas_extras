@@ -73,7 +73,7 @@ export const TaskCard: React.FC<Props> = ({ task, childTasks = [], onEdit, onSta
   // STATUS CARD STYLES (Late Pulse vs On Time)
   const cardStatusStyle = useMemo(() => {
     if (task.status === TaskStatus.COMPLETED) return 'border-green-200 bg-green-50/30';
-    if (isOverdue) return 'border-red-300 shadow-[0_0_15px_rgba(239,68,68,0.3)] animate-pulse';
+    if (isOverdue) return 'border-red-300 shadow-[0_0_15px_rgba(239,68,68,0.3)]';
     // On Time (and Active)
     return 'border-emerald-200 shadow-sm hover:shadow-emerald-100 hover:border-emerald-300';
   }, [task.status, isOverdue]);
@@ -95,6 +95,10 @@ export const TaskCard: React.FC<Props> = ({ task, childTasks = [], onEdit, onSta
       ${cardStatusStyle}
       hover:-translate-y-1 overflow-hidden
     `}>
+      {/* OVERDUE PULSE BORDER (Overlay to avoid opacity flicker on content) */}
+      {isOverdue && task.status !== TaskStatus.COMPLETED && (
+        <div className="absolute inset-0 rounded-xl border-2 border-red-400 animate-pulse pointer-events-none z-10" />
+      )}
 
       {/* HEADER: Labels & Actions */}
       <div className="flex justify-between items-start mb-2">

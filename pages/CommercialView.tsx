@@ -1227,64 +1227,66 @@ export const CommercialView: React.FC = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
-                                        {(dashboardStats.estimatorAnalysisData || []).map((est, idx) => (
-                                            <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                                                <td className="px-4 py-3 font-medium text-slate-700 border-r">{est.name}</td>
+                                        {(dashboardStats.estimatorAnalysisData || [])
+                                            .filter(est => est.total.count > 0) // Hide inactive users
+                                            .map((est, idx) => (
+                                                <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                                    <td className="px-4 py-3 font-medium text-slate-700 border-r">{est.name}</td>
 
-                                                {/* IN PROGRESS */}
-                                                <td className="px-2 py-3 text-center text-purple-700 font-bold bg-purple-50/10">{est.inProgress.count}</td>
-                                                <td className="px-2 py-3 text-center text-slate-500 bg-purple-50/10">{est.total.count > 0 ? ((est.inProgress.count / est.total.count) * 100).toFixed(0) + '%' : '-'}</td>
-                                                <td className="px-2 py-3 text-right text-purple-700 bg-purple-50/10">
-                                                    {est.inProgress.value > 0 ? parseFloat((est.inProgress.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
-                                                </td>
-                                                <td className="px-2 py-3 text-right text-slate-500 border-r bg-purple-50/10">{est.total.value > 0 ? ((est.inProgress.value / est.total.value) * 100).toFixed(0) + '%' : '-'}</td>
+                                                    {/* IN PROGRESS */}
+                                                    <td className="px-2 py-3 text-center text-purple-700 font-bold bg-purple-50/10">{est.inProgress.count}</td>
+                                                    <td className="px-2 py-3 text-center text-slate-500 bg-purple-50/10">{est.total.count > 0 ? ((est.inProgress.count / est.total.count) * 100).toFixed(0) + '%' : '-'}</td>
+                                                    <td className="px-2 py-3 text-right text-purple-700 bg-purple-50/10">
+                                                        {est.inProgress.value > 0 ? parseFloat((est.inProgress.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
+                                                    </td>
+                                                    <td className="px-2 py-3 text-right text-slate-500 border-r bg-purple-50/10">{est.total.value > 0 ? ((est.inProgress.value / est.total.value) * 100).toFixed(0) + '%' : '-'}</td>
 
-                                                {/* SUCCESS */}
-                                                <td className="px-2 py-3 text-center text-emerald-700 font-bold bg-emerald-50/10">{est.success.count}</td>
-                                                <td className="px-2 py-3 text-center text-slate-500 bg-emerald-50/10">{est.total.count > 0 ? ((est.success.count / est.total.count) * 100).toFixed(0) + '%' : '-'}</td>
-                                                <td className="px-2 py-3 text-right text-emerald-700 bg-emerald-50/10">
-                                                    {est.success.value > 0 ? parseFloat((est.success.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
-                                                </td>
-                                                <td className="px-2 py-3 text-right text-slate-500 border-r bg-emerald-50/10">{est.total.value > 0 ? ((est.success.value / est.total.value) * 100).toFixed(0) + '%' : '-'}</td>
+                                                    {/* SUCCESS */}
+                                                    <td className="px-2 py-3 text-center text-emerald-700 font-bold bg-emerald-50/10">{est.success.count}</td>
+                                                    <td className="px-2 py-3 text-center text-slate-500 bg-emerald-50/10">{est.total.count > 0 ? ((est.success.count / est.total.count) * 100).toFixed(0) + '%' : '-'}</td>
+                                                    <td className="px-2 py-3 text-right text-emerald-700 bg-emerald-50/10">
+                                                        {est.success.value > 0 ? parseFloat((est.success.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
+                                                    </td>
+                                                    <td className="px-2 py-3 text-right text-slate-500 border-r bg-emerald-50/10">{est.total.value > 0 ? ((est.success.value / est.total.value) * 100).toFixed(0) + '%' : '-'}</td>
 
-                                                {/* FAILURE */}
-                                                <td className="px-2 py-3 text-center text-red-700 bg-red-50/10">{est.failure.count}</td>
-                                                <td className="px-2 py-3 text-center text-slate-500 bg-red-50/10">{est.total.count > 0 ? ((est.failure.count / est.total.count) * 100).toFixed(0) + '%' : '-'}</td>
-                                                <td className="px-2 py-3 text-right text-red-700 bg-red-50/10">
-                                                    {est.failure.value > 0 ? parseFloat((est.failure.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
-                                                </td>
-                                                <td className="px-2 py-3 text-right text-slate-500 border-r bg-red-50/10">{est.total.value > 0 ? ((est.failure.value / est.total.value) * 100).toFixed(0) + '%' : '-'}</td>
+                                                    {/* FAILURE */}
+                                                    <td className="px-2 py-3 text-center text-red-700 bg-red-50/10">{est.failure.count}</td>
+                                                    <td className="px-2 py-3 text-center text-slate-500 bg-red-50/10">{est.total.count > 0 ? ((est.failure.count / est.total.count) * 100).toFixed(0) + '%' : '-'}</td>
+                                                    <td className="px-2 py-3 text-right text-red-700 bg-red-50/10">
+                                                        {est.failure.value > 0 ? parseFloat((est.failure.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
+                                                    </td>
+                                                    <td className="px-2 py-3 text-right text-slate-500 border-r bg-red-50/10">{est.total.value > 0 ? ((est.failure.value / est.total.value) * 100).toFixed(0) + '%' : '-'}</td>
 
-                                                {/* WITHDRAWAL */}
-                                                <td className="px-2 py-3 text-center text-amber-700 bg-amber-50/10">{est.withdrawal.count}</td>
-                                                <td className="px-2 py-3 text-center text-slate-500 bg-amber-50/10">{est.total.count > 0 ? ((est.withdrawal.count / est.total.count) * 100).toFixed(0) + '%' : '-'}</td>
-                                                <td className="px-2 py-3 text-right text-amber-700 bg-amber-50/10">
-                                                    {est.withdrawal.value > 0 ? parseFloat((est.withdrawal.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
-                                                </td>
-                                                <td className="px-2 py-3 text-right text-slate-500 border-r bg-amber-50/10">{est.total.value > 0 ? ((est.withdrawal.value / est.total.value) * 100).toFixed(0) + '%' : '-'}</td>
+                                                    {/* WITHDRAWAL */}
+                                                    <td className="px-2 py-3 text-center text-amber-700 bg-amber-50/10">{est.withdrawal.count}</td>
+                                                    <td className="px-2 py-3 text-center text-slate-500 bg-amber-50/10">{est.total.count > 0 ? ((est.withdrawal.count / est.total.count) * 100).toFixed(0) + '%' : '-'}</td>
+                                                    <td className="px-2 py-3 text-right text-amber-700 bg-amber-50/10">
+                                                        {est.withdrawal.value > 0 ? parseFloat((est.withdrawal.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
+                                                    </td>
+                                                    <td className="px-2 py-3 text-right text-slate-500 border-r bg-amber-50/10">{est.total.value > 0 ? ((est.withdrawal.value / est.total.value) * 100).toFixed(0) + '%' : '-'}</td>
 
-                                                {/* STUDY */}
-                                                <td className="px-2 py-3 text-center text-blue-700 bg-blue-50/10">{est.study.count}</td>
-                                                <td className="px-2 py-3 text-center text-slate-500 bg-blue-50/10">{est.total.count > 0 ? ((est.study.count / est.total.count) * 100).toFixed(0) + '%' : '-'}</td>
-                                                <td className="px-2 py-3 text-right text-blue-700 bg-blue-50/10">
-                                                    {est.study.value > 0 ? parseFloat((est.study.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
-                                                </td>
-                                                <td className="px-2 py-3 text-right text-slate-500 border-r bg-blue-50/10">{est.total.value > 0 ? ((est.study.value / est.total.value) * 100).toFixed(0) + '%' : '-'}</td>
+                                                    {/* STUDY */}
+                                                    <td className="px-2 py-3 text-center text-blue-700 bg-blue-50/10">{est.study.count}</td>
+                                                    <td className="px-2 py-3 text-center text-slate-500 bg-blue-50/10">{est.total.count > 0 ? ((est.study.count / est.total.count) * 100).toFixed(0) + '%' : '-'}</td>
+                                                    <td className="px-2 py-3 text-right text-blue-700 bg-blue-50/10">
+                                                        {est.study.value > 0 ? parseFloat((est.study.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
+                                                    </td>
+                                                    <td className="px-2 py-3 text-right text-slate-500 border-r bg-blue-50/10">{est.total.value > 0 ? ((est.study.value / est.total.value) * 100).toFixed(0) + '%' : '-'}</td>
 
-                                                {/* TOTAL */}
-                                                <td className="px-2 py-3 text-center font-bold text-slate-800 bg-slate-50/30">{est.total.count}</td>
-                                                <td className="px-2 py-3 text-center text-slate-500 bg-slate-50/30">100%</td>
-                                                <td className="px-2 py-3 text-right font-bold text-slate-800 bg-slate-50/30">
-                                                    {est.total.value > 0 ? parseFloat((est.total.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
-                                                </td>
-                                                <td className="px-2 py-3 text-right text-slate-500 bg-slate-50/30">100%</td>
+                                                    {/* TOTAL */}
+                                                    <td className="px-2 py-3 text-center font-bold text-slate-800 bg-slate-50/30">{est.total.count}</td>
+                                                    <td className="px-2 py-3 text-center text-slate-500 bg-slate-50/30">100%</td>
+                                                    <td className="px-2 py-3 text-right font-bold text-slate-800 bg-slate-50/30">
+                                                        {est.total.value > 0 ? parseFloat((est.total.value / 1000).toFixed(1)).toLocaleString() + 'k' : '-'}
+                                                    </td>
+                                                    <td className="px-2 py-3 text-right text-slate-500 bg-slate-50/30">100%</td>
 
-                                                {/* CONVERSION RATE */}
-                                                <td className="px-4 py-3 text-center font-bold text-slate-700 border-l bg-slate-50/50">
-                                                    {est.total.count > 0 ? ((est.success.count / est.total.count) * 100).toFixed(0) + '%' : '-'}
-                                                </td>
-                                            </tr>
-                                        ))}
+                                                    {/* CONVERSION RATE */}
+                                                    <td className="px-4 py-3 text-center font-bold text-slate-700 border-l bg-slate-50/50">
+                                                        {est.total.count > 0 ? ((est.success.count / est.total.count) * 100).toFixed(0) + '%' : '-'}
+                                                    </td>
+                                                </tr>
+                                            ))}
                                     </tbody>
                                 </table>
                             </div>
@@ -1483,7 +1485,14 @@ export const CommercialView: React.FC = () => {
                                     >
                                         <option value="">Responsável: Todos</option>
                                         {users
-                                            .filter(u => u.name && u.name !== 'Sistema')
+                                            .filter(u => {
+                                                if (u.name === 'Sistema') return false;
+                                                // Sanitation: Active if has tasks or is current user
+                                                const hasTasks = tasks.some(t => t.assigneeId === u.id);
+                                                const hasOps = (opportunities || []).some(o => o.ownerId === u.id);
+                                                const isSelf = currentUser && u.email === currentUser.email; // Proxy for ID
+                                                return hasTasks || hasOps || isSelf;
+                                            })
                                             .sort((a, b) => a.name.localeCompare(b.name))
                                             .map(u => (
                                                 <option key={u.id} value={u.id}>{u.name}</option>
