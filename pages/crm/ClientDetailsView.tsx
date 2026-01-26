@@ -147,6 +147,7 @@ export const ClientDetailsView: React.FC = () => {
     const handleSaveTask = async (taskPartial: Partial<Task>) => {
         if (activeInteractionForTask) {
             const newTask = {
+                ...taskPartial,
                 interactionId: activeInteractionForTask.id,
                 clientName: client.tradeName, // Denormalize for list ease
                 responsibleName: user?.name || 'Sistema',

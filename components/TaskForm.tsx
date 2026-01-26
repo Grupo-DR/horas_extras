@@ -50,15 +50,28 @@ export const TaskForm: React.FC<Props> = ({
 
   useEffect(() => {
     if (initialData) {
-      // SANITIZATION: Ensure we don't pass objects where strings are expected (Fix React Error #31)
+      // SANITIZATION & DEFAULTS MERGE
       const safeData = {
+        title: '',
+        description: '',
+        assigneeId: users[0]?.id || '',
+        status: TaskStatus.PENDING,
+        priority: 'MEDIO',
+        category: '',
+        observations: '',
+        progress: 0,
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        value: 0,
+        interestScore: 0,
+        moduleCategory: 'GERAL',
         ...initialData,
+        // sanitize strings
         title: typeof initialData.title === 'object' ? JSON.stringify(initialData.title) : initialData.title || '',
         description: typeof initialData.description === 'object' ? JSON.stringify(initialData.description) : initialData.description || '',
-        // Ensure category is string or removed
         category: typeof initialData.category === 'object' ? '' : initialData.category,
       };
-      setFormData(safeData);
+      setFormData(safeData as Task);
       setIsChild(!!safeData.parentId || !!safeData.opportunityId);
     } else {
       setFormData({
