@@ -47,6 +47,9 @@ export interface ExtractedData {
         siteName?: string;
         number?: string;
         possibleValues?: string[];
+
+        // Generic RDO Details Object (Full Dump)
+        rdoDetails?: any;
     };
     confidence: number;
 }

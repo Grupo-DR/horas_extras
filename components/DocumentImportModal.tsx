@@ -29,14 +29,47 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
             setLoading(true);
 
             try {
-                // Try Remote Parsing First (Python Backend)
-                const result = await RemoteBMParser.parsePDF(selectedFile);
-                setData(result);
-                setFormData(result.fields);
-                setStep('REVIEW');
+                if (selectedFile.name.toLowerCase().endsWith('.json')) {
+                    // Handle JSON Direct Upload
+                    const text = await selectedFile.text();
+                    const json = JSON.parse(text);
+
+                    // Auto-detect type from JSON content if possible
+                    const type = json.type || (json.filename?.includes('RDO') ? 'RDO' : 'BM');
+
+                    const extractedData: ExtractedData = {
+                        type: type as any,
+                        rawText: "Importado via JSON",
+                        confidence: 1.0,
+                        fields: {
+                            ...json,
+                            // Ensure mapping if the JSON structure varies slightly
+                            // But assuming the user uploads the EXACT JSON their script generates, which matches what we designed in Python backend
+                        }
+                    };
+
+                    // For BM, ensure audit matrix is mapped if keys differ
+                    if (extractedData.type === 'BM' && json.itens && !extractedData.fields.auditMatrix) {
+                        extractedData.fields.auditMatrix = json.itens;
+                    }
+                    // For RDO, ensure fields map
+                    if (extractedData.type === 'RDO' && !extractedData.fields.rdoDetails) {
+                        extractedData.fields.rdoDetails = json; // Store full object as details
+                    }
+
+                    setData(extractedData);
+                    setFormData(extractedData.fields);
+                    setStep('REVIEW');
+                } else {
+                    // Try Remote Parsing First (Python Backend)
+                    const result = await RemoteBMParser.parsePDF(selectedFile);
+                    setData(result);
+                    setFormData(result.fields);
+                    setStep('REVIEW');
+                }
             } catch (error) {
                 console.error(error);
-                toast.error("Erro ao processar arquivo. Verifique se o backend Python está rodando.");
+                toast.error("Erro ao processar arquivo. Se for PDF, verifique o backend. Se for JSON, verifique a formatação.");
             } finally {
                 setLoading(false);
             }
@@ -103,16 +136,16 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
                                         <div className="p-4 bg-white rounded-full shadow-sm mb-3 group-hover:scale-110 transition-transform">
                                             <FileText size={32} className="text-slate-400 group-hover:text-blue-500" />
                                         </div>
-                                        <span className="text-slate-600 font-medium">Clique para selecionar o PDF</span>
-                                        <span className="text-slate-400 text-xs mt-1">Medições ou RDOs (PDF)</span>
+                                        <span className="text-slate-600 font-medium">Clique para selecionar</span>
+                                        <span className="text-slate-400 text-xs mt-1">PDF (Medição/RDO) ou JSON</span>
                                     </>
                                 )}
-                                <input type="file" accept=".pdf" className="hidden" onChange={handleFileChange} disabled={loading} />
+                                <input type="file" accept=".pdf,.json" className="hidden" onChange={handleFileChange} disabled={loading} />
                             </label>
 
                             <div className="flex gap-4 text-xs text-slate-400">
-                                <span className="flex items-center gap-1"><Database size={12} /> Processamento 100% Local</span>
-                                <span className="flex items-center gap-1"><CheckCircle size={12} /> Gratuito</span>
+                                <span className="flex items-center gap-1"><Database size={12} /> JSON Direto</span>
+                                <span className="flex items-center gap-1"><CheckCircle size={12} /> Processamento Instantâneo</span>
                             </div>
                         </div>
                     ) : (
