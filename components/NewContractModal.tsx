@@ -64,10 +64,10 @@ export const NewContractModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
         }
 
         const newContract: Contract = {
-            id: crypto.randomUUID(),
+            id: initialData?.id || crypto.randomUUID(),
             contractNumber: formData.contractNumber!,
             name: formData.siteName!, // Use Site Name as Contract Name for now
-            status: ContractStatus.ACTIVE,
+            status: initialData?.status || ContractStatus.ACTIVE,
             clientName: formData.clientName!,
             siteName: formData.siteName!,
             contractorName: formData.contractorName || '',
@@ -75,8 +75,9 @@ export const NewContractModal: React.FC<Props> = ({ isOpen, onClose, onSave, ini
             endDate: formData.endDate!,
             totalValue: Number(formData.totalValue),
             description: formData.description || '',
-            measurements: [],
-            events: []
+            measurements: initialData?.measurements || [],
+            events: initialData?.events || [],
+            teams: initialData?.teams || []
         };
 
         onSave(newContract);
