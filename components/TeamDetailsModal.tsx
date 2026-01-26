@@ -1,22 +1,18 @@
 import React, { useState } from 'react';
-import { X, Calendar, User, MapPin, HardHat, Truck, AlertTriangle, FileText, ChevronRight, Database } from 'lucide-react';
+import { X, Calendar, User, MapPin, HardHat, Truck, AlertTriangle, FileText, ChevronRight, Database, Trash2 } from 'lucide-react';
 import { ContractTeam, ExtractedRDO } from '../types';
 
 interface Props {
     isOpen: boolean;
     onClose: () => void;
     team: ContractTeam | null;
+    onDeleteRDO?: (rdo: ExtractedRDO) => void;
 }
 
-export const TeamDetailsModal: React.FC<Props> = ({ isOpen, onClose, team }) => {
+export const TeamDetailsModal: React.FC<Props> = ({ isOpen, onClose, team, onDeleteRDO }) => {
     const [selectedRDO, setSelectedRDO] = useState<ExtractedRDO | null>(null);
 
     if (!isOpen || !team) return null;
-
-    // Reset selection when opening new team? 
-    // Effect/Memo would be better but simple logic here:
-    // If selectedRDO is not in team.rdos, reset it.
-    // However, for simplicity, we won't auto-select initially unless we want to.
 
     const rdos = team.rdos || [];
 
@@ -58,12 +54,27 @@ export const TeamDetailsModal: React.FC<Props> = ({ isOpen, onClose, team }) => 
                                     <div
                                         key={idx}
                                         onClick={() => setSelectedRDO(rdo)}
-                                        className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedRDO === rdo
+                                        className={`group relative p-3 rounded-lg border cursor-pointer transition-all ${selectedRDO === rdo
                                             ? 'bg-white border-blue-500 shadow-md ring-1 ring-blue-500'
                                             : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm'
                                             }`}
                                     >
-                                        <div className="flex justify-between items-start mb-2">
+                                        {onDeleteRDO && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (confirm(`Tem certeza que deseja excluir o RDO ${rdo.relatorio?.numero}?`)) {
+                                                        onDeleteRDO(rdo);
+                                                        if (selectedRDO === rdo) setSelectedRDO(null);
+                                                    }
+                                                }}
+                                                className="absolute top-2 right-2 p-1 bg-white hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                                title="Excluir RDO"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        )}
+                                        <div className="flex justify-between items-start mb-2 pr-6">
                                             <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
                                                 RDO {rdo.relatorio?.numero || 'N/A'}
                                             </span>

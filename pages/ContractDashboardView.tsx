@@ -90,6 +90,25 @@ export const ContractDashboardView: React.FC = () => {
         setIsTeamModalOpen(true);
     }
 
+    const handleDeleteRDO = (rdo: any) => {
+        if (!selectedTeam) return;
+
+        // Removing RDO from the selected team
+        const updatedRDOs = selectedTeam.rdos?.filter(r => r !== rdo) || []; // Simple reference check or use ID if available
+
+        const updatedTeam = { ...selectedTeam, rdos: updatedRDOs };
+
+        // Update local selected team state to reflect change immediately
+        setSelectedTeam(updatedTeam);
+
+        // Update global contract state
+        const updatedTeams = contract.teams?.map(t => t.id === selectedTeam.id ? updatedTeam : t);
+
+        updateContract({ ...contract, teams: updatedTeams });
+
+        toast.success("RDO excluído com sucesso!");
+    };
+
     return (
         <div className="flex h-full flex-col bg-slate-50 overflow-hidden">
             {/* HEADER */}
@@ -293,6 +312,7 @@ export const ContractDashboardView: React.FC = () => {
                 isOpen={!!selectedTeam}
                 team={selectedTeam}
                 onClose={() => setSelectedTeam(null)}
+                onDeleteRDO={handleDeleteRDO}
             />
         </div>
     );
