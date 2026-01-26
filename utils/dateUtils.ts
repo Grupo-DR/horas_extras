@@ -42,7 +42,11 @@ export const safeDateParse = (value: any): Date | null => {
 export const formatDateForInput = (date: any): string => {
     const d = safeDateParse(date);
     if (!d) return '';
-    return d.toISOString().split('T')[0];
+    // Use Local Time components to match the "Noon" strategy (avoiding UTC shifts)
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 };
 
 /**

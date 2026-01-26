@@ -81,7 +81,7 @@ export const ContractService = {
 
     // CREATE CONTRACT
     create: async (contract: Omit<Contract, 'id'>) => {
-        const cleanData = {
+        const cleanData: any = {
             ...contract,
             startDate: toFirestoreTimestamp(contract.startDate) || Timestamp.now(),
             endDate: toFirestoreTimestamp(contract.endDate) || Timestamp.now(),
@@ -90,17 +90,24 @@ export const ContractService = {
             updatedAt: Timestamp.now()
         };
 
-        const validData = JSON.parse(JSON.stringify(cleanData));
+        // Remove undefined keys manually
+        Object.keys(cleanData).forEach(key => cleanData[key] === undefined && delete cleanData[key]);
 
-        return await addDoc(collection(db, COLLECTION_NAME), validData);
+        return await addDoc(collection(db, COLLECTION_NAME), cleanData);
     },
 
     // UPDATE CONTRACT
     update: async (id: string, updates: Partial<Contract>) => {
         const cleanUpdates: any = { ...updates, updatedAt: Timestamp.now() };
 
+        // Ensure Dates are Timestamps
         if (updates.startDate) cleanUpdates.startDate = toFirestoreTimestamp(updates.startDate);
         if (updates.endDate) cleanUpdates.endDate = toFirestoreTimestamp(updates.endDate);
+
+        // Strip undefined
+        Object.keys(cleanUpdates).forEach(key => cleanUpdates[key] === undefined && delete cleanUpdates[key]);
+
+        console.log(`[ContractService] Updating ${id}:`, cleanUpdates);
 
         const docRef = doc(db, COLLECTION_NAME, id);
         await updateDoc(docRef, cleanUpdates);

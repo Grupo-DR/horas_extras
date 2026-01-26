@@ -70,6 +70,8 @@ export const ContractForm: React.FC<Props> = ({ isOpen, onClose, onSave, initial
                 status: ContractStatus.ACTIVE
             };
 
+            console.log("Submitting Contract Payload:", contractPayload);
+
             await onSave(contractPayload);
             onClose();
         } catch (error) {
