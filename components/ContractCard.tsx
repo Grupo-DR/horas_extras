@@ -45,35 +45,41 @@ export const ContractCard: React.FC<Props> = ({ contract, onViewDetails, onEdit,
             <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-start">
                 <div>
                     <h3 className="font-bold text-slate-800 text-lg line-clamp-1" title={contract.name}>{contract.name}</h3>
-                    <p className="text-sm text-slate-500 font-medium line-clamp-1">{contract.siteName} • {contract.clientName}</p>
-                    <div className="flex gap-4 mt-2 text-xs text-slate-500">
-                        <div>
-                            <span className="font-bold text-slate-700">Contrato:</span> {contract.contractNumber}
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-slate-500">
+                        <div title="Número do Contrato">
+                            <span className="font-bold text-slate-700 uppercase" style={{ fontSize: '0.65rem' }}>Contrato:</span> {contract.contractNumber}
                         </div>
-                        <div>
-                            <span className="font-bold text-slate-700">Contratada:</span> {contract.contractorName}
+                        <div title="Contratante">
+                            <span className="font-bold text-slate-700 uppercase" style={{ fontSize: '0.65rem' }}>Contratante:</span> {contract.clientName}
+                        </div>
+                        <div title="Contratada">
+                            <span className="font-bold text-slate-700 uppercase" style={{ fontSize: '0.65rem' }}>Contratada:</span> {contract.contractorName}
                         </div>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={(e) => { e.stopPropagation(); onEdit(contract); }}
-                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors"
-                    >
-                        <Pencil size={16} />
-                    </button>
-                    <button
-                        onClick={(e) => { e.stopPropagation(); onDelete(contract.id); }}
-                        className="p-1.5 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                        <Trash2 size={16} />
-                    </button>
-                    <span className={`px-2 py-1 rounded-full text-xs font-bold whitespace-nowrap ml-2 ${contract.status === ContractStatus.ACTIVE ? 'bg-green-100 text-green-700' :
+                <div className="flex flex-col items-end gap-2">
+                    <span className={`px-2 py-1 rounded-full text-xs font-bold whitespace-nowrap ${contract.status === ContractStatus.ACTIVE ? 'bg-green-100 text-green-700' :
                         contract.status === ContractStatus.FINISHED ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'
                         }`}>
                         {contract.status === ContractStatus.ACTIVE ? 'EM ANDAMENTO' :
                             contract.status === ContractStatus.FINISHED ? 'CONCLUÍDO' : 'SUSPENSO'}
                     </span>
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onEdit(contract); }}
+                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors"
+                            title="Editar Contrato"
+                        >
+                            <Pencil size={16} />
+                        </button>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onDelete(contract.id); }}
+                            className="p-1.5 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Excluir Contrato"
+                        >
+                            <Trash2 size={16} />
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -83,7 +89,7 @@ export const ContractCard: React.FC<Props> = ({ contract, onViewDetails, onEdit,
                 {/* FINANCIAL BLOCK */}
                 <div>
                     <div className="flex justify-between items-end mb-2">
-                        <span className="text-xs font-bold text-slate-500 uppercase">Execução Financeira</span>
+                        <span className="text-xs font-bold text-slate-500 uppercase">Progressão Financeira</span>
                         <span className="text-sm font-bold text-slate-800">
                             {financialProgress.toFixed(1)}% ({accumulatedValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
                         </span>
@@ -99,11 +105,11 @@ export const ContractCard: React.FC<Props> = ({ contract, onViewDetails, onEdit,
                         <span>Total: {contract.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                         <span>Saldo: {remainingValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                     </div>
-                    {contract.adjustments && contract.adjustments.length > 0 && (
+                    {contract.events && contract.events.length > 0 && (
                         <div className="mt-2 text-xs text-slate-500 bg-slate-50 p-2 rounded border border-slate-100 flex justify-between items-center">
                             <span className="font-bold">Alterações de Escopo:</span>
                             <span>
-                                {contract.adjustments.reduce((acc, adj) => acc + adj.value, 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                {contract.events.reduce((acc, evt) => acc + (evt.valueDelta || 0), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </span>
                         </div>
                     )}
@@ -112,7 +118,7 @@ export const ContractCard: React.FC<Props> = ({ contract, onViewDetails, onEdit,
                 {/* TEMPORAL BLOCK */}
                 <div>
                     <div className="flex justify-between items-end mb-2">
-                        <span className="text-xs font-bold text-slate-500 uppercase">Cronograma Físico</span>
+                        <span className="text-xs font-bold text-slate-500 uppercase">Progressão de Tempo</span>
                         <span className="text-sm font-bold text-slate-800">
                             {timeProgress.toFixed(1)}% ({elapsedDays > 0 ? elapsedDays : 0} dias)
                         </span>
