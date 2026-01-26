@@ -10,21 +10,7 @@ import { collection, onSnapshot, addDoc, updateDoc, doc, query, Timestamp, delet
 import { Toaster, toast } from 'sonner';
 import { UserService } from '../services/userService'; // Import UserService
 
-// REAL USERS
-const [users, setUsers] = useState<User[]>([]);
 
-// FETCH USERS
-useEffect(() => {
-    const loadUsers = async () => {
-        // Import UserService if not imported, or just use Firestore directly if easier? 
-        // Better to use UserService.getAll() but I need to import it.
-        // Assuming UserService is available or I'll implement fetch logic here.
-        // Let's check imports.
-        // I will duplicate logic for safety if UserService import is tricky, but preferably import.
-        // NOTE: ActionsView doesn't have UserService imported. I will add it.
-    };
-    // Reuse logic from CommercialView
-}, []);
 
 const stripUndefined = (obj: any): any => {
     if (obj instanceof Date) return obj;
@@ -42,6 +28,22 @@ const stripUndefined = (obj: any): any => {
 export const ActionsView: React.FC = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
+
+    // REAL USERS STATE
+    const [users, setUsers] = useState<User[]>([]);
+
+    // FETCH USERS
+    useEffect(() => {
+        const loadUsers = async () => {
+            try {
+                const data = await UserService.getAll();
+                setUsers(data);
+            } catch (e) {
+                console.error("Error loading users", e);
+            }
+        };
+        loadUsers();
+    }, []);
 
     // FILTERS STATE
     const contractIdParam = searchParams.get('contractId');
