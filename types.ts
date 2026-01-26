@@ -4,6 +4,14 @@ export enum ContractStatus {
   SUSPENDED = 'SUSPENDED'
 }
 
+export enum AppModule {
+  COMMERCIAL = 'COMMERCIAL',
+  CONTRACTS = 'CONTRACTS',
+  FINANCIAL = 'FINANCIAL',
+  SUPPLIERS = 'SUPPLIERS',
+  CRM = 'CRM'
+}
+
 export type EntityType = 'CONSTRUTORA' | 'RENTAL';
 
 // --- STRICT JSON MODELS (Source of Truth) ---
