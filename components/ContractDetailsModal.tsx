@@ -387,11 +387,13 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                             <tr>
                                                 <th className="p-4 border-b border-slate-200 w-24">Cód. VLI</th>
                                                 <th className="p-4 border-b border-slate-200 min-w-[200px]">Descrição do Serviço</th>
-                                                <th className="p-4 border-b border-slate-200 text-right text-slate-400">Acum. Ant.</th>
-                                                <th className="p-4 border-b border-slate-200 text-right bg-blue-50/50 text-blue-700">No Mês</th>
-                                                <th className="p-4 border-b border-slate-200 text-right">Total Acum.</th>
-                                                <th className="p-4 border-b border-slate-200 text-right text-slate-400">Previsto</th>
-                                                <th className="p-4 border-b border-slate-200 text-right">Saldo</th>
+                                                <th className="p-4 border-b border-slate-200 text-right bg-slate-50">Unit.</th>
+                                                <th className="p-4 border-b border-slate-200 text-right bg-blue-50/30 text-blue-700">Qtd Mês</th>
+                                                <th className="p-4 border-b border-slate-200 text-right bg-blue-50/50 text-blue-700">R$ Mês</th>
+                                                <th className="p-4 border-b border-slate-200 text-right">Qtd Acum.</th>
+                                                <th className="p-4 border-b border-slate-200 text-right">R$ Acum.</th>
+                                                <th className="p-4 border-b border-slate-200 text-right text-slate-400">R$ Prev.</th>
+                                                <th className="p-4 border-b border-slate-200 text-right">Saldo R$</th>
                                             </tr>
                                         </thead>
                                         <tbody className="text-sm divide-y divide-slate-100">
@@ -407,11 +409,17 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                                             <td className="p-4 font-medium text-slate-800 max-w-sm truncate" title={item.description}>
                                                                 {item.description}
                                                             </td>
-                                                            <td className="p-4 text-right text-slate-400 font-mono text-xs">
-                                                                {item.prevAccumulated.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                            <td className="p-4 text-right text-slate-500 font-mono text-xs">
+                                                                {item.unit || '-'}
+                                                            </td>
+                                                            <td className="p-4 text-right bg-blue-50/20 font-mono text-xs text-blue-700">
+                                                                {item.qtyMonth?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '-'}
                                                             </td>
                                                             <td className="p-4 text-right bg-blue-50/30 font-bold text-blue-700 font-mono">
                                                                 {item.currentMonth.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                            </td>
+                                                            <td className="p-4 text-right text-slate-500 font-mono text-xs">
+                                                                {item.qtyAccumulated?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '-'}
                                                             </td>
                                                             <td className={`p-4 text-right font-mono ${textClass}`}>
                                                                 {item.totalAccumulated.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -428,7 +436,7 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                                 })
                                             ) : (
                                                 <tr>
-                                                    <td colSpan={7} className="p-10 text-center text-slate-400 italic bg-slate-50/30">
+                                                    <td colSpan={9} className="p-10 text-center text-slate-400 italic bg-slate-50/30">
                                                         <FileText size={32} className="mx-auto mb-2 opacity-20" />
                                                         Nenhuma matriz de auditoria disponível para esta medição.
                                                     </td>
