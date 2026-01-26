@@ -258,7 +258,7 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                     onClick={() => setIsMeasurementFormOpen(true)}
                                     className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-600/20 transition-all transform hover:scale-105 active:scale-95"
                                 >
-                                    <Plus size={18} /> Nova Medição
+                                    <Plus size={18} /> Importar Boletim
                                 </button>
                                 <button
                                     onClick={() => { setImportType('RDO'); setIsImportModalOpen(true); }}
