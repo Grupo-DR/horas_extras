@@ -53,6 +53,7 @@ export const ActionsView: React.FC = () => {
     const [filterUser, setFilterUser] = useState<string>('');
     const [filterModule, setFilterModule] = useState<'ALL' | 'COMMERCIAL' | 'CONTRACT' | 'DATA' | 'KPI'>('ALL');
     const [searchTerm, setSearchTerm] = useState('');
+    const [showCompleted, setShowCompleted] = useState(false);
 
     // Pre-select module based on URL params
     useEffect(() => {
@@ -183,6 +184,11 @@ export const ActionsView: React.FC = () => {
         });
     }, [tasks, filterModule, filterUser, searchTerm, contractIdParam, solutionIdParam, kpiIdParam]);
 
+    // KANBAN VIEW FILTER (Hide Completed by default, but keep analytics accurate)
+    const kanbanTasks = useMemo(() => {
+        return filteredTasks.filter(t => showCompleted || t.status !== TaskStatus.COMPLETED);
+    }, [filteredTasks, showCompleted]);
+
     // ANALYTICS (Performance Table Logic)
     const performanceStats = useMemo(() => {
         // Calculate based on FILTERED view (Contextual Performance)
@@ -262,6 +268,18 @@ export const ActionsView: React.FC = () => {
                         ))}
                 </select>
 
+                {/* SHOW COMPLETED TOGGLE */}
+                <button
+                    onClick={() => setShowCompleted(!showCompleted)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-all ${showCompleted
+                        ? 'bg-blue-50 border-blue-200 text-blue-700'
+                        : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                        }`}
+                >
+                    {showCompleted ? <CheckSquare size={16} /> : <div className="w-4 h-4 border-2 border-slate-300 rounded flex items-center justify-center" />}
+                    Mostrar Concluídas
+                </button>
+
                 {(contractIdParam || solutionIdParam || kpiIdParam) && (
                     <button
                         onClick={() => navigate('/acoes')}
@@ -278,7 +296,7 @@ export const ActionsView: React.FC = () => {
                 {/* KANBAN */}
                 <div className="h-[600px] overflow-hidden bg-slate-100/50 rounded-xl border border-slate-200">
                     <KanbanBoard
-                        tasks={filteredTasks}
+                        tasks={kanbanTasks}
                         users={users}
                         onStatusChange={handleStatusChange}
                         onEdit={(t) => { setEditingTask(t); setIsTaskModalOpen(true); }}
