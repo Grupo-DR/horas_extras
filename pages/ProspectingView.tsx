@@ -17,124 +17,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { format, differenceInDays, isBefore, startOfToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-// --- Types ---
-
-type ProspectStage = 'MAPEAR_CONTATO' | 'FAZER_CONTATO' | 'ESTABELECER_RELACAO' | 'DIAGNOSTICO' | 'QUALIFICACAO';
-
-interface Prospect {
-    id: string;
-    company: string;
-    contactName: string;
-    contactRole: string;
-    stage: ProspectStage;
-    location: string;
-
-    // Dates for Time Tracking
-    createdAt: Date;       // For Total Time
-    stageStartedAt: Date;  // For Time in Stage
-
-    // Responsibility
-    owner: {
-        name: string;
-        initials: string;
-        avatarUrl?: string;
-    };
-
-    // Activity
-    lastContactDate: Date;
-    nextAction: string;
-    nextActionDate: Date;
-    strategicObservation: string;
-
-    // Metadata
-    estimatedValue?: number;
-    tags?: string[];
-}
-
-// --- Mock Data ---
-
-const INITIAL_PROSPECTS: Prospect[] = [
-    {
-        id: '1',
-        company: 'Construtora Exemplo Ltda',
-        contactName: 'João Silva',
-        contactRole: 'Diretor de Obras',
-        stage: 'MAPEAR_CONTATO',
-        location: 'São Paulo, SP',
-        createdAt: new Date('2024-01-05'),
-        stageStartedAt: new Date('2024-01-05'),
-        owner: { name: 'Antonio Augusto', initials: 'AA' },
-        lastContactDate: new Date('2024-01-10'),
-        nextAction: 'Buscar perfil no LinkedIn',
-        nextActionDate: new Date('2024-01-20'), // Late date example
-        strategicObservation: 'Empresa em expansão no setor industrial.',
-        tags: ['Industrial']
-    },
-    {
-        id: '2',
-        company: 'Incorporadora Modelo S.A.',
-        contactName: 'Maria Santos',
-        contactRole: 'Gerente de Suprimentos',
-        stage: 'FAZER_CONTATO',
-        location: 'Rio de Janeiro, RJ',
-        createdAt: new Date('2023-12-20'),
-        stageStartedAt: new Date('2024-01-15'),
-        owner: { name: 'Felipe Costa', initials: 'FC' },
-        lastContactDate: new Date('2024-01-20'),
-        nextAction: 'Ligar para agendar café',
-        nextActionDate: new Date('2025-02-20'), // Future date
-        strategicObservation: 'Focada em redução de custos.',
-        estimatedValue: 1200000
-    },
-    {
-        id: '3',
-        company: 'Engenharia & Cia',
-        contactName: 'Carlos Oliveira',
-        contactRole: 'Gerente Técnico',
-        stage: 'ESTABELECER_RELACAO',
-        location: 'Curitiba, PR',
-        createdAt: new Date('2023-11-10'),
-        stageStartedAt: new Date('2024-01-10'),
-        owner: { name: 'Antonio Augusto', initials: 'AA' },
-        lastContactDate: new Date('2023-12-15'),
-        nextAction: 'Enviar case de sucesso similar',
-        nextActionDate: new Date('2024-12-30'),
-        strategicObservation: 'Interessado em nossa tecnologia de monitoramento.',
-        estimatedValue: 300000
-    },
-    {
-        id: '4',
-        company: 'Tech Solutions',
-        contactName: 'Ana Souza',
-        contactRole: 'CEO',
-        stage: 'DIAGNOSTICO',
-        location: 'Belo Horizonte, MG',
-        createdAt: new Date('2023-12-01'),
-        stageStartedAt: new Date('2024-01-20'),
-        owner: { name: 'Marina Silva', initials: 'MS' },
-        lastContactDate: new Date('2024-01-25'),
-        nextAction: 'Apresentar proposta técnica preliminar',
-        nextActionDate: new Date('2025-02-01'),
-        strategicObservation: 'Precisa de solução para Q2 2024.',
-        estimatedValue: 500000
-    },
-    {
-        id: '5',
-        company: 'Retail Group',
-        contactName: 'Pedro Costa',
-        contactRole: 'Diretor de Expansão',
-        stage: 'QUALIFICACAO',
-        location: 'Porto Alegre, RS',
-        createdAt: new Date('2023-10-15'),
-        stageStartedAt: new Date('2024-01-05'),
-        owner: { name: 'Felipe Costa', initials: 'FC' },
-        lastContactDate: new Date('2024-01-26'),
-        nextAction: 'Validar orçamento com board',
-        nextActionDate: new Date('2025-02-05'),
-        strategicObservation: 'Budget aprovado, decisão em breve.',
-        estimatedValue: 2000000
-    }
-];
+import { Prospect, ProspectStage } from '../types';
+import { ProspectService } from '../services/prospectService';
 
 // --- Components ---
 
@@ -158,8 +42,18 @@ const DurationMetrics = ({ start, currentStageStart }: { start: Date, currentSta
 };
 
 export const ProspectingView: React.FC = () => {
-    const [prospects, setProspects] = useState<Prospect[]>(INITIAL_PROSPECTS);
+    const [prospects, setProspects] = useState<Prospect[]>([]);
+    const [loading, setLoading] = useState(true);
     const [draggedProspectId, setDraggedProspectId] = useState<string | null>(null);
+
+    // Subscribe to Data
+    useEffect(() => {
+        const unsubscribe = ProspectService.subscribeAll((data) => {
+            setProspects(data);
+            setLoading(false);
+        });
+        return () => unsubscribe();
+    }, []);
 
     // Menu State
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -224,26 +118,20 @@ export const ProspectingView: React.FC = () => {
         e.dataTransfer.dropEffect = "move";
     };
 
-    const handleDrop = (e: React.DragEvent, targetStage: ProspectStage) => {
+    const handleDrop = async (e: React.DragEvent, targetStage: ProspectStage) => {
         e.preventDefault();
         if (!draggedProspectId) return;
 
-        setProspects(prev => prev.map(p => {
-            if (p.id === draggedProspectId && p.stage !== targetStage) {
-                return {
-                    ...p,
-                    stage: targetStage,
-                    stageStartedAt: new Date()
-                };
-            }
-            return p;
-        }));
+        // Optimistic Update (Optional, but safer to rely on subscription or just wait)
+        // For simplicity and correctness with the timer reset logic on server/service side:
+        await ProspectService.moveStage(draggedProspectId, targetStage);
+
         setDraggedProspectId(null);
     };
 
-    const handleDelete = (id: string) => {
+    const handleDelete = async (id: string) => {
         if (confirm('Tem certeza que deseja excluir este prospect?')) {
-            setProspects(prev => prev.filter(p => p.id !== id));
+            await ProspectService.delete(id);
             setOpenMenuId(null);
         }
     };

@@ -416,3 +416,37 @@ export interface Client {
   };
   metrics?: ClientHealthMetrics; // Optional as it might be computed
 }
+
+// --- PROSPECTING MODELS ---
+
+export type ProspectStage = 'MAPEAR_CONTATO' | 'FAZER_CONTATO' | 'ESTABELECER_RELACAO' | 'DIAGNOSTICO' | 'QUALIFICACAO';
+
+export interface Prospect {
+  id: string;
+  company: string;
+  contactName: string;
+  contactRole: string;
+  stage: ProspectStage;
+  location: string;
+
+  // Dates for Time Tracking
+  createdAt: Date;       // For Total Time
+  stageStartedAt: Date;  // For Time in Stage
+
+  // Responsibility
+  owner: {
+    name: string;
+    initials: string;
+    avatarUrl?: string;
+  };
+
+  // Activity
+  lastContactDate: Date;
+  nextAction: string;
+  nextActionDate: Date;
+  strategicObservation: string;
+
+  // Metadata
+  estimatedValue?: number;
+  tags?: string[];
+}
