@@ -4,17 +4,15 @@ import {
     Filter,
     Plus,
     MoreVertical,
-    MapPin,
     Calendar,
     Building2,
-    AlertTriangle,
     Clock,
-    ArrowRight,
     User,
-    MessageSquare
+    History,
+    Target
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { format, differenceInDays, addDays } from 'date-fns';
+import { format, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 // --- Types ---
@@ -29,11 +27,22 @@ interface Prospect {
     stage: ProspectStage;
     location: string;
 
-    // Rules & Mandatory Fields
+    // Dates for Time Tracking
+    createdAt: Date;       // For Total Time
+    stageStartedAt: Date;  // For Time in Stage
+
+    // Responsibility
+    owner: {
+        name: string;
+        initials: string;
+        avatarUrl?: string;
+    };
+
+    // Activity
     lastContactDate: Date;
     nextAction: string;
     nextActionDate: Date;
-    strategicObservation: string; // 1 line max ideally
+    strategicObservation: string;
 
     // Metadata
     estimatedValue?: number;
@@ -50,10 +59,13 @@ const MOCK_PROSPECTS: Prospect[] = [
         contactRole: 'Diretor de Obras',
         stage: 'MAPEAR_CONTATO',
         location: 'São Paulo, SP',
-        lastContactDate: new Date('2024-01-10'), // > 15 days alert?
+        createdAt: new Date('2024-01-05'),
+        stageStartedAt: new Date('2024-01-05'),
+        owner: { name: 'Antonio Augusto', initials: 'AA' },
+        lastContactDate: new Date('2024-01-10'),
         nextAction: 'Buscar perfil no LinkedIn',
         nextActionDate: new Date('2024-01-28'),
-        strategicObservation: ' Empresa em expansão no setor industrial.',
+        strategicObservation: 'Empresa em expansão no setor industrial.',
         tags: ['Industrial']
     },
     {
@@ -63,6 +75,9 @@ const MOCK_PROSPECTS: Prospect[] = [
         contactRole: 'Gerente de Suprimentos',
         stage: 'FAZER_CONTATO',
         location: 'Rio de Janeiro, RJ',
+        createdAt: new Date('2023-12-20'),
+        stageStartedAt: new Date('2024-01-15'),
+        owner: { name: 'Felipe Costa', initials: 'FC' },
         lastContactDate: new Date('2024-01-20'),
         nextAction: 'Ligar para agendar café',
         nextActionDate: new Date('2024-01-29'),
@@ -76,7 +91,10 @@ const MOCK_PROSPECTS: Prospect[] = [
         contactRole: 'Gerente Técnico',
         stage: 'ESTABELECER_RELACAO',
         location: 'Curitiba, PR',
-        lastContactDate: new Date('2023-12-15'), // Old! Should alert
+        createdAt: new Date('2023-11-10'),
+        stageStartedAt: new Date('2024-01-10'),
+        owner: { name: 'Antonio Augusto', initials: 'AA' },
+        lastContactDate: new Date('2023-12-15'),
         nextAction: 'Enviar case de sucesso similar',
         nextActionDate: new Date('2024-01-30'),
         strategicObservation: 'Interessado em nossa tecnologia de monitoramento.',
@@ -89,6 +107,9 @@ const MOCK_PROSPECTS: Prospect[] = [
         contactRole: 'CEO',
         stage: 'DIAGNOSTICO',
         location: 'Belo Horizonte, MG',
+        createdAt: new Date('2023-12-01'),
+        stageStartedAt: new Date('2024-01-20'),
+        owner: { name: 'Marina Silva', initials: 'MS' },
         lastContactDate: new Date('2024-01-25'),
         nextAction: 'Apresentar proposta técnica preliminar',
         nextActionDate: new Date('2024-02-01'),
@@ -102,6 +123,9 @@ const MOCK_PROSPECTS: Prospect[] = [
         contactRole: 'Diretor de Expansão',
         stage: 'QUALIFICACAO',
         location: 'Porto Alegre, RS',
+        createdAt: new Date('2023-10-15'),
+        stageStartedAt: new Date('2024-01-05'),
+        owner: { name: 'Felipe Costa', initials: 'FC' },
         lastContactDate: new Date('2024-01-26'),
         nextAction: 'Validar orçamento com board',
         nextActionDate: new Date('2024-02-05'),
@@ -112,30 +136,21 @@ const MOCK_PROSPECTS: Prospect[] = [
 
 // --- Components ---
 
-const StatusBadge = ({ date }: { date: Date }) => {
-    const days = differenceInDays(new Date(), date);
-
-    if (days > 30) {
-        return (
-            <div className="flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-100" title="Sem contato há mais de 30 dias">
-                <AlertTriangle size={10} />
-                <span>{days}d sem contato</span>
-            </div>
-        );
-    }
-
-    if (days > 15) {
-        return (
-            <div className="flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">
-                <Clock size={10} />
-                <span>{days}d</span>
-            </div>
-        );
-    }
+const DurationMetrics = ({ start, currentStageStart }: { start: Date, currentStageStart: Date }) => {
+    const totalDays = differenceInDays(new Date(), start);
+    const stageDays = differenceInDays(new Date(), currentStageStart);
 
     return (
-        <div className="text-[10px] text-slate-400 font-medium">
-            {days === 0 ? 'Hoje' : `${days}d atrás`}
+        <div className="flex items-center gap-3 text-[10px] text-slate-500 font-medium">
+            <div className="flex items-center gap-1" title="Tempo nesta etapa">
+                <History size={10} className="text-blue-500" />
+                <span className="text-slate-600">{stageDays}d na etapa</span>
+            </div>
+            <div className="w-px h-3 bg-slate-200" />
+            <div className="flex items-center gap-1" title="Tempo total desde a criação">
+                <Clock size={10} className="text-slate-400" />
+                <span>{totalDays}d total</span>
+            </div>
         </div>
     );
 };
@@ -185,12 +200,11 @@ export const ProspectingView: React.FC = () => {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                        <User className="text-blue-600" />
+                        <Target className="text-blue-600" />
                         Gestão de Prospecção
                     </h1>
                     <p className="text-slate-500 mt-1 flex items-center gap-2 text-sm">
-                        <span className="font-semibold text-slate-700">Regra de Ouro:</span>
-                        “Contato sem ação agendada é cartão morto.”
+                        Funil de Novos Clientes
                     </p>
                 </div>
 
@@ -230,27 +244,42 @@ export const ProspectingView: React.FC = () => {
                                             whileHover={{ y: -2, scale: 1.01 }}
                                             className="p-3 bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group relative overflow-hidden"
                                         >
-                                            {/* Priority Stripe (?) or just clean look */}
+                                            {/* Left Stripe based on status? keeping generic blue for now */}
                                             <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 to-blue-600 rounded-l-lg" />
 
                                             {/* Header: Company & Action Menu */}
                                             <div className="flex justify-between items-start mb-2 pl-2">
-                                                <h4 className="font-bold text-slate-800 text-sm leading-tight hover:text-blue-600 transition-colors">
-                                                    {card.company}
-                                                </h4>
+                                                <div className="flex flex-col">
+                                                    <h4 className="font-bold text-slate-800 text-sm leading-tight hover:text-blue-600 transition-colors">
+                                                        {card.company}
+                                                    </h4>
+                                                    <div className="flex items-center gap-1 text-[10px] text-slate-400 mt-0.5">
+                                                        <Building2 size={10} />
+                                                        {card.location}
+                                                    </div>
+                                                </div>
                                                 <button className="text-slate-300 hover:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity p-1">
                                                     <MoreVertical size={14} />
                                                 </button>
                                             </div>
 
-                                            {/* Contact Info */}
-                                            <div className="pl-2 mb-3">
-                                                <div className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                                                    <User size={12} className="text-slate-400" />
-                                                    {card.contactName}
+                                            {/* Contact Info & Owner */}
+                                            <div className="pl-2 mb-3 flex items-start justify-between">
+                                                <div>
+                                                    <div className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                                                        <User size={12} className="text-slate-400" />
+                                                        {card.contactName}
+                                                    </div>
+                                                    <div className="text-[10px] text-slate-500 ml-4 truncate max-w-[120px]">
+                                                        {card.contactRole}
+                                                    </div>
                                                 </div>
-                                                <div className="text-[10px] text-slate-500 ml-4 truncate">
-                                                    {card.contactRole}
+
+                                                {/* Responsible Person Avatar */}
+                                                <div className="flex flex-col items-end" title={`Responsável: ${card.owner.name}`}>
+                                                    <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 border border-slate-200 flex items-center justify-center text-[10px] font-bold">
+                                                        {card.owner.initials}
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -261,14 +290,11 @@ export const ProspectingView: React.FC = () => {
                                                 </div>
                                             </div>
 
-                                            {/* Footer: Dates & Next Action (CRITICAL) */}
+                                            {/* Footer: Timeline & Next Action */}
                                             <div className="pl-2 pt-2 border-t border-slate-50 flex flex-col gap-2">
 
-                                                {/* Last Contact */}
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-[10px] text-slate-400">Último contato:</span>
-                                                    <StatusBadge date={card.lastContactDate} />
-                                                </div>
+                                                {/* Duration Metrics */}
+                                                <DurationMetrics start={card.createdAt} currentStageStart={card.stageStartedAt} />
 
                                                 {/* Next Action - Highlighted */}
                                                 <div className="bg-blue-50/50 rounded-md p-2 border border-blue-100/50 mt-1">
