@@ -11,9 +11,12 @@ export const firebaseConfig = {
     appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
+import { getStorage, FirebaseStorage } from 'firebase/storage';
+
 let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
+let storage: FirebaseStorage;
 
 if (!getApps().length) {
     app = initializeApp(firebaseConfig);
@@ -24,12 +27,15 @@ if (!getApps().length) {
     db = initializeFirestore(app, {
         ignoreUndefinedProperties: true
     });
+
+    storage = getStorage(app);
 } else {
     app = getApp();
     auth = getAuth(app);
     db = initializeFirestore(app, {
         ignoreUndefinedProperties: true
     });
+    storage = getStorage(app);
 }
 
-export { app, auth, db };
+export { app, auth, db, storage };

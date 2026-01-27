@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Lock, Check, AlertCircle } from 'lucide-react';
+import { Lock, Check, AlertCircle, Camera } from 'lucide-react';
 import { toast } from 'sonner';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, getAuth } from 'firebase/auth';
 import { auth } from '../../services/firebaseConfig';
@@ -14,6 +14,49 @@ export const AccountSettings: React.FC = () => {
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [uploading, setUploading] = useState(false);
+
+    const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // 1. Validate File
+        const isImage = file.type.startsWith('image/');
+        const isSizeOk = file.size <= 3 * 1024 * 1024; // 3MB
+
+        if (!isImage) {
+            toast.error('Por favor, selecione um arquivo de imagem (JPG ou PNG).');
+            return;
+        }
+
+        if (!isSizeOk) {
+            toast.error('A imagem deve ter no máximo 3MB.');
+            return;
+        }
+
+        try {
+            setUploading(true);
+            const { storage } = await import('../../services/firebaseConfig');
+            const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+
+            // 2. Upload to Firebase Storage
+            const storageRef = ref(storage, `avatars/${user?.id}`);
+            const snapshot = await uploadBytes(storageRef, file);
+
+            // 3. Get URL
+            const downloadURL = await getDownloadURL(snapshot.ref);
+
+            // 4. Update Profile
+            await updateUser(user!.id, { avatarUrl: downloadURL });
+            toast.success('Foto de perfil atualizada!');
+
+        } catch (error: any) {
+            console.error('Erro ao enviar foto:', error);
+            toast.error('Erro ao enviar foto. Tente novamente.');
+        } finally {
+            setUploading(false);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -80,6 +123,41 @@ export const AccountSettings: React.FC = () => {
                 <Lock className="w-6 h-6 text-blue-600" />
                 Minha Conta
             </h1>
+
+            {/* Profile Photo Section */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                <h2 className="text-lg font-semibold text-slate-800 mb-4">Foto de Perfil</h2>
+
+                <div className="flex items-center gap-6">
+                    <div className="relative group">
+                        <img
+                            src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || '')}`}
+                            alt="Profile"
+                            className="w-24 h-24 rounded-full object-cover border-4 border-slate-50 shadow-sm"
+                        />
+                        <label className="absolute bottom-0 right-0 p-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full cursor-pointer shadow-md transition-transform hover:scale-105">
+                            <input
+                                type="file"
+                                className="hidden"
+                                accept="image/png, image/jpeg"
+                                onChange={handlePhotoUpload}
+                                disabled={uploading}
+                            />
+                            {uploading ? (
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                                <Camera size={16} />
+                            )}
+                        </label>
+                    </div>
+
+                    <div className="text-sm text-slate-500">
+                        <p className="font-medium text-slate-700 mb-1">Alterar sua foto</p>
+                        <p>Formatos permitidos: JPG, PNG.</p>
+                        <p>Tamanho máximo: 3MB.</p>
+                    </div>
+                </div>
+            </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                 <h2 className="text-lg font-semibold text-slate-800 mb-4">Alterar Senha</h2>
