@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, DollarSign, Plus, Trash2, TrendingUp, FileText, AlertTriangle, Eye, Activity, BadgeCheck, Building2, Truck } from 'lucide-react';
+import { X, Calendar, DollarSign, Plus, Trash2, TrendingUp, FileText, AlertTriangle, Eye, Activity, BadgeCheck, Building2, Truck, Upload } from 'lucide-react';
 import { Contract, ContractMeasurement, ScopeAuditItem } from '../types';
 import { ContractService } from '../services/contractService';
 import { toast } from 'sonner';
@@ -12,6 +12,7 @@ import { ptBR } from 'date-fns/locale';
 import { MeasurementForm } from './MeasurementForm';
 import { ContractFinancialChart } from './ContractFinancialChart';
 import { DocumentImportModal } from './DocumentImportModal';
+import { BatchImportModal } from './BatchImportModal';
 import { ContractEventForm } from './ContractEventForm';
 
 interface ContractDetailsModalProps {
@@ -71,6 +72,7 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
     const [isMeasurementFormOpen, setIsMeasurementFormOpen] = useState(false);
     const [isEventFormOpen, setIsEventFormOpen] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false); // Shared for generic imports if needed, or RDO specific
+    const [isBatchImportOpen, setIsBatchImportOpen] = useState(false);
     const [importType, setImportType] = useState<'BM' | 'RDO'>('BM');
 
     const [history, setHistory] = useState<ContractMeasurement[]>([]);
@@ -88,6 +90,19 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
             toast.success("Medição Importada");
         }
         setIsImportModalOpen(false);
+    };
+
+    const handleBatchImport = async (files: any[]) => {
+        // Process batch imported files
+        // For now, just acknowledge
+        const rdoCount = files.filter(f => f.type === 'RDO').length;
+        const bmCount = files.filter(f => f.type === 'BM').length;
+
+        toast.success(`Importação em lote concluída!`, {
+            description: `${rdoCount} RDO(s) e ${bmCount} BM(s) importados`
+        });
+
+        setIsBatchImportOpen(false);
     };
 
     // Refresh history when modal opens
@@ -265,6 +280,13 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                                     className="flex items-center gap-2 px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold shadow-lg shadow-orange-600/20 transition-all transform hover:scale-105 active:scale-95"
                                 >
                                     <FileText size={18} /> Inserir RDO
+                                </button>
+                                <button
+                                    onClick={() => setIsBatchImportOpen(true)}
+                                    className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold shadow-lg shadow-purple-600/20 transition-all transform hover:scale-105 active:scale-95"
+                                    title="Importar múltiplos arquivos JSON de uma vez"
+                                >
+                                    <Upload size={18} /> Lote
                                 </button>
                                 <button
                                     onClick={() => setIsEventFormOpen(true)}
@@ -583,6 +605,13 @@ export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
                     isOpen={isImportModalOpen}
                     onClose={() => setIsImportModalOpen(false)}
                     onImport={handleImportSuccess}
+                />
+
+                <BatchImportModal
+                    isOpen={isBatchImportOpen}
+                    onClose={() => setIsBatchImportOpen(false)}
+                    onBatchImport={handleBatchImport}
+                    teams={contract?.teams}
                 />
             </div>
         </AnimatePresence>

@@ -78,33 +78,35 @@ export interface RDOMaoDeObra {
 }
 
 export interface RDOAtividade {
+  id_atividade?: string;
   descricao: string;
+  quantidade?: number;
   unidade: string;
   status: string;
 }
 
 export interface RDOEquipamento {
-  nome: string;
+  codigo: string | null;
   descricao: string;
   quantidade: number;
-  horario: string;
-  tempo: string;
+  horario: string | null;
+  horas_totais: number;
+  raw?: string;
 }
 
 export interface ExtractedRDO {
   filename: string;
   relatorio: {
-    numero: string;
-    data: string;
-    dia_semana: string;
-    contrato: string;
-    obra: string;
-    prazo_contratual?: string;
-    local?: string;
-    prazo_decorrido?: string;
-    contratante?: string;
-    responsavel?: string;
-    prazo_a_vencer?: string;
+    numero: number | null;
+    data: string | null; // Format: YYYY-MM-DD (ISO)
+    dia_semana: string | null;
+    contrato: string | null;
+    obra: string | null;
+    prazo_contratual_dias?: number;
+    prazo_decorrido_dias?: number;
+    prazo_a_vencer_dias?: number;
+    contratante?: string | null;
+    responsavel?: string | null;
   };
   horario_trabalho: {
     entrada_saida: string;

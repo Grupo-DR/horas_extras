@@ -114,10 +114,9 @@ export const TeamDetailsModal: React.FC<Props> = ({ isOpen, onClose, team, onDel
                                         <p className="text-base font-medium text-slate-800">{selectedRDO.relatorio?.data} <span className="text-sm text-slate-400">({selectedRDO.relatorio?.dia_semana})</span></p>
                                     </div>
                                     <div className="md:col-span-2">
-                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Obra/Local</label>
-                                        <p className="text-base font-medium text-slate-800 truncate" title={`${selectedRDO.relatorio?.obra} - ${selectedRDO.relatorio?.local}`}>
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Obra</label>
+                                        <p className="text-base font-medium text-slate-800 truncate" title={selectedRDO.relatorio?.obra || ''}>
                                             {selectedRDO.relatorio?.obra}
-                                            {selectedRDO.relatorio?.local && <span className="text-slate-500"> - {selectedRDO.relatorio?.local}</span>}
                                         </p>
                                     </div>
 
@@ -132,14 +131,20 @@ export const TeamDetailsModal: React.FC<Props> = ({ isOpen, onClose, team, onDel
                                     </div>
                                     <div>
                                         <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Prazo Contratual</label>
-                                        <p className="text-sm font-medium text-slate-700">{selectedRDO.relatorio?.prazo_contratual || '-'}</p>
+                                        <p className="text-sm font-medium text-slate-700">
+                                            {selectedRDO.relatorio?.prazo_contratual_dias ? `${selectedRDO.relatorio.prazo_contratual_dias} dias` : '-'}
+                                        </p>
                                     </div>
                                     <div>
                                         <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Prazo (Vencer/Decor)</label>
                                         <div className="text-sm font-medium text-slate-700 flex items-center gap-1">
-                                            <span className="text-orange-600">{selectedRDO.relatorio?.prazo_a_vencer || '-'}</span>
+                                            <span className="text-orange-600">
+                                                {selectedRDO.relatorio?.prazo_a_vencer_dias ? `${selectedRDO.relatorio.prazo_a_vencer_dias}d` : '-'}
+                                            </span>
                                             <span className="text-slate-300">/</span>
-                                            <span>{selectedRDO.relatorio?.prazo_decorrido || '-'}</span>
+                                            <span>
+                                                {selectedRDO.relatorio?.prazo_decorrido_dias ? `${selectedRDO.relatorio.prazo_decorrido_dias}d` : '-'}
+                                            </span>
                                         </div>
                                     </div>
                                     <div className="md:col-span-4 border-t pt-4 mt-2 flex items-center gap-6">
@@ -242,11 +247,11 @@ export const TeamDetailsModal: React.FC<Props> = ({ isOpen, onClose, team, onDel
                                                 {selectedRDO.equipamentos?.map((eq: any, idx) => {
                                                     // Handle string vs object format safely
                                                     const isString = typeof eq === 'string';
-                                                    const codigo = isString ? '-' : eq.nome;
+                                                    const codigo = isString ? '-' : (eq.codigo || '-');
                                                     const descricao = isString ? eq : eq.descricao;
                                                     const qtd = isString ? 1 : eq.quantidade;
-                                                    const horario = isString ? '' : eq.horario;
-                                                    const tempo = isString ? '' : eq.tempo;
+                                                    const horario = isString ? '' : (eq.horario || '');
+                                                    const horasTotais = isString ? '' : (eq.horas_totais || 0);
 
                                                     return (
                                                         <tr key={idx} className="hover:bg-slate-50">
@@ -256,7 +261,7 @@ export const TeamDetailsModal: React.FC<Props> = ({ isOpen, onClose, team, onDel
                                                             <td className="px-6 py-3 text-right text-slate-600 font-mono">
                                                                 <div className="flex flex-col items-end">
                                                                     <span>{horario}</span>
-                                                                    {tempo && <span className="text-xs font-bold">({tempo})</span>}
+                                                                    {horasTotais > 0 && <span className="text-xs font-bold">({horasTotais}h)</span>}
                                                                 </div>
                                                             </td>
                                                         </tr>

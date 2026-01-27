@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Upload, FileText, CheckCircle, AlertTriangle, ArrowRight, Save, Database, Eye, ChevronRight, ChevronDown } from 'lucide-react';
 import { LocalBMParser } from '../services/LocalBMParser';
+import { isoToBrazilianDate } from '../utils/dateUtils';
 
 import { ImportedData, ExtractedBM, ExtractedRDO, ContractTeam } from '../types';
 import { toast } from 'sonner';
@@ -12,9 +13,12 @@ interface Props {
     teams?: ContractTeam[]; // Optional list of teams for RDO linking
 }
 
-// Helper to parse "Code Description Qty Range (Time)"
+
+// Helper to parse "Code Description Qty Range (Time)" - DEPRECATED
+// This function is kept for backward compatibility but should not be used for new Python JSONs
+// Python JSONs already have the correct structure
 const parseEquipmentString = (str: string) => {
-    if (!str) return { nome: '', descricao: '', quantidade: 0, horario: '', tempo: '' };
+    if (!str) return { codigo: null, descricao: '', quantidade: 0, horario: null, horas_totais: 0 };
 
     const cleanStr = str.trim();
 
@@ -36,63 +40,67 @@ const parseEquipmentString = (str: string) => {
     // Group 1: Everything Else (Prefix + Desc)
     // Group 2: Quantity (Digits)
     // Group 3: Time Range (HH:MM - HH:MM)
-    // Group 4: Duration ((...))
-    const endParamsMatch = cleanStr.match(/^(.*)\s+(\d+)\s+([\d]{2}:[\d]{2}\s*[-–]\s*[\d]{2}:[\d]{2})\s*(\(.*\))$/);
+    // Group 4: Duration ((...)
+const endParamsMatch = cleanStr.match(/^(.*)\s+(\d+)\s+([\d]{2}:[\d]{2}\s*[-–]\s*[\d]{2}:[\d]{2})\s*(\(.*\))$/);
 
-    if (endParamsMatch) {
-        const prefixAndDesc = endParamsMatch[1].trim();
-        const qty = parseInt(endParamsMatch[2]);
-        const timeRange = endParamsMatch[3];
-        const duration = endParamsMatch[4];
+if (endParamsMatch) {
+    const prefixAndDesc = endParamsMatch[1].trim();
+    const qty = parseInt(endParamsMatch[2]);
+    const timeRange = endParamsMatch[3];
+    const duration = endParamsMatch[4];
 
-        // Split Prefix and Desc
-        // Assume Prefix is the first word.
-        const firstSpaceIdx = prefixAndDesc.indexOf(' ');
-        let nome = prefixAndDesc;
-        let descricao = '';
+    // Split Prefix and Desc
+    // Assume Prefix is the first word.
+    const firstSpaceIdx = prefixAndDesc.indexOf(' ');
+    let codigo = prefixAndDesc;
+    let descricao = '';
 
-        if (firstSpaceIdx > 0) {
-            nome = prefixAndDesc.substring(0, firstSpaceIdx);
-            descricao = prefixAndDesc.substring(firstSpaceIdx).trim();
-        }
-
-        return {
-            nome: nome,
-            descricao: descricao,
-            quantidade: qty,
-            horario: timeRange,
-            tempo: duration
-        };
+    if (firstSpaceIdx > 0) {
+        codigo = prefixAndDesc.substring(0, firstSpaceIdx);
+        descricao = prefixAndDesc.substring(firstSpaceIdx).trim();
     }
 
-    // Fallback for missing parts (e.g. missing duration)
-    // Try Qty + TimeRange only
-    const midParamsMatch = cleanStr.match(/^(.*)\s+(\d+)\s+([\d]{2}:[\d]{2}\s*[-–]\s*[\d]{2}:[\d]{2})$/);
-    if (midParamsMatch) {
-        const prefixAndDesc = midParamsMatch[1].trim();
-        const qty = parseInt(midParamsMatch[2]);
-        const timeRange = midParamsMatch[3];
+    // Extract hours from duration like "(10h)"
+    const hoursMatch = duration.match(/(\d+)h/);
+    const horas_totais = hoursMatch ? parseInt(hoursMatch[1]) : 0;
 
-        const firstSpaceIdx = prefixAndDesc.indexOf(' ');
-        let nome = prefixAndDesc;
-        let descricao = '';
+    return {
+        codigo: codigo,
+        descricao: descricao,
+        quantidade: qty,
+        horario: timeRange,
+        horas_totais: horas_totais
+    };
+}
 
-        if (firstSpaceIdx > 0) {
-            nome = prefixAndDesc.substring(0, firstSpaceIdx);
-            descricao = prefixAndDesc.substring(firstSpaceIdx).trim();
-        }
+// Fallback for missing parts (e.g. missing duration)
+// Try Qty + TimeRange only
+const midParamsMatch = cleanStr.match(/^(.*)\s+(\d+)\s+([\d]{2}:[\d]{2}\s*[-–]\s*[\d]{2}:[\d]{2})$/);
+if (midParamsMatch) {
+    const prefixAndDesc = midParamsMatch[1].trim();
+    const qty = parseInt(midParamsMatch[2]);
+    const timeRange = midParamsMatch[3];
 
-        return {
-            nome: nome,
-            descricao: descricao,
-            quantidade: qty,
-            horario: timeRange,
-            tempo: ''
-        };
+    const firstSpaceIdx = prefixAndDesc.indexOf(' ');
+    let codigo = prefixAndDesc;
+    let descricao = '';
+
+    if (firstSpaceIdx > 0) {
+        codigo = prefixAndDesc.substring(0, firstSpaceIdx);
+        descricao = prefixAndDesc.substring(firstSpaceIdx).trim();
     }
 
-    // Fallback: Just dump into Name if parsing fails completely
-    return { nome: str, descricao: '', quantidade: 1, horario: '', tempo: '' };
+    return {
+        codigo: codigo,
+        descricao: descricao,
+        quantidade: qty,
+        horario: timeRange,
+        horas_totais: 0
+    };
+}
+
+// Fallback: Just dump into codigo if parsing fails completely
+return { codigo: str, descricao: '', quantidade: 1, horario: null, horas_totais: 0 };
 };
 
 export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport, teams }) => {
@@ -135,6 +143,11 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
                             ...json,
                             type: 'RDO' // Force tag if missing
                         } as ExtractedRDO;
+
+                        // Convert ISO date to Brazilian format if needed
+                        if (extractedData.relatorio?.data) {
+                            extractedData.relatorio.data = isoToBrazilianDate(extractedData.relatorio.data) || extractedData.relatorio.data;
+                        }
                     } else {
                         throw new Error("Formato JSON desconhecido. Precisa ter 'itens' (BM) ou 'relatorio' (RDO).");
                     }
@@ -161,11 +174,6 @@ export const DocumentImportModal: React.FC<Props> = ({ isOpen, onClose, onImport
 
                     // Auto-select first team if available and RDO
                     if (extractedData.type === 'RDO') {
-                        // Fix for Local field containing metadata
-                        if (extractedData.relatorio?.local && extractedData.relatorio.local.toLowerCase().includes('prazo decorrido')) {
-                            extractedData.relatorio.local = '';
-                        }
-
                         if (teams && teams.length > 0) {
                             setSelectedTeamId(teams[0].id);
                         }

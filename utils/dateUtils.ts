@@ -59,3 +59,60 @@ export const toFirestoreTimestamp = (value: any): Timestamp | null => {
     if (!d) return null;
     return Timestamp.fromDate(d);
 };
+
+/**
+ * Converts ISO date format (YYYY-MM-DD) to Brazilian format (DD/MM/YYYY).
+ * Used when importing RDO JSONs from Python that use ISO format.
+ */
+export const isoToBrazilianDate = (isoDate: string | null): string | null => {
+    if (!isoDate) return null;
+
+    // Check if already in Brazilian format
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(isoDate)) {
+        return isoDate;
+    }
+
+    // Convert ISO to Brazilian
+    if (/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+        const [year, month, day] = isoDate.split('-');
+        return `${day}/${month}/${year}`;
+    }
+
+    return isoDate; // Return as-is if unrecognized format
+};
+
+/**
+ * Converts Brazilian date format (DD/MM/YYYY) to ISO format (YYYY-MM-DD).
+ * Used when saving dates to ensure consistency.
+ */
+export const brazilianToIsoDate = (brDate: string | null): string | null => {
+    if (!brDate) return null;
+
+    // Check if already in ISO format
+    if (/^\d{4}-\d{2}-\d{2}$/.test(brDate)) {
+        return brDate;
+    }
+
+    // Convert Brazilian to ISO
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(brDate)) {
+        const [day, month, year] = brDate.split('/');
+        return `${year}-${month}-${day}`;
+    }
+
+    return brDate; // Return as-is if unrecognized format
+};
+
+/**
+ * Formats a date to Brazilian format (DD/MM/YYYY) for display.
+ * Accepts Date objects, ISO strings, or Brazilian strings.
+ */
+export const formatBrazilianDate = (date: any): string => {
+    const d = safeDateParse(date);
+    if (!d) return '';
+
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+
+    return `${day}/${month}/${year}`;
+};

@@ -34,12 +34,20 @@ export const RDOAnalytics = {
 
     getDailyKPIs: (rdos: any[]): DailyKPI[] => {
         return rdos.map((rdo: any) => {
-            const dateStr = rdo.relatorio?.data; // "18/11/2025"
-            // Parse date "dd/MM/yyyy" -> Date Object
+            const dateStr = rdo.relatorio?.data; // Can be "2025-11-18" (ISO) or "18/11/2025" (BR)
+
+            // Parse date - accept both formats
             let dateObj = new Date();
             try {
                 if (dateStr) {
-                    dateObj = parse(dateStr, 'dd/MM/yyyy', new Date());
+                    // Try ISO format first (YYYY-MM-DD from Python)
+                    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                        dateObj = parse(dateStr, 'yyyy-MM-dd', new Date());
+                    }
+                    // Fallback to Brazilian format (DD/MM/YYYY)
+                    else if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                        dateObj = parse(dateStr, 'dd/MM/yyyy', new Date());
+                    }
                 }
             } catch (e) {
                 console.error("Date parse error", dateStr);
