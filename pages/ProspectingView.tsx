@@ -21,7 +21,26 @@ import { Prospect, ProspectStage } from '../types';
 import { ProspectService } from '../services/prospectService';
 import { ProspectFormModal } from '../components/crm/ProspectFormModal';
 
-// ... (DurationMetrics component unchanged)
+// --- Components ---
+
+const DurationMetrics = ({ start, currentStageStart }: { start: Date, currentStageStart: Date }) => {
+    const totalDays = differenceInDays(new Date(), start);
+    const stageDays = differenceInDays(new Date(), currentStageStart);
+
+    return (
+        <div className="flex items-center gap-3 text-[10px] text-slate-500 font-medium">
+            <div className="flex items-center gap-1" title={`Tempo nesta etapa (${stageDays} dias)`}>
+                <History size={10} className="text-blue-500" />
+                <span className="text-slate-600">{stageDays}d na etapa</span>
+            </div>
+            <div className="w-px h-3 bg-slate-200" />
+            <div className="flex items-center gap-1" title={`Tempo total de vida (${totalDays} dias)`}>
+                <Clock size={10} className="text-slate-400" />
+                <span>{totalDays}d total</span>
+            </div>
+        </div>
+    );
+};
 
 export const ProspectingView: React.FC = () => {
     const [prospects, setProspects] = useState<Prospect[]>([]);
