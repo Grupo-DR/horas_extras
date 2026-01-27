@@ -247,6 +247,14 @@ export enum ModuleCategory {
   CRM = 'CRM'
 }
 
+export interface HelpChainLevel {
+  level: number;
+  roleName: string;
+  contactEmail: string;
+  triggerDaysBefore: number;
+  triggerWhenLate: boolean;
+}
+
 export interface Bid {
   id: string;
   clientId: string;
@@ -258,7 +266,7 @@ export interface Bid {
   status: BidStatus;
   pipelineStage: PipelineStage;
   probability: number; // 0-100
-  result?: 'SUCCESS' | 'FAILURE'; // Explicit result
+  result?: TaskOutcome | 'SUCCESS' | 'FAILURE'; // Explicit result
 
   // Financials
   estimatedValue: number;
@@ -273,6 +281,10 @@ export interface Bid {
 
   createdAt: Date;
   updatedAt: Date;
+
+  // Denormalized/Optional
+  clientName?: string;
+  ownerName?: string;
 }
 
 export interface User {
@@ -449,4 +461,24 @@ export interface Prospect {
   // Metadata
   estimatedValue?: number;
   tags?: string[];
+}
+
+export interface HistoryLog {
+  id: string;
+  taskId: string;
+  action: string;
+  details?: string;
+  timestamp: Date;
+  user: string;
+}
+
+export interface Notification {
+  id: string;
+  taskId?: string;
+  taskTitle?: string;
+  type: string;
+  recipient: string;
+  subject: string;
+  sentAt: Date;
+  read?: boolean;
 }

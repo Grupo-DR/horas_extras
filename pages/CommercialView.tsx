@@ -101,6 +101,7 @@ export const CommercialView: React.FC = () => {
     const [actionPriorityFilter, setActionPriorityFilter] = useState('');
     const [actionUserFilter, setActionUserFilter] = useState('');
     const [actionClientFilter, setActionClientFilter] = useState('');
+    const [showCompleted, setShowCompleted] = useState(false);
 
     const handleImportData = (data: any) => {
         console.log("Imported Data:", data);
@@ -1512,6 +1513,18 @@ export const CommercialView: React.FC = () => {
                                         ))}
                                     </select>
 
+                                    {/* SHOW COMPLETED TOGGLE */}
+                                    <button
+                                        onClick={() => setShowCompleted(!showCompleted)}
+                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${showCompleted
+                                            ? 'bg-blue-50 border-blue-200 text-blue-700'
+                                            : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                                            }`}
+                                    >
+                                        {showCompleted ? <CheckCircle size={14} /> : <div className="w-3.5 h-3.5 border-2 border-slate-300 rounded flex items-center justify-center" />}
+                                        Mostrar Concluídas
+                                    </button>
+
                                     {/* Clear Filters */}
                                     {(actionPriorityFilter || actionUserFilter || actionClientFilter) && (
                                         <button
@@ -1529,6 +1542,8 @@ export const CommercialView: React.FC = () => {
                                 {(() => {
                                     // Filter Logic
                                     const filteredActions = getFilteredTasks(tasks || []).filter(task => { // Use date filter base
+                                        // 0. Completed Filter
+                                        if (!showCompleted && task.status === TaskStatus.COMPLETED) return false;
                                         // 1. Priority
                                         if (actionPriorityFilter && task.priority !== actionPriorityFilter) return false;
                                         // 2. User
