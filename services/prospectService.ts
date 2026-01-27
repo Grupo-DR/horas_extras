@@ -11,7 +11,7 @@ import {
     Timestamp,
     getDocs
 } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { db } from './firebaseConfig';
 import { Prospect, ProspectStage } from '../types';
 
 const COLLECTION = 'prospects';
