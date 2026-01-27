@@ -11,6 +11,12 @@ export const firebaseConfig = {
     appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
+// Fallback: If storageBucket is missing but projectId exists, try the default convention
+if (!firebaseConfig.storageBucket && firebaseConfig.projectId) {
+    firebaseConfig.storageBucket = `${firebaseConfig.projectId}.firebasestorage.app`;
+    console.warn('VITE_FIREBASE_STORAGE_BUCKET not found, falling back to:', firebaseConfig.storageBucket);
+}
+
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 let app: FirebaseApp;
