@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import {
-    Search,
-    Filter,
     Plus,
     MoreVertical,
     Calendar,
@@ -51,7 +49,7 @@ interface Prospect {
 
 // --- Mock Data ---
 
-const MOCK_PROSPECTS: Prospect[] = [
+const INITIAL_PROSPECTS: Prospect[] = [
     {
         id: '1',
         company: 'Construtora Exemplo Ltda',
@@ -142,12 +140,12 @@ const DurationMetrics = ({ start, currentStageStart }: { start: Date, currentSta
 
     return (
         <div className="flex items-center gap-3 text-[10px] text-slate-500 font-medium">
-            <div className="flex items-center gap-1" title="Tempo nesta etapa">
+            <div className="flex items-center gap-1" title={`Tempo nesta etapa (${stageDays} dias)`}>
                 <History size={10} className="text-blue-500" />
                 <span className="text-slate-600">{stageDays}d na etapa</span>
             </div>
             <div className="w-px h-3 bg-slate-200" />
-            <div className="flex items-center gap-1" title="Tempo total desde a criação">
+            <div className="flex items-center gap-1" title={`Tempo total de vida (${totalDays} dias)`}>
                 <Clock size={10} className="text-slate-400" />
                 <span>{totalDays}d total</span>
             </div>
@@ -156,8 +154,11 @@ const DurationMetrics = ({ start, currentStageStart }: { start: Date, currentSta
 };
 
 export const ProspectingView: React.FC = () => {
+    const [prospects, setProspects] = useState<Prospect[]>(INITIAL_PROSPECTS);
+    const [draggedProspectId, setDraggedProspectId] = useState<string | null>(null);
+
     // Columns Definition
-    const columns: { id: ProspectStage; title: string; subtitle: string; limit?: number; color: string }[] = [
+    const columns: { id: ProspectStage; title: string; subtitle: string; color: string }[] = [
         {
             id: 'MAPEAR_CONTATO',
             title: '1. Mapear Contato',
@@ -174,14 +175,12 @@ export const ProspectingView: React.FC = () => {
             id: 'ESTABELECER_RELACAO',
             title: '3. Estabelecer Relação',
             subtitle: 'Diálogo ativo',
-            limit: 15,
             color: 'border-indigo-200 bg-indigo-50'
         },
         {
             id: 'DIAGNOSTICO',
             title: '4. Diagnóstico',
             subtitle: 'Entender contexto',
-            limit: 7,
             color: 'border-purple-200 bg-purple-50'
         },
         {
@@ -192,7 +191,38 @@ export const ProspectingView: React.FC = () => {
         }
     ];
 
-    const getStageCount = (stage: ProspectStage) => MOCK_PROSPECTS.filter(p => p.stage === stage).length;
+    const getStageCount = (stage: ProspectStage) => prospects.filter(p => p.stage === stage).length;
+
+    // --- Drag and Drop Handlers ---
+
+    const handleDragStart = (e: React.DragEvent, id: string) => {
+        setDraggedProspectId(id);
+        e.dataTransfer.effectAllowed = "move";
+        // Optional: Set a custom drag image or data if needed
+        // e.dataTransfer.setData("text/plain", id);
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault(); // Necessary to allow dropping
+        e.dataTransfer.dropEffect = "move";
+    };
+
+    const handleDrop = (e: React.DragEvent, targetStage: ProspectStage) => {
+        e.preventDefault();
+        if (!draggedProspectId) return;
+
+        setProspects(prev => prev.map(p => {
+            if (p.id === draggedProspectId && p.stage !== targetStage) {
+                return {
+                    ...p,
+                    stage: targetStage,
+                    stageStartedAt: new Date() // Reset stage timer on move
+                };
+            }
+            return p;
+        }));
+        setDraggedProspectId(null);
+    };
 
     return (
         <div className="h-full flex flex-col p-6 space-y-6 overflow-hidden bg-[#F0F4F8]">
@@ -221,16 +251,20 @@ export const ProspectingView: React.FC = () => {
                 <div className="flex h-full gap-4 min-w-[1400px]">
                     {columns.map(col => {
                         const count = getStageCount(col.id);
-                        const isOverLimit = col.limit ? count > col.limit : false;
 
                         return (
-                            <div key={col.id} className={`flex-1 flex flex-col rounded-xl border ${col.color.split(' ')[0]} ${col.color.split(' ')[1]} backdrop-blur-sm min-w-[280px]`}>
+                            <div
+                                key={col.id}
+                                className={`flex-1 flex flex-col rounded-xl border transition-colors duration-200 ${col.color.split(' ')[0]} ${col.color.split(' ')[1]} backdrop-blur-sm min-w-[280px]`}
+                                onDragOver={handleDragOver}
+                                onDrop={(e) => handleDrop(e, col.id)}
+                            >
                                 {/* Column Header */}
-                                <div className="p-3 border-b border-slate-200/50 flex flex-col gap-1 sticky top-0 bg-opacity-90 z-10">
+                                <div className="p-3 border-b border-slate-200/50 flex flex-col gap-1 sticky top-0 bg-opacity-90 z-10 pointer-events-none">
                                     <div className="flex justify-between items-center">
                                         <h3 className="font-bold text-slate-800 text-sm truncate" title={col.title}>{col.title}</h3>
-                                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold shadow-sm ${isOverLimit ? 'bg-red-100 text-red-600' : 'bg-white text-slate-600'}`}>
-                                            {count} {col.limit && <span className="text-slate-400 font-normal">/ {col.limit}</span>}
+                                        <span className="bg-white text-slate-600 px-2 py-0.5 rounded-full text-xs font-bold shadow-sm">
+                                            {count}
                                         </span>
                                     </div>
                                     <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{col.subtitle}</span>
@@ -238,11 +272,14 @@ export const ProspectingView: React.FC = () => {
 
                                 {/* Column Content */}
                                 <div className="p-2 flex-1 overflow-y-auto space-y-3 custom-scrollbar">
-                                    {MOCK_PROSPECTS.filter(p => p.stage === col.id).map(card => (
+                                    {prospects.filter(p => p.stage === col.id).map(card => (
                                         <motion.div
                                             key={card.id}
+                                            draggable
+                                            onDragStart={(e) => handleDragStart(e as unknown as React.DragEvent, card.id)}
                                             whileHover={{ y: -2, scale: 1.01 }}
-                                            className="p-3 bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group relative overflow-hidden"
+                                            whileDrag={{ scale: 1.05, zIndex: 50 }}
+                                            className="p-3 bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing group relative overflow-hidden"
                                         >
                                             {/* Left Stripe based on status? keeping generic blue for now */}
                                             <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 to-blue-600 rounded-l-lg" />
