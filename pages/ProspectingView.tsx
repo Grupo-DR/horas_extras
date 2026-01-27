@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Plus,
     MoreVertical,
@@ -7,10 +7,13 @@ import {
     Clock,
     User,
     History,
-    Target
+    Target,
+    Trash2,
+    Edit,
+    X
 } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { format, differenceInDays } from 'date-fns';
+import { motion, AnimatePresence } from 'framer-motion';
+import { format, differenceInDays, isBefore, startOfToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 // --- Types ---
@@ -62,7 +65,7 @@ const INITIAL_PROSPECTS: Prospect[] = [
         owner: { name: 'Antonio Augusto', initials: 'AA' },
         lastContactDate: new Date('2024-01-10'),
         nextAction: 'Buscar perfil no LinkedIn',
-        nextActionDate: new Date('2024-01-28'),
+        nextActionDate: new Date('2024-01-20'), // Late date example
         strategicObservation: 'Empresa em expansão no setor industrial.',
         tags: ['Industrial']
     },
@@ -78,7 +81,7 @@ const INITIAL_PROSPECTS: Prospect[] = [
         owner: { name: 'Felipe Costa', initials: 'FC' },
         lastContactDate: new Date('2024-01-20'),
         nextAction: 'Ligar para agendar café',
-        nextActionDate: new Date('2024-01-29'),
+        nextActionDate: new Date('2025-02-20'), // Future date
         strategicObservation: 'Focada em redução de custos.',
         estimatedValue: 1200000
     },
@@ -94,7 +97,7 @@ const INITIAL_PROSPECTS: Prospect[] = [
         owner: { name: 'Antonio Augusto', initials: 'AA' },
         lastContactDate: new Date('2023-12-15'),
         nextAction: 'Enviar case de sucesso similar',
-        nextActionDate: new Date('2024-01-30'),
+        nextActionDate: new Date('2024-12-30'),
         strategicObservation: 'Interessado em nossa tecnologia de monitoramento.',
         estimatedValue: 300000
     },
@@ -110,7 +113,7 @@ const INITIAL_PROSPECTS: Prospect[] = [
         owner: { name: 'Marina Silva', initials: 'MS' },
         lastContactDate: new Date('2024-01-25'),
         nextAction: 'Apresentar proposta técnica preliminar',
-        nextActionDate: new Date('2024-02-01'),
+        nextActionDate: new Date('2025-02-01'),
         strategicObservation: 'Precisa de solução para Q2 2024.',
         estimatedValue: 500000
     },
@@ -126,7 +129,7 @@ const INITIAL_PROSPECTS: Prospect[] = [
         owner: { name: 'Felipe Costa', initials: 'FC' },
         lastContactDate: new Date('2024-01-26'),
         nextAction: 'Validar orçamento com board',
-        nextActionDate: new Date('2024-02-05'),
+        nextActionDate: new Date('2025-02-05'),
         strategicObservation: 'Budget aprovado, decisão em breve.',
         estimatedValue: 2000000
     }
@@ -156,6 +159,21 @@ const DurationMetrics = ({ start, currentStageStart }: { start: Date, currentSta
 export const ProspectingView: React.FC = () => {
     const [prospects, setProspects] = useState<Prospect[]>(INITIAL_PROSPECTS);
     const [draggedProspectId, setDraggedProspectId] = useState<string | null>(null);
+
+    // Menu State
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    // Close menu when clicking outside
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setOpenMenuId(null);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     // Columns Definition
     const columns: { id: ProspectStage; title: string; subtitle: string; color: string }[] = [
@@ -193,17 +211,15 @@ export const ProspectingView: React.FC = () => {
 
     const getStageCount = (stage: ProspectStage) => prospects.filter(p => p.stage === stage).length;
 
-    // --- Drag and Drop Handlers ---
+    // --- Handlers ---
 
     const handleDragStart = (e: React.DragEvent, id: string) => {
         setDraggedProspectId(id);
         e.dataTransfer.effectAllowed = "move";
-        // Optional: Set a custom drag image or data if needed
-        // e.dataTransfer.setData("text/plain", id);
     };
 
     const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault(); // Necessary to allow dropping
+        e.preventDefault();
         e.dataTransfer.dropEffect = "move";
     };
 
@@ -216,7 +232,7 @@ export const ProspectingView: React.FC = () => {
                 return {
                     ...p,
                     stage: targetStage,
-                    stageStartedAt: new Date() // Reset stage timer on move
+                    stageStartedAt: new Date()
                 };
             }
             return p;
@@ -224,17 +240,29 @@ export const ProspectingView: React.FC = () => {
         setDraggedProspectId(null);
     };
 
+    const handleDelete = (id: string) => {
+        if (confirm('Tem certeza que deseja excluir este prospect?')) {
+            setProspects(prev => prev.filter(p => p.id !== id));
+            setOpenMenuId(null);
+        }
+    };
+
+    const handleEdit = (id: string) => {
+        alert(`Editar prospect ${id} (Funcionalidade em desenvolvimento)`);
+        setOpenMenuId(null);
+    };
+
     return (
-        <div className="h-full flex flex-col p-6 space-y-6 overflow-hidden bg-[#F0F4F8]">
+        <div className="h-full flex flex-col p-6 space-y-6 overflow-hidden bg-[#F0F4F8]" onClick={() => setOpenMenuId(null)}>
             {/* HEADER */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                         <Target className="text-blue-600" />
-                        Gestão de Prospecção
+                        Pipeline de Novos Cliente
                     </h1>
                     <p className="text-slate-500 mt-1 flex items-center gap-2 text-sm">
-                        Funil de Novos Clientes
+                        Funil de Vendas
                     </p>
                 </div>
 
@@ -272,84 +300,122 @@ export const ProspectingView: React.FC = () => {
 
                                 {/* Column Content */}
                                 <div className="p-2 flex-1 overflow-y-auto space-y-3 custom-scrollbar">
-                                    {prospects.filter(p => p.stage === col.id).map(card => (
-                                        <motion.div
-                                            key={card.id}
-                                            draggable
-                                            onDragStart={(e) => handleDragStart(e as unknown as React.DragEvent, card.id)}
-                                            whileHover={{ y: -2, scale: 1.01 }}
-                                            whileDrag={{ scale: 1.05, zIndex: 50 }}
-                                            className="p-3 bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing group relative overflow-hidden"
-                                        >
-                                            {/* Left Stripe based on status? keeping generic blue for now */}
-                                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 to-blue-600 rounded-l-lg" />
+                                    {prospects.filter(p => p.stage === col.id).map(card => {
+                                        const isLate = isBefore(card.nextActionDate, startOfToday());
+                                        const actionStyle = isLate
+                                            ? 'bg-red-50 border-red-100 text-red-700'
+                                            : 'bg-green-50 border-green-100 text-green-700';
 
-                                            {/* Header: Company & Action Menu */}
-                                            <div className="flex justify-between items-start mb-2 pl-2">
-                                                <div className="flex flex-col">
-                                                    <h4 className="font-bold text-slate-800 text-sm leading-tight hover:text-blue-600 transition-colors">
-                                                        {card.company}
-                                                    </h4>
-                                                    <div className="flex items-center gap-1 text-[10px] text-slate-400 mt-0.5">
-                                                        <Building2 size={10} />
-                                                        {card.location}
+                                        return (
+                                            <motion.div
+                                                key={card.id}
+                                                draggable
+                                                onDragStart={(e) => handleDragStart(e as unknown as React.DragEvent, card.id)}
+                                                whileHover={{ y: -2, scale: 1.01 }}
+                                                whileDrag={{ scale: 1.05, zIndex: 50 }}
+                                                className="p-3 bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing group relative overflow-visible"
+                                            >
+                                                {/* Left Stripe */}
+                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 to-blue-600 rounded-l-lg" />
+
+                                                {/* Header: Company & Action Menu */}
+                                                <div className="flex justify-between items-start mb-2 pl-2 relative">
+                                                    <div className="flex flex-col">
+                                                        <h4 className="font-bold text-slate-800 text-sm leading-tight hover:text-blue-600 transition-colors">
+                                                            {card.company}
+                                                        </h4>
+                                                        <div className="flex items-center gap-1 text-[10px] text-slate-400 mt-0.5">
+                                                            <Building2 size={10} />
+                                                            {card.location}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="relative" onClick={e => e.stopPropagation()}>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === card.id ? null : card.id); }}
+                                                            className="text-slate-300 hover:text-slate-600 opacity-100 transition-opacity p-1 rounded-full hover:bg-slate-100"
+                                                        >
+                                                            <MoreVertical size={16} />
+                                                        </button>
+
+                                                        {/* Dropdown Menu */}
+                                                        <AnimatePresence>
+                                                            {openMenuId === card.id && (
+                                                                <motion.div
+                                                                    initial={{ opacity: 0, scale: 0.95, y: -5 }}
+                                                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                                    exit={{ opacity: 0, scale: 0.95, y: -5 }}
+                                                                    className="absolute right-0 top-full mt-1 w-32 bg-white rounded-lg shadow-xl border border-slate-100 z-50 overflow-hidden"
+                                                                >
+                                                                    <button
+                                                                        onClick={() => handleEdit(card.id)}
+                                                                        className="w-full text-left px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 flex items-center gap-2"
+                                                                    >
+                                                                        <Edit size={12} /> Editar
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleDelete(card.id)}
+                                                                        className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-slate-50"
+                                                                    >
+                                                                        <Trash2 size={12} /> Excluir
+                                                                    </button>
+                                                                </motion.div>
+                                                            )}
+                                                        </AnimatePresence>
                                                     </div>
                                                 </div>
-                                                <button className="text-slate-300 hover:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity p-1">
-                                                    <MoreVertical size={14} />
-                                                </button>
-                                            </div>
 
-                                            {/* Contact Info & Owner */}
-                                            <div className="pl-2 mb-3 flex items-start justify-between">
-                                                <div>
-                                                    <div className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                                                        <User size={12} className="text-slate-400" />
-                                                        {card.contactName}
+                                                {/* Contact Info & Owner */}
+                                                <div className="pl-2 mb-3 flex items-start justify-between">
+                                                    <div>
+                                                        <div className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                                                            <User size={12} className="text-slate-400" />
+                                                            {card.contactName}
+                                                        </div>
+                                                        <div className="text-[10px] text-slate-500 ml-4 truncate max-w-[120px]">
+                                                            {card.contactRole}
+                                                        </div>
                                                     </div>
-                                                    <div className="text-[10px] text-slate-500 ml-4 truncate max-w-[120px]">
-                                                        {card.contactRole}
+
+                                                    {/* Responsible Person Avatar */}
+                                                    <div className="flex flex-col items-end" title={`Responsável: ${card.owner.name}`}>
+                                                        <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 border border-slate-200 flex items-center justify-center text-[10px] font-bold">
+                                                            {card.owner.initials}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Strategic Observation */}
+                                                <div className="pl-2 mb-3">
+                                                    <div className="bg-slate-50 p-2 rounded border border-slate-100 text-[10px] text-slate-600 italic leading-relaxed">
+                                                        "{card.strategicObservation}"
                                                     </div>
                                                 </div>
 
-                                                {/* Responsible Person Avatar */}
-                                                <div className="flex flex-col items-end" title={`Responsável: ${card.owner.name}`}>
-                                                    <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 border border-slate-200 flex items-center justify-center text-[10px] font-bold">
-                                                        {card.owner.initials}
+                                                {/* Footer: Timeline & Next Action */}
+                                                <div className="pl-2 pt-2 border-t border-slate-50 flex flex-col gap-2">
+
+                                                    {/* Duration Metrics */}
+                                                    <DurationMetrics start={card.createdAt} currentStageStart={card.stageStartedAt} />
+
+                                                    {/* Next Action - Conditional Styling */}
+                                                    <div className={`rounded-md p-2 border mt-1 shadow-sm ${actionStyle}`}>
+                                                        <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold mb-1">
+                                                            <Calendar size={10} />
+                                                            Próxima Ação
+                                                            <span className={`ml-auto font-normal normal-case`}>
+                                                                {format(card.nextActionDate, "dd/MM", { locale: ptBR })}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-xs font-medium line-clamp-2">
+                                                            {card.nextAction}
+                                                        </p>
                                                     </div>
                                                 </div>
-                                            </div>
 
-                                            {/* Strategic Observation */}
-                                            <div className="pl-2 mb-3">
-                                                <div className="bg-slate-50 p-2 rounded border border-slate-100 text-[10px] text-slate-600 italic leading-relaxed">
-                                                    "{card.strategicObservation}"
-                                                </div>
-                                            </div>
-
-                                            {/* Footer: Timeline & Next Action */}
-                                            <div className="pl-2 pt-2 border-t border-slate-50 flex flex-col gap-2">
-
-                                                {/* Duration Metrics */}
-                                                <DurationMetrics start={card.createdAt} currentStageStart={card.stageStartedAt} />
-
-                                                {/* Next Action - Highlighted */}
-                                                <div className="bg-blue-50/50 rounded-md p-2 border border-blue-100/50 mt-1">
-                                                    <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-blue-700 mb-1">
-                                                        <Calendar size={10} />
-                                                        Próxima Ação
-                                                        <span className="ml-auto text-blue-600 font-normal normal-case">
-                                                            {format(card.nextActionDate, "dd/MM", { locale: ptBR })}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-xs text-slate-700 font-medium line-clamp-2">
-                                                        {card.nextAction}
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                        </motion.div>
-                                    ))}
+                                            </motion.div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         );
