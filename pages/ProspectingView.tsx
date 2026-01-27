@@ -10,7 +10,8 @@ import {
     Target,
     Trash2,
     Edit,
-    X
+    X,
+    Handshake
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, differenceInDays, isBefore, startOfToday } from 'date-fns';
@@ -258,11 +259,11 @@ export const ProspectingView: React.FC = () => {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                        <Target className="text-blue-600" />
-                        Pipeline de Novos Cliente
+                        <Handshake className="text-blue-600" />
+                        Gestão de Prospecção de Novos Clientes
                     </h1>
                     <p className="text-slate-500 mt-1 flex items-center gap-2 text-sm">
-                        Funil de Vendas
+                        Pipeline de Prospecção
                     </p>
                 </div>
 

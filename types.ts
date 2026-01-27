@@ -252,18 +252,20 @@ export interface Bid {
   clientId: string;
   title: string;
   ownerId?: string;
+  contactId?: string; // Add contactId link
 
   // Pipeline & Status
   status: BidStatus;
   pipelineStage: PipelineStage;
   probability: number; // 0-100
+  result?: 'SUCCESS' | 'FAILURE'; // Explicit result
 
   // Financials
   estimatedValue: number;
   value?: number; // Alias often used
 
   // Important Dates
-  date?: Date; // Data de recebimento
+  date: Date; // Data de recebimento REQUIRED
   deadline?: Date; // Prazo
   openedAt?: Date;
   closedAt?: Date;
@@ -364,9 +366,10 @@ export interface ClientContact {
 export interface Interaction {
   id: string;
   clientId: string;
+  contactId?: string; // Linked contact
   type: InteractionType;
   title?: string;
-  date: string; // ISO
+  date: Date; // Changed to Date object for strict typing
   description: string;
   notes?: string;
   tags?: string[];
@@ -379,6 +382,18 @@ export interface Interaction {
     name: string;
   }[];
 }
+
+export interface ClientHealthMetrics {
+  score: number;
+  status: 'ATIVA' | 'ATENCAO' | 'EM_RISCO' | 'PERDIDA';
+  lastInteraction: Date | null;
+  lastBid: Date | null;
+  silenceDays: number;
+  activeContacts90d: number;
+  bidTrend: 'CRESCENTE' | 'ESTAVEL' | 'CAINDO' | 'ZEROU';
+}
+
+export type ContactProfile = 'OCASIONAL' | 'SILENCIOSA' | 'CHAVE';
 
 export interface Client {
   id: string;
@@ -399,4 +414,5 @@ export interface Client {
     state?: string;
     zipCode?: string;
   };
+  metrics?: ClientHealthMetrics; // Optional as it might be computed
 }

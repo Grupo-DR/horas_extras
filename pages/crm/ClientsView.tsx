@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Search, Plus, Filter, Users } from 'lucide-react';
+import { Search, Plus, Filter, Users, Building2 } from 'lucide-react';
 import { Client, Interaction, Bid, ClientContact, ClientHealthMetrics } from '../../types';
 import { ClientService } from '../../services/clientService';
 import { InteractionService } from '../../services/interactionService';
@@ -63,8 +63,8 @@ export const ClientsView: React.FC = () => {
         }).filter(client => {
             // Text Search
             const searchLower = searchText.toLowerCase();
-            const clientName = (client.tradeName || client.corporateName || client.name || '').toLowerCase();
-            const clientSegment = (client.segment || client.industry || '').toLowerCase();
+            const clientName = (client.tradeName || client.corporateName || '').toLowerCase();
+            const clientSegment = (client.segment || '').toLowerCase();
 
             const matchesText = clientName.includes(searchLower) || clientSegment.includes(searchLower);
 
@@ -86,7 +86,10 @@ export const ClientsView: React.FC = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-800">Carteira de Clientes</h1>
+                    <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                        <Building2 className="text-blue-600" />
+                        Carteira de Clientes
+                    </h1>
                     <p className="text-slate-500">Customer Engagement Center</p>
                 </div>
                 <div className="flex gap-2">
@@ -144,7 +147,7 @@ export const ClientsView: React.FC = () => {
                 {processedClients.map(client => (
                     <ClientCard
                         key={client.id}
-                        clientName={client.tradeName || client.corporateName || client.name || 'Sem Nome'}
+                        clientName={client.tradeName || client.corporateName || 'Sem Nome'}
                         metrics={client.metrics}
                         onRegisterInteraction={() => {
                             setSelectedClientId(client.id);
