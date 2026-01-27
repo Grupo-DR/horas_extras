@@ -1,16 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Building2, User, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ProspectService } from '../../services/prospectService';
 import { Prospect } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'sonner';
 
 interface ProspectFormModalProps {
     isOpen: boolean;
     onClose: () => void;
+    prospectToEdit?: Prospect | null;
 }
 
-export const ProspectFormModal: React.FC<ProspectFormModalProps> = ({ isOpen, onClose }) => {
+export const ProspectFormModal: React.FC<ProspectFormModalProps> = ({ isOpen, onClose, prospectToEdit }) => {
+    const { user } = useAuth();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         company: '',
@@ -24,46 +27,74 @@ export const ProspectFormModal: React.FC<ProspectFormModalProps> = ({ isOpen, on
         estimatedValue: ''
     });
 
+    useEffect(() => {
+        if (isOpen) {
+            if (prospectToEdit) {
+                setFormData({
+                    company: prospectToEdit.company,
+                    contactName: prospectToEdit.contactName,
+                    contactRole: prospectToEdit.contactRole,
+                    location: prospectToEdit.location,
+                    strategicObservation: prospectToEdit.strategicObservation,
+                    nextAction: prospectToEdit.nextAction,
+                    nextActionDate: new Date(prospectToEdit.nextActionDate).toISOString().split('T')[0],
+                    tags: prospectToEdit.tags?.join(', ') || '',
+                    estimatedValue: prospectToEdit.estimatedValue?.toString() || ''
+                });
+            } else {
+                setFormData({
+                    company: '',
+                    contactName: '',
+                    contactRole: '',
+                    location: '',
+                    strategicObservation: '',
+                    nextAction: '',
+                    nextActionDate: new Date().toISOString().split('T')[0],
+                    tags: '',
+                    estimatedValue: ''
+                });
+            }
+        }
+    }, [isOpen, prospectToEdit]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
 
         try {
-            await ProspectService.add({
+
+            const commonData = {
                 company: formData.company,
                 contactName: formData.contactName,
                 contactRole: formData.contactRole,
                 location: formData.location || 'Não informado',
-                stage: 'MAPEAR_CONTATO',
-
-                // Owner is hardcoded for now, ideally comes from Auth Context
-                owner: {
-                    name: 'Vendedor', // Replace with real user
-                    initials: 'V'
-                },
-
-                lastContactDate: new Date(),
                 nextAction: formData.nextAction,
                 nextActionDate: new Date(formData.nextActionDate),
                 strategicObservation: formData.strategicObservation,
                 estimatedValue: formData.estimatedValue ? Number(formData.estimatedValue) : undefined,
                 tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean)
-            });
+            };
 
-            toast.success('Prospect criado com sucesso!');
+            if (prospectToEdit) {
+                await ProspectService.update(prospectToEdit.id, commonData);
+                toast.success('Prospect atualizado com sucesso!');
+            } else {
+                await ProspectService.add({
+                    ...commonData,
+                    stage: 'MAPEAR_CONTATO',
+                    owner: {
+                        name: user?.name || 'Vendedor',
+                        initials: user?.name ? user.name.substring(0, 2).toUpperCase() : 'VN',
+                        avatarUrl: user?.avatarUrl || undefined
+                    },
+                    lastContactDate: new Date(),
+                });
+                toast.success('Prospect criado com sucesso!');
+            }
+
             onClose();
             // Reset Form
-            setFormData({
-                company: '',
-                contactName: '',
-                contactRole: '',
-                location: '',
-                strategicObservation: '',
-                nextAction: '',
-                nextActionDate: new Date().toISOString().split('T')[0],
-                tags: '',
-                estimatedValue: ''
-            });
+
 
         } catch (error) {
             console.error(error);
@@ -98,8 +129,8 @@ export const ProspectFormModal: React.FC<ProspectFormModalProps> = ({ isOpen, on
                         {/* Header */}
                         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                             <div>
-                                <h2 className="text-lg font-bold text-slate-800">Novo Prospect</h2>
-                                <p className="text-sm text-slate-500">Adicionar empresa ao pipeline de prospecção</p>
+                                <h2 className="text-lg font-bold text-slate-800">{prospectToEdit ? 'Editar Prospect' : 'Novo Prospect'}</h2>
+                                <p className="text-sm text-slate-500">{prospectToEdit ? 'Alterar informações do prospect' : 'Adicionar empresa ao pipeline de prospecção'}</p>
                             </div>
                             <button
                                 onClick={onClose}
@@ -261,7 +292,7 @@ export const ProspectFormModal: React.FC<ProspectFormModalProps> = ({ isOpen, on
                                 disabled={isSubmitting}
                                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-lg shadow-blue-600/20 transition-all disabled:opacity-70 flex items-center gap-2"
                             >
-                                {isSubmitting ? 'Salvando...' : 'Criar Prospect'}
+                                {isSubmitting ? 'Salvando...' : (prospectToEdit ? 'Salvar Alterações' : 'Criar Prospect')}
                             </button>
                         </div>
                     </motion.div>

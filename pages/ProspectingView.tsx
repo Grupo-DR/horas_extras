@@ -20,6 +20,7 @@ import { ptBR } from 'date-fns/locale';
 import { Prospect, ProspectStage } from '../types';
 import { ProspectService } from '../services/prospectService';
 import { ProspectFormModal } from '../components/crm/ProspectFormModal';
+import { UserAvatar } from '../components/ui/UserAvatar';
 
 // --- Components ---
 
@@ -47,6 +48,7 @@ export const ProspectingView: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [draggedProspectId, setDraggedProspectId] = useState<string | null>(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [editingProspect, setEditingProspect] = useState<Prospect | null>(null);
 
     // Subscribe to Data
     useEffect(() => {
@@ -139,7 +141,11 @@ export const ProspectingView: React.FC = () => {
     };
 
     const handleEdit = (id: string) => {
-        alert(`Editar prospect ${id} (Funcionalidade em desenvolvimento)`);
+        const prospect = prospects.find(p => p.id === id);
+        if (prospect) {
+            setEditingProspect(prospect);
+            setIsCreateModalOpen(true);
+        }
         setOpenMenuId(null);
     };
 
@@ -159,7 +165,10 @@ export const ProspectingView: React.FC = () => {
 
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={() => setIsCreateModalOpen(true)}
+                        onClick={() => {
+                            setEditingProspect(null);
+                            setIsCreateModalOpen(true);
+                        }}
                         className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-lg shadow-blue-600/20 transition-all active:scale-95 font-medium"
                     >
                         <Plus size={20} />
@@ -274,9 +283,14 @@ export const ProspectingView: React.FC = () => {
 
                                                     {/* Responsible Person Avatar */}
                                                     <div className="flex flex-col items-end" title={`Responsável: ${card.owner.name}`}>
-                                                        <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 border border-slate-200 flex items-center justify-center text-[10px] font-bold">
-                                                            {card.owner.initials}
-                                                        </div>
+                                                        <UserAvatar
+                                                            user={{
+                                                                name: card.owner.name,
+                                                                avatarUrl: card.owner.avatarUrl
+                                                            }}
+                                                            size="xs"
+                                                            showName={false}
+                                                        />
                                                     </div>
                                                 </div>
 
@@ -322,6 +336,7 @@ export const ProspectingView: React.FC = () => {
             <ProspectFormModal
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
+                prospectToEdit={editingProspect}
             />
         </div>
     );
