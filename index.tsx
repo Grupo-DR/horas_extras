@@ -15,6 +15,7 @@ import { LoginPage } from './pages/LoginPage';
 
 // Lazy Load Pages
 const CommercialView = React.lazy(() => import('./pages/CommercialView').then(module => ({ default: module.CommercialView })));
+const ProspectingView = React.lazy(() => import('./pages/ProspectingView').then(module => ({ default: module.ProspectingView })));
 const ActionsView = React.lazy(() => import('./pages/ActionsView').then(module => ({ default: module.ActionsView })));
 
 // CRM Pages
@@ -56,6 +57,7 @@ const App: React.FC = () => {
 
                     <Route element={<RequireModuleAccess module="commercial_dashboard" />}>
                       <Route path="comercial" element={<CommercialView />} />
+                      <Route path="prospeccao" element={<ProspectingView />} />
                     </Route>
 
                     <Route element={<RequireModuleAccess module="contracts" />}>

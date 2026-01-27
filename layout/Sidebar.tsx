@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FileText, Database, BarChart, Settings, CheckSquare, Users, LogOut, User as UserIcon } from 'lucide-react';
+import { LayoutDashboard, FileText, Database, BarChart, Settings, CheckSquare, Users, LogOut, User as UserIcon, Target } from 'lucide-react';
 import { AppModule } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -25,6 +25,13 @@ export const Sidebar: React.FC = () => {
             label: 'Comercial',
             icon: LayoutDashboard,
             path: '/comercial',
+            authModule: 'commercial_dashboard' as ModuleKey
+        },
+        {
+            module: 'PROSPECTING',
+            label: 'Prospecção',
+            icon: Target,
+            path: '/prospeccao',
             authModule: 'commercial_dashboard' as ModuleKey
         },
         {
