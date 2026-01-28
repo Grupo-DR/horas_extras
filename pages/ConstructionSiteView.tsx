@@ -23,7 +23,6 @@ export const ConstructionSiteView: React.FC = () => {
 
     // Filter State
     const [activeTeamId, setActiveTeamId] = useState<string>('ALL');
-    const [activeSiteName, setActiveSiteName] = useState<string>('ALL');
     const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
     const [selectedYear, setSelectedYear] = useState<string>('ALL');
 
@@ -35,14 +34,11 @@ export const ConstructionSiteView: React.FC = () => {
         return contract.teams.flatMap(t => t.rdos || []);
     }, [contract]);
 
-    // 2. Extract Filter Options (Teams, Sites, Years)
+    // 2. Extract Filter Options (Teams, Years)
     const filterOptions = useMemo(() => {
-        if (!contract) return { teams: [], sites: [], years: [] };
+        if (!contract) return { teams: [], years: [] };
 
         const teams = contract.teams?.map(t => ({ id: t.id, name: t.name })) || [];
-
-        const sites = Array.from(new Set(allRdos.map(r => r.relatorio?.obra).filter(Boolean)))
-            .map(site => ({ name: site as string }));
 
         const years = Array.from(new Set(allRdos.map(r => {
             if (!r.relatorio?.data) return null;
@@ -55,10 +51,10 @@ export const ConstructionSiteView: React.FC = () => {
             } catch { return null; }
         }).filter(Boolean))).sort().reverse();
 
-        return { teams, sites, years };
+        return { teams, years };
     }, [contract, allRdos]);
 
-    // 3. Filter Logic (Updated with Month/Year)
+    // 3. Filter Logic (Updated with Month/Year, Removed Site)
     const processedRdos = useMemo(() => {
         if (!contract || !contract.teams) return [];
 
@@ -68,7 +64,6 @@ export const ConstructionSiteView: React.FC = () => {
             for (const rdo of teamRdos) {
                 // Apply Filters Here
                 const matchesTeam = activeTeamId === 'ALL' || team.id === activeTeamId;
-                const matchesSite = activeSiteName === 'ALL' || rdo.relatorio?.obra === activeSiteName;
 
                 let matchesDate = true;
                 if (rdo.relatorio?.data) {
@@ -79,13 +74,8 @@ export const ConstructionSiteView: React.FC = () => {
                         const rdoMonth = rdoDateParts.length === 3 && rdo.relatorio.data.includes('/') ? rdoDateParts[1] : rdoDateParts[1]; // Index 1 is month
                         const rdoYear = rdoDateParts.length === 3 && rdo.relatorio.data.includes('/') ? rdoDateParts[2] : rdoDateParts[0];
 
-                        // Normalize Month to 0-11 or 1-12? Inputs are usually 01-12 strings. 
-                        // Check strictly against string
+                        // Normalize Month to 0-11
                         if (selectedMonth !== 'ALL') {
-                            // selectedMonth is '0'..'11' (js style) or '1'..'12'?
-                            // Let's us 0-11 index for consistency with JS Date, but value is string
-                            // Actually, let's assume selectedMonth is '0', '1', ... '11'
-                            // RDO month '01' is 0, '02' is 1.
                             const rdoMonthIndex = parseInt(rdoMonth) - 1;
                             if (String(rdoMonthIndex) !== selectedMonth) matchesDate = false;
                         }
@@ -96,13 +86,13 @@ export const ConstructionSiteView: React.FC = () => {
                     }
                 }
 
-                if (matchesTeam && matchesSite && matchesDate) {
+                if (matchesTeam && matchesDate) {
                     result.push(rdo);
                 }
             }
         }
         return result;
-    }, [contract, activeTeamId, activeSiteName, selectedMonth, selectedYear]);
+    }, [contract, activeTeamId, selectedMonth, selectedYear]);
 
 
     // Compute Analytics on Filtered Data
@@ -190,27 +180,15 @@ export const ConstructionSiteView: React.FC = () => {
                             <Filter size={14} /> Filtros:
                         </div>
 
-                        {/* Team Filter */}
+                        {/* Year Filter */}
                         <select
-                            value={activeTeamId}
-                            onChange={(e) => setActiveTeamId(e.target.value)}
+                            value={selectedYear}
+                            onChange={(e) => setSelectedYear(e.target.value)}
                             className="bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 outline-none"
                         >
-                            <option value="ALL">Todas as Turmas</option>
-                            {filterOptions.teams.map(t => (
-                                <option key={t.id} value={t.id}>{t.name}</option>
-                            ))}
-                        </select>
-
-                        {/* Site Filter */}
-                        <select
-                            value={activeSiteName}
-                            onChange={(e) => setActiveSiteName(e.target.value)}
-                            className="bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 outline-none"
-                        >
-                            <option value="ALL">Todas as Obras</option>
-                            {filterOptions.sites.map(s => (
-                                <option key={s.name} value={s.name}>{s.name}</option>
+                            <option value="ALL">Todos os Anos</option>
+                            {filterOptions.years.map(y => (
+                                <option key={y} value={y as string}>{y}</option>
                             ))}
                         </select>
 
@@ -235,15 +213,15 @@ export const ConstructionSiteView: React.FC = () => {
                             <option value="11">Dezembro</option>
                         </select>
 
-                        {/* Year Filter */}
+                        {/* Team Filter */}
                         <select
-                            value={selectedYear}
-                            onChange={(e) => setSelectedYear(e.target.value)}
+                            value={activeTeamId}
+                            onChange={(e) => setActiveTeamId(e.target.value)}
                             className="bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 outline-none"
                         >
-                            <option value="ALL">Todos os Anos</option>
-                            {filterOptions.years.map(y => (
-                                <option key={y} value={y as string}>{y}</option>
+                            <option value="ALL">Todas as Turmas</option>
+                            {filterOptions.teams.map(t => (
+                                <option key={t.id} value={t.id}>{t.name}</option>
                             ))}
                         </select>
                     </div>
@@ -284,7 +262,7 @@ export const ConstructionSiteView: React.FC = () => {
                         <h3 className="text-lg font-bold text-slate-600">Nenhum resultado para os filtros selecionados</h3>
                         <p className="text-slate-400">Tente ajustar a Turma ou a Obra para ver os dados.</p>
                         <button
-                            onClick={() => { setActiveTeamId('ALL'); setActiveSiteName('ALL'); }}
+                            onClick={() => { setActiveTeamId('ALL'); setSelectedMonth('ALL'); setSelectedYear('ALL'); }}
                             className="mt-4 text-blue-600 font-bold hover:underline text-sm"
                         >
                             Limpar Filtros
