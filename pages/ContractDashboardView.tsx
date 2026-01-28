@@ -1,9 +1,10 @@
 
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FileText, Users, ArrowLeft, Building, Calendar, DollarSign, Plus, Pencil, Trash2, HardHat } from 'lucide-react';
+import { FileText, Users, ArrowLeft, Building, Calendar, DollarSign, Plus, Pencil, Trash2, HardHat, Upload } from 'lucide-react';
 import { useContracts } from '../contexts/ContractsContext';
 import { DocumentImportModal } from '../components/DocumentImportModal';
+import { BatchImportModal } from '../components/BatchImportModal';
 import { ContractTeamModal } from '../components/ContractTeamModal';
 import { TeamDetailsModal } from '../components/TeamDetailsModal';
 import { ContractTeam } from '../types';
@@ -17,6 +18,7 @@ export const ContractDashboardView: React.FC = () => {
     const contract = contracts.find(c => c.id === id);
 
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [isBatchImportOpen, setIsBatchImportOpen] = useState(false);
 
     // Placeholder for Team Modal
     const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
@@ -61,6 +63,40 @@ export const ContractDashboardView: React.FC = () => {
             toast.success("Boletim Importado com Sucesso! (Simulação)");
         }
         setIsImportModalOpen(false);
+    };
+
+    const handleBatchImport = async (files: any[]) => {
+        // Logic to save multiple RDOs to correct teams
+        let updatedContract = { ...contract };
+        let rdoCount = 0;
+        let bmCount = 0;
+
+        files.forEach(fileData => {
+            if (fileData.type === 'RDO' && fileData.teamId) {
+                rdoCount++;
+                const updatedTeams = updatedContract.teams?.map(team => {
+                    if (team.id === fileData.teamId) {
+                        return {
+                            ...team,
+                            rdos: [...(team.rdos || []), fileData]
+                        };
+                    }
+                    return team;
+                });
+                updatedContract = { ...updatedContract, teams: updatedTeams };
+            } else if (fileData.type === 'BM') {
+                bmCount++;
+                // BM logic here if needed
+            }
+        });
+
+        updateContract(updatedContract);
+
+        toast.success(`Importação em lote concluída!`, {
+            description: `${rdoCount} RDOs salvos nas equipes e ${bmCount} BMs importados.`
+        });
+
+        setIsBatchImportOpen(false);
     };
 
     const handleCreateTeam = (team: ContractTeam) => {
@@ -157,6 +193,14 @@ export const ContractDashboardView: React.FC = () => {
                         >
                             <Users size={18} className="block text-slate-400" />
                             Inserir Equipe
+                        </button>
+                        <button
+                            onClick={() => setIsBatchImportOpen(true)}
+                            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-bold transition-colors shadow-sm"
+                            title="Importação em Lote"
+                        >
+                            <Upload size={18} />
+                            Lote
                         </button>
                         <button
                             onClick={() => setIsImportModalOpen(true)}
@@ -320,6 +364,13 @@ export const ContractDashboardView: React.FC = () => {
                 team={selectedTeam}
                 onClose={() => setSelectedTeam(null)}
                 onDeleteRDO={handleDeleteRDO}
+            />
+
+            <BatchImportModal
+                isOpen={isBatchImportOpen}
+                onClose={() => setIsBatchImportOpen(false)}
+                onBatchImport={handleBatchImport}
+                teams={contract.teams}
             />
         </div>
     );
