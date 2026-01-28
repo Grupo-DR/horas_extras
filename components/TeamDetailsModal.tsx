@@ -288,9 +288,8 @@ export const TeamDetailsModal: React.FC<Props> = ({ isOpen, onClose, team, onDel
                                                 <tr>
                                                     <th className="px-6 py-3">ID</th>
                                                     <th className="px-6 py-3 w-1/2">Descrição</th>
-                                                    <th className="px-6 py-3 text-center">Qtd.</th>
                                                     <th className="px-6 py-3 text-center">Unid.</th>
-                                                    <th className="px-6 py-3 text-center">Status</th>
+                                                    <th className="px-6 py-3 text-center">Qtd.</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
@@ -298,46 +297,12 @@ export const TeamDetailsModal: React.FC<Props> = ({ isOpen, onClose, team, onDel
                                                     <tr key={idx} className="hover:bg-slate-50">
                                                         <td className="px-6 py-3 text-slate-500 font-mono text-xs">{act.id_atividade || '-'}</td>
                                                         <td className="px-6 py-3 text-slate-700">{act.descricao}</td>
-                                                        <td className="px-6 py-3 text-center text-slate-700 font-bold">{act.quantidade}</td>
                                                         <td className="px-6 py-3 text-center text-slate-500 text-xs">{act.unidade}</td>
-                                                        <td className="px-6 py-3">
-                                                            {(() => {
-                                                                const statusStr = act.status || 'EXEC';
-                                                                // Pattern: "07:00 até 17:00\n(10h)\n2% - Em andamento"
-                                                                // Regex needs to be resilient to newlines and casing
-                                                                const match = statusStr.match(/^([\d:]+\s+até\s+[\d:]+)\s*(\(.*\))\s*([\d.]+%?)\s*-\s*(.*)$/i);
-
-                                                                if (match) {
-                                                                    const [_, timeRange, duration, percent, statusText] = match;
-                                                                    return (
-                                                                        <div className="flex flex-col items-center gap-1">
-                                                                            <div className="flex items-center gap-1">
-                                                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${statusText.includes('ANDAMENTO') ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-green-100 text-green-700 border-green-200'}`}>
-                                                                                    {statusText}
-                                                                                </span>
-                                                                                <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{percent}</span>
-                                                                            </div>
-                                                                            <div className="text-[10px] text-slate-400 font-mono whitespace-nowrap">
-                                                                                {timeRange.toLowerCase().replace(' até ', '-')} <span className="text-slate-300">|</span> {duration}
-                                                                            </div>
-                                                                        </div>
-                                                                    );
-                                                                }
-
-                                                                // Fallback for simple status or "EXEC"
-                                                                return (
-                                                                    <div className="text-center">
-                                                                        <span className="px-2 py-1 rounded bg-slate-100 text-slate-600 text-[10px] font-bold uppercase border border-slate-200 inline-block max-w-[120px] truncate" title={statusStr}>
-                                                                            {statusStr}
-                                                                        </span>
-                                                                    </div>
-                                                                );
-                                                            })()}
-                                                        </td>
+                                                        <td className="px-6 py-3 text-center text-slate-700 font-bold">{act.quantidade}</td>
                                                     </tr>
                                                 )) || (
                                                         <tr>
-                                                            <td colSpan={5} className="px-6 py-8 text-center text-slate-400 italic">
+                                                            <td colSpan={4} className="px-6 py-8 text-center text-slate-400 italic">
                                                                 Nenhuma atividade registrada.
                                                             </td>
                                                         </tr>
