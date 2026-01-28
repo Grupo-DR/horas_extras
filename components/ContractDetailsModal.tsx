@@ -61,6 +61,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     return null;
 };
 
+// Force rebuild for batch import feature
 export const ContractDetailsModal: React.FC<ContractDetailsModalProps> = ({
     isOpen,
     onClose,
