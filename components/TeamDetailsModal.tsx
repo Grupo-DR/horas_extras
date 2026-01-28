@@ -286,7 +286,9 @@ export const TeamDetailsModal: React.FC<Props> = ({ isOpen, onClose, team, onDel
                                         <table className="w-full text-sm text-left">
                                             <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
                                                 <tr>
-                                                    <th className="px-6 py-3 w-2/3">Descrição</th>
+                                                    <th className="px-6 py-3">ID</th>
+                                                    <th className="px-6 py-3 w-1/2">Descrição</th>
+                                                    <th className="px-6 py-3 text-center">Qtd.</th>
                                                     <th className="px-6 py-3 text-center">Unid.</th>
                                                     <th className="px-6 py-3 text-center">Status</th>
                                                 </tr>
@@ -294,14 +296,16 @@ export const TeamDetailsModal: React.FC<Props> = ({ isOpen, onClose, team, onDel
                                             <tbody className="divide-y divide-slate-100">
                                                 {selectedRDO.atividades?.map((act, idx) => (
                                                     <tr key={idx} className="hover:bg-slate-50">
+                                                        <td className="px-6 py-3 text-slate-500 font-mono text-xs">{act.id_atividade || '-'}</td>
                                                         <td className="px-6 py-3 text-slate-700">{act.descricao}</td>
+                                                        <td className="px-6 py-3 text-center text-slate-700 font-bold">{act.quantidade}</td>
                                                         <td className="px-6 py-3 text-center text-slate-500 text-xs">{act.unidade}</td>
                                                         <td className="px-6 py-3">
                                                             {(() => {
                                                                 const statusStr = act.status || 'EXEC';
-                                                                // Try to match pattern: "07:00 ATÉ 12:00 (5H) 1% - EM ANDAMENTO"
-                                                                // Regex: (Time Range) (Duration) (Percentage) - (Status)
-                                                                const match = statusStr.match(/^([\d:]+\s+ATÉ\s+[\d:]+)\s+(\([\d\w]+\))\s+([\d%]+)\s+-\s+(.*)$/);
+                                                                // Pattern: "07:00 até 17:00\n(10h)\n2% - Em andamento"
+                                                                // Regex needs to be resilient to newlines and casing
+                                                                const match = statusStr.match(/^([\d:]+\s+até\s+[\d:]+)\s*(\(.*\))\s*([\d.]+%?)\s*-\s*(.*)$/i);
 
                                                                 if (match) {
                                                                     const [_, timeRange, duration, percent, statusText] = match;
@@ -333,7 +337,7 @@ export const TeamDetailsModal: React.FC<Props> = ({ isOpen, onClose, team, onDel
                                                     </tr>
                                                 )) || (
                                                         <tr>
-                                                            <td colSpan={3} className="px-6 py-8 text-center text-slate-400 italic">
+                                                            <td colSpan={5} className="px-6 py-8 text-center text-slate-400 italic">
                                                                 Nenhuma atividade registrada.
                                                             </td>
                                                         </tr>
