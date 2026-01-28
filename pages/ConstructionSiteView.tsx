@@ -145,13 +145,19 @@ export const ConstructionSiteView: React.FC = () => {
 
         processedRdos.forEach(rdo => {
             if (!rdo.relatorio?.data) return;
-            const dateParts = rdo.relatorio.data.split('/'); // DD/MM/YYYY
-            if (dateParts.length < 1) return;
 
-            // Extract Day (1-31)
-            const dayStr = dateParts[0]; // "01", "15" etc
-            // Remove leading zero for cleaner matrix headers (1 instead of 01)
-            const dayNum = parseInt(dayStr);
+            // Robust Date Parsing for Day Number (1-31)
+            let dayNum = 0;
+            const dateStr = rdo.relatorio.data;
+            if (dateStr.includes('/')) {
+                // DD/MM/YYYY
+                dayNum = parseInt(dateStr.split('/')[0]);
+            } else if (dateStr.includes('-')) {
+                // YYYY-MM-DD - Split by '-' and take last part (day)
+                dayNum = parseInt(dateStr.split('-')[2]);
+            }
+
+            if (!dayNum || isNaN(dayNum)) return;
             const dayKey = String(dayNum);
 
             (rdo.mao_de_obra || []).forEach(mo => {
@@ -169,7 +175,7 @@ export const ConstructionSiteView: React.FC = () => {
 
                 record.sumObj += qty;
                 // Track unique full dates to calculate average correctly
-                record.daysWithData.add(rdo.relatorio.data);
+                record.daysWithData.add(dateStr);
             });
         });
 
@@ -189,13 +195,13 @@ export const ConstructionSiteView: React.FC = () => {
                 }
             }
 
-            if (finalQty > 0) {
-                result.push({
-                    resourceName,
-                    date: dayKey, // "1", "2", ... "31"
-                    quantity: finalQty
-                });
-            }
+            // Always push, even if 0, so the Matrix shows the row with "-"
+            // This ensures we can see the Resources listed even if values are zero/missing
+            result.push({
+                resourceName,
+                date: dayKey, // "1", "2", ... "31"
+                quantity: finalQty
+            });
         });
 
         return result;
@@ -208,9 +214,17 @@ export const ConstructionSiteView: React.FC = () => {
 
         processedRdos.forEach(rdo => {
             if (!rdo.relatorio?.data) return;
-            const dateParts = rdo.relatorio.data.split('/');
-            if (dateParts.length < 1) return;
-            const dayNum = parseInt(dateParts[0]);
+
+            // Robust Date Parsing
+            let dayNum = 0;
+            const dateStr = rdo.relatorio.data;
+            if (dateStr.includes('/')) {
+                dayNum = parseInt(dateStr.split('/')[0]);
+            } else if (dateStr.includes('-')) {
+                dayNum = parseInt(dateStr.split('-')[2]);
+            }
+
+            if (!dayNum || isNaN(dayNum)) return;
             const dayKey = String(dayNum);
 
             (rdo.equipamentos || []).forEach(eq => {
@@ -228,7 +242,7 @@ export const ConstructionSiteView: React.FC = () => {
                 const qty = typeof eq === 'object' && (eq as any).quantidade ? parseQty((eq as any).quantidade) : 1;
 
                 record.sumObj += qty;
-                record.daysWithData.add(rdo.relatorio.data);
+                record.daysWithData.add(dateStr);
             });
         });
 
@@ -242,9 +256,7 @@ export const ConstructionSiteView: React.FC = () => {
                 if (count > 0) finalQty = Math.round(finalQty / count);
             }
 
-            if (finalQty > 0) {
-                result.push({ resourceName, date: dayKey, quantity: finalQty });
-            }
+            result.push({ resourceName, date: dayKey, quantity: finalQty });
         });
 
         return result;
