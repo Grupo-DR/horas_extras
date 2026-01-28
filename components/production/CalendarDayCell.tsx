@@ -49,10 +49,8 @@ export const CalendarDayCell: React.FC<Props> = ({ day, metrics, isCurrentMonth,
         );
     }
 
-    // Dynamic Class for Neon Border if Occurrence > 0
-    const borderClass = metrics.occurrenceCount > 0
-        ? 'ring-2 ring-red-500 ring-offset-1 shadow-[0_0_8px_rgba(239,68,68,0.6)] z-10 border-red-200'
-        : 'border-b border-r border-slate-200 hover:bg-blue-50/50';
+    // Dynamic Class for Neon Border if Occurrence > 0 (REMOVED per user request)
+    const borderClass = 'border-b border-r border-slate-200 hover:bg-blue-50/50';
 
     return (
         <div
@@ -90,15 +88,24 @@ export const CalendarDayCell: React.FC<Props> = ({ day, metrics, isCurrentMonth,
                     </div>
                 </div>
 
-                {/* Occurrences - Only show if > 0 */}
-                {metrics.occurrenceCount > 0 && (
+                {/* Occurrences Logic */}
+                {metrics.occurrenceCount > 0 ? (
                     <div className="flex items-center gap-2 mt-1">
                         <div className="bg-red-100 text-red-600 p-1 rounded-md shrink-0">
                             <AlertTriangle size={12} />
                         </div>
                         <div className="flex flex-col leading-none">
-                            <span className="text-[10px] text-red-400 font-bold uppercase">Ocorrências</span>
+                            <span className="text-[10px] text-red-500 font-bold uppercase">Ocorrências</span>
                             <span className="text-xs font-bold text-red-600">{metrics.occurrenceCount}</span>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-2 mt-1 opacity-60 hover:opacity-100 transition-opacity">
+                        <div className="bg-green-100 text-green-600 p-1 rounded-md shrink-0">
+                            <Cloud size={12} className="text-green-600" /> {/* Reusing generic icon or check */}
+                        </div>
+                        <div className="flex flex-col leading-none">
+                            <span className="text-[10px] text-green-600 font-bold uppercase">Sem Ocorrências</span>
                         </div>
                     </div>
                 )}
