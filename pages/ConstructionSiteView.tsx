@@ -122,6 +122,19 @@ export const ConstructionSiteView: React.FC = () => {
         return dateStr;
     }
 
+    // Helper to safely parse numbers (handles "2,5", "10", number type)
+    const parseQty = (val: any): number => {
+        if (typeof val === 'number') return val;
+        if (!val) return 0;
+        if (typeof val === 'string') {
+            // Replace comma with dot for BR locale
+            const clean = val.replace(',', '.');
+            const parsed = parseFloat(clean);
+            return isNaN(parsed) ? 0 : parsed;
+        }
+        return 0;
+    };
+
     // Data for Resource Matrix (Labor) - Refined for 1-31 Days and Aggregation
     const laborMatrixData = useMemo(() => {
         // Mode Check: Is Specific Filter Active?
@@ -142,16 +155,20 @@ export const ConstructionSiteView: React.FC = () => {
             const dayKey = String(dayNum);
 
             (rdo.mao_de_obra || []).forEach(mo => {
-                const key = `${mo.funcao}::${dayKey}`;
+                if (!mo.funcao) return;
+                const resourceName = mo.funcao.trim();
+                const key = `${resourceName}::${dayKey}`;
 
                 if (!aggregation.has(key)) {
                     aggregation.set(key, { sumObj: 0, daysWithData: new Set() });
                 }
                 const record = aggregation.get(key)!;
-                record.sumObj += (mo.quantidade || 0);
 
+                // Safe Parse Quantity
+                const qty = parseQty(mo.quantidade);
+
+                record.sumObj += qty;
                 // Track unique full dates to calculate average correctly
-                // E.g. If we have Jan 1st 2025 and Jan 1st 2026, that is 2 occurrences of Day 1.
                 record.daysWithData.add(rdo.relatorio.data);
             });
         });
@@ -165,21 +182,20 @@ export const ConstructionSiteView: React.FC = () => {
             let finalQty = value.sumObj;
 
             if (!isExactMode) {
-                // Average Mode: Sum / Count of unique days recorded for this resource-day combination
-                // OR should it be Sum / Count of distinct YEARS/MONTHS traversed? 
-                // User said: "Mostra a MÉDIA de todos os dias 1".
-                // Simple average: Total observed on Day X / Number of times Day X occurred in the dataset for this resource.
+                // Average Mode
                 const count = value.daysWithData.size;
                 if (count > 0) {
                     finalQty = Math.round(finalQty / count);
                 }
             }
 
-            result.push({
-                resourceName,
-                date: dayKey, // "1", "2", ... "31"
-                quantity: finalQty
-            });
+            if (finalQty > 0) {
+                result.push({
+                    resourceName,
+                    date: dayKey, // "1", "2", ... "31"
+                    quantity: finalQty
+                });
+            }
         });
 
         return result;
@@ -199,14 +215,19 @@ export const ConstructionSiteView: React.FC = () => {
 
             (rdo.equipamentos || []).forEach(eq => {
                 // If eq is string or object
-                const name = typeof eq === 'string' ? eq : (eq as any).nome || 'Equipamento';
-                const key = `${name}::${dayKey}`;
+                const rawName = typeof eq === 'string' ? eq : (eq as any).nome || 'Equipamento';
+                const resourceName = rawName.trim();
+                const key = `${resourceName}::${dayKey}`;
 
                 if (!aggregation.has(key)) {
                     aggregation.set(key, { sumObj: 0, daysWithData: new Set() });
                 }
                 const record = aggregation.get(key)!;
-                record.sumObj += 1; // Count 1 for existence
+
+                // For equipment, check quantitative property or default to 1
+                const qty = typeof eq === 'object' && (eq as any).quantidade ? parseQty((eq as any).quantidade) : 1;
+
+                record.sumObj += qty;
                 record.daysWithData.add(rdo.relatorio.data);
             });
         });
@@ -221,7 +242,9 @@ export const ConstructionSiteView: React.FC = () => {
                 if (count > 0) finalQty = Math.round(finalQty / count);
             }
 
-            result.push({ resourceName, date: dayKey, quantity: finalQty });
+            if (finalQty > 0) {
+                result.push({ resourceName, date: dayKey, quantity: finalQty });
+            }
         });
 
         return result;
