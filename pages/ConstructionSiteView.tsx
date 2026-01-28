@@ -24,6 +24,8 @@ export const ConstructionSiteView: React.FC = () => {
     // Filter State
     const [activeTeamId, setActiveTeamId] = useState<string>('ALL');
     const [activeSiteName, setActiveSiteName] = useState<string>('ALL');
+    const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
+    const [selectedYear, setSelectedYear] = useState<string>('ALL');
 
     const contract = contracts.find(c => c.id === id);
 
@@ -33,51 +35,30 @@ export const ConstructionSiteView: React.FC = () => {
         return contract.teams.flatMap(t => t.rdos || []);
     }, [contract]);
 
-    // 2. Extract Filter Options
+    // 2. Extract Filter Options (Teams, Sites, Years)
     const filterOptions = useMemo(() => {
-        if (!contract) return { teams: [], sites: [] };
+        if (!contract) return { teams: [], sites: [], years: [] };
 
         const teams = contract.teams?.map(t => ({ id: t.id, name: t.name })) || [];
 
         const sites = Array.from(new Set(allRdos.map(r => r.relatorio?.obra).filter(Boolean)))
             .map(site => ({ name: site as string }));
 
-        return { teams, sites };
+        const years = Array.from(new Set(allRdos.map(r => {
+            if (!r.relatorio?.data) return null;
+            try {
+                // Handle DD/MM/YYYY
+                const parts = r.relatorio.data.split('/');
+                if (parts.length === 3) return parts[2];
+                // Handle YYYY-MM-DD
+                return r.relatorio.data.split('-')[0];
+            } catch { return null; }
+        }).filter(Boolean))).sort().reverse();
+
+        return { teams, sites, years };
     }, [contract, allRdos]);
 
-    // 3. Filter Logic
-    const filteredRdos = useMemo(() => {
-        return allRdos.filter(rdo => {
-            // Filter by Team (Need to find which team owns this RDO, or RDO has team linkage?)
-            // Currently RDO extraction structure nests RDOs under Teams in Contract.
-            // So we need to filter by the Team ID derived from the context or assume we can filter later.
-            // Actually, we flattened 'allRdos' above. To filter by team efficiently, we might need to know the team ID of the RDO.
-            // Let's assume for now we filter by properties inside RDO if possible, or we need to rethink the 'flat' strategy if we want strict team filtering.
-
-            // Allow loose filtering by Team Name if RDO doesn't store TeamID directly but we know the parent structure.
-            // Re-implementing Flatten to include TeamID would be safer.
-
-            let matchesTeam = true;
-            if (activeTeamId !== 'ALL') {
-                // We need to check if this RDO belongs to the Active Team.
-                // Since we flattened it, we lost the parent reference.
-                // FIX: Let's redo the flatten logic inside this filter or preprocess it.
-                // Ideally, we preprocess 'allRdos' to include 'teamId'.
-                // Since I cannot change 'allRdos' definition easily without complex logic here, 
-                // I will filter based on the 'contract.teams' structure directly.
-                return true;
-            }
-
-            let matchesSite = true;
-            if (activeSiteName !== 'ALL') {
-                matchesSite = rdo.relatorio?.obra === activeSiteName;
-            }
-
-            return matchesTeam && matchesSite;
-        });
-    }, [allRdos, activeTeamId, activeSiteName]);
-
-    // 3.1 Better Flatten Logic to support Team Filtering
+    // 3. Filter Logic (Updated with Month/Year)
     const processedRdos = useMemo(() => {
         if (!contract || !contract.teams) return [];
 
@@ -89,19 +70,73 @@ export const ConstructionSiteView: React.FC = () => {
                 const matchesTeam = activeTeamId === 'ALL' || team.id === activeTeamId;
                 const matchesSite = activeSiteName === 'ALL' || rdo.relatorio?.obra === activeSiteName;
 
-                if (matchesTeam && matchesSite) {
+                let matchesDate = true;
+                if (rdo.relatorio?.data) {
+                    let rdoDateParts = rdo.relatorio.data.split('/'); // Assumes DD/MM/YYYY usually
+                    if (rdoDateParts.length !== 3) rdoDateParts = rdo.relatorio.data.split('-'); // Try ISO
+
+                    if (rdoDateParts.length >= 2) {
+                        const rdoMonth = rdoDateParts.length === 3 && rdo.relatorio.data.includes('/') ? rdoDateParts[1] : rdoDateParts[1]; // Index 1 is month
+                        const rdoYear = rdoDateParts.length === 3 && rdo.relatorio.data.includes('/') ? rdoDateParts[2] : rdoDateParts[0];
+
+                        // Normalize Month to 0-11 or 1-12? Inputs are usually 01-12 strings. 
+                        // Check strictly against string
+                        if (selectedMonth !== 'ALL') {
+                            // selectedMonth is '0'..'11' (js style) or '1'..'12'?
+                            // Let's us 0-11 index for consistency with JS Date, but value is string
+                            // Actually, let's assume selectedMonth is '0', '1', ... '11'
+                            // RDO month '01' is 0, '02' is 1.
+                            const rdoMonthIndex = parseInt(rdoMonth) - 1;
+                            if (String(rdoMonthIndex) !== selectedMonth) matchesDate = false;
+                        }
+
+                        if (selectedYear !== 'ALL') {
+                            if (rdoYear !== selectedYear) matchesDate = false;
+                        }
+                    }
+                }
+
+                if (matchesTeam && matchesSite && matchesDate) {
                     result.push(rdo);
                 }
             }
         }
         return result;
-    }, [contract, activeTeamId, activeSiteName]);
+    }, [contract, activeTeamId, activeSiteName, selectedMonth, selectedYear]);
 
 
     // Compute Analytics on Filtered Data
     const dailyData = useMemo(() => RDOAnalytics.getDailyKPIs(processedRdos), [processedRdos]);
     const stats = useMemo(() => RDOAnalytics.getExecutiveStats(processedRdos), [processedRdos]);
+    // REMOVED DUPLICATE LINES HERE
+
     const activities = useMemo(() => RDOAnalytics.getActivityProgress(processedRdos), [processedRdos]);
+
+    // Data for Resource Matrix (Labor)
+    const laborMatrixData = useMemo(() => {
+        return processedRdos.flatMap(rdo => {
+            return (rdo.mao_de_obra || []).map(mo => ({
+                resourceName: mo.funcao,
+                date: rdo.relatorio?.data || '',
+                quantity: mo.quantidade
+            }));
+        }).filter(d => d.date && d.resourceName);
+    }, [processedRdos]);
+
+    // Data for Resource Matrix (Equipment)
+    const equipmentMatrixData = useMemo(() => {
+        return processedRdos.flatMap(rdo => {
+            return (rdo.equipamentos || []).map(eq => {
+                // Handle if equipment is string or object
+                const name = typeof eq === 'string' ? eq : (eq as any).nome || 'Equipamento';
+                return {
+                    resourceName: name,
+                    date: rdo.relatorio?.data || '',
+                    quantity: 1 // Default to 1 per entry if list of unique items, or check if qty exists
+                };
+            });
+        }).filter(d => d.date && d.resourceName);
+    }, [processedRdos]);
 
     // Helper for formatting dates in charts
     const formatDate = (dateStr: string) => {
@@ -125,12 +160,14 @@ export const ConstructionSiteView: React.FC = () => {
         );
     }
 
+    // RENDER BEGINS
+
     return (
         <div className="flex h-full flex-col bg-slate-50 overflow-hidden">
             {/* HEADER */}
             <div className="bg-white border-b border-slate-200 px-8 py-6 shrink-0">
                 {/* Top Row: Back + Title + Filter Bar */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
+                <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-4 mb-6">
                     <div>
                         <button
                             onClick={() => navigate(-1)}
@@ -140,7 +177,7 @@ export const ConstructionSiteView: React.FC = () => {
                         </button>
                         <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                             <HardHat className="text-orange-600" />
-                            Visão da Obra: {contract.name}
+                            Visão da Obra: {contract?.name}
                         </h1>
                         <p className="text-slate-500 text-sm mt-1">
                             Analisando <strong>{processedRdos.length}</strong> relatórios filtrados (Total: {allRdos.length})
@@ -148,7 +185,7 @@ export const ConstructionSiteView: React.FC = () => {
                     </div>
 
                     {/* FILTERS */}
-                    <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <div className="flex flex-wrap items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
                         <div className="flex items-center gap-2 text-slate-400 text-sm font-bold uppercase tracking-wider px-2">
                             <Filter size={14} /> Filtros:
                         </div>
@@ -174,6 +211,39 @@ export const ConstructionSiteView: React.FC = () => {
                             <option value="ALL">Todas as Obras</option>
                             {filterOptions.sites.map(s => (
                                 <option key={s.name} value={s.name}>{s.name}</option>
+                            ))}
+                        </select>
+
+                        {/* Month Filter */}
+                        <select
+                            value={selectedMonth}
+                            onChange={(e) => setSelectedMonth(e.target.value)}
+                            className="bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 outline-none"
+                        >
+                            <option value="ALL">Todos os Meses</option>
+                            <option value="0">Janeiro</option>
+                            <option value="1">Fevereiro</option>
+                            <option value="2">Março</option>
+                            <option value="3">Abril</option>
+                            <option value="4">Maio</option>
+                            <option value="5">Junho</option>
+                            <option value="6">Julho</option>
+                            <option value="7">Agosto</option>
+                            <option value="8">Setembro</option>
+                            <option value="9">Outubro</option>
+                            <option value="10">Novembro</option>
+                            <option value="11">Dezembro</option>
+                        </select>
+
+                        {/* Year Filter */}
+                        <select
+                            value={selectedYear}
+                            onChange={(e) => setSelectedYear(e.target.value)}
+                            className="bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 outline-none"
+                        >
+                            <option value="ALL">Todos os Anos</option>
+                            {filterOptions.years.map(y => (
+                                <option key={y} value={y as string}>{y}</option>
                             ))}
                         </select>
                     </div>
@@ -336,15 +406,7 @@ export const ConstructionSiteView: React.FC = () => {
                         {/* Resource Matrix: Labor */}
                         <div className="mb-8">
                             <ResourceMatrix
-                                data={useMemo(() => {
-                                    return processedRdos.flatMap(rdo => {
-                                        return (rdo.mao_de_obra || []).map(mo => ({
-                                            resourceName: mo.funcao,
-                                            date: rdo.relatorio?.data || '',
-                                            quantity: mo.quantidade
-                                        }));
-                                    }).filter(d => d.date && d.resourceName);
-                                }, [processedRdos])}
+                                data={laborMatrixData}
                                 title="Alocação de Colaboradores por dia"
                                 resourceLabel="Função / Cargo"
                                 colorTheme="blue"
@@ -373,19 +435,7 @@ export const ConstructionSiteView: React.FC = () => {
                         {/* Resource Matrix: Equipment */}
                         <div className="mb-8">
                             <ResourceMatrix
-                                data={useMemo(() => {
-                                    return processedRdos.flatMap(rdo => {
-                                        return (rdo.equipamentos || []).map(eq => {
-                                            // Handle if equipment is string or object
-                                            const name = typeof eq === 'string' ? eq : (eq as any).nome || 'Equipamento';
-                                            return {
-                                                resourceName: name,
-                                                date: rdo.relatorio?.data || '',
-                                                quantity: 1 // Default to 1 per entry if list of unique items, or check if qty exists
-                                            };
-                                        });
-                                    }).filter(d => d.date && d.resourceName);
-                                }, [processedRdos])}
+                                data={equipmentMatrixData}
                                 title="Alocação de Equipamentos por dia"
                                 resourceLabel="Equipamento"
                                 colorTheme="yellow"
