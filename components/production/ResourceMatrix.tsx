@@ -17,11 +17,17 @@ interface Props {
 
 export const ResourceMatrix: React.FC<Props> = ({ data, title, resourceLabel, colorTheme = 'blue' }) => {
 
-    // 1. Get Unique Dates and Sort them
+    // 1. Get Unique Dates (or Days) and Sort them
     const uniqueDates = useMemo(() => {
         const dates = Array.from(new Set(data.map(d => d.date)));
         return dates.sort((a, b) => {
-            // Simple string sort for ISO YYYY-MM-DD works, but let's be safe
+            // Check if looks like a number (1-31)
+            const nA = parseInt(a);
+            const nB = parseInt(b);
+            if (!isNaN(nA) && !isNaN(nB) && String(nA) === a && String(nB) === b) {
+                return nA - nB;
+            }
+            // Fallback to string sort
             return a.localeCompare(b);
         });
     }, [data]);
@@ -52,6 +58,12 @@ export const ResourceMatrix: React.FC<Props> = ({ data, title, resourceLabel, co
     }[colorTheme];
 
     const formatDate = (dateStr: string) => {
+        // If it's a simple number 1-31, return as is
+        const n = parseInt(dateStr);
+        if (!isNaN(n) && String(n) === dateStr && n >= 1 && n <= 31) {
+            return dateStr;
+        }
+
         try {
             const date = parse(dateStr, 'yyyy-MM-dd', new Date());
             return isValid(date) ? format(date, 'dd/MM', { locale: ptBR }) : dateStr;

@@ -102,38 +102,130 @@ export const ConstructionSiteView: React.FC = () => {
 
     const activities = useMemo(() => RDOAnalytics.getActivityProgress(processedRdos), [processedRdos]);
 
-    // Data for Resource Matrix (Labor)
-    const laborMatrixData = useMemo(() => {
-        return processedRdos.flatMap(rdo => {
-            return (rdo.mao_de_obra || []).map(mo => ({
-                resourceName: mo.funcao,
-                date: rdo.relatorio?.data || '',
-                quantity: mo.quantidade
-            }));
-        }).filter(d => d.date && d.resourceName);
-    }, [processedRdos]);
-
-    // Data for Resource Matrix (Equipment)
-    const equipmentMatrixData = useMemo(() => {
-        return processedRdos.flatMap(rdo => {
-            return (rdo.equipamentos || []).map(eq => {
-                // Handle if equipment is string or object
-                const name = typeof eq === 'string' ? eq : (eq as any).nome || 'Equipamento';
-                return {
-                    resourceName: name,
-                    date: rdo.relatorio?.data || '',
-                    quantity: 1 // Default to 1 per entry if list of unique items, or check if qty exists
-                };
-            });
-        }).filter(d => d.date && d.resourceName);
-    }, [processedRdos]);
-
     // Helper for formatting dates in charts
     const formatDate = (dateStr: string) => {
         const parts = dateStr.split('/');
         if (parts.length < 2) return dateStr;
         return `${parts[0]}/${parts[1]}`;
     };
+
+    // Helper to normalize date to ISO YYYY-MM-DD for Matrix
+    const normalizeDateToISO = (dateStr: string) => {
+        if (!dateStr) return '';
+        if (dateStr.includes('-')) return dateStr; // Already ISO likely
+
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+            // "DD/MM/YYYY" -> "YYYY-MM-DD"
+            return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+        return dateStr;
+    }
+
+    // Data for Resource Matrix (Labor) - Refined for 1-31 Days and Aggregation
+    const laborMatrixData = useMemo(() => {
+        // Mode Check: Is Specific Filter Active?
+        const isExactMode = selectedMonth !== 'ALL'; // If specific month is selected, we show exact values. If ALL months, we show averages.
+
+        // Pre-aggregate by Resource + Day (1-31)
+        const aggregation = new Map<string, { sumObj: number, daysWithData: Set<string> }>();
+
+        processedRdos.forEach(rdo => {
+            if (!rdo.relatorio?.data) return;
+            const dateParts = rdo.relatorio.data.split('/'); // DD/MM/YYYY
+            if (dateParts.length < 1) return;
+
+            // Extract Day (1-31)
+            const dayStr = dateParts[0]; // "01", "15" etc
+            // Remove leading zero for cleaner matrix headers (1 instead of 01)
+            const dayNum = parseInt(dayStr);
+            const dayKey = String(dayNum);
+
+            (rdo.mao_de_obra || []).forEach(mo => {
+                const key = `${mo.funcao}::${dayKey}`;
+
+                if (!aggregation.has(key)) {
+                    aggregation.set(key, { sumObj: 0, daysWithData: new Set() });
+                }
+                const record = aggregation.get(key)!;
+                record.sumObj += (mo.quantidade || 0);
+
+                // Track unique full dates to calculate average correctly
+                // E.g. If we have Jan 1st 2025 and Jan 1st 2026, that is 2 occurrences of Day 1.
+                record.daysWithData.add(rdo.relatorio.data);
+            });
+        });
+
+        // Convert Map to Array
+        const result: { resourceName: string, date: string, quantity: number }[] = [];
+
+        aggregation.forEach((value, key) => {
+            const [resourceName, dayKey] = key.split('::');
+
+            let finalQty = value.sumObj;
+
+            if (!isExactMode) {
+                // Average Mode: Sum / Count of unique days recorded for this resource-day combination
+                // OR should it be Sum / Count of distinct YEARS/MONTHS traversed? 
+                // User said: "Mostra a MÉDIA de todos os dias 1".
+                // Simple average: Total observed on Day X / Number of times Day X occurred in the dataset for this resource.
+                const count = value.daysWithData.size;
+                if (count > 0) {
+                    finalQty = Math.round(finalQty / count);
+                }
+            }
+
+            result.push({
+                resourceName,
+                date: dayKey, // "1", "2", ... "31"
+                quantity: finalQty
+            });
+        });
+
+        return result;
+    }, [processedRdos, selectedMonth]);
+
+    // Data for Resource Matrix (Equipment)
+    const equipmentMatrixData = useMemo(() => {
+        const isExactMode = selectedMonth !== 'ALL';
+        const aggregation = new Map<string, { sumObj: number, daysWithData: Set<string> }>();
+
+        processedRdos.forEach(rdo => {
+            if (!rdo.relatorio?.data) return;
+            const dateParts = rdo.relatorio.data.split('/');
+            if (dateParts.length < 1) return;
+            const dayNum = parseInt(dateParts[0]);
+            const dayKey = String(dayNum);
+
+            (rdo.equipamentos || []).forEach(eq => {
+                // If eq is string or object
+                const name = typeof eq === 'string' ? eq : (eq as any).nome || 'Equipamento';
+                const key = `${name}::${dayKey}`;
+
+                if (!aggregation.has(key)) {
+                    aggregation.set(key, { sumObj: 0, daysWithData: new Set() });
+                }
+                const record = aggregation.get(key)!;
+                record.sumObj += 1; // Count 1 for existence
+                record.daysWithData.add(rdo.relatorio.data);
+            });
+        });
+
+        const result: { resourceName: string, date: string, quantity: number }[] = [];
+        aggregation.forEach((value, key) => {
+            const [resourceName, dayKey] = key.split('::');
+            let finalQty = value.sumObj;
+
+            if (!isExactMode) {
+                const count = value.daysWithData.size;
+                if (count > 0) finalQty = Math.round(finalQty / count);
+            }
+
+            result.push({ resourceName, date: dayKey, quantity: finalQty });
+        });
+
+        return result;
+    }, [processedRdos, selectedMonth]);
 
     if (!contract) return <div className="p-8">Contrato não encontrado.</div>;
 
