@@ -296,10 +296,39 @@ export const TeamDetailsModal: React.FC<Props> = ({ isOpen, onClose, team, onDel
                                                     <tr key={idx} className="hover:bg-slate-50">
                                                         <td className="px-6 py-3 text-slate-700">{act.descricao}</td>
                                                         <td className="px-6 py-3 text-center text-slate-500 text-xs">{act.unidade}</td>
-                                                        <td className="px-6 py-3 text-center">
-                                                            <span className="px-2 py-1 rounded-full bg-green-100 text-green-700 text-[10px] font-bold uppercase border border-green-200">
-                                                                {act.status || 'EXEC'}
-                                                            </span>
+                                                        <td className="px-6 py-3">
+                                                            {(() => {
+                                                                const statusStr = act.status || 'EXEC';
+                                                                // Try to match pattern: "07:00 ATÉ 12:00 (5H) 1% - EM ANDAMENTO"
+                                                                // Regex: (Time Range) (Duration) (Percentage) - (Status)
+                                                                const match = statusStr.match(/^([\d:]+\s+ATÉ\s+[\d:]+)\s+(\([\d\w]+\))\s+([\d%]+)\s+-\s+(.*)$/);
+
+                                                                if (match) {
+                                                                    const [_, timeRange, duration, percent, statusText] = match;
+                                                                    return (
+                                                                        <div className="flex flex-col items-center gap-1">
+                                                                            <div className="flex items-center gap-1">
+                                                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${statusText.includes('ANDAMENTO') ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-green-100 text-green-700 border-green-200'}`}>
+                                                                                    {statusText}
+                                                                                </span>
+                                                                                <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{percent}</span>
+                                                                            </div>
+                                                                            <div className="text-[10px] text-slate-400 font-mono whitespace-nowrap">
+                                                                                {timeRange.toLowerCase().replace(' até ', '-')} <span className="text-slate-300">|</span> {duration}
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                }
+
+                                                                // Fallback for simple status or "EXEC"
+                                                                return (
+                                                                    <div className="text-center">
+                                                                        <span className="px-2 py-1 rounded bg-slate-100 text-slate-600 text-[10px] font-bold uppercase border border-slate-200 inline-block max-w-[120px] truncate" title={statusStr}>
+                                                                            {statusStr}
+                                                                        </span>
+                                                                    </div>
+                                                                );
+                                                            })()}
                                                         </td>
                                                     </tr>
                                                 )) || (
