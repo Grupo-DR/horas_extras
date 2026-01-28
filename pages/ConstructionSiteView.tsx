@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useContracts } from '../contexts/ContractsContext';
 import { RDOAnalytics } from '../services/RDOAnalytics';
 import { SiteCalendar } from '../components/production/SiteCalendar';
+import { ResourceMatrix } from '../components/production/ResourceMatrix';
 import {
     Users, Tractor, AlertTriangle, TrendingUp, Calendar,
     Droplets, CloudRain, Sun, Clock, HardHat, FileText, ArrowLeft, Filter
@@ -325,22 +326,31 @@ export const ConstructionSiteView: React.FC = () => {
                 {/* LAYER 2: LABOR */}
                 {activeTab === 'mao_de_obra' && (
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
-                            <Users size={18} className="text-blue-500" />
-                            Histórico de Mão de Obra (Pessoas/Dia)
-                        </h3>
-                        <div className="h-96 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={dailyData}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                    <XAxis dataKey="date" tickFormatter={formatDate} stroke="#94a3b8" fontSize={12} />
-                                    <YAxis stroke="#94a3b8" fontSize={12} />
-                                    <Tooltip cursor={{ fill: '#f8fafc' }} />
-                                    <Legend />
-                                    <Bar dataKey="totalPeople" name="Qtd Colaboradores" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                                </BarChart>
-                            </ResponsiveContainer>
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                                <Users size={18} className="text-blue-500" />
+                                Histórico de Mão de Obra (Matriz de Recursos)
+                            </h3>
                         </div>
+
+                        {/* Resource Matrix: Labor */}
+                        <div className="mb-8">
+                            <ResourceMatrix
+                                data={useMemo(() => {
+                                    return processedRdos.flatMap(rdo => {
+                                        return (rdo.mao_de_obra || []).map(mo => ({
+                                            resourceName: mo.funcao,
+                                            date: rdo.relatorio?.data || '',
+                                            quantity: mo.quantidade
+                                        }));
+                                    }).filter(d => d.date && d.resourceName);
+                                }, [processedRdos])}
+                                title="Alocação de Colaboradores por dia"
+                                resourceLabel="Função / Cargo"
+                                colorTheme="blue"
+                            />
+                        </div>
+
                         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="bg-slate-50 p-4 rounded-lg">
                                 <h4 className="font-bold text-slate-700 mb-2">Produtividade de Campo</h4>
@@ -357,19 +367,29 @@ export const ConstructionSiteView: React.FC = () => {
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
                             <Tractor size={18} className="text-yellow-500" />
-                            Mobilização de Equipamentos (Qtd Diária)
+                            Histórico de Equipamentos (Matriz de Recursos)
                         </h3>
-                        <div className="h-96 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={dailyData}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                    <XAxis dataKey="date" tickFormatter={formatDate} stroke="#94a3b8" fontSize={12} />
-                                    <YAxis stroke="#94a3b8" fontSize={12} />
-                                    <Tooltip cursor={{ fill: '#f8fafc' }} />
-                                    <Legend />
-                                    <Bar dataKey="equipmentCount" name="Máquinas no Canteiro" fill="#eab308" radius={[4, 4, 0, 0]} />
-                                </BarChart>
-                            </ResponsiveContainer>
+
+                        {/* Resource Matrix: Equipment */}
+                        <div className="mb-8">
+                            <ResourceMatrix
+                                data={useMemo(() => {
+                                    return processedRdos.flatMap(rdo => {
+                                        return (rdo.equipamentos || []).map(eq => {
+                                            // Handle if equipment is string or object
+                                            const name = typeof eq === 'string' ? eq : (eq as any).nome || 'Equipamento';
+                                            return {
+                                                resourceName: name,
+                                                date: rdo.relatorio?.data || '',
+                                                quantity: 1 // Default to 1 per entry if list of unique items, or check if qty exists
+                                            };
+                                        });
+                                    }).filter(d => d.date && d.resourceName);
+                                }, [processedRdos])}
+                                title="Alocação de Equipamentos por dia"
+                                resourceLabel="Equipamento"
+                                colorTheme="yellow"
+                            />
                         </div>
                     </div>
                 )}
