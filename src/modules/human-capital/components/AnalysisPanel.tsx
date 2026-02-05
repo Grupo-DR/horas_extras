@@ -15,23 +15,69 @@ type ViewMode = 'hours' | 'finance';
 
 const CustomTooltip = ({ active, payload, label, viewMode }: any) => {
     if (active && payload && payload.length) {
+        const data = payload[0].payload;
         return (
-            <div className="bg-white p-4 border border-gray-100 shadow-xl rounded-xl">
-                <p className="font-bold text-gray-800 mb-2 border-b border-gray-100 pb-1">{label}</p>
-                <div className="space-y-1">
-                    {payload.map((entry: any, index: number) => (
-                        <div key={index} className="flex items-center gap-2 text-xs">
-                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
-                            <span className="text-gray-500 font-medium">{entry.name}:</span>
-                            <span className="font-mono font-bold text-gray-800">
-                                {viewMode === 'finance'
-                                    ? `R$ ${entry.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                                    : formatDecimalHours(entry.value)
-                                }
+            <div className="bg-white p-4 border border-gray-100 shadow-xl rounded-xl min-w-[200px]">
+                <p className="font-bold text-gray-800 mb-3 border-b border-gray-100 pb-2 text-sm uppercase tracking-wide">{label}</p>
+
+                {viewMode === 'finance' ? (
+                    <div className="space-y-2">
+                        <div className="flex justify-between items-center text-xs">
+                            <span className="text-gray-500 font-bold">Budget (Meta)</span>
+                            <span className="font-mono font-bold text-indigo-600">
+                                R$ {data.Budget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                             </span>
                         </div>
-                    ))}
-                </div>
+                        <div className="flex justify-between items-center text-xs">
+                            <span className="text-gray-500 font-bold">Planejado</span>
+                            <span className="font-mono font-bold text-blue-600">
+                                R$ {data.Planejado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs pt-1 border-t border-gray-50">
+                            <span className="text-gray-500 font-bold">REALIZADO</span>
+                            <span className="font-mono font-bold text-emerald-600 text-sm">
+                                R$ {data.Real.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {/* REALIZADO SECTION */}
+                        <div>
+                            <div className="flex justify-between items-center mb-1">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">REALIZADO TOTAL</span>
+                                <span className="font-mono font-bold text-blue-600 text-sm">{formatDecimalHours(data.Real)}</span>
+                            </div>
+                            <div className="space-y-1 pl-2 border-l-2 border-gray-100">
+                                <div className="flex justify-between items-center text-[10px]">
+                                    <span className="text-gray-500">H.E. 60%</span>
+                                    <span className="font-mono text-gray-700">{formatDecimalHours(data.he60)}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-[10px]">
+                                    <span className="text-gray-500">H.E. 100%</span>
+                                    <span className="font-mono text-gray-700">{formatDecimalHours(data.he100)}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-[10px]">
+                                    <span className="text-gray-500">Adic. Noturno</span>
+                                    <span className="font-mono text-gray-700">{formatDecimalHours(data.night)}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-[10px]">
+                                    <span className="text-gray-500">Interjornada</span>
+                                    <span className="font-mono text-gray-700">{formatDecimalHours(data.interjourney)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* PLANEJADO SECTION */}
+                        <div className="pt-2 border-t border-gray-50">
+                            <div className="flex justify-between items-center">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">PLANEJADO</span>
+                                <span className="font-mono font-bold text-gray-400 text-sm">{formatDecimalHours(data.Planejado)}</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         );
     }
@@ -64,10 +110,20 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, selectedYear }) => 
             // Calculate Real Values
             let realHours = 0;
             let realCost = 0;
+            let he60 = 0;
+            let he100 = 0;
+            let night = 0;
+            let interjourney = 0;
 
             monthData.forEach(r => {
                 const hours = Number(r.HORAS) || 0;
                 realHours += hours;
+                const evt = (r.EVENTO || '').toUpperCase();
+
+                if (evt.includes('60')) he60 += hours;
+                if (evt.includes('100')) he100 += hours;
+                if (evt.includes('NOTURNO') || evt.includes('20')) night += hours;
+                if (evt.includes('INTER')) interjourney += hours;
 
                 const sal = salariesMap[r.CHAPA];
                 if (sal) {
@@ -108,7 +164,8 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, selectedYear }) => 
                 Real: viewMode === 'finance' ? realCost : realHours,
                 Planejado: viewMode === 'finance' ? plannedCost : plannedHours,
                 Budget: viewMode === 'finance' ? monthlyBudget : 0, // Budget only makes sense for finance
-                amt: viewMode === 'finance' ? realCost : realHours
+                amt: viewMode === 'finance' ? realCost : realHours,
+                he60, he100, night, interjourney // Passed for tooltip
             };
         });
     }, [data, selectedYear, viewMode, budgets, planningRecords, salariesMap]);
@@ -133,9 +190,13 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, selectedYear }) => 
                     <div>
                         <h3 className="font-bold text-gray-800 flex items-center gap-2">
                             <TrendingUp size={18} className="text-blue-600" />
-                            Evolução Anual
+                            {viewMode === 'finance' ? 'Evolução Financeira' : 'Evolução de Horas'}
                         </h3>
-                        <p className="text-xs text-gray-400 mt-1">Comparativo Real vs Planejado vs Budget</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                            {viewMode === 'finance'
+                                ? 'Comparativo entre Budget (Meta), Planejado (Operacional) e Real (Executado)'
+                                : 'Comparativo entre Horas Planejadas (Operacional) e Horas Reais (Executadas)'}
+                        </p>
                     </div>
 
                     <div className="flex bg-gray-100 p-1 rounded-lg">

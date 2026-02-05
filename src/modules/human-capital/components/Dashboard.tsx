@@ -217,6 +217,8 @@ const CostCenterDetailModal: React.FC<{
 };
 
 const Dashboard: React.FC<DashboardProps> = ({ data }) => {
+    const [dashboardViewMode, setDashboardViewMode] = useState<ViewMode>('finance');
+
     const [ccSearch, setCcSearch] = useState('');
     const [funcSearch, setFuncSearch] = useState('');
     const [selectedFuncModal, setSelectedFuncModal] = useState<string | null>(null);
@@ -453,109 +455,122 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
                 viewMode={ccViewMode}
             />
 
-            {/* Nível 01: Financeiro */}
-            <HierarchySection title="Nível 01: Financeiro">
-                <StatsCard
-                    title="Budget Total"
-                    value={`R$ ${metrics.totalBudget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-                    icon={<Wallet size={20} />}
-                    color="bg-indigo-600"
-                    subValue={
-                        <div className="space-y-1">
-                            <div className="flex justify-between items-center text-[10px] font-bold">
-                                <span className="text-gray-400 uppercase">Custo Planejado:</span>
-                                <span className="text-blue-600 font-mono">R$ {metrics.totalPlannedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-[10px] font-bold">
-                                <span className="text-gray-400 uppercase">Custo Real (Est.):</span>
-                                <span className="text-emerald-600 font-mono">R$ {metrics.totalRealCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                            </div>
-                        </div>
-                    }
-                />
-                <StatsCard
-                    title="Custo Planejado"
-                    value={`R$ ${metrics.totalPlannedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-                    icon={<TrendingUp size={20} />}
-                    color="bg-blue-600"
-                    comparison={{
-                        label: "Saldo vs Budget",
-                        value: `R$ ${(metrics.totalBudget - metrics.totalPlannedValue).toLocaleString('pt-BR')}`,
-                        percent: metrics.totalBudget > 0 ? (metrics.totalPlannedValue / metrics.totalBudget) * 100 : 0,
-                        isOver: metrics.totalPlannedValue > metrics.totalBudget
-                    }}
-                />
-                <StatsCard
-                    title="Custo Real (Est.)"
-                    value={`R$ ${metrics.totalRealCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-                    icon={<Calculator size={20} />}
-                    color="bg-emerald-600"
-                    comparison={{
-                        label: "Saldo Final Budget",
-                        value: `R$ ${(metrics.totalBudget - metrics.totalRealCost).toLocaleString('pt-BR')}`,
-                        percent: metrics.totalBudget > 0 ? (metrics.totalRealCost / metrics.totalBudget) * 100 : 0,
-                        isOver: metrics.totalRealCost > metrics.totalBudget
-                    }}
-                />
-            </HierarchySection>
+            {/* TOP BAR / CONTEXT SWITCHER */}
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                <div>
+                    <h2 className="text-lg font-bold text-gray-800">Dashboard Capital Humano</h2>
+                    <p className="text-xs text-gray-500">Visão Geral de Indicadores de Performance e Financeiros</p>
+                </div>
+                <div className="flex bg-gray-100 p-1 rounded-xl h-10">
+                    <button
+                        onClick={() => setDashboardViewMode('hours')}
+                        className={`flex items-center gap-2 px-5 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${dashboardViewMode === 'hours' ? 'bg-white text-blue-600 shadow-md transform scale-105' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                        <Clock size={14} /> Visão de Horas
+                    </button>
+                    <button
+                        onClick={() => setDashboardViewMode('finance')}
+                        className={`flex items-center gap-2 px-5 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${dashboardViewMode === 'finance' ? 'bg-white text-emerald-600 shadow-md transform scale-105' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                        <DollarSign size={14} /> Visão Financeira
+                    </button>
+                </div>
+            </div>
 
-            {/* Nível 02: Horas Extras */}
-            <HierarchySection title="Nível 02: Horas Extras">
+            {/* DYNAMIC TOP CARDS */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {dashboardViewMode === 'hours' ? (
+                    <>
+                        <StatsCard
+                            title="Meta Planejada (H)"
+                            value={formatDecimalHours(metrics.totalPlannedHours)}
+                            icon={<Clock size={20} />}
+                            color="bg-blue-600"
+                            subValue="Total de horas operacionais planejadas"
+                        />
+                        <StatsCard
+                            title="Executado Total (H)"
+                            value={formatDecimalHours(metrics.realTotalHE)}
+                            icon={<TrendingUp size={20} />}
+                            color={metrics.realTotalHE > metrics.totalPlannedHours ? "bg-orange-500" : "bg-emerald-500"}
+                            comparison={{
+                                label: "Planejado",
+                                value: formatDecimalHours(metrics.totalPlannedHours),
+                                percent: metrics.totalPlannedHours > 0 ? (metrics.realTotalHE / metrics.totalPlannedHours) * 100 : 0,
+                                isOver: metrics.realTotalHE > metrics.totalPlannedHours
+                            }}
+                        />
+                        <StatsCard
+                            title="Eficiência do Período"
+                            value={metrics.totalPlannedHours > 0 ? `${((metrics.realTotalHE / metrics.totalPlannedHours) * 100).toFixed(1)}%` : '0%'}
+                            icon={<Percent size={20} />}
+                            color="bg-purple-600"
+                            subValue={
+                                <span className={metrics.realTotalHE > metrics.totalPlannedHours ? "text-red-500 font-bold" : "text-emerald-500 font-bold"}>
+                                    {metrics.realTotalHE > metrics.totalPlannedHours ? "Excedente (Acima da Meta)" : "Eficiente (Abaixo da Meta)"}
+                                </span>
+                            }
+                        />
+                    </>
+                ) : (
+                    <>
+                        <StatsCard
+                            title="Budget Acumulado"
+                            value={`R$ ${metrics.totalBudget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                            icon={<Wallet size={20} />}
+                            color="bg-indigo-600"
+                            subValue="Meta orçamentária para o período"
+                        />
+                        <StatsCard
+                            title="Planejado Acumulado"
+                            value={`R$ ${metrics.totalPlannedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                            icon={<TrendingUp size={20} />}
+                            color="bg-blue-600"
+                            comparison={{
+                                label: "vs Budget",
+                                value: `R$ ${(metrics.totalBudget - metrics.totalPlannedValue).toLocaleString('pt-BR')}`,
+                                percent: metrics.totalBudget > 0 ? (metrics.totalPlannedValue / metrics.totalBudget) * 100 : 0,
+                                isOver: metrics.totalPlannedValue > metrics.totalBudget
+                            }}
+                        />
+                        <StatsCard
+                            title="Realizado Acumulado"
+                            value={`R$ ${metrics.totalRealCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                            icon={<Calculator size={20} />}
+                            color={metrics.totalRealCost > metrics.totalBudget ? "bg-red-600" : "bg-emerald-600"}
+                            comparison={{
+                                label: "Saldo Real vs Budget",
+                                value: `R$ ${(metrics.totalBudget - metrics.totalRealCost).toLocaleString('pt-BR')}`,
+                                percent: metrics.totalBudget > 0 ? (metrics.totalRealCost / metrics.totalBudget) * 100 : 0,
+                                isOver: metrics.totalRealCost > metrics.totalBudget
+                            }}
+                        />
+                    </>
+                )}
+            </div>
+
+            {/* DETAILED METRICS SECTION (LOWER LEVEL) */}
+            <HierarchySection title="Detalhamento de Métricas">
                 <StatsCard
-                    title="Soma Total Horas (60+100)"
-                    value={formatDecimalHours(metrics.realTotalHE)}
-                    icon={<Clock size={20} />}
-                    color="bg-slate-700"
-                    comparison={{
-                        label: "Comparativo Planejado",
-                        value: formatDecimalHours(metrics.totalPlannedHours),
-                        percent: metrics.totalPlannedHours > 0 ? (metrics.realTotalHE / metrics.totalPlannedHours) * 100 : 0,
-                        isOver: metrics.realTotalHE > metrics.totalPlannedHours
-                    }}
-                />
-                <StatsCard
-                    title="H.E. 60%"
+                    title="H.E. 60% (Real)"
                     value={formatDecimalHours(metrics.realHE60Hours)}
-                    icon={<Percent size={20} />}
+                    icon={<Clock size={20} />}
                     color="bg-blue-500"
-                    subValue={`${((metrics.realHE60Hours / (metrics.realTotalHE || 1)) * 100).toFixed(1)}% do real total`}
+                    subValue={`Custo Est.: R$ ${metrics.realHE60Hours > 0 ? ((metrics.totalRealCost * (metrics.realHE60Hours / (metrics.realTotalHE || 1))).toLocaleString('pt-BR', { maximumFractionDigits: 0 })) : '0'}`}
                 />
                 <StatsCard
-                    title="H.E. 100%"
+                    title="H.E. 100% (Real)"
                     value={formatDecimalHours(metrics.realHE100Hours)}
                     icon={<AlertTriangle size={20} />}
                     color="bg-red-500"
-                    subValue={`${((metrics.realHE100Hours / (metrics.realTotalHE || 1)) * 100).toFixed(1)}% do real total`}
-                />
-            </HierarchySection>
-
-            {/* Nível 03: Específicos */}
-            <HierarchySection title="Nível 03: Específicos">
-                <StatsCard
-                    title="Interjornada"
-                    value={formatDecimalHours(metrics.realInterHours)}
-                    icon={<Scale size={20} />}
-                    color="bg-amber-500"
-                    subValue="Horas de descanso não cumpridas"
+                    subValue={`Custo Est.: R$ ${metrics.realHE100Hours > 0 ? ((metrics.totalRealCost * (metrics.realHE100Hours / (metrics.realTotalHE || 1))).toLocaleString('pt-BR', { maximumFractionDigits: 0 })) : '0'}`}
                 />
                 <StatsCard
-                    title="Adicional Noturno"
-                    value={`R$ ${metrics.realValueAdicNoturno.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                    title="Adic. Noturno + Interjornada"
+                    value={formatDecimalHours(metrics.realAdicNoturnoHours + metrics.realInterHours)}
                     icon={<Moon size={20} />}
                     color="bg-purple-600"
-                    subValue={
-                        <div className="flex justify-between font-bold text-[10px]">
-                            <span>HORAS NOTURNAS:</span>
-                            <span className="font-mono">{formatDecimalHours(metrics.realAdicNoturnoHours)}</span>
-                        </div>
-                    }
-                />
-                <StatsCard
-                    title="DSR (Reflexo HE)"
-                    value={`R$ ${metrics.realValueDSR.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-                    icon={<Sun size={20} />}
-                    color="bg-orange-500"
-                    subValue="Base: 1/6 do valor total de HE"
+                    subValue={`Custo Est. Adic Noturno: R$ ${metrics.realValueAdicNoturno.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
                 />
             </HierarchySection>
 
