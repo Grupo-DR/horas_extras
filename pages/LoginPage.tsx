@@ -16,6 +16,9 @@ export const LoginPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false); // Controls the visual transition
     const [showLoadingVideo, setShowLoadingVideo] = useState(false); // Controls the overlay
 
+    type LoginModule = 'COMMERCIAL' | 'HUMAN_CAPITAL';
+    const [loginModule, setLoginModule] = useState<LoginModule>('COMMERCIAL');
+
     // Refs for Video Control
     const loadingVideoRef = useRef<HTMLVideoElement>(null);
 
@@ -48,7 +51,7 @@ export const LoginPage: React.FC = () => {
             // 5. Success - Redirect
             // Optional: Wait a tiny bit for fade? No, redirect immediately after video.
             toast.success('Bem-vindo ao Portal DR Nexus!');
-            navigate('/comercial');
+            navigate(loginModule === 'HUMAN_CAPITAL' ? '/human-capital' : '/');
 
         } catch (error: any) {
             // 6. Error Handling - Revert UI
@@ -171,6 +174,29 @@ export const LoginPage: React.FC = () => {
                                 value={password}
                                 onChange={e => setPassword(e.target.value)}
                             />
+                        </div>
+
+                        <div>
+                            <label
+                                htmlFor="module"
+                                className="block text-xs font-medium text-slate-300 mb-1 ml-1 uppercase tracking-wide"
+                            >
+                                Módulo
+                            </label>
+
+                            <select
+                                id="module"
+                                value={loginModule}
+                                onChange={(e) => setLoginModule(e.target.value as LoginModule)}
+                                className="w-full bg-black/30 border border-white/10 rounded-lg py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
+                            >
+                                <option value="COMMERCIAL">Comercial</option>
+                                <option value="HUMAN_CAPITAL">Capital Humano</option>
+                            </select>
+
+                            <p className="mt-2 text-[11px] text-slate-400">
+                                Selecione o módulo antes de entrar.
+                            </p>
                         </div>
 
                         <button
