@@ -1,0 +1,5 @@
+{
+  "name": "TOTVS Analytics RH",
+  "description": "Um painel avançado de análise de RH para visualizar dados de horas extras do TOTVS RM, com insights baseados em IA.",
+  "requestFramePermissions": []
+}

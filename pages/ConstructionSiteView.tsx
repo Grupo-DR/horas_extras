@@ -170,8 +170,8 @@ export const ConstructionSiteView: React.FC = () => {
                 }
                 const record = aggregation.get(key)!;
 
-                // Safe Parse Quantity
-                const qty = parseQty(mo.quantidade);
+                // Safe Parse Quantity: If explicit quantity exists, use it. Otherwise, count as 1 person.
+                const qty = mo.quantidade ? parseQty(mo.quantidade) : 1;
 
                 record.sumObj += qty;
                 // Track unique full dates to calculate average correctly

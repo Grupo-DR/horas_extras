@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/genai": "^1.34.0",
+    "@google/genai": "^1.40.0",
     "@google/generative-ai": "^0.24.1",
     "autoprefixer": "^10.4.23",
     "clsx": "^2.1.1",
@@ -22,7 +22,7 @@
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-router-dom": "^7.11.0",
-    "recharts": "^3.6.0",
+    "recharts": "^3.7.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.18",
