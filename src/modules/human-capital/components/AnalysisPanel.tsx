@@ -209,7 +209,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, selectedYear }) => 
 
                 <div className="mt-6 pt-6 border-t border-gray-100">
                     <div className="text-xs text-gray-400 text-center">
-                        <span className="font-bold text-gray-800">Nota:</span> O excesso de horas extras (>2h/dia) e supressão de interjornada geram passivo trabalhista.
+                        <span className="font-bold text-gray-800">Nota:</span> O excesso de horas extras (&gt;2h/dia) e supressão de interjornada geram passivo trabalhista.
                     </div>
                 </div>
             </div>
