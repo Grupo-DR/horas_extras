@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Lock, Mail, Building2, Users, ArrowRight } from 'lucide-react';
 
-export default function LoginPage() {
+// Update to named export to match index.tsx
+export const LoginPage = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [selectedModule, setSelectedModule] = useState<'COMMERCIAL' | 'HUMAN_CAPITAL'>('COMMERCIAL');
@@ -37,15 +38,16 @@ export default function LoginPage() {
     return (
         <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
             <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-                <div className="bg-[#1e3a8a] p-8 text-center relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
+                <div className="bg-[#0f172a] p-8 text-center relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-900/20 to-transparent pointer-events-none" />
                     <div className="relative z-10">
+                        {/* 
                         <div className="w-16 h-16 bg-white/10 rounded-xl flex items-center justify-center mx-auto mb-4 backdrop-blur-md border border-white/20 shadow-inner">
                             <img src="/assets/dr-logo.png" alt="DR Logo" className="h-10 object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
-                            <Building2 className="text-white" size={32} style={{ display: 'none' }} />
                         </div>
-                        <h2 className="text-2xl font-bold text-white tracking-tight">Portal Corporativo</h2>
-                        <p className="text-blue-200 text-sm mt-1 font-medium">Acesso Unificado DR Nexus</p>
+                        */}
+                        <h2 className="text-3xl font-bold text-white tracking-widest font-sans">NEXUS</h2>
+                        <p className="text-blue-200 text-xs mt-1 font-medium tracking-[0.2em] uppercase">Commercial Intelligence</p>
                     </div>
                 </div>
 
