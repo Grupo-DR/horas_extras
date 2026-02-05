@@ -5,22 +5,22 @@ import './index.css';
 import { AuthProvider } from './contexts/AuthContext';
 import { ContractsProvider } from './contexts/ContractsContext';
 import { CrmProvider } from './contexts/CrmContext';
-import PrivateRoute from './components/PrivateRoute';
-import Sidebar from './layout/Sidebar';
+import { PrivateRoute } from './components/PrivateRoute';
+import { Sidebar } from './layout/Sidebar';
 import { Toaster } from 'sonner';
 
 // Páginas do Comercial
-import CommercialView from './pages/CommercialView';
-import ProspectingView from './pages/ProspectingView';
-import ContractsView from './pages/ContractsView';
-import ContractDashboardView from './pages/ContractDashboardView';
-import ConstructionSiteView from './pages/ConstructionSiteView';
-import ActionsView from './pages/ActionsView';
-import LoginPage from './pages/LoginPage';
-import ClientsView from './pages/crm/ClientsView';
-import ClientDetailsView from './pages/crm/ClientDetailsView';
-import TeamSettings from './pages/config/TeamSettings';
-import AccountSettings from './pages/config/AccountSettings';
+import { CommercialView } from './pages/CommercialView';
+import { ProspectingView } from './pages/ProspectingView';
+import { ContractsView } from './pages/ContractsView';
+import { ContractDashboardView } from './pages/ContractDashboardView';
+import { ConstructionSiteView } from './pages/ConstructionSiteView';
+import { ActionsView } from './pages/ActionsView';
+import { LoginPage } from './pages/LoginPage';
+import { ClientsView } from './pages/crm/ClientsView';
+import { ClientDetailsView } from './pages/crm/ClientDetailsView';
+import { TeamSettings } from './pages/config/TeamSettings';
+import { AccountSettings } from './pages/config/AccountSettings';
 
 // Módulo Capital Humano
 // Note: HumanCapitalDashboard is in src/modules/human-capital because index.tsx is in root

@@ -2,7 +2,12 @@ import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-export const PrivateRoute: React.FC = () => {
+// Define props to accept children
+interface PrivateRouteProps {
+    children?: React.ReactNode;
+}
+
+export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
     const { isAuthenticated, loading, user } = useAuth(); // Destructure user
     const location = useLocation();
 
@@ -23,5 +28,6 @@ export const PrivateRoute: React.FC = () => {
         return <Navigate to="/config/conta" replace />;
     }
 
-    return <Outlet />;
+    // Render children if provided, otherwise render Outlet
+    return children ? <>{children}</> : <Outlet />;
 };
