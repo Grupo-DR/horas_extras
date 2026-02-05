@@ -1,4 +1,5 @@
-﻿import React, { useState } from 'react';
+﻿// NÃO USADO — o app usa pages/LoginPage.tsx
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Lock, Mail, Building2, Users, ArrowRight } from 'lucide-react';
