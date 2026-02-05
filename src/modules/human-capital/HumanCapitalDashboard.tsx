@@ -10,7 +10,7 @@ import ProfileManager from '@/src/modules/human-capital/components/ProfileManage
 import Planning from '@/src/modules/human-capital/components/Planning';
 import { canManageProfiles, canPlan } from '@/src/modules/human-capital/services/auth';
 import { formatDateForApi } from '@/src/modules/human-capital/utils/formatters';
-import { LayoutDashboard, Table, Settings, Database, CheckCircle2, AlertTriangle, Menu, Sparkles, CalendarRange, UserCog, LogOut, BarChart3, RefreshCw } from 'lucide-react';
+import { LayoutDashboard, Table, Settings, Database, CheckCircle2, AlertTriangle, Menu, Sparkles, CalendarRange, UserCog, LogOut, BarChart3, RefreshCw, X } from 'lucide-react';
 import { ApiConfig, OvertimeRecord, FetchStatus, UserProfile } from '@/src/modules/human-capital/types';
 
 // Configuração padrão da API TOTVS
@@ -157,7 +157,13 @@ const HumanCapitalDashboard: React.FC = () => {
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
       {/* Sidebar do Módulo RH */}
-      <aside className={`fixed lg:static inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 lg:transform-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 z-20 bg-black/40 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+      <aside className={`fixed lg:static inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 lg:transform-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
         <div className="h-full flex flex-col">
           <div className="p-6 border-b border-gray-100 flex items-center space-x-3">
             <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md shadow-indigo-200">
@@ -167,6 +173,13 @@ const HumanCapitalDashboard: React.FC = () => {
               <h1 className="text-lg font-bold text-gray-900 leading-tight">Capital <span className="text-indigo-600">Humano</span></h1>
               <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Módulo TOTVS Analytics</p>
             </div>
+            <button
+              onClick={() => setIsSidebarOpen(false)}
+              className="lg:hidden ml-auto p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+              aria-label="Fechar menu"
+            >
+              <X size={20} />
+            </button>
           </div>
           <nav className="flex-1 p-4 overflow-y-auto">
             <NavItem tab={Tab.DASHBOARD} icon={<LayoutDashboard size={20} />} label="Visão Geral" />
