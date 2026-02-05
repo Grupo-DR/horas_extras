@@ -2,12 +2,14 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Lock, Mail, Building2, Users, ArrowRight } from 'lucide-react';
+import { toast } from 'sonner';
 
 // Update to named export to match index.tsx
 export const LoginPage = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [selectedModule, setSelectedModule] = useState<'COMMERCIAL' | 'HUMAN_CAPITAL'>('COMMERCIAL');
+    type LoginModule = 'COMMERCIAL' | 'HUMAN_CAPITAL';
+    const [loginModule, setLoginModule] = useState<LoginModule>('COMMERCIAL');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -21,12 +23,8 @@ export const LoginPage = () => {
             setLoading(true);
             await signIn(email, password);
 
-            // Lógica de Roteamento por Módulo
-            if (selectedModule === 'HUMAN_CAPITAL') {
-                navigate('/human-capital');
-            } else {
-                navigate('/'); // Vai para o Dashboard Comercial (Padrão)
-            }
+            toast.success('Bem-vindo ao Portal DR Nexus!');
+            navigate(loginModule === 'HUMAN_CAPITAL' ? '/human-capital' : '/');
         } catch (err) {
             console.error(err);
             setError('Falha no login. Verifique suas credenciais.');
@@ -91,30 +89,33 @@ export const LoginPage = () => {
                             </div>
                         </div>
 
-                        <div className="pt-0">
-                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">Módulo de Acesso</label>
-                            <div className="relative group">
-                                {selectedModule === 'COMMERCIAL' ? (
-                                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={18} />
-                                ) : (
-                                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={18} />
-                                )}
-                                <select
-                                    value={selectedModule}
-                                    onChange={(e) => setSelectedModule(e.target.value as any)}
-                                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-gray-50 focus:bg-white text-gray-700 font-medium appearance-none cursor-pointer"
-                                >
-                                    <option value="COMMERCIAL">Comercial</option>
-                                    <option value="HUMAN_CAPITAL">Capital Humano</option>
-                                </select>
-                                <ArrowRight className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
-                            </div>
+                        <div>
+                            <label
+                                htmlFor="module"
+                                className="block text-xs font-medium text-slate-300 mb-1 ml-1 uppercase tracking-wide"
+                            >
+                                Módulo
+                            </label>
+
+                            <select
+                                id="module"
+                                value={loginModule}
+                                onChange={(e) => setLoginModule(e.target.value as LoginModule)}
+                                className="w-full bg-black/30 border border-white/10 rounded-lg py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
+                            >
+                                <option value="COMMERCIAL">Comercial</option>
+                                <option value="HUMAN_CAPITAL">Capital Humano</option>
+                            </select>
+
+                            <p className="mt-2 text-[11px] text-slate-400">
+                                Selecione o módulo antes de entrar.
+                            </p>
                         </div>
 
                         <button
                             type="submit"
                             disabled={loading}
-                            className={`w-full py-3.5 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${selectedModule === 'COMMERCIAL'
+                            className={`w-full py-3.5 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${loginModule === 'COMMERCIAL'
                                 ? 'bg-blue-700 hover:bg-blue-800 shadow-blue-200'
                                 : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'
                                 } disabled:opacity-70 disabled:cursor-not-allowed transform active:scale-[0.98] mt-2`}
@@ -123,7 +124,7 @@ export const LoginPage = () => {
                                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                             ) : (
                                 <>
-                                    <span>Entrar no Portal {selectedModule === 'COMMERCIAL' ? 'Comercial' : 'RH'}</span>
+                                    <span>Entrar no Portal {loginModule === 'COMMERCIAL' ? 'Comercial' : 'RH'}</span>
                                     <ArrowRight size={18} />
                                 </>
                             )}
