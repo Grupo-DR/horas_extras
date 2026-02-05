@@ -1,106 +1,90 @@
-import React, { Suspense } from 'react';
-import { createRoot } from 'react-dom/client';
+import React from 'react';
+import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './index.css';
-
-import { MainLayout } from './layout/MainLayout';
-import { Toaster } from 'sonner';
 import { AuthProvider } from './contexts/AuthContext';
-import { CrmProvider } from './contexts/CrmContext';
 import { ContractsProvider } from './contexts/ContractsContext';
-import { PrivateRoute } from './components/PrivateRoute';
-import { RequireAdmin } from './components/RequireAdmin';
-import RequireModuleAccess from './components/auth/RequireModuleAccess';
-import { LoginPage } from './pages/LoginPage';
+import { CrmProvider } from './contexts/CrmContext';
+import PrivateRoute from './components/PrivateRoute';
+import Sidebar from './layout/Sidebar';
+import { Toaster } from 'sonner';
 
-// Lazy Load Pages
-const CommercialView = React.lazy(() => import('./pages/CommercialView').then(module => ({ default: module.CommercialView })));
-const ProspectingView = React.lazy(() => import('./pages/ProspectingView').then(module => ({ default: module.ProspectingView })));
-const ActionsView = React.lazy(() => import('./pages/ActionsView').then(module => ({ default: module.ActionsView })));
+// Páginas do Comercial
+import CommercialView from './pages/CommercialView';
+import ProspectingView from './pages/ProspectingView';
+import ContractsView from './pages/ContractsView';
+import ContractDashboardView from './pages/ContractDashboardView';
+import ConstructionSiteView from './pages/ConstructionSiteView';
+import ActionsView from './pages/ActionsView';
+import LoginPage from './pages/LoginPage';
+import ClientsView from './pages/crm/ClientsView';
+import ClientDetailsView from './pages/crm/ClientDetailsView';
+import TeamSettings from './pages/config/TeamSettings';
+import AccountSettings from './pages/config/AccountSettings';
 
-// CRM Pages
-const ClientsView = React.lazy(() => import('./pages/crm/ClientsView').then(module => ({ default: module.ClientsView })));
-const ClientDetailsView = React.lazy(() => import('./pages/crm/ClientDetailsView').then(module => ({ default: module.ClientDetailsView })));
+// Módulo Capital Humano
+// Note: HumanCapitalDashboard is in src/modules/human-capital because index.tsx is in root
+import HumanCapitalDashboard from './src/modules/human-capital/HumanCapitalDashboard';
 
-// Config Pages
-const TeamSettings = React.lazy(() => import('./pages/config/TeamSettings').then(module => ({ default: module.TeamSettings })));
-const AccountSettings = React.lazy(() => import('./pages/config/AccountSettings').then(module => ({ default: module.AccountSettings })));
-const ContractsView = React.lazy(() => import('./pages/ContractsView').then(module => ({ default: module.ContractsView })));
-const ContractDashboardView = React.lazy(() => import('./pages/ContractDashboardView').then(module => ({ default: module.ContractDashboardView })));
-const ConstructionSiteView = React.lazy(() => import('./pages/ConstructionSiteView').then(module => ({ default: module.ConstructionSiteView })));
-
-const LoadingFallback = () => (
-  <div className="flex h-screen w-full items-center justify-center bg-slate-50">
-    <div className="flex flex-col items-center gap-2">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
-      <span className="text-sm font-medium text-slate-600">Carregando módulo...</span>
-    </div>
-  </div>
-);
-
-const App: React.FC = () => {
+const App = () => {
   return (
-    <BrowserRouter>
-      <Toaster position="top-right" richColors />
-      <AuthProvider>
-        <CrmProvider>
-          <ContractsProvider>
-            <Suspense fallback={<LoadingFallback />}>
-              <Routes>
-                {/* PUBLIC */}
-                <Route path="/login" element={<LoginPage />} />
-
-                {/* PRIVATE */}
-                <Route element={<PrivateRoute />}>
-                  <Route path="/" element={<MainLayout />}>
-                    <Route index element={<Navigate to="/comercial" replace />} />
-
-                    <Route element={<RequireModuleAccess module="commercial_dashboard" />}>
-                      <Route path="comercial" element={<CommercialView />} />
-                      <Route path="prospeccao" element={<ProspectingView />} />
-                    </Route>
-
-                    <Route element={<RequireModuleAccess module="contracts" />}>
-                      <Route path="contratos" element={<ContractsView />} />
-                      <Route path="contratos/:id/visao-obra" element={<ConstructionSiteView />} />
-                      <Route path="contratos/:id" element={<ContractDashboardView />} />
-                    </Route>
-
-
-
-                    <Route element={<RequireModuleAccess module="operational_planning" />}>
-                      <Route path="acoes" element={<ActionsView />} />
-                    </Route>
-
-                    {/* CRM Module */}
-                    <Route element={<RequireModuleAccess module="crm" />}>
-                      <Route path="crm" element={<Navigate to="/crm/clients" replace />} />
-                      <Route path="crm/clients" element={<ClientsView />} />
-                      <Route path="crm/clients/:id" element={<ClientDetailsView />} />
-                    </Route>
-
-                    {/* Account Settings */}
-                    <Route path="config/conta" element={<AccountSettings />} />
-
-                    {/* Config Module (Admin Only - kept as RequireAdmin for extra safety or use users module) */}
-                    <Route
-                      path="config/equipe"
-                      element={
-                        <RequireAdmin>
-                          <TeamSettings />
-                        </RequireAdmin>
-                      }
-                    />
-                  </Route>
-                </Route>
-              </Routes>
-            </Suspense>
-          </ContractsProvider>
-        </CrmProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <div className="flex min-h-screen bg-gray-50">
+      <Sidebar />
+      <div className="flex-1 ml-64 p-8 overflow-y-auto">
+        <Routes>
+          <Route path="/" element={<CommercialView />} />
+          <Route path="/prospecting" element={<ProspectingView />} />
+          <Route path="/crm/clients" element={<ClientsView />} />
+          <Route path="/crm/clients/:id" element={<ClientDetailsView />} />
+          <Route path="/contracts" element={<ContractsView />} />
+          <Route path="/contracts/dashboard" element={<ContractDashboardView />} />
+          <Route path="/production" element={<ConstructionSiteView />} />
+          <Route path="/actions" element={<ActionsView />} />
+          <Route path="/config/team" element={<TeamSettings />} />
+          <Route path="/config/account" element={<AccountSettings />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+    </div>
   );
 };
 
-const root = createRoot(document.getElementById('root')!);
-root.render(<App />);
+const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
+
+root.render(
+  <React.StrictMode>
+    <AuthProvider>
+      <ContractsProvider>
+        <CrmProvider>
+          <BrowserRouter>
+            <Toaster position="top-right" richColors />
+            <Routes>
+              {/* Rota Pública */}
+              <Route path="/login" element={<LoginPage />} />
+
+              {/* MÓDULO CAPITAL HUMANO (Layout Independente) */}
+              <Route
+                path="/human-capital/*"
+                element={
+                  <PrivateRoute>
+                    <HumanCapitalDashboard />
+                  </PrivateRoute>
+                }
+              />
+
+              {/* MÓDULO COMERCIAL (Layout Padrão com Sidebar) */}
+              <Route
+                path="/*"
+                element={
+                  <PrivateRoute>
+                    <App />
+                  </PrivateRoute>
+                }
+              />
+            </Routes>
+          </BrowserRouter>
+        </CrmProvider>
+      </ContractsProvider>
+    </AuthProvider>
+  </React.StrictMode>
+);

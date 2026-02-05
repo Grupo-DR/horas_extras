@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FileText, Database, BarChart, Settings, CheckSquare, Users, LogOut, User as UserIcon, Target } from 'lucide-react';
+import { LayoutDashboard, FileText, Database, BarChart, Settings, CheckSquare, Users, LogOut, User as UserIcon, Target, Briefcase } from 'lucide-react';
 import { AppModule } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -55,6 +55,13 @@ export const Sidebar: React.FC = () => {
             icon: Users,
             path: '/crm/clients',
             authModule: 'crm' as ModuleKey
+        },
+        {
+            module: 'HUMAN_CAPITAL',
+            label: 'Capital Humano',
+            icon: Briefcase,
+            path: '/human-capital',
+            authModule: 'human_capital' as ModuleKey
         },
     ];
 
