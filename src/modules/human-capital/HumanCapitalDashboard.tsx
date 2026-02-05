@@ -12,6 +12,8 @@ import { canManageProfiles, canPlan } from '@/src/modules/human-capital/services
 import { formatDateForApi } from '@/src/modules/human-capital/utils/formatters';
 import { LayoutDashboard, Table, Settings, Database, CheckCircle2, AlertTriangle, Menu, Sparkles, CalendarRange, UserCog, LogOut, BarChart3, RefreshCw, X } from 'lucide-react';
 import { ApiConfig, OvertimeRecord, FetchStatus, UserProfile } from '@/src/modules/human-capital/types';
+import { SidebarBase, SidebarItem } from '../../../layout/SidebarBase';
+import { useNavigate } from 'react-router-dom';
 
 // Configuração padrão da API TOTVS
 const DEFAULT_CONFIG: ApiConfig = {
@@ -33,6 +35,7 @@ enum Tab {
 
 const HumanCapitalDashboard: React.FC = () => {
   const { user: nexusUser, logout: signOut } = useAuth();
+  const navigate = useNavigate();
 
   // Adapter: Converte o usuário do Portal-Commercial para o formato esperado pelo RH
   const currentUser: UserProfile | null = useMemo(() => nexusUser ? ({
@@ -51,7 +54,6 @@ const HumanCapitalDashboard: React.FC = () => {
   const [status, setStatus] = useState<FetchStatus>('idle');
   const [activeTab, setActiveTab] = useState<Tab>(Tab.DASHBOARD);
   const [showAiPanel, setShowAiPanel] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [filters, setFilters] = useState<FilterState>({
     searchTerm: '',
@@ -136,76 +138,58 @@ const HumanCapitalDashboard: React.FC = () => {
     });
   };
 
-  if (!effectiveUser) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="animate-pulse text-blue-600 font-medium">Carregando Perfil Capital Humano...</div></div>;
-
-  const NavItem = ({ tab, icon, label, restrictedTo }: { tab: Tab; icon: React.ReactNode; label: string, restrictedTo?: boolean }) => {
-    if (restrictedTo === false) return null;
-    return (
-      <button
-        onClick={() => { setActiveTab(tab); setIsSidebarOpen(false); }}
-        className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors mb-1 ${activeTab === tab
-          ? 'bg-blue-50 text-blue-700 font-medium'
-          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-          }`}
-      >
-        {icon}
-        <span>{label}</span>
-      </button>
-    );
+  const handleLogout = () => {
+    signOut();
+    navigate('/login');
   };
+
+  const sidebarItems: SidebarItem[] = useMemo(() => {
+    if (!effectiveUser) return [];
+
+    const items: SidebarItem[] = [
+      { key: Tab.DASHBOARD, label: "Visão Geral", icon: LayoutDashboard, onClick: () => setActiveTab(Tab.DASHBOARD), isActive: activeTab === Tab.DASHBOARD },
+      { key: Tab.DATA, label: "Dados Detalhados", icon: Table, onClick: () => setActiveTab(Tab.DATA), isActive: activeTab === Tab.DATA },
+    ];
+
+    if (canPlan(effectiveUser.role)) {
+      items.push({ key: Tab.PLANNING, label: "Planejamento", icon: CalendarRange, onClick: () => setActiveTab(Tab.PLANNING), isActive: activeTab === Tab.PLANNING });
+    }
+
+    items.push({ key: Tab.ANALYSIS, label: "Análise Financeira", icon: BarChart3, onClick: () => setActiveTab(Tab.ANALYSIS), isActive: activeTab === Tab.ANALYSIS });
+
+    if (canManageProfiles(effectiveUser.role)) {
+      items.push({ key: Tab.PROFILES, label: "Gestão de Perfis", icon: UserCog, onClick: () => setActiveTab(Tab.PROFILES), isActive: activeTab === Tab.PROFILES });
+    }
+
+    items.push({ key: Tab.SETTINGS, label: "Configurações", icon: Settings, onClick: () => setActiveTab(Tab.SETTINGS), isActive: activeTab === Tab.SETTINGS });
+
+    return items;
+  }, [effectiveUser, activeTab]);
+
+
+  if (!effectiveUser) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="animate-pulse text-blue-600 font-medium">Carregando Perfil Capital Humano...</div></div>;
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
-      {/* Sidebar do Módulo RH */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-20 bg-black/40 lg:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-      <aside className={`fixed lg:static inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 lg:transform-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
-        <div className="h-full flex flex-col">
-          <div className="p-6 border-b border-gray-100 flex items-center space-x-3">
-            <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md shadow-indigo-200">
-              <Database className="text-white" size={18} />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-gray-900 leading-tight">Capital <span className="text-indigo-600">Humano</span></h1>
-              <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Módulo TOTVS Analytics</p>
-            </div>
-            <button
-              onClick={() => setIsSidebarOpen(false)}
-              className="lg:hidden ml-auto p-2 rounded-lg hover:bg-gray-100 text-gray-600"
-              aria-label="Fechar menu"
-            >
-              <X size={20} />
-            </button>
-          </div>
-          <nav className="flex-1 p-4 overflow-y-auto">
-            <NavItem tab={Tab.DASHBOARD} icon={<LayoutDashboard size={20} />} label="Visão Geral" />
-            <NavItem tab={Tab.DATA} icon={<Table size={20} />} label="Dados Detalhados" />
-            <NavItem tab={Tab.PLANNING} icon={<CalendarRange size={20} />} label="Planejamento" restrictedTo={canPlan(effectiveUser.role)} />
-            <NavItem tab={Tab.ANALYSIS} icon={<BarChart3 size={20} />} label="Análise Financeira" />
-            <NavItem tab={Tab.PROFILES} icon={<UserCog size={20} />} label="Gestão de Perfis" restrictedTo={canManageProfiles(effectiveUser.role)} />
-            <NavItem tab={Tab.SETTINGS} icon={<Settings size={20} />} label="Configurações" />
-          </nav>
-          <div className="p-4 border-t border-gray-100 space-y-3 bg-gray-50/50">
-            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl p-4 text-white cursor-pointer shadow-lg hover:shadow-xl transition-shadow" onClick={() => setShowAiPanel(true)}>
-              <div className="flex items-center space-x-2 mb-2">
-                <Sparkles size={16} />
-                <span className="font-medium text-sm">Gemini AI</span>
-              </div>
-              <p className="text-xs text-indigo-100 opacity-90 leading-relaxed">Clique para gerar insights inteligentes sobre horas extras.</p>
-            </div>
-          </div>
-        </div>
-      </aside>
+      <SidebarBase
+        brand={{
+          topLogoSrc: "/assets/dr-logo.png",
+          title: "Capital Humano",
+          subtitle: "TOTVS Analytics"
+        }}
+        items={sidebarItems}
+        userDisplay={{
+          name: effectiveUser.name || 'Usuário',
+          role: effectiveUser.role || 'Membro',
+          avatarUrl: effectiveUser.avatar === '👤' ? undefined : effectiveUser.avatar // Mock avatar text check
+        }}
+        onLogout={handleLogout}
+      />
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden relative bg-gray-50/30">
+      <main className="flex-1 flex flex-col overflow-hidden relative bg-gray-50/30 ml-20 transition-all duration-300">
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-8 shrink-0 shadow-sm z-20">
           <div className="flex items-center gap-4">
-            <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg"><Menu size={24} /></button>
             <h2 className="text-xl font-bold text-gray-800 tracking-tight">
               {activeTab === Tab.DASHBOARD && 'Dashboard Geral'}
               {activeTab === Tab.DATA && 'Gerenciamento de Dados'}
@@ -238,6 +222,15 @@ const HumanCapitalDashboard: React.FC = () => {
                 <p>Configurações de conexão são gerenciadas centralmente pelo Admin.</p>
               </div>
             )}
+
+            {/* Gemini AI Card - Moved inside content area or kept as widget? User said "NÃO usar o card “Gemini AI” dentro do sidebar por enquanto". Can keep the floating panel trigger elsewhere? Or just remove access for now as per "estética idêntica". The floating panel trigger was in the sidebar. I'll remove it from sidebar. If I want to keep AI functionality, I should put the button somewhere else, e.g. Header. But to stick to "mesmo padrão estético", I might just hide it or put it in header. I'll add it to Header to preserve feature if possible, or just omit if no space. User didn't ban it, just said "NÃO usar... dentro do sidebar". I'll add a small button in Header. */}
+            <button
+              onClick={() => setShowAiPanel(true)}
+              className="fixed bottom-6 right-6 bg-gradient-to-br from-indigo-500 to-purple-600 text-white p-4 rounded-full shadow-xl hover:shadow-2xl hover:scale-105 transition-all z-40 group"
+              title="Gemini AI Insights"
+            >
+              <Sparkles size={24} className="group-hover:animate-pulse" />
+            </button>
           </div>
         </div>
 
