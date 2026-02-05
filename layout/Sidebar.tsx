@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FileText, Database, BarChart, Settings, CheckSquare, Users, LogOut, User as UserIcon, Target, Briefcase } from 'lucide-react';
+import { LayoutDashboard, FileText, Database, BarChart, Settings, CheckSquare, Users, LogOut, User as UserIcon, Target } from 'lucide-react';
 import { AppModule } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -24,21 +24,21 @@ export const Sidebar: React.FC = () => {
             module: AppModule.COMMERCIAL,
             label: 'Comercial',
             icon: LayoutDashboard,
-            path: '/comercial',
+            path: '/',
             authModule: 'commercial_dashboard' as ModuleKey
         },
         {
             module: 'PROSPECTING',
             label: 'Prospecção',
             icon: Target,
-            path: '/prospeccao',
+            path: '/prospecting',
             authModule: 'commercial_dashboard' as ModuleKey
         },
         {
             module: AppModule.CONTRACTS,
             label: 'Contratos',
             icon: FileText,
-            path: '/contratos',
+            path: '/contracts',
             authModule: 'contracts' as ModuleKey
         },
 
@@ -46,7 +46,7 @@ export const Sidebar: React.FC = () => {
             module: 'ACTIONS',
             label: 'Ações',
             icon: CheckSquare,
-            path: '/acoes',
+            path: '/actions',
             authModule: 'operational_planning' as ModuleKey
         },
         {
@@ -55,13 +55,6 @@ export const Sidebar: React.FC = () => {
             icon: Users,
             path: '/crm/clients',
             authModule: 'crm' as ModuleKey
-        },
-        {
-            module: 'HUMAN_CAPITAL',
-            label: 'Capital Humano',
-            icon: Briefcase,
-            path: '/human-capital',
-            authModule: 'human_capital' as ModuleKey
         },
     ];
 
@@ -133,7 +126,7 @@ export const Sidebar: React.FC = () => {
                 {/* Settings Link - Admin Only */}
                 {user?.systemRole === 'ADMIN' && (
                     <NavLink
-                        to="/config/equipe"
+                        to="/config/team"
                         className={({ isActive }) => `
               relative flex items-center justify-center group-hover:justify-start group-hover:px-4 p-3 rounded-xl transition-all duration-300 gap-3 mt-2
               ${isActive
@@ -170,7 +163,7 @@ export const Sidebar: React.FC = () => {
                     </div>
 
                     {/* Identification - Visible ONLY on Group Hover */}
-                    <NavLink to="/config/conta" className="flex flex-col min-w-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 w-0 group-hover:w-auto group-hover:flex-1 hover:bg-slate-100/50 rounded p-1 cursor-pointer">
+                    <NavLink to="/config/account" className="flex flex-col min-w-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 w-0 group-hover:w-auto group-hover:flex-1 hover:bg-slate-100/50 rounded p-1 cursor-pointer">
                         <span className="text-sm font-semibold text-slate-700 truncate block">
                             {user?.name || 'Usuário'}
                         </span>
