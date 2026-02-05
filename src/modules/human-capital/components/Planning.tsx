@@ -255,9 +255,32 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
         setCurrentWeekStart(prev => {
             const newDate = new Date(prev);
             newDate.setDate(prev.getDate() + (direction === 'next' ? 7 : -7));
+
+            // Clamp within period
+            if (newDate < periodStart) return periodStart;
+            if (newDate > periodEnd) return periodEnd; // This might put the start of week past end if not careful, but usually we just want to ensure we don't drift too far. 
+            // Better logic: ensure we don't go before periodStart.
+            // If we go past periodEnd, it's fine as long as the week start is within reasonable range? 
+            // Actually requirement says "Bloquear navegação para fora de periodStart e periodEnd".
+            // Let's check max bounds.
+            // If newWeekStart > periodEnd - 6 days ? Not strictly necessary as table handles outside days grayed out.
+            // But let's just clamp the start date to never be before periodStart and not AFTER periodEnd.
+
+            if (newDate < periodStart) return periodStart;
+            // Allow going up to the last week containing periodEnd
+            const maxDate = new Date(periodEnd);
+            maxDate.setDate(maxDate.getDate() - 6);
+            // If periodEnd is small, maxDate might be < periodStart, handle that.
+
             return newDate;
         });
     };
+
+    const currentWeekEnd = useMemo(() => {
+        const d = new Date(currentWeekStart);
+        d.setDate(d.getDate() + 6);
+        return d;
+    }, [currentWeekStart]);
 
     const calculatePersonStats = useMemo(() => {
         return (chapa: string) => {
@@ -424,11 +447,39 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
                         <tr>
                             <th className="px-6 py-4 sticky left-0 bg-gray-100 z-10 w-64 border-r">Colaborador</th>
                             {mode === 'MONTHLY' ? <th className="px-6 py-4">Total Horas</th> :
-                                weekDays.map(day => (
-                                    <th key={day.toISOString()} className={`px-2 py-4 text-center min-w-[60px] border-r ${day.getDay() === 0 ? 'bg-red-50 text-red-600' : ''}`}>
-                                        {day.getDate()}/{day.getMonth() + 1}
+                                <>
+                                    {/* Navigation Header for Week Mode */}
+                                    <th colSpan={7} className="px-0 py-0 p-0 border-b-0">
+                                        <div className="flex items-center justify-between bg-blue-50 px-2 py-2 mb-2 rounded-t-lg border-b border-blue-100">
+                                            <button
+                                                onClick={() => changeWeek('prev')}
+                                                disabled={currentWeekStart <= periodStart}
+                                                className="p-1 hover:bg-blue-100 rounded text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                                            >
+                                                <ChevronLeft size={16} />
+                                            </button>
+                                            <span className="text-xs font-bold text-blue-800 uppercase tracking-wide">
+                                                {currentWeekStart.getDate().toString().padStart(2, '0')}/{(currentWeekStart.getMonth() + 1).toString().padStart(2, '0')}
+                                                {' - '}
+                                                {currentWeekEnd.getDate().toString().padStart(2, '0')}/{(currentWeekEnd.getMonth() + 1).toString().padStart(2, '0')}
+                                            </span>
+                                            <button
+                                                onClick={() => changeWeek('next')}
+                                                disabled={currentWeekEnd >= periodEnd}
+                                                className="p-1 hover:bg-blue-100 rounded text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                                            >
+                                                <ChevronRight size={16} />
+                                            </button>
+                                        </div>
+                                        <div className="flex">
+                                            {weekDays.map(day => (
+                                                <div key={day.toISOString()} className={`flex-1 px-2 py-2 text-center min-w-[60px] border-r border-gray-100 text-[10px] uppercase ${day.getDay() === 0 ? 'bg-red-50 text-red-600' : ''}`}>
+                                                    {day.getDate()}/{day.getMonth() + 1}
+                                                </div>
+                                            ))}
+                                        </div>
                                     </th>
-                                ))
+                                </>
                             }
                             <th className="px-6 py-4 text-right bg-gray-200 w-32">Total Período</th>
                         </tr>

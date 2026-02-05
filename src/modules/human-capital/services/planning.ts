@@ -1,26 +1,40 @@
 
 import { PlanningRecord, SalaryRecord, BudgetRecord } from '../types';
 
-// In-memory store for demo purposes. 
-// In a real app this would be in a DB, but we use a local variable here.
-let planningStore: PlanningRecord[] = [];
+const KEY = 'hc_planning_records';
+
+const loadStore = (): PlanningRecord[] => {
+    try {
+        const data = localStorage.getItem(KEY);
+        return data ? JSON.parse(data) : [];
+    } catch (e) {
+        console.error('Error loading planning store', e);
+        return [];
+    }
+};
+
+const saveStore = (records: PlanningRecord[]) => {
+    localStorage.setItem(KEY, JSON.stringify(records));
+};
 
 export const savePlanning = async (plans: PlanningRecord[]): Promise<void> => {
+    const store = loadStore();
     plans.forEach(plan => {
-        const index = planningStore.findIndex(
+        const index = store.findIndex(
             p => p.chapa === plan.chapa && p.date === plan.date && p.type === plan.type
         );
 
         if (index >= 0) {
-            planningStore[index] = plan;
+            store[index] = plan;
         } else {
-            planningStore.push(plan);
+            store.push(plan);
         }
     });
+    saveStore(store);
 };
 
 export const getAllPlanningRecords = (): PlanningRecord[] => {
-    return [...planningStore];
+    return loadStore();
 };
 
 export const getPlanning = async (
@@ -28,7 +42,8 @@ export const getPlanning = async (
     month: string, // YYYY-MM
     type: 'DAILY' | 'MONTHLY'
 ): Promise<PlanningRecord[]> => {
-    return planningStore.filter(p => {
+    const store = loadStore();
+    return store.filter(p => {
         const matchType = p.type === type;
         const matchDate = p.date.startsWith(month);
         const matchCC = costCenter ? p.costCenter === costCenter : true;
