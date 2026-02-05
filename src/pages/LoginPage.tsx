@@ -89,32 +89,23 @@ export default function LoginPage() {
                             </div>
                         </div>
 
-                        <div className="pt-2">
-                            <label className="block text-xs font-bold text-gray-500 uppercase mb-3 text-center tracking-wide">Selecione o Módulo de Acesso</label>
-                            <div className="grid grid-cols-2 gap-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setSelectedModule('COMMERCIAL')}
-                                    className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all duration-200 ${selectedModule === 'COMMERCIAL'
-                                        ? 'bg-blue-50 border-blue-600 text-blue-700 shadow-sm scale-[1.02] ring-1 ring-blue-200'
-                                        : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200 hover:bg-gray-50 hover:text-gray-500'
-                                        }`}
+                        <div className="pt-0">
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">Módulo de Acesso</label>
+                            <div className="relative group">
+                                {selectedModule === 'COMMERCIAL' ? (
+                                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={18} />
+                                ) : (
+                                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={18} />
+                                )}
+                                <select
+                                    value={selectedModule}
+                                    onChange={(e) => setSelectedModule(e.target.value as any)}
+                                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-gray-50 focus:bg-white text-gray-700 font-medium appearance-none cursor-pointer"
                                 >
-                                    <Building2 size={24} />
-                                    <span className="text-[10px] font-bold uppercase tracking-wide">Comercial</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => setSelectedModule('HUMAN_CAPITAL')}
-                                    className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all duration-200 ${selectedModule === 'HUMAN_CAPITAL'
-                                        ? 'bg-indigo-50 border-indigo-600 text-indigo-700 shadow-sm scale-[1.02] ring-1 ring-indigo-200'
-                                        : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200 hover:bg-gray-50 hover:text-gray-500'
-                                        }`}
-                                >
-                                    <Users size={24} />
-                                    <span className="text-[10px] font-bold uppercase tracking-wide">Capital Humano</span>
-                                </button>
+                                    <option value="COMMERCIAL">Comercial</option>
+                                    <option value="HUMAN_CAPITAL">Capital Humano</option>
+                                </select>
+                                <ArrowRight className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
                             </div>
                         </div>
 
@@ -124,13 +115,13 @@ export default function LoginPage() {
                             className={`w-full py-3.5 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${selectedModule === 'COMMERCIAL'
                                 ? 'bg-blue-700 hover:bg-blue-800 shadow-blue-200'
                                 : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'
-                                } disabled:opacity-70 disabled:cursor-not-allowed transform active:scale-[0.98]`}
+                                } disabled:opacity-70 disabled:cursor-not-allowed transform active:scale-[0.98] mt-2`}
                         >
                             {loading ? (
                                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                             ) : (
                                 <>
-                                    <span>Acessar Portal {selectedModule === 'COMMERCIAL' ? 'Comercial' : 'RH'}</span>
+                                    <span>Entrar no Portal {selectedModule === 'COMMERCIAL' ? 'Comercial' : 'RH'}</span>
                                     <ArrowRight size={18} />
                                 </>
                             )}
