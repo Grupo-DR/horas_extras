@@ -193,7 +193,16 @@ export const migrateToFirestore = async (user: UserProfile) => {
 
 // --- LEGACY SUPPORT ---
 // Add this to satisfy Dashboard.tsx imports until refactor
-export const getAllPlanningRecords = async () => {
-    console.warn("getAllPlanningRecords not implemented for Firestore yet. Returning empty.");
+// --- LEGACY SUPPORT ---
+// Fix: removed async to prevent 'forEach is not a function' crash in legacy Dashboard
+export const getAllPlanningRecords = (): PlanningRecord[] => {
+    try {
+        const data = localStorage.getItem('hc_planning_records_v2');
+        if (data) {
+            return JSON.parse(data) as PlanningRecord[];
+        }
+    } catch (error) {
+        console.error("Error reading local planning records:", error);
+    }
     return [];
 };

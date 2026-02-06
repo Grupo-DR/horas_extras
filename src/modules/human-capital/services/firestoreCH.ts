@@ -11,14 +11,42 @@ const COL_AUDIT = 'hc_audit_logs';
 
 // --- BUDGETS ---
 
+// --- HELPERS ---
+
+const safeNumber = (v: any): number => {
+    const n = Number(v);
+    return isNaN(n) ? 0 : n;
+};
+
+const clean = (obj: any): any => {
+    if (!obj) return obj;
+    const res: any = {};
+    Object.keys(obj).forEach(key => {
+        const val = obj[key];
+        if (val !== undefined) {
+            res[key] = val;
+        }
+    });
+    return res;
+};
+
+// --- BUDGETS ---
+
 export const upsertBudgets = async (budgets: BudgetRecord[], user: UserProfile) => {
     const batch = writeBatch(db);
     budgets.forEach(b => {
         // ID: budget_YYYY-MM_CC_normalized
+        if (!b.monthKey) return; // Guard clause
         const id = `budget_${b.monthKey}_${b.costCenter}`;
         const ref = doc(db, COL_BUDGETS, id);
-        batch.set(ref, {
+
+        const data = clean({
             ...b,
+            value: safeNumber(b.value)
+        });
+
+        batch.set(ref, {
+            ...data,
             updatedAt: Timestamp.now(),
             updatedBy: user.email
         }, { merge: true });
@@ -46,10 +74,18 @@ export const upsertSalaryAllocations = async (allocations: SalaryAllocation[], u
         const batch = writeBatch(db);
         chunk.forEach(s => {
             // ID: salary_YYYY-MM_CHAPA_CC
+            if (!s.monthKey || !s.chapa) return; // Guard
             const id = `salary_${s.monthKey}_${s.chapa}_${s.costCenter}`;
             const ref = doc(db, COL_SALARIES, id);
-            batch.set(ref, {
+
+            const data = clean({
                 ...s,
+                salary: safeNumber(s.salary),
+                allocation: safeNumber(s.allocation)
+            });
+
+            batch.set(ref, {
+                ...data,
                 updatedAt: Timestamp.now(),
                 updatedBy: user.email
             }, { merge: true });
@@ -71,10 +107,17 @@ export const upsertPlanningRecords = async (records: PlanningRecord[], user: Use
     records.forEach(r => {
         // ID: Use r.id if present, or construct
         // ID: plan_YYYY-MM-DD_CHAPA_CC_TYPE
+        if (!r.date || !r.chapa) return;
         const id = r.id || `plan_${r.date}_${r.chapa}_${r.costCenter}_${r.type}`;
         const ref = doc(db, COL_PLANNING, id);
-        batch.set(ref, {
+
+        const data = clean({
             ...r,
+            plannedHours: safeNumber(r.plannedHours)
+        });
+
+        batch.set(ref, {
+            ...data,
             id, // ensure ID is saved
             updatedAt: Timestamp.now(),
             updatedBy: user.email
