@@ -1,4 +1,6 @@
 
+import { HCRole, Scope } from '../iam/types';
+
 export interface OvertimeRecord {
     CHAPA: string;
     NOME: string;
@@ -32,8 +34,6 @@ export interface DashboardMetrics {
     employeeCount: number;
 }
 
-import { HCRole, Scope } from '../iam/types';
-
 export type UserRole = HCRole;
 
 export interface UserProfile {
@@ -41,7 +41,7 @@ export interface UserProfile {
     name: string;
     email: string;
     role: UserRole;
-    scope?: Scope; // Added scope
+    scope?: Scope;
     chapa?: string;
     costCenter?: string;
     avatar?: string;
