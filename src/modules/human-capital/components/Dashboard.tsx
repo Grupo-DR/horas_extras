@@ -8,6 +8,8 @@ import { getAllPlanningRecords, getBudgets, getSalaries } from '../services/plan
 interface DashboardProps {
     data: OvertimeRecord[];
     realOvertime: RealOvertimeRecord[];
+    selectedYear: string;
+    selectedMonth: string;
 }
 
 type ViewMode = 'hours' | 'finance';
@@ -218,7 +220,7 @@ const CostCenterDetailModal: React.FC<{
     );
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ data, realOvertime }) => {
+const Dashboard: React.FC<DashboardProps> = ({ data, realOvertime, selectedYear, selectedMonth }) => {
     const [dashboardViewMode, setDashboardViewMode] = useState<ViewMode>('finance');
 
     const [ccSearch, setCcSearch] = useState('');
@@ -234,21 +236,21 @@ const Dashboard: React.FC<DashboardProps> = ({ data, realOvertime }) => {
     const [budgets, setBudgets] = useState<BudgetRecord[]>([]);
     const [salariesMap, setSalariesMap] = useState<Record<string, number>>({});
 
-    // FETCH DATA EFFECT
+    // 1. CORREÇÃO: Usar as props selectedYear/selectedMonth para definir o contexto
+    const currentMonthKey = useMemo(() => {
+        return `${selectedYear}-${selectedMonth.padStart(2, '0')}`;
+    }, [selectedYear, selectedMonth]);
+
+    // 2. CORREÇÃO: Buscar dados baseados no filtro, não no "new Date()"
     useEffect(() => {
         const fetchData = async () => {
-            // Determine current month key (YYYY-MM) to fetch relevant context
-            // Assuming current month context as per user request:
-            const now = new Date();
-            const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
             try {
-                // Fetch Budgets
-                const fetchedBudgets = await getBudgets(monthKey);
+                // Fetch Budgets do mês selecionado
+                const fetchedBudgets = await getBudgets(currentMonthKey);
                 setBudgets(fetchedBudgets);
 
-                // Fetch Salaries
-                const fetchedSalaries = await getSalaries(monthKey);
+                // Fetch Salários do mês selecionado
+                const fetchedSalaries = await getSalaries(currentMonthKey);
                 const map: Record<string, number> = {};
                 fetchedSalaries.forEach(s => map[s.chapa] = s.salary);
                 setSalariesMap(map);
@@ -259,7 +261,16 @@ const Dashboard: React.FC<DashboardProps> = ({ data, realOvertime }) => {
         };
 
         fetchData();
-    }, []);
+    }, [currentMonthKey]); // Recarrega quando o filtro muda
+
+    // 3. CORREÇÃO: Filtrar os dados passados (data) para considerar apenas o mês selecionado
+    const monthlyData = useMemo(() => {
+        return data.filter(r => {
+            const d = new Date(r.DATA);
+            // Ajuste de fuso horário simples para evitar erros de dia
+            return d.getFullYear() === parseInt(selectedYear) && (d.getMonth() + 1) === parseInt(selectedMonth);
+        });
+    }, [data, selectedYear, selectedMonth]);
 
     const metrics = useMemo(() => {
         let realHE60Hours = 0;
@@ -271,7 +282,8 @@ const Dashboard: React.FC<DashboardProps> = ({ data, realOvertime }) => {
         let realValue100 = 0;
         let realValueAdicNoturno = 0;
 
-        data.forEach(r => {
+        // Use monthlyData
+        monthlyData.forEach(r => {
             const hours = Number(r.HORAS) || 0;
             const evt = (r.EVENTO || '').toUpperCase();
             const sal = salariesMap[r.CHAPA] || 0;
@@ -293,20 +305,35 @@ const Dashboard: React.FC<DashboardProps> = ({ data, realOvertime }) => {
             }
         });
 
-        const totalRealValueHE = realOvertime.reduce((acc, curr) => acc + curr.value, 0); // Use injected Real Overtime Data
-        const realValueDSR = totalRealValueHE / 6;
-        const totalRealCost = totalRealValueHE + realValueAdicNoturno + realValueDSR;
+        // Resolve costs with manual override if exists
+        const manualFinance = realOvertime.find(r => r.year === parseInt(selectedYear) && r.month === parseInt(selectedMonth));
+
+        let totalRealValueHE = 0;
+        let realValueDSR = 0;
+        let totalRealCost = 0;
+
+        if (manualFinance) {
+            totalRealCost = manualFinance.value;
+        } else {
+            totalRealValueHE = realValue60 + realValue100; // Calculated from data
+            // DSR approx (1/6 of HE)
+            realValueDSR = totalRealValueHE / 6;
+            totalRealCost = totalRealValueHE + realValueAdicNoturno + realValueDSR;
+        }
 
         let totalPlannedHours = 0;
         let totalPlannedValue = 0;
 
         planningRecords.forEach(p => {
-            if (p.type === 'DAILY') {
-                totalPlannedHours += p.plannedHours;
-                const sal = salariesMap[p.chapa];
-                if (sal && p.plannedHours > 0) {
-                    const isSunday = new Date(p.date).getDay() === 0;
-                    totalPlannedValue += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
+            const pd = new Date(p.date);
+            if (pd.getFullYear() === parseInt(selectedYear) && (pd.getMonth() + 1) === parseInt(selectedMonth)) {
+                if (p.type === 'DAILY') {
+                    totalPlannedHours += p.plannedHours;
+                    const sal = salariesMap[p.chapa];
+                    if (sal && p.plannedHours > 0) {
+                        const isSunday = pd.getDay() === 0;
+                        totalPlannedValue += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
+                    }
                 }
             }
         });
@@ -326,20 +353,24 @@ const Dashboard: React.FC<DashboardProps> = ({ data, realOvertime }) => {
             totalPlannedValue,
             totalBudget
         };
-    }, [data, planningRecords, budgets, salariesMap, realOvertime]);
+    }, [monthlyData, planningRecords, budgets, salariesMap, realOvertime, selectedYear, selectedMonth]);
 
     const ccSummary = useMemo(() => {
         const map: Record<string, { real: number; planned: number; name: string; realCost: number; plannedCost: number; budget: number }> = {};
 
-        const currentMonth = new Date().toLocaleString('pt-BR', { month: 'long' });
+        // Use selectedMonth logic for budget mapping
+        const monthIndex = parseInt(selectedMonth) - 1;
+        const currentMonthName = new Date(parseInt(selectedYear), monthIndex, 1).toLocaleString('pt-BR', { month: 'long' });
+
         budgets.forEach(b => {
             if (!map[b.costCenter]) map[b.costCenter] = { real: 0, planned: 0, name: 'Sem Nome', realCost: 0, plannedCost: 0, budget: 0 };
-            if (b.month.toLowerCase() === currentMonth.toLowerCase()) {
+            if (b.month.toLowerCase() === currentMonthName.toLowerCase()) {
                 map[b.costCenter].budget += b.value;
             }
         });
 
-        data.forEach(r => {
+        // Use monthlyData
+        monthlyData.forEach(r => {
             const cc = r.CODCCUSTO || 'S/ CC';
             if (!map[cc]) map[cc] = { real: 0, planned: 0, name: r.SECAO || 'Sem Nome', realCost: 0, plannedCost: 0, budget: 0 };
             const hours = (Number(r.HORAS) || 0);
@@ -352,26 +383,29 @@ const Dashboard: React.FC<DashboardProps> = ({ data, realOvertime }) => {
         });
 
         planningRecords.forEach(p => {
-            const cc = p.costCenter || 'S/ CC';
-            if (!map[cc]) map[cc] = { real: 0, planned: 0, name: 'Sem Nome', realCost: 0, plannedCost: 0, budget: 0 };
-            map[cc].planned += p.plannedHours;
-            const sal = salariesMap[p.chapa];
-            if (sal && p.plannedHours > 0) {
-                const isSunday = new Date(p.date).getDay() === 0;
-                map[cc].plannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
+            const pd = new Date(p.date);
+            if (pd.getFullYear() === parseInt(selectedYear) && (pd.getMonth() + 1) === parseInt(selectedMonth)) {
+                const cc = p.costCenter || 'S/ CC';
+                if (!map[cc]) map[cc] = { real: 0, planned: 0, name: 'Sem Nome', realCost: 0, plannedCost: 0, budget: 0 };
+                map[cc].planned += p.plannedHours;
+                const sal = salariesMap[p.chapa];
+                if (sal && p.plannedHours > 0) {
+                    const isSunday = pd.getDay() === 0;
+                    map[cc].plannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
+                }
             }
         });
 
         const list = Object.entries(map).map(([cc, s]) => ({ cc, ...s }))
             .sort((a, b) => b.real - a.real);
         return ccSearch ? list.filter(x => x.cc.includes(ccSearch) || x.name.toLowerCase().includes(ccSearch.toLowerCase())) : list;
-    }, [data, planningRecords, ccSearch, budgets, salariesMap]);
+    }, [monthlyData, planningRecords, ccSearch, budgets, salariesMap, selectedYear, selectedMonth]);
 
     const funcSummary = useMemo(() => {
         const map: Record<string, { real: number; planned: number; realCost: number; plannedCost: number }> = {};
         const chapaToFunc: Record<string, string> = {};
 
-        data.forEach(r => {
+        monthlyData.forEach(r => {
             const f = r.FUNCAO || 'S/ Função';
             chapaToFunc[r.CHAPA] = f;
             if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0 };
@@ -385,13 +419,16 @@ const Dashboard: React.FC<DashboardProps> = ({ data, realOvertime }) => {
         });
 
         planningRecords.forEach(p => {
-            const f = chapaToFunc[p.chapa] || 'Indefinido';
-            if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0 };
-            map[f].planned += p.plannedHours;
-            const sal = salariesMap[p.chapa];
-            if (sal && p.plannedHours > 0) {
-                const isSunday = new Date(p.date).getDay() === 0;
-                map[f].plannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
+            const pd = new Date(p.date);
+            if (pd.getFullYear() === parseInt(selectedYear) && (pd.getMonth() + 1) === parseInt(selectedMonth)) {
+                const f = chapaToFunc[p.chapa] || 'Indefinido';
+                if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0 };
+                map[f].planned += p.plannedHours;
+                const sal = salariesMap[p.chapa];
+                if (sal && p.plannedHours > 0) {
+                    const isSunday = pd.getDay() === 0;
+                    map[f].plannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
+                }
             }
         });
 
@@ -399,18 +436,18 @@ const Dashboard: React.FC<DashboardProps> = ({ data, realOvertime }) => {
             .sort((a, b) => b.real - a.real);
 
         return funcSearch ? list.filter(x => x.name.toLowerCase().includes(funcSearch.toLowerCase())) : list;
-    }, [data, planningRecords, funcSearch, salariesMap]);
+    }, [monthlyData, planningRecords, funcSearch, salariesMap, selectedYear, selectedMonth]);
 
     const funcDetailData = useMemo(() => {
         if (!selectedFuncModal) return [];
         const empMap: Record<string, { name: string; hours: number }> = {};
-        data.filter(r => r.FUNCAO === selectedFuncModal).forEach(r => {
+        monthlyData.filter(r => r.FUNCAO === selectedFuncModal).forEach(r => {
             if (!empMap[r.CHAPA]) empMap[r.CHAPA] = { name: r.NOME, hours: 0 };
             empMap[r.CHAPA].hours += (Number(r.HORAS) || 0);
         });
         return Object.entries(empMap).map(([chapa, info]) => ({ chapa, ...info }))
             .sort((a, b) => b.hours - a.hours);
-    }, [data, selectedFuncModal]);
+    }, [monthlyData, selectedFuncModal]);
 
     const ccDetailData = useMemo(() => {
         if (!selectedCcModal) return [];
@@ -418,7 +455,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, realOvertime }) => {
         const chapaToFunc: Record<string, string> = {};
 
         // Get real functions for this CC
-        data.filter(r => r.CODCCUSTO === selectedCcModal).forEach(r => {
+        monthlyData.filter(r => r.CODCCUSTO === selectedCcModal).forEach(r => {
             const f = r.FUNCAO || 'S/ Função';
             chapaToFunc[r.CHAPA] = f;
             if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0 };
@@ -433,19 +470,22 @@ const Dashboard: React.FC<DashboardProps> = ({ data, realOvertime }) => {
 
         // Get planned functions for this CC
         planningRecords.filter(p => p.costCenter === selectedCcModal).forEach(p => {
-            const f = chapaToFunc[p.chapa] || 'S/ Função';
-            if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0 };
-            map[f].planned += p.plannedHours;
-            const sal = salariesMap[p.chapa];
-            if (sal && p.plannedHours > 0) {
-                const isSunday = new Date(p.date).getDay() === 0;
-                map[f].plannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
+            const pd = new Date(p.date);
+            if (pd.getFullYear() === parseInt(selectedYear) && (pd.getMonth() + 1) === parseInt(selectedMonth)) {
+                const f = chapaToFunc[p.chapa] || 'S/ Função';
+                if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0 };
+                map[f].planned += p.plannedHours;
+                const sal = salariesMap[p.chapa];
+                if (sal && p.plannedHours > 0) {
+                    const isSunday = pd.getDay() === 0;
+                    map[f].plannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
+                }
             }
         });
 
         return Object.entries(map).map(([name, s]) => ({ name, ...s }))
             .sort((a, b) => b.real - a.real);
-    }, [data, planningRecords, selectedCcModal, salariesMap]);
+    }, [monthlyData, planningRecords, selectedCcModal, salariesMap, selectedYear, selectedMonth]);
 
     const ToggleButtons = ({ mode, setMode }: { mode: ViewMode, setMode: (m: ViewMode) => void }) => (
         <div className="flex bg-gray-200 p-1 rounded-xl h-9">

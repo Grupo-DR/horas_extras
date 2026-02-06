@@ -271,7 +271,7 @@ const HumanCapitalDashboard: React.FC = () => {
           )}
 
           <div className="animate-in fade-in duration-500 slide-in-from-bottom-2">
-            {activeTab === Tab.DASHBOARD && <Dashboard data={filteredData} realOvertime={filteredRealOvertime} />}
+            {activeTab === Tab.DASHBOARD && <Dashboard data={filteredData} realOvertime={filteredRealOvertime} selectedYear={filters.year} selectedMonth={filters.month} />}
             {activeTab === Tab.DATA && <DataGrid data={filteredData} />}
             {activeTab === Tab.ANALYSIS && <AnalysisPanel data={filteredData} selectedYear={filters.year} realOvertime={filteredRealOvertime} />}
             {activeTab === Tab.PLANNING && canPlan(effectiveUser.role) && <Planning user={effectiveUser} employees={scopedData} />}
