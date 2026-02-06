@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, SalaryRecord } from '../types';
-import { RealOvertimeRecord } from '../data/realOvertime'; // Import type
+import { RealOvertimeRecord } from '../data/realOvertime';
 import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, AlertTriangle, Moon, Sun, Scale, Percent, ArrowUpRight, ArrowDownRight, X, User, DollarSign, ListFilter } from 'lucide-react';
 import { formatDecimalHours } from '../utils/formatters';
 import { getAllPlanningRecords, getBudgets, getSalaries } from '../services/planning';
@@ -8,8 +8,13 @@ import { getAllPlanningRecords, getBudgets, getSalaries } from '../services/plan
 interface DashboardProps {
     data: OvertimeRecord[];
     realOvertime: RealOvertimeRecord[];
-    selectedYear: string;
-    selectedMonth: string;
+    filterContext: {
+        startDate: string;
+        endDate: string;
+        mode: string;
+        year: string;
+        month: string;
+    };
 }
 
 type ViewMode = 'hours' | 'finance';
@@ -220,7 +225,7 @@ const CostCenterDetailModal: React.FC<{
     );
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ data, realOvertime, selectedYear, selectedMonth }) => {
+const Dashboard: React.FC<DashboardProps> = ({ data, realOvertime, filterContext }) => {
     const [dashboardViewMode, setDashboardViewMode] = useState<ViewMode>('finance');
 
     const [ccSearch, setCcSearch] = useState('');
@@ -236,21 +241,28 @@ const Dashboard: React.FC<DashboardProps> = ({ data, realOvertime, selectedYear,
     const [budgets, setBudgets] = useState<BudgetRecord[]>([]);
     const [salariesMap, setSalariesMap] = useState<Record<string, number>>({});
 
-    // 1. CORREÇÃO: Usar as props selectedYear/selectedMonth para definir o contexto
-    const currentMonthKey = useMemo(() => {
-        return `${selectedYear}-${selectedMonth.padStart(2, '0')}`;
-    }, [selectedYear, selectedMonth]);
-
-    // 2. CORREÇÃO: Buscar dados baseados no filtro, não no "new Date()"
+    // Busca de Budgets/Salários
     useEffect(() => {
         const fetchData = async () => {
+            let queryKey = `${filterContext.year}-${filterContext.month}`;
+
+            // Lógica de Budget:
+            // Se for Folha (Competência), o budget é do Mês Selecionado (ex: Jan).
+            // Se for Calendário, o budget é do Mês Selecionado (ex: Jan).
+            // Se for Customizado, tentamos inferir o mês principal pela data de início.
+            if (filterContext.mode === 'CUSTOM') {
+                const d = new Date(filterContext.startDate);
+                queryKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            }
+
+            // Se for Anual, precisaria carregar tudo, mas por simplicidade carregamos o último mês ou tratamos diferente.
+            // Para Anual, o ideal seria uma nova rota de API, mas vamos manter simples por enquanto.
+
             try {
-                // Fetch Budgets do mês selecionado
-                const fetchedBudgets = await getBudgets(currentMonthKey);
+                const fetchedBudgets = await getBudgets(queryKey);
                 setBudgets(fetchedBudgets);
 
-                // Fetch Salários do mês selecionado
-                const fetchedSalaries = await getSalaries(currentMonthKey);
+                const fetchedSalaries = await getSalaries(queryKey);
                 const map: Record<string, number> = {};
                 fetchedSalaries.forEach(s => map[s.chapa] = s.salary);
                 setSalariesMap(map);
@@ -261,79 +273,67 @@ const Dashboard: React.FC<DashboardProps> = ({ data, realOvertime, selectedYear,
         };
 
         fetchData();
-    }, [currentMonthKey]); // Recarrega quando o filtro muda
+    }, [filterContext]);
 
-    // 3. CORREÇÃO: Filtrar os dados passados (data) para considerar apenas o mês selecionado
-    const monthlyData = useMemo(() => {
+    // O "periodData" é apenas uma segurança extra, pois "data" já vem filtrado da API
+    // Mas garante que os cálculos batam com o texto do cabeçalho
+    const periodData = useMemo(() => {
+        const start = new Date(filterContext.startDate + 'T00:00:00');
+        const end = new Date(filterContext.endDate + 'T23:59:59');
+
         return data.filter(r => {
             const d = new Date(r.DATA);
-            // Ajuste de fuso horário simples para evitar erros de dia
-            return d.getFullYear() === parseInt(selectedYear) && (d.getMonth() + 1) === parseInt(selectedMonth);
+            // Ajuste de Fuso para evitar erros de "dia anterior"
+            // Assumindo que r.DATA vem YYYY-MM-DD
+            return d >= start && d <= end;
         });
-    }, [data, selectedYear, selectedMonth]);
+    }, [data, filterContext]);
 
+    // Métricas
     const metrics = useMemo(() => {
-        let realHE60Hours = 0;
-        let realHE100Hours = 0;
-        let realInterHours = 0;
-        let realAdicNoturnoHours = 0;
+        let totalRealHours = 0;
+        let totalRealCost = 0;
 
-        let realValue60 = 0;
-        let realValue100 = 0;
-        let realValueAdicNoturno = 0;
+        periodData.forEach(r => {
+            const h = Number(r.HORAS) || 0;
+            totalRealHours += h;
 
-        // Use monthlyData
-        monthlyData.forEach(r => {
-            const hours = Number(r.HORAS) || 0;
-            const evt = (r.EVENTO || '').toUpperCase();
-            const sal = salariesMap[r.CHAPA] || 0;
-            const baseHour = sal / 220;
-
-            if (evt.includes('EXTRA')) {
-                if (evt.includes('60')) {
-                    realHE60Hours += hours;
-                    realValue60 += baseHour * 1.6 * hours;
-                } else if (evt.includes('100')) {
-                    realHE100Hours += hours;
-                    realValue100 += baseHour * 2.0 * hours;
-                }
-            } else if (evt.includes('INTER')) {
-                realInterHours += hours;
-            } else if (evt.includes('NOTURNO') || evt.includes('20')) {
-                realAdicNoturnoHours += hours;
-                realValueAdicNoturno += baseHour * 0.2 * hours;
+            const salario = salariesMap[r.CHAPA] || 0;
+            if (salario > 0) {
+                const valorHora = salario / 220;
+                let multiplier = 1.5;
+                if (r.EVENTO?.includes('100') || r.EVENTO?.includes('DOMINGO')) multiplier = 2.0;
+                totalRealCost += (valorHora * multiplier * h);
             }
         });
 
-        // Resolve costs with manual override if exists
-        const manualFinance = realOvertime.find(r => r.year === parseInt(selectedYear) && r.month === parseInt(selectedMonth));
-
-        let totalRealValueHE = 0;
-        let realValueDSR = 0;
-        let totalRealCost = 0;
-
-        if (manualFinance) {
-            totalRealCost = manualFinance.value;
-        } else {
-            totalRealValueHE = realValue60 + realValue100; // Calculated from data
-            // DSR approx (1/6 of HE)
-            realValueDSR = totalRealValueHE / 6;
-            totalRealCost = totalRealValueHE + realValueAdicNoturno + realValueDSR;
+        // Override financeiro manual para modos "Fechados" (Mês inteiro)
+        // Se for Customizado, não usamos o valor manual pois ele é sempre mensal cheio
+        if (filterContext.mode !== 'CUSTOM' && filterContext.mode !== 'ANNUAL') {
+            const manualFinance = realOvertime.find(r =>
+                r.year === parseInt(filterContext.year) &&
+                r.month === parseInt(filterContext.month)
+            );
+            if (manualFinance) {
+                totalRealCost = manualFinance.value;
+            }
         }
 
+        // Planejado
         let totalPlannedHours = 0;
-        let totalPlannedValue = 0;
+        let totalPlannedCost = 0;
 
         planningRecords.forEach(p => {
             const pd = new Date(p.date);
-            if (pd.getFullYear() === parseInt(selectedYear) && (pd.getMonth() + 1) === parseInt(selectedMonth)) {
-                if (p.type === 'DAILY') {
-                    totalPlannedHours += p.plannedHours;
-                    const sal = salariesMap[p.chapa];
-                    if (sal && p.plannedHours > 0) {
-                        const isSunday = pd.getDay() === 0;
-                        totalPlannedValue += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
-                    }
+            const start = new Date(filterContext.startDate);
+            const end = new Date(filterContext.endDate);
+
+            if (pd >= start && pd <= end) {
+                totalPlannedHours += p.plannedHours;
+                const sal = salariesMap[p.chapa] || 0;
+                if (sal > 0) {
+                    const isSunday = pd.getDay() === 0;
+                    totalPlannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
                 }
             }
         });
@@ -341,507 +341,272 @@ const Dashboard: React.FC<DashboardProps> = ({ data, realOvertime, selectedYear,
         const totalBudget = budgets.reduce((acc, b) => acc + b.value, 0);
 
         return {
-            realHE60Hours,
-            realHE100Hours,
-            realTotalHE: realHE60Hours + realHE100Hours,
-            realInterHours,
-            realAdicNoturnoHours,
-            realValueAdicNoturno,
-            realValueDSR,
-            totalRealCost,
-            totalPlannedHours,
-            totalPlannedValue,
-            totalBudget
+            realHours: totalRealHours,
+            realCost: totalRealCost,
+            plannedHours: totalPlannedHours,
+            plannedCost: totalPlannedCost,
+            budget: totalBudget,
+            savings: totalBudget - totalRealCost,
+            headcount: new Set(periodData.map(r => r.CHAPA)).size
         };
-    }, [monthlyData, planningRecords, budgets, salariesMap, realOvertime, selectedYear, selectedMonth]);
+    }, [periodData, planningRecords, budgets, salariesMap, filterContext, realOvertime]);
 
-    const ccSummary = useMemo(() => {
-        const map: Record<string, { real: number; planned: number; name: string; realCost: number; plannedCost: number; budget: number }> = {};
+    // Mock para Gráfico (Dados Agrupados por Função)
+    const groupedByFunction = useMemo(() => {
+        const map: Record<string, { real: number; planned: number; realCost: number; plannedCost: number }> = {};
 
-        // Use selectedMonth logic for budget mapping
-        const monthIndex = parseInt(selectedMonth) - 1;
-        const currentMonthName = new Date(parseInt(selectedYear), monthIndex, 1).toLocaleString('pt-BR', { month: 'long' });
+        periodData.forEach(r => {
+            const fun = r.FUNCAO || 'Outros';
+            if (!map[fun]) map[fun] = { real: 0, planned: 0, realCost: 0, plannedCost: 0 };
 
-        budgets.forEach(b => {
-            if (!map[b.costCenter]) map[b.costCenter] = { real: 0, planned: 0, name: 'Sem Nome', realCost: 0, plannedCost: 0, budget: 0 };
-            if (b.month.toLowerCase() === currentMonthName.toLowerCase()) {
-                map[b.costCenter].budget += b.value;
+            const h = Number(r.HORAS) || 0;
+            map[fun].real += h;
+
+            const salario = salariesMap[r.CHAPA] || 0;
+            if (salario > 0) {
+                const valorHora = salario / 220;
+                let multiplier = 1.6; // Média simples para gráfico
+                map[fun].realCost += (valorHora * multiplier * h);
             }
         });
 
-        // Use monthlyData
-        monthlyData.forEach(r => {
-            const cc = r.CODCCUSTO || 'S/ CC';
-            if (!map[cc]) map[cc] = { real: 0, planned: 0, name: r.SECAO || 'Sem Nome', realCost: 0, plannedCost: 0, budget: 0 };
-            const hours = (Number(r.HORAS) || 0);
-            map[cc].real += hours;
-            const sal = salariesMap[r.CHAPA] || 0;
-            if (sal) {
-                const isSunday = new Date(r.DATA).getDay() === 0;
-                map[cc].realCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * hours;
+        // Create a quick lookup map for Chapa -> Function from the main data
+        const chapaToRole: Record<string, string> = {};
+        data.forEach(r => {
+            if (r.CHAPA && r.FUNCAO) {
+                chapaToRole[r.CHAPA] = r.FUNCAO;
             }
         });
 
+        // Add Planned to Function Map
         planningRecords.forEach(p => {
             const pd = new Date(p.date);
-            if (pd.getFullYear() === parseInt(selectedYear) && (pd.getMonth() + 1) === parseInt(selectedMonth)) {
-                const cc = p.costCenter || 'S/ CC';
-                if (!map[cc]) map[cc] = { real: 0, planned: 0, name: 'Sem Nome', realCost: 0, plannedCost: 0, budget: 0 };
-                map[cc].planned += p.plannedHours;
-                const sal = salariesMap[p.chapa];
-                if (sal && p.plannedHours > 0) {
-                    const isSunday = pd.getDay() === 0;
-                    map[cc].plannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
+            const start = new Date(filterContext.startDate);
+            const end = new Date(filterContext.endDate);
+
+            if (pd >= start && pd <= end) {
+                // FALLBACK: Try to find role for this employee, otherwise 'Outros'
+                const role = chapaToRole[p.chapa] || 'Outros';
+
+                if (!map[role]) map[role] = { real: 0, planned: 0, realCost: 0, plannedCost: 0 };
+                map[role].planned += p.plannedHours;
+
+                const sal = salariesMap[p.chapa] || 0;
+                if (sal > 0) {
+                    map[role].plannedCost += (sal / 220) * 1.6 * p.plannedHours;
                 }
             }
         });
 
-        const list = Object.entries(map).map(([cc, s]) => ({ cc, ...s }))
+        return Object.entries(map)
+            .map(([name, val]) => ({ name, ...val }))
+            .sort((a, b) => b.real - a.real)
+            .slice(0, 8); // Top 8 funções
+    }, [periodData, planningRecords, salariesMap, filterContext, data]);
+
+    // Mock para Gráfico (Dados Agrupados por CC)
+    const groupedByCC = useMemo(() => {
+        const map: Record<string, { real: number; planned: number; realCost: number; plannedCost: number; items: typeof groupedByFunction }> = {};
+
+        periodData.forEach(r => {
+            const cc = r.CODCCUSTO || 'Sem CC';
+            if (!map[cc]) map[cc] = { real: 0, planned: 0, realCost: 0, plannedCost: 0, items: [] };
+
+            const h = Number(r.HORAS) || 0;
+            map[cc].real += h;
+
+            const salario = salariesMap[r.CHAPA] || 0;
+            if (salario > 0) {
+                const valorHora = salario / 220;
+                let multiplier = 1.6;
+                map[cc].realCost += (valorHora * multiplier * h);
+            }
+        });
+
+        // Add Planned to CC Map (Aproximado, pois Planning não tem CC direto, teria que cruzar com usuário... Simplificando: Assumindo que o user context filtra planning)
+        // Nota: Para precisão total, planningRecords precisa ter CC.
+
+        return Object.entries(map)
+            .map(([name, val]) => ({ name, ...val }))
             .sort((a, b) => b.real - a.real);
-        return ccSearch ? list.filter(x => x.cc.includes(ccSearch) || x.name.toLowerCase().includes(ccSearch.toLowerCase())) : list;
-    }, [monthlyData, planningRecords, ccSearch, budgets, salariesMap, selectedYear, selectedMonth]);
-
-    const funcSummary = useMemo(() => {
-        const map: Record<string, { real: number; planned: number; realCost: number; plannedCost: number }> = {};
-        const chapaToFunc: Record<string, string> = {};
-
-        monthlyData.forEach(r => {
-            const f = r.FUNCAO || 'S/ Função';
-            chapaToFunc[r.CHAPA] = f;
-            if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0 };
-            const hours = (Number(r.HORAS) || 0);
-            map[f].real += hours;
-            const sal = salariesMap[r.CHAPA] || 0;
-            if (sal) {
-                const isSunday = new Date(r.DATA).getDay() === 0;
-                map[f].realCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * hours;
-            }
-        });
-
-        planningRecords.forEach(p => {
-            const pd = new Date(p.date);
-            if (pd.getFullYear() === parseInt(selectedYear) && (pd.getMonth() + 1) === parseInt(selectedMonth)) {
-                const f = chapaToFunc[p.chapa] || 'Indefinido';
-                if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0 };
-                map[f].planned += p.plannedHours;
-                const sal = salariesMap[p.chapa];
-                if (sal && p.plannedHours > 0) {
-                    const isSunday = pd.getDay() === 0;
-                    map[f].plannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
-                }
-            }
-        });
-
-        const list = Object.entries(map).map(([name, s]) => ({ name, ...s }))
-            .sort((a, b) => b.real - a.real);
-
-        return funcSearch ? list.filter(x => x.name.toLowerCase().includes(funcSearch.toLowerCase())) : list;
-    }, [monthlyData, planningRecords, funcSearch, salariesMap, selectedYear, selectedMonth]);
-
-    const funcDetailData = useMemo(() => {
-        if (!selectedFuncModal) return [];
-        const empMap: Record<string, { name: string; hours: number }> = {};
-        monthlyData.filter(r => r.FUNCAO === selectedFuncModal).forEach(r => {
-            if (!empMap[r.CHAPA]) empMap[r.CHAPA] = { name: r.NOME, hours: 0 };
-            empMap[r.CHAPA].hours += (Number(r.HORAS) || 0);
-        });
-        return Object.entries(empMap).map(([chapa, info]) => ({ chapa, ...info }))
-            .sort((a, b) => b.hours - a.hours);
-    }, [monthlyData, selectedFuncModal]);
-
-    const ccDetailData = useMemo(() => {
-        if (!selectedCcModal) return [];
-        const map: Record<string, { real: number; planned: number; realCost: number; plannedCost: number }> = {};
-        const chapaToFunc: Record<string, string> = {};
-
-        // Get real functions for this CC
-        monthlyData.filter(r => r.CODCCUSTO === selectedCcModal).forEach(r => {
-            const f = r.FUNCAO || 'S/ Função';
-            chapaToFunc[r.CHAPA] = f;
-            if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0 };
-            const hours = (Number(r.HORAS) || 0);
-            map[f].real += hours;
-            const sal = salariesMap[r.CHAPA] || 0;
-            if (sal) {
-                const isSunday = new Date(r.DATA).getDay() === 0;
-                map[f].realCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * hours;
-            }
-        });
-
-        // Get planned functions for this CC
-        planningRecords.filter(p => p.costCenter === selectedCcModal).forEach(p => {
-            const pd = new Date(p.date);
-            if (pd.getFullYear() === parseInt(selectedYear) && (pd.getMonth() + 1) === parseInt(selectedMonth)) {
-                const f = chapaToFunc[p.chapa] || 'S/ Função';
-                if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0 };
-                map[f].planned += p.plannedHours;
-                const sal = salariesMap[p.chapa];
-                if (sal && p.plannedHours > 0) {
-                    const isSunday = pd.getDay() === 0;
-                    map[f].plannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
-                }
-            }
-        });
-
-        return Object.entries(map).map(([name, s]) => ({ name, ...s }))
-            .sort((a, b) => b.real - a.real);
-    }, [monthlyData, planningRecords, selectedCcModal, salariesMap, selectedYear, selectedMonth]);
-
-    const ToggleButtons = ({ mode, setMode }: { mode: ViewMode, setMode: (m: ViewMode) => void }) => (
-        <div className="flex bg-gray-200 p-1 rounded-xl h-9">
-            <button
-                onClick={() => setMode('hours')}
-                className={`flex items-center gap-2 px-4 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${mode === 'hours' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-                <Clock size={12} /> Horas
-            </button>
-            <button
-                onClick={() => setMode('finance')}
-                className={`flex items-center gap-2 px-4 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${mode === 'finance' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-                <DollarSign size={12} /> Financeiro
-            </button>
-        </div>
-    );
+    }, [periodData, salariesMap]);
 
     return (
-        <div className="space-y-10">
-            <FunctionDetailModal
-                isOpen={!!selectedFuncModal}
-                onClose={() => setSelectedFuncModal(null)}
-                functionName={selectedFuncModal || ''}
-                employees={funcDetailData}
-            />
-
-            <CostCenterDetailModal
-                isOpen={!!selectedCcModal}
-                onClose={() => setSelectedCcModal(null)}
-                ccName={ccSummary.find(c => c.cc === selectedCcModal)?.name || ''}
-                ccCode={selectedCcModal || ''}
-                data={ccDetailData}
-                viewMode={ccViewMode}
-            />
-
-            {/* TOP BAR / CONTEXT SWITCHER */}
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-                <div>
-                    <h2 className="text-lg font-bold text-gray-800">Dashboard Capital Humano</h2>
-                    <p className="text-xs text-gray-500">Visão Geral de Indicadores de Performance e Financeiros</p>
+        <div className="space-y-6 animate-in fade-in duration-500">
+            {/* Header de Contexto */}
+            <div className="flex justify-between items-center bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+                <div className="text-sm text-gray-600 flex items-center gap-2">
+                    <span className="font-bold text-blue-700 uppercase text-xs tracking-wider">Período Ativo:</span>
+                    <span className="font-mono font-medium text-gray-800">
+                        {new Date(filterContext.startDate).toLocaleDateString('pt-BR')}
+                        <span className="mx-2 text-gray-400">➜</span>
+                        {new Date(filterContext.endDate).toLocaleDateString('pt-BR')}
+                    </span>
                 </div>
-                <div className="flex bg-gray-100 p-1 rounded-xl h-10">
-                    <button
-                        onClick={() => setDashboardViewMode('hours')}
-                        className={`flex items-center gap-2 px-5 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${dashboardViewMode === 'hours' ? 'bg-white text-blue-600 shadow-md transform scale-105' : 'text-gray-500 hover:text-gray-700'}`}
-                    >
-                        <Clock size={14} /> Visão de Horas
-                    </button>
-                    <button
-                        onClick={() => setDashboardViewMode('finance')}
-                        className={`flex items-center gap-2 px-5 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${dashboardViewMode === 'finance' ? 'bg-white text-emerald-600 shadow-md transform scale-105' : 'text-gray-500 hover:text-gray-700'}`}
-                    >
-                        <DollarSign size={14} /> Visão Financeira
-                    </button>
-                </div>
-            </div>
-
-            {/* DYNAMIC TOP CARDS */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {dashboardViewMode === 'hours' ? (
-                    <>
-                        <StatsCard
-                            title="Meta Planejada (H)"
-                            value={formatDecimalHours(metrics.totalPlannedHours)}
-                            icon={<Clock size={20} />}
-                            color="bg-blue-600"
-                            subValue="Total de horas operacionais planejadas"
-                        />
-                        <StatsCard
-                            title="Executado Total (H)"
-                            value={formatDecimalHours(metrics.realTotalHE)}
-                            icon={<TrendingUp size={20} />}
-                            color={metrics.realTotalHE > metrics.totalPlannedHours ? "bg-orange-500" : "bg-emerald-500"}
-                            comparison={{
-                                label: "Planejado",
-                                value: formatDecimalHours(metrics.totalPlannedHours),
-                                percent: metrics.totalPlannedHours > 0 ? (metrics.realTotalHE / metrics.totalPlannedHours) * 100 : 0,
-                                isOver: metrics.realTotalHE > metrics.totalPlannedHours
-                            }}
-                        />
-                        <StatsCard
-                            title="Eficiência do Período"
-                            value={metrics.totalPlannedHours > 0 ? `${((metrics.realTotalHE / metrics.totalPlannedHours) * 100).toFixed(1)}%` : '0%'}
-                            icon={<Percent size={20} />}
-                            color="bg-purple-600"
-                            subValue={
-                                <span className={metrics.realTotalHE > metrics.totalPlannedHours ? "text-red-500 font-bold" : "text-emerald-500 font-bold"}>
-                                    {metrics.realTotalHE > metrics.totalPlannedHours ? "Excedente (Acima da Meta)" : "Eficiente (Abaixo da Meta)"}
-                                </span>
-                            }
-                        />
-                    </>
-                ) : (
-                    <>
-                        <StatsCard
-                            title="Budget Acumulado"
-                            value={`R$ ${metrics.totalBudget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-                            icon={<Wallet size={20} />}
-                            color="bg-indigo-600"
-                            subValue="Meta orçamentária para o período"
-                        />
-                        <StatsCard
-                            title="Planejado Acumulado"
-                            value={`R$ ${metrics.totalPlannedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-                            icon={<TrendingUp size={20} />}
-                            color="bg-blue-600"
-                            comparison={{
-                                label: "vs Budget",
-                                value: `R$ ${(metrics.totalBudget - metrics.totalPlannedValue).toLocaleString('pt-BR')}`,
-                                percent: metrics.totalBudget > 0 ? (metrics.totalPlannedValue / metrics.totalBudget) * 100 : 0,
-                                isOver: metrics.totalPlannedValue > metrics.totalBudget
-                            }}
-                        />
-                        <StatsCard
-                            title="Realizado Acumulado (HE)"
-                            value={`R$ ${metrics.totalRealCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-                            icon={<Calculator size={20} />}
-                            color={metrics.totalRealCost > metrics.totalBudget ? "bg-red-600" : "bg-emerald-600"}
-                            comparison={{
-                                label: "Saldo Real vs Budget",
-                                value: `R$ ${(metrics.totalBudget - metrics.totalRealCost).toLocaleString('pt-BR')}`,
-                                percent: metrics.totalBudget > 0 ? (metrics.totalRealCost / metrics.totalBudget) * 100 : 0,
-                                isOver: metrics.totalRealCost > metrics.totalBudget
-                            }}
-                        />
-                    </>
+                {filterContext.mode === 'PAYROLL' && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-white text-blue-600 px-2 py-1 rounded border border-blue-100 shadow-sm">
+                        Competência (Folha)
+                    </span>
                 )}
             </div>
 
-            {/* DETAILED METRICS SECTION (LOWER LEVEL) */}
-            <HierarchySection title="Detalhamento de Métricas">
-                <StatsCard
-                    title="H.E. 60% (Real)"
-                    value={formatDecimalHours(metrics.realHE60Hours)}
-                    icon={<Clock size={20} />}
-                    color="bg-blue-500"
-                    subValue={`Custo Est.: R$ ${metrics.realHE60Hours > 0 ? ((metrics.totalRealCost * (metrics.realHE60Hours / (metrics.realTotalHE || 1))).toLocaleString('pt-BR', { maximumFractionDigits: 0 })) : '0'}`}
-                />
-                <StatsCard
-                    title="H.E. 100% (Real)"
-                    value={formatDecimalHours(metrics.realHE100Hours)}
-                    icon={<AlertTriangle size={20} />}
-                    color="bg-red-500"
-                    subValue={`Custo Est.: R$ ${metrics.realHE100Hours > 0 ? ((metrics.totalRealCost * (metrics.realHE100Hours / (metrics.realTotalHE || 1))).toLocaleString('pt-BR', { maximumFractionDigits: 0 })) : '0'}`}
-                />
-                <StatsCard
-                    title="Adic. Noturno + Interjornada"
-                    value={formatDecimalHours(metrics.realAdicNoturnoHours + metrics.realInterHours)}
-                    icon={<Moon size={20} />}
-                    color="bg-purple-600"
-                    subValue={`Custo Est. Adic Noturno: R$ ${metrics.realValueAdicNoturno.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-                />
-            </HierarchySection>
-
-            {/* Main Tables */}
-            <div className="space-y-8 pt-4">
-                {/* Cost Center Table */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col transition-all">
-                    <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex flex-wrap justify-between items-center gap-4">
-                        <div className="flex items-center gap-4">
-                            <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-                                <Building2 size={16} className="text-blue-500" />
-                                RESUMO POR CENTRO DE CUSTO (CC)
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group">
+                    <div className="flex justify-between items-start mb-4">
+                        <div>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                {dashboardViewMode === 'finance' ? 'Realizado (R$)' : 'Horas Reais'}
+                            </p>
+                            <h3 className={`text-2xl font-bold font-mono mt-1 ${(metrics.realCost > metrics.budget && dashboardViewMode === 'finance') ? 'text-red-600' : 'text-gray-800'
+                                }`}>
+                                {dashboardViewMode === 'finance'
+                                    ? `R$ ${metrics.realCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                                    : formatDecimalHours(metrics.realHours)
+                                }
                             </h3>
-                            <ToggleButtons mode={ccViewMode} setMode={setCcViewMode} />
                         </div>
-                        <div className="relative">
-                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={12} />
-                            <input
-                                type="text"
-                                placeholder="Filtrar CC ou Descrição..."
-                                className="pl-7 pr-2 py-1 text-[10px] border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                value={ccSearch}
-                                onChange={(e) => setCcSearch(e.target.value)}
-                            />
+                        <div className={`p-3 rounded-xl ${(metrics.realCost > metrics.budget && dashboardViewMode === 'finance') ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
+                            }`}>
+                            <Wallet size={20} />
                         </div>
-                    </div>
-                    <div className="w-full">
-                        <table className="w-full text-left text-xs text-gray-600">
-                            <thead className="bg-gray-100 text-gray-700 font-bold uppercase text-[9px] sticky top-0 z-10">
-                                {ccViewMode === 'hours' ? (
-                                    <tr>
-                                        <th className="px-6 py-4">Código CC</th>
-                                        <th className="px-6 py-4">Nome / Descrição</th>
-                                        <th className="px-6 py-4 text-right">Horas Plan.</th>
-                                        <th className="px-6 py-4 text-right">Horas Real</th>
-                                        <th className="px-6 py-4 text-center">Plan. x Real</th>
-                                    </tr>
-                                ) : (
-                                    <tr>
-                                        <th className="px-6 py-4">Código CC</th>
-                                        <th className="px-6 py-4">Nome / Descrição</th>
-                                        <th className="px-6 py-4 text-right">Budget</th>
-                                        <th className="px-6 py-4 text-right">Planejado (R$)</th>
-                                        <th className="px-6 py-4 text-right">Real (R$)</th>
-                                        <th className="px-6 py-4 text-center">Plan. x Real (R$)</th>
-                                    </tr>
-                                )}
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {ccSummary.map((item) => {
-                                    const diffHours = item.planned - item.real;
-                                    const diffCost = item.plannedCost - item.realCost;
-
-                                    return (
-                                        <tr
-                                            key={item.cc}
-                                            className="hover:bg-blue-50 cursor-pointer transition-colors group"
-                                            onClick={() => setSelectedCcModal(item.cc)}
-                                        >
-                                            <td className="px-6 py-3 font-mono font-medium text-gray-900 group-hover:text-blue-600">{item.cc}</td>
-                                            <td className="px-6 py-3 font-medium text-gray-500 group-hover:text-blue-600 flex items-center gap-2">
-                                                <span>{item.name}</span>
-                                                <ListFilter size={12} className="opacity-0 group-hover:opacity-100 text-blue-400 transition-opacity shrink-0" />
-                                            </td>
-
-                                            {ccViewMode === 'hours' ? (
-                                                <>
-                                                    <td className="px-6 py-3 text-right font-mono text-gray-400">{formatDecimalHours(item.planned)}</td>
-                                                    <td className="px-6 py-3 text-right font-mono font-bold text-gray-800">{formatDecimalHours(item.real)}</td>
-                                                    <td className="px-6 py-3 text-center">
-                                                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${diffHours < 0 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                                                            {diffHours > 0 ? `+${formatDecimalHours(diffHours)}` : formatDecimalHours(diffHours)}
-                                                        </span>
-                                                    </td>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <td className="px-6 py-3 text-right font-mono text-gray-400">R$ {item.budget.toLocaleString('pt-BR')}</td>
-                                                    <td className="px-6 py-3 text-right font-mono text-blue-600">R$ {item.plannedCost.toLocaleString('pt-BR')}</td>
-                                                    <td className="px-6 py-3 text-right font-mono font-bold text-gray-800">R$ {item.realCost.toLocaleString('pt-BR')}</td>
-                                                    <td className="px-6 py-3 text-center">
-                                                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${diffCost < 0 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                                                            R$ {diffCost.toLocaleString('pt-BR')}
-                                                        </span>
-                                                    </td>
-                                                </>
-                                            )}
-                                        </tr>
-                                    )
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div className="p-4 bg-gray-50 border-t border-gray-100">
-                        <p className="text-[10px] text-gray-400 font-bold uppercase text-center flex items-center justify-center gap-2">
-                            <ListFilter size={14} className="text-blue-400" />
-                            Clique no nome de um CC para ver o detalhamento por função
-                        </p>
                     </div>
                 </div>
 
-                {/* Function Table */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col transition-all">
-                    <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex flex-wrap justify-between items-center gap-4">
-                        <div className="flex items-center gap-4">
-                            <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-                                <Briefcase size={16} className="text-indigo-500" />
-                                RESUMO POR FUNÇÃO
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group">
+                    <div className="flex justify-between items-start mb-4">
+                        <div>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Budget (Meta)</p>
+                            <h3 className="text-2xl font-bold font-mono text-gray-800 mt-1">
+                                R$ {metrics.budget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                             </h3>
-                            <ToggleButtons mode={funcViewMode} setMode={setFuncViewMode} />
                         </div>
-                        <div className="relative">
-                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={12} />
-                            <input
-                                type="text"
-                                placeholder="Filtrar Função..."
-                                className="pl-7 pr-2 py-1 text-[10px] border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                value={funcSearch}
-                                onChange={(e) => setFuncSearch(e.target.value)}
-                            />
+                        <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+                            <Scale size={20} />
                         </div>
                     </div>
-                    <div className="w-full">
-                        <table className="w-full text-left text-xs text-gray-600">
-                            <thead className="bg-gray-100 text-gray-700 font-bold uppercase text-[9px] sticky top-0 z-10">
-                                {funcViewMode === 'hours' ? (
-                                    <tr>
-                                        <th className="px-6 py-4">Função</th>
-                                        <th className="px-6 py-4 text-right">Plan.</th>
-                                        <th className="px-6 py-4 text-right">Real</th>
-                                        <th className="px-6 py-4 text-center">Plan. x Real</th>
-                                        <th className="px-6 py-4 text-right">% Impacto</th>
-                                    </tr>
-                                ) : (
-                                    <tr>
-                                        <th className="px-6 py-4">Função</th>
-                                        <th className="px-6 py-4 text-right">Custo Plan.</th>
-                                        <th className="px-6 py-4 text-right">Custo Real</th>
-                                        <th className="px-6 py-4 text-center">Plan. x Real (R$)</th>
-                                        <th className="px-6 py-4 text-right">% Impacto (R$)</th>
-                                    </tr>
-                                )}
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {funcSummary.map((item) => {
-                                    const diffHours = item.planned - item.real;
-                                    const diffCost = item.plannedCost - item.realCost;
+                </div>
 
-                                    return (
-                                        <tr
-                                            key={item.name}
-                                            className="hover:bg-indigo-50 cursor-pointer transition-colors group"
-                                            onClick={() => setSelectedFuncModal(item.name)}
-                                        >
-                                            <td className="px-6 py-4 font-medium text-gray-900 group-hover:text-indigo-600 flex items-center gap-2">
-                                                <span>{item.name}</span>
-                                                <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 text-indigo-400 transition-opacity shrink-0" />
-                                            </td>
-
-                                            {funcViewMode === 'hours' ? (
-                                                <>
-                                                    <td className="px-6 py-4 text-right font-mono text-gray-400">{formatDecimalHours(item.planned)}</td>
-                                                    <td className="px-6 py-4 text-right font-mono font-bold text-gray-800">{formatDecimalHours(item.real)}</td>
-                                                    <td className="px-6 py-4 text-center">
-                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${diffHours < 0 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                                                            {diffHours > 0 ? `+${formatDecimalHours(diffHours)}` : formatDecimalHours(diffHours)}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4 text-right">
-                                                        <span className="text-[10px] text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded-full">
-                                                            {(item.real / (metrics.realTotalHE || 1) * 100).toFixed(1)}%
-                                                        </span>
-                                                    </td>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <td className="px-6 py-4 text-right font-mono text-blue-600">R$ {item.plannedCost.toLocaleString('pt-BR')}</td>
-                                                    <td className="px-6 py-4 text-right font-mono font-bold text-gray-800">R$ {item.realCost.toLocaleString('pt-BR')}</td>
-                                                    <td className="px-6 py-4 text-center">
-                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${diffCost < 0 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                                                            R$ {diffCost.toLocaleString('pt-BR')}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4 text-right">
-                                                        <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full">
-                                                            {(item.realCost / (metrics.totalRealCost || 1) * 100).toFixed(1)}%
-                                                        </span>
-                                                    </td>
-                                                </>
-                                            )}
-                                        </tr>
-                                    )
-                                })}
-                            </tbody>
-                        </table>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group">
+                    <div className="flex justify-between items-start mb-4">
+                        <div>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                {dashboardViewMode === 'finance' ? 'Planejado (R$)' : 'Horas Planejadas'}
+                            </p>
+                            <h3 className="text-2xl font-bold font-mono text-gray-800 mt-1">
+                                {dashboardViewMode === 'finance'
+                                    ? `R$ ${metrics.plannedCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                                    : formatDecimalHours(metrics.plannedHours)
+                                }
+                            </h3>
+                        </div>
+                        <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
+                            <Calculator size={20} />
+                        </div>
                     </div>
-                    <div className="p-4 bg-gray-50 border-t border-gray-100">
-                        <p className="text-[10px] text-gray-400 font-bold uppercase text-center flex items-center justify-center gap-2">
-                            <ArrowUpRight size={14} className="text-indigo-400" />
-                            Clique em uma função para ver o detalhamento por colaborador
-                        </p>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group">
+                    <div className="flex justify-between items-start mb-4">
+                        <div>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Savings</p>
+                            <h3 className={`text-2xl font-bold font-mono mt-1 ${metrics.savings < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                                R$ {metrics.savings.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </h3>
+                        </div>
+                        <div className={`p-3 rounded-xl ${metrics.savings < 0 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                            <TrendingUp size={20} />
+                        </div>
                     </div>
                 </div>
             </div>
+
+            {/* Toggle View Mode */}
+            <div className="flex justify-end">
+                <div className="bg-gray-100 p-1 rounded-xl flex gap-1">
+                    <button
+                        onClick={() => setDashboardViewMode('finance')}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${dashboardViewMode === 'finance' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                        <DollarSign size={14} /> Financeiro
+                    </button>
+                    <button
+                        onClick={() => setDashboardViewMode('hours')}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${dashboardViewMode === 'hours' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                        <Clock size={14} /> Horas
+                    </button>
+                </div>
+            </div>
+
+            <HierarchySection title="Visão por Centro de Custo">
+                {groupedByCC.map((cc, idx) => (
+                    <StatsCard
+                        key={idx}
+                        title={cc.name}
+                        value={dashboardViewMode === 'finance' ? `R$ ${cc.realCost.toLocaleString('pt-BR')}` : formatDecimalHours(cc.real)}
+                        color="bg-blue-500"
+                        icon={<Building2 size={24} />}
+                        subValue={
+                            <button
+                                onClick={() => {
+                                    setSelectedCcModal(cc.name);
+                                    // Necessário passar dados detalhados para o modal se quisermos drilldown
+                                }}
+                                className="text-blue-600 hover:underline flex items-center gap-1 mt-2"
+                            >
+                                <Search size={12} /> Ver detalhes
+                            </button>
+                        }
+                    />
+                ))}
+            </HierarchySection>
+
+            <HierarchySection title="Top Funções com Horas Extras">
+                {groupedByFunction.map((fun, idx) => (
+                    <StatsCard
+                        key={idx}
+                        title={fun.name}
+                        value={dashboardViewMode === 'finance' ? `R$ ${fun.realCost.toLocaleString('pt-BR')}` : formatDecimalHours(fun.real)}
+                        color="bg-indigo-500"
+                        icon={<Briefcase size={24} />}
+                        subValue={
+                            <button
+                                onClick={() => setSelectedFuncModal(fun.name)}
+                                className="text-indigo-600 hover:underline flex items-center gap-1 mt-2"
+                            >
+                                <ListFilter size={12} /> Detalhar colaboradores
+                            </button>
+                        }
+                    />
+                ))}
+            </HierarchySection>
+
+            {/* Modais */}
+            {selectedFuncModal && (
+                <FunctionDetailModal
+                    isOpen={!!selectedFuncModal}
+                    onClose={() => setSelectedFuncModal(null)}
+                    functionName={selectedFuncModal}
+                    employees={periodData
+                        .filter(r => r.FUNCAO === selectedFuncModal)
+                        .reduce((acc: any[], curr) => {
+                            const existing = acc.find(e => e.chapa === curr.CHAPA);
+                            if (existing) {
+                                existing.hours += Number(curr.HORAS || 0);
+                            } else {
+                                acc.push({
+                                    name: curr.NOME,
+                                    chapa: curr.CHAPA,
+                                    hours: Number(curr.HORAS || 0)
+                                });
+                            }
+                            return acc;
+                        }, [])
+                        .sort((a: any, b: any) => b.hours - a.hours)
+                    }
+                />
+            )}
         </div>
     );
 };

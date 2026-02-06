@@ -34,6 +34,26 @@ enum Tab {
   SETTINGS = 'settings'
 }
 
+// Helper para inicializar datas corretamente
+const getInitialFilters = (): FilterState => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const lastDay = new Date(year, month, 0).getDate();
+
+  return {
+    searchTerm: '',
+    startDate: `${year}-${String(month).padStart(2, '0')}-01`,
+    endDate: `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
+    function: '',
+    costCenter: '',
+    type: '',
+    year: year.toString(),
+    month: month.toString().padStart(2, '0'),
+    dateMode: 'CALENDAR'
+  };
+};
+
 const HumanCapitalDashboard: React.FC = () => {
   const { profile, hasModuleAccess, logout: signOut, isProfileLoading } = useAuth();
   const navigate = useNavigate();
@@ -59,42 +79,44 @@ const HumanCapitalDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>(Tab.DASHBOARD);
   const [showAiPanel, setShowAiPanel] = useState(false);
 
-  const [filters, setFilters] = useState<FilterState>({
-    searchTerm: '',
-    startDate: '',
-    endDate: '',
-    function: '',
-    costCenter: '',
-    type: '',
-    year: new Date().getFullYear().toString(),
-    month: (new Date().getMonth() + 1).toString().padStart(2, '0'),
-    dateMode: 'CALENDAR'
-  });
+  // Inicializa filtros com função helper
+  const [filters, setFilters] = useState<FilterState>(getInitialFilters());
 
   useEffect(() => {
     if (!isProfileLoading) {
       if (!hasModuleAccess('human_capital')) {
-        // Handle access denial
+        // Handle access denial logic
       }
     }
   }, [isProfileLoading, hasModuleAccess, navigate]);
 
+  // CORREÇÃO CRÍTICA: Adicionado dependência de filtros de data para recarregar API
   useEffect(() => {
     if (effectiveUser) {
       loadData();
     }
-  }, [effectiveUser]);
+  }, [effectiveUser, filters.startDate, filters.endDate]);
 
   const loadData = async () => {
     setStatus('loading');
     const apiConfig = {
       ...config,
+      // Garante que a API receba as datas selecionadas no filtro
       startDate: filters.startDate ? formatDateForApi(filters.startDate) : config.startDate,
       endDate: filters.endDate ? formatDateForApi(filters.endDate) : config.endDate
     };
-    const records = await fetchOvertimeData(apiConfig);
-    setData(records);
-    setStatus('success');
+
+    // Pequena otimização: se as datas forem inválidas, não busca
+    if (!apiConfig.startDate || !apiConfig.endDate) return;
+
+    try {
+      const records = await fetchOvertimeData(apiConfig);
+      setData(records);
+      setStatus('success');
+    } catch (e) {
+      console.error("Failed to load HC data", e);
+      setStatus('error');
+    }
   };
 
   const getRegional = (cc: string): string => {
@@ -147,6 +169,7 @@ const HumanCapitalDashboard: React.FC = () => {
     const events = new Set<string>();
     const years = new Set<string>();
 
+    // Usa scopedData para gerar opções relevantes
     scopedData.forEach(item => {
       if (item.FUNCAO) functions.add(item.FUNCAO);
       if (item.CODCCUSTO) costCenters.add(item.CODCCUSTO);
@@ -157,7 +180,7 @@ const HumanCapitalDashboard: React.FC = () => {
     return {
       functions: Array.from(functions).sort(),
       costCenters: Array.from(costCenters).sort(),
-      types: Array.from(events).sort(), // Map events to types
+      types: Array.from(events).sort(),
       years: Array.from(years).sort().reverse()
     };
   }, [scopedData]);
@@ -171,22 +194,16 @@ const HumanCapitalDashboard: React.FC = () => {
       const matchesFunction = !filters.function || item.FUNCAO === filters.function;
       const matchesCostCenter = !filters.costCenter || item.CODCCUSTO === filters.costCenter;
       const matchesEvent = !filters.type || item.EVENTO === filters.type;
+
+      // Nota: Filtro de data já foi aplicado na API, mas podemos reforçar aqui se necessário
+      // para garantir consistência visual no front
+
       return matchesSearch && matchesFunction && matchesCostCenter && matchesEvent;
     });
   }, [scopedData, filters]);
 
   const clearFilters = () => {
-    setFilters({
-      searchTerm: '',
-      startDate: '',
-      endDate: '',
-      function: '',
-      costCenter: '',
-      type: '',
-      year: new Date().getFullYear().toString(),
-      month: (new Date().getMonth() + 1).toString().padStart(2, '0'),
-      dateMode: 'CALENDAR'
-    });
+    setFilters(getInitialFilters());
   };
 
   const handleLogout = () => {
@@ -196,57 +213,30 @@ const HumanCapitalDashboard: React.FC = () => {
 
   const sidebarItems: SidebarItem[] = useMemo(() => {
     if (!effectiveUser) return [];
-
     const items: SidebarItem[] = [
       { key: Tab.DASHBOARD, label: "Visão Geral", icon: LayoutDashboard, onClick: () => setActiveTab(Tab.DASHBOARD), isActive: activeTab === Tab.DASHBOARD },
       { key: Tab.ANALYSIS, label: "Análise de Dados", icon: BarChart3, onClick: () => setActiveTab(Tab.ANALYSIS), isActive: activeTab === Tab.ANALYSIS },
       { key: Tab.DATA, label: "Histórico", icon: Table, onClick: () => setActiveTab(Tab.DATA), isActive: activeTab === Tab.DATA },
     ];
-
-    if (canPlan(effectiveUser.role)) {
-      items.push({ key: Tab.PLANNING, label: "Planejamento", icon: CalendarRange, onClick: () => setActiveTab(Tab.PLANNING), isActive: activeTab === Tab.PLANNING });
-    }
-
-    if (canManageProfiles(effectiveUser.role)) {
-      items.push({ key: Tab.PROFILES, label: "Gestão de Perfis", icon: UserCog, onClick: () => setActiveTab(Tab.PROFILES), isActive: activeTab === Tab.PROFILES });
-    }
-
+    if (canPlan(effectiveUser.role)) items.push({ key: Tab.PLANNING, label: "Planejamento", icon: CalendarRange, onClick: () => setActiveTab(Tab.PLANNING), isActive: activeTab === Tab.PLANNING });
+    if (canManageProfiles(effectiveUser.role)) items.push({ key: Tab.PROFILES, label: "Gestão de Perfis", icon: UserCog, onClick: () => setActiveTab(Tab.PROFILES), isActive: activeTab === Tab.PROFILES });
     items.push({ key: Tab.SETTINGS, label: "Configurações", icon: Settings, onClick: () => setActiveTab(Tab.SETTINGS), isActive: activeTab === Tab.SETTINGS });
-
     return items;
   }, [effectiveUser, activeTab]);
 
   if (isProfileLoading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="animate-pulse text-blue-600 font-medium">Carregando perfil...</div></div>;
-
-  if (!hasModuleAccess('human_capital')) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-gray-500 gap-4">
-      <Lock size={48} className="text-gray-300" />
-      <h2 className="text-xl font-bold">Acesso Restrito</h2>
-      <p>Seu perfil não possui acesso ao módulo Capital Humano.</p>
-      <button onClick={() => navigate('/')} className="text-blue-600 underline text-sm">Voltar ao início</button>
-    </div>
-  );
-
+  if (!hasModuleAccess('human_capital')) return <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-gray-500 gap-4"><Lock size={48} className="text-gray-300" /><h2 className="text-xl font-bold">Acesso Restrito</h2><p>Seu perfil não possui acesso ao módulo Capital Humano.</p><button onClick={() => navigate('/')} className="text-blue-600 underline text-sm">Voltar ao início</button></div>;
   if (!effectiveUser) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="animate-pulse text-blue-600 font-medium">Carregando Perfil Capital Humano...</div></div>;
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
       <SidebarBase
-        brand={{
-          topLogoSrc: "/assets/dr-logo.png",
-          title: "Capital Humano",
-          subtitle: "TOTVS Analytics"
-        }}
+        brand={{ topLogoSrc: "/assets/dr-logo.png", title: "Capital Humano", subtitle: "TOTVS Analytics" }}
         items={sidebarItems}
-        userDisplay={{
-          name: effectiveUser.name || 'Usuário',
-          role: effectiveUser.role || 'Membro',
-          avatarUrl: effectiveUser.avatar === '👤' ? undefined : effectiveUser.avatar
-        }}
+        userDisplay={{ name: effectiveUser.name || 'Usuário', role: effectiveUser.role || 'Membro', avatarUrl: effectiveUser.avatar === '👤' ? undefined : effectiveUser.avatar }}
         onLogout={handleLogout}
       />
 
-      {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden relative bg-gray-50/30 ml-20 transition-all duration-300">
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-8 shrink-0 shadow-sm z-20">
           <div className="flex items-center gap-4">
@@ -267,13 +257,32 @@ const HumanCapitalDashboard: React.FC = () => {
 
         <div className="flex-1 overflow-y-auto p-4 lg:p-8 scroll-smooth">
           {(activeTab === Tab.DASHBOARD || activeTab === Tab.DATA || activeTab === Tab.ANALYSIS) && (
-            <FilterBar filters={filters} setFilters={setFilters} options={filterOptions} onClear={clearFilters} /> // Note: Profile/Scope filter logic might need to be passed here? For now, using scopedData handles visibility.
+            <FilterBar filters={filters} setFilters={setFilters} options={filterOptions} onClear={clearFilters} />
           )}
 
           <div className="animate-in fade-in duration-500 slide-in-from-bottom-2">
-            {activeTab === Tab.DASHBOARD && <Dashboard data={filteredData} realOvertime={filteredRealOvertime} selectedYear={filters.year} selectedMonth={filters.month} />}
+            {activeTab === Tab.DASHBOARD && (
+              <Dashboard
+                data={filteredData}
+                realOvertime={filteredRealOvertime}
+                // Passando o contexto completo para garantir que o Dashboard saiba calcular o Budget correto
+                filterContext={{
+                  startDate: filters.startDate,
+                  endDate: filters.endDate,
+                  mode: filters.dateMode,
+                  year: filters.year,
+                  month: filters.month
+                }}
+              />
+            )}
             {activeTab === Tab.DATA && <DataGrid data={filteredData} />}
-            {activeTab === Tab.ANALYSIS && <AnalysisPanel data={filteredData} selectedYear={filters.year} realOvertime={filteredRealOvertime} />}
+            {activeTab === Tab.ANALYSIS && (
+              <AnalysisPanel
+                data={filteredData}
+                realOvertime={filteredRealOvertime}
+                selectedYear={filters.year}
+              />
+            )}
             {activeTab === Tab.PLANNING && canPlan(effectiveUser.role) && <Planning user={effectiveUser} employees={scopedData} />}
             {activeTab === Tab.PROFILES && canManageProfiles(effectiveUser.role) && <ProfileManager />}
             {activeTab === Tab.SETTINGS && (
