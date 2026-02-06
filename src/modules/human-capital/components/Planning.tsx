@@ -5,6 +5,7 @@ import { savePlanning, getPlanning, saveSalaries, getSalaries, saveBudgets, getB
 import { Calendar as CalendarIcon, Save, LayoutList, CalendarDays, ChevronLeft, ChevronRight, User, Calculator, Users, X, FileUp, AlertTriangle, TrendingUp, Wallet, ArrowUpRight, ArrowDownRight, Building2, MapPin, CheckCircle2 } from 'lucide-react';
 import { formatDecimalHours, parseTimeToDecimal } from '../utils/formatters';
 import * as XLSX from 'xlsx';
+import { canPlan, canManageProfiles, Scope } from '../../iam/types';
 
 // Constants for Regional Mapping based on the provided image
 const REGIONAL_MAP: Record<string, string> = {
@@ -20,6 +21,10 @@ const REGIONAL_MAP: Record<string, string> = {
 const getRegional = (cc: string): string => {
     const normalized = cc.replace(/\./g, '');
     return REGIONAL_MAP[normalized] || 'Outros';
+};
+
+const normalizeCC = (cc: string): string => {
+    return cc.replace(/\./g, '').trim();
 };
 
 const formatDateKey = (date: Date): string => {
@@ -266,6 +271,14 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
             if (!activeChapas.has(e.CHAPA)) return;
 
             const reg = getRegional(e.CODCCUSTO);
+            const normCC = normalizeCC(e.CODCCUSTO);
+
+            // SCOPE ENFORCEMENT
+            if (user.scope) {
+                if (user.scope.type === 'REGIONAL' && !user.scope.regionals.includes(reg)) return;
+                if (user.scope.type === 'COST_CENTER' && !user.scope.costCenters.includes(normCC)) return;
+            }
+
             const matchesCC = !ccFilter || e.CODCCUSTO === ccFilter;
             const matchesRegional = !regionalFilter || reg === regionalFilter;
 
@@ -274,7 +287,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
             }
         });
         return Array.from(map.values()).sort((a, b) => a.nome.localeCompare(b.nome));
-    }, [employees, ccFilter, regionalFilter, activeAllocations]);
+    }, [employees, ccFilter, regionalFilter, activeAllocations, user.scope]);
 
     useEffect(() => {
         const storedSalaries = getSalaries();
@@ -290,11 +303,16 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
             const startMonthStr = formatDateKey(periodStart).slice(0, 7);
             const endMonthStr = formatDateKey(periodEnd).slice(0, 7);
 
-            const recs1 = await getPlanning(user.role === 'LEVEL_B_01' ? user.costCenter : undefined, startMonthStr, mode === 'MONTHLY' ? 'MONTHLY' : 'DAILY');
+            // IAM Scope param
+            const ccParam = user.scope?.type === 'COST_CENTER' && user.scope.costCenters.length > 0
+                ? user.scope.costCenters[0]
+                : undefined;
+
+            const recs1 = await getPlanning(ccParam, startMonthStr, mode === 'MONTHLY' ? 'MONTHLY' : 'DAILY');
             records = [...recs1];
 
             if (startMonthStr !== endMonthStr) {
-                const recs2 = await getPlanning(user.role === 'LEVEL_B_01' ? user.costCenter : undefined, endMonthStr, mode === 'MONTHLY' ? 'MONTHLY' : 'DAILY');
+                const recs2 = await getPlanning(ccParam, endMonthStr, mode === 'MONTHLY' ? 'MONTHLY' : 'DAILY');
                 records = [...records, ...recs2];
             }
 
@@ -354,10 +372,6 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
             }
         }
         return '';
-    };
-
-    const normalizeCC = (cc: string): string => {
-        return cc.replace(/\./g, '').trim();
     };
 
     const handleSalaryImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -584,6 +598,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
     }, [currentWeekStart]);
 
     const handleInputChange = (chapa: string, dateKey: string, value: string) => {
+        if (!canPlan(user.role)) return; // IAM: Read Only check
         const decimalValue = parseTimeToDecimal(value);
         const key = mode === 'MONTHLY' ? chapa : `${chapa}_${dateKey}`;
         setPlans(prev => ({ ...prev, [key]: decimalValue }));
@@ -640,10 +655,17 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
 
     const currentBudget = useMemo(() => {
         return budgets.reduce((acc, b) => {
-            const matchesMonth = b.monthKey === selectedMonth; // Direct YYYY-MM comparison
+            const matchesMonth = b.monthKey === selectedMonth;
             const matchesCC = !ccFilter || b.costCenter === ccFilter;
             const matchesRegional = !regionalFilter || getRegional(b.costCenter) === regionalFilter;
-            const isAuthorized = user.role === 'LEVEL_B_01' ? b.costCenter === user.costCenter : true;
+
+            // IAM Scope Budget Logic
+            let isAuthorized = true;
+            if (user.scope) {
+                if (user.scope.type === 'COST_CENTER') isAuthorized = user.scope.costCenters.includes(normalizeCC(b.costCenter));
+                if (user.scope.type === 'REGIONAL') isAuthorized = user.scope.regionals.includes(getRegional(b.costCenter));
+            }
+
             return (matchesMonth && matchesCC && matchesRegional && isAuthorized) ? acc + b.value : acc;
         }, 0);
     }, [budgets, selectedMonth, user, ccFilter, regionalFilter]);
@@ -817,7 +839,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
                     </div>
 
                     <div className="flex flex-wrap gap-3 w-full xl:w-auto justify-end">
-                        {(user.role === 'MASTER' || user.role === 'DEV_MASTER') && (
+                        {canManageProfiles(user.role) && (
                             <>
                                 <input type="file" ref={salaryInputRef} onChange={handleSalaryImport} accept=".xlsx,.xls,.csv,.txt" className="hidden" />
                                 <button onClick={() => salaryInputRef.current?.click()} className="bg-white text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-tight hover:bg-indigo-50 transition-colors flex items-center gap-2 shadow-sm">
@@ -830,9 +852,16 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
                                 </button>
                             </>
                         )}
-                        <button onClick={handleSave} disabled={saving} className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-bold uppercase tracking-tight hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-md">
-                            {saving ? <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : <Save size={18} />} Salvar
-                        </button>
+                        {canPlan(user.role) && (
+                            <button onClick={handleSave} disabled={saving} className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-bold uppercase tracking-tight hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-md">
+                                {saving ? <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : <Save size={18} />} Salvar
+                            </button>
+                        )}
+                        {!canPlan(user.role) && (
+                            <div className="px-4 py-2 bg-gray-100 text-gray-500 rounded-lg text-xs font-bold uppercase border border-gray-200">
+                                Leitura
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -898,7 +927,15 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
 
                                         {mode === 'MONTHLY' ? (
                                             <td className="px-6 py-3">
-                                                <input type="text" placeholder="00:00" onBlur={(e) => handleInputChange(emp.chapa, '', e.target.value)} defaultValue={formatDecimalHours(plans[emp.chapa])} key={`monthly-${plans[emp.chapa]}`} className="w-24 border border-gray-300 rounded-lg px-3 py-1.5 text-right font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+                                                <input
+                                                    type="text"
+                                                    placeholder="00:00"
+                                                    onBlur={(e) => handleInputChange(emp.chapa, '', e.target.value)}
+                                                    defaultValue={formatDecimalHours(plans[emp.chapa])}
+                                                    disabled={!canPlan(user.role)}
+                                                    key={`monthly-${plans[emp.chapa]}`}
+                                                    className={`w-24 border border-gray-300 rounded-lg px-3 py-1.5 text-right font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all ${!canPlan(user.role) ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                                />
                                             </td>
                                         ) : (
                                             weekDays.map(day => {
@@ -908,7 +945,15 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
                                                 const isOutsidePeriod = day < periodStart || day > periodEnd;
                                                 return (
                                                     <td key={dateKey} className={`px-2 py-3 text-center border-r border-gray-100 ${isSunday ? 'bg-red-50/20' : ''}`}>
-                                                        <input type="text" placeholder="00:00" disabled={isOutsidePeriod} onBlur={(e) => handleInputChange(emp.chapa, dateKey, e.target.value)} defaultValue={rawVal !== undefined ? formatDecimalHours(rawVal) : ''} key={`${dateKey}-${rawVal}`} className={`w-16 border rounded-lg px-1 py-1 text-center font-mono text-xs focus:ring-2 focus:ring-blue-500 outline-none transition-all ${rawVal ? (isSunday ? 'border-red-300 bg-red-50 ring-1 ring-red-100' : 'border-blue-300 bg-blue-50 ring-1 ring-blue-100') : 'border-gray-200'} ${isOutsidePeriod ? 'opacity-20 cursor-not-allowed bg-gray-50' : ''}`} />
+                                                        <input
+                                                            type="text"
+                                                            placeholder="00:00"
+                                                            disabled={isOutsidePeriod || !canPlan(user.role)}
+                                                            onBlur={(e) => handleInputChange(emp.chapa, dateKey, e.target.value)}
+                                                            defaultValue={rawVal !== undefined ? formatDecimalHours(rawVal) : ''}
+                                                            key={`${dateKey}-${rawVal}`}
+                                                            className={`w-16 border rounded-lg px-1 py-1 text-center font-mono text-xs focus:ring-2 focus:ring-blue-500 outline-none transition-all ${rawVal ? (isSunday ? 'border-red-300 bg-red-50 ring-1 ring-red-100' : 'border-blue-300 bg-blue-50 ring-1 ring-blue-100') : 'border-gray-200'} ${isOutsidePeriod || !canPlan(user.role) ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
+                                                        />
                                                     </td>
                                                 );
                                             })

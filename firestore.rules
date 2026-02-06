@@ -1,0 +1,56 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // --- Helper Functions ---
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isSuperAdmin() {
+      return request.auth.token.email == 'antonio.silva@grupodr.com.br';
+    }
+
+    // Fetch the user's profile
+    function getUserProfile() {
+      return get(/databases/$(database)/documents/user_profiles/$(request.auth.uid)).data;
+    }
+
+    // Check if user is IAM Admin (or Super Admin)
+    function isIAMAdmin() {
+       let profile = getUserProfile();
+       return isSuperAdmin() || (profile != null && profile.modules.commercial.role == 'IAM_ADMIN'); 
+    }
+
+    // --- User Profiles ---
+    
+    match /user_profiles/{userId} {
+      // Read: Own profile OR Admin
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isIAMAdmin());
+      
+      // Write: Admin Only
+      allow write: if isAuthenticated() && isIAMAdmin();
+      
+      // Validation could be added here (schema checks), but keeping simple for now as requested.
+    }
+
+    // --- Legacy / Other Collections ---
+
+    // Existing 'users' collection used by AuthContext legacy logic
+    match /users/{userId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Placeholder for future HC collections if migrated to Firestore
+    match /hc_planning_records/{recordId} {
+       allow read: if isAuthenticated(); // TODO: Add granular scope checks when migrated
+       allow write: if isAuthenticated(); // TODO: Add role checks when migrated
+    }
+    
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

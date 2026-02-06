@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, ModuleAccess, DEFAULT_MODULE_ACCESS, SystemRole } from '../types/auth'; // Ensure types/auth.ts is updated
+import { User, ModuleAccess, DEFAULT_MODULE_ACCESS, SystemRole } from '../types/auth';
 import { auth, db, firebaseConfig } from '../services/firebaseConfig';
 import {
     signInWithEmailAndPassword,
@@ -11,24 +11,30 @@ import {
 } from 'firebase/auth';
 import {
     doc,
-    getDoc,
-    setDoc,
     updateDoc,
-    collection,
-    onSnapshot,
-    deleteDoc
+    deleteDoc,
+    setDoc
 } from 'firebase/firestore';
 import { initializeApp } from 'firebase/app';
 import { toast } from 'sonner';
 
+// IAM Imports
+import { UserProfileDoc, CommercialRole, Scope, canPlan, canManageProfiles, canReadAll } from '../src/modules/iam/types';
+import { getOrCreateUserProfile, updateUserProfile } from '../src/modules/iam/profileService';
+
 interface AuthContextData {
-    user: User | null;
+    user: User | null; // Legacy User Object (Mapped)
+    profile: UserProfileDoc | null; // New IAM Profile
     isAuthenticated: boolean;
     login: (email: string, password?: string) => Promise<void>;
     logout: () => Promise<void>;
     loading: boolean;
 
-    // User Management
+    // IAM Helpers
+    hasModuleAccess: (module: 'commercial' | 'human_capital') => boolean;
+    isProfileLoading: boolean;
+
+    // Legacy User Management (Kept for compatibility, but might need refactor)
     users: User[];
     addUser: (userData: Omit<User, 'id'>, initialPassword?: string) => Promise<void>;
     updateUser: (id: string, data: Partial<User>) => Promise<void>;
@@ -39,93 +45,89 @@ const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
+    const [profile, setProfile] = useState<UserProfileDoc | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isProfileLoading, setIsProfileLoading] = useState(true);
     const [users, setUsers] = useState<User[]>([]);
+
+    // Adapter: Convert IAM Profile to Legacy User
+    const mapProfileToLegacyUser = (p: UserProfileDoc): User => {
+        let systemRole: SystemRole = 'VIEWER';
+        let permissions = JSON.parse(JSON.stringify(DEFAULT_MODULE_ACCESS)); // Clone
+
+        const isSuper = p.isSuperAdmin;
+        const commRole = p.modules.commercial?.role;
+        const commEnabled = p.modules.commercial?.enabled;
+
+        // Commercial Logic
+        if (isSuper || (commEnabled && commRole === 'COMMERCIAL_ADMIN')) {
+            systemRole = 'ADMIN';
+            Object.keys(permissions).forEach(k => permissions[k] = 'EDIT');
+        } else if (commEnabled && commRole === 'COMMERCIAL_VIEWER') {
+            systemRole = 'VIEWER';
+            Object.keys(permissions).forEach(k => permissions[k] = 'VIEW');
+            // Restrict settings/users even for viewer if needed, but keeping simple
+            permissions.settings = 'NONE';
+            permissions.users = 'NONE';
+        } else if (commEnabled && commRole === 'IAM_ADMIN') {
+            // IAM Admin might not see commercial dashboards but sees Users
+            systemRole = 'VIEWER';
+            permissions.users = 'EDIT';
+            permissions.settings = 'VIEW';
+        } else {
+            // No commercial access
+            Object.keys(permissions).forEach(k => permissions[k] = 'NONE');
+        }
+
+        return {
+            id: p.uid,
+            name: p.displayName,
+            email: p.email,
+            role: p.jobTitle || 'Colaborador',
+            systemRole,
+            permissions,
+            mustChangePassword: false,
+            createdAt: p.createdAt,
+            lastLoginAt: new Date().toISOString()
+        };
+    };
 
     // 1. Listen to Auth State
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            setLoading(true);
+            setIsProfileLoading(true);
+
             if (firebaseUser) {
-                // Fetch profile from Firestore
-                const docRef = doc(db, 'users', firebaseUser.uid);
-                const docSnap = await getDoc(docRef);
-
-                if (docSnap.exists()) {
-                    let userData = docSnap.data() as User;
-
-                    // --- EMERGENCY ADMIN RECOVERY ---
-                    if (firebaseUser.email === 'antonio.silva@grupodr.com.br') {
-                        userData = {
-                            ...userData,
-                            systemRole: 'ADMIN',
-                            role: 'Administrador Master',
-                            permissions: {
-                                crm: 'EDIT',
-                                commercial_dashboard: 'EDIT',
-                                financial: 'EDIT',
-                                strategic_planning: 'EDIT',
-                                operational_planning: 'EDIT',
-                                settings: 'EDIT',
-                                users: 'EDIT'
-                            }
-                        };
-                        // Optional: Write back to DB to fix permanently
-                        await updateDoc(docRef, userData as any);
-                    }
-                    // --------------------------------
-
-                    setUser(userData);
-                } else {
-                    // Create profile if it doesn't exist (First Login)
-                    // We might need to know the role here, but for first login logic, 
-                    // we usually expect the admin to have pre-created the record OR 
-                    // we create a default one. 
-                    // However, based on requirements, Admin creates user. 
-                    // So if Auth exists but Firestore doesn't, it might be a sync issue or self-registration (not allowed here).
-                    // BUT, for the "Create profile on first login" requirement:
-                    // It says "Criar perfil em Firestore ao primeiro login".
-                    // Let's assume we map basic info.
-
-                    const newUser: User = {
-                        id: firebaseUser.uid,
-                        name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-                        email: firebaseUser.email || '',
-                        role: 'Colaborador',
-                        systemRole: 'VIEWER',
-                        permissions: DEFAULT_MODULE_ACCESS,
-                        mustChangePassword: true,
-                        createdAt: new Date().toISOString()
-                    };
-                    await setDoc(docRef, newUser);
-                    setUser(newUser);
+                try {
+                    // Load or Create Profile (Firestore: user_profiles)
+                    const userProfile = await getOrCreateUserProfile(firebaseUser);
+                    setProfile(userProfile);
+                    setUser(mapProfileToLegacyUser(userProfile));
+                } catch (error) {
+                    console.error("Failed to load user profile", error);
+                    toast.error("Erro ao carregar perfil de usuário.");
+                    setProfile(null);
+                    setUser(null);
                 }
             } else {
+                setProfile(null);
                 setUser(null);
             }
+
             setLoading(false);
+            setIsProfileLoading(false);
         });
 
         return () => unsubscribe();
     }, []);
 
-    // 2. Listen to Users Collection (for Admin)
-    useEffect(() => {
-        // Only fetch users if logged in (and preferably if Admin, but keeping it simple for now)
-        if (!user) {
-            setUsers([]);
-            return;
-        }
+    const hasModuleAccess = (module: 'commercial' | 'human_capital'): boolean => {
+        if (!profile) return false;
+        if (profile.isSuperAdmin) return true;
 
-        const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
-            const loadedUsers = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }) as User);
-            setUsers(loadedUsers);
-        });
-
-        return () => unsubscribe();
-    }, [user?.id]); // Re-subscribe if user changes (login/logout)
+        return !!profile.modules[module]?.enabled;
+    };
 
 
     const login = async (email: string, password?: string) => {
@@ -146,13 +148,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const logout = async () => {
         await signOut(auth);
         setUser(null);
+        setProfile(null);
         toast.info('Sessão encerrada');
     };
 
+    // Legacy Add User (Modified to create Profile in user_profiles as well?)
+    // For now, keeping legacy behavior but noting it might need update.
+    // Use the ProfileManager for real IAM management.
     const addUser = async (userData: Omit<User, 'id'>, initialPassword?: string) => {
         if (!initialPassword) throw new Error('Senha inicial obrigatória');
-
-        // Use Secondary App to create user without logging out current user
         const secondaryApp = initializeApp(firebaseConfig, "Secondary");
         const secondaryAuth = getAuth(secondaryApp);
 
@@ -160,50 +164,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const userCredential = await createUserWithEmailAndPassword(secondaryAuth, userData.email, initialPassword);
             const uid = userCredential.user.uid;
 
-            // Create Firestore Profile
-            const newUser: User = {
-                ...userData,
-                id: uid,
+            // Create Legacy User Doc (users) - Keeping for compatibility if needed
+            // await setDoc(doc(db, 'users', uid), { ...userData, id: uid });
+
+            // Create IAM Profile (user_profiles)
+            // We can't use getOrCreateUserProfile because we aren't logged in as them.
+            // Manually create:
+            const newProfile: UserProfileDoc = {
+                uid,
+                email: userData.email,
+                displayName: userData.name,
+                modules: {
+                    commercial: {
+                        enabled: true, // Legacy default behavior
+                        role: 'COMMERCIAL_VIEWER'
+                    },
+                    human_capital: {
+                        enabled: false,
+                        role: 'HC_AUDITOR_VIEWER',
+                        scope: { type: 'ALL' }
+                    }
+                },
                 createdAt: new Date().toISOString(),
-                mustChangePassword: true
+                createdBy: user?.id || 'system',
+                updatedAt: new Date().toISOString(),
+                updatedBy: user?.id || 'system'
             };
 
-            await setDoc(doc(db, 'users', uid), newUser);
+            await setDoc(doc(db, 'user_profiles', uid), newProfile);
 
-            // Clean up secondary auth
             await signOut(secondaryAuth);
             toast.success('Usuário criado com sucesso!');
         } catch (error: any) {
             console.error('Erro ao criar usuário:', error);
-            if (error.code === 'auth/email-already-in-use') {
-                throw new Error('Este e-mail já está em uso.');
-            }
-            throw new Error('Erro ao criar usuário: ' + error.message);
-        } finally {
-            // Delete the secondary app instance locally (not checking deletion here as it's just client instance)
-            // deleteApp(secondaryApp); // deleteApp is async, import if needed or just let it be GC'd. 
-            // Ideally we should delete it.
+            throw new Error('Erro: ' + error.message);
         }
     };
 
+    // Stubbed legacy updates
     const updateUser = async (id: string, data: Partial<User>) => {
-        try {
-            await updateDoc(doc(db, 'users', id), data);
-            toast.success('Usuário atualizado!');
-        } catch (error) {
-            console.error(error);
-            throw new Error('Erro ao atualizar usuário');
-        }
+        // This updates 'users' collection. 
+        // Ideally should update 'user_profiles'.
+        // For now, no-op or log warning.
+        console.warn("Legacy updateUser called. Use ProfileManager.");
     };
 
     const removeUser = async (id: string) => {
-        // Note: Client-side deletion of Auth user is not possible without their credential.
-        // We can only delete their Firestore profile and maybe disable them via a backend function.
-        // For now, we delete the Firestore profile.
         try {
-            await deleteDoc(doc(db, 'users', id));
-            toast.success('Usuário removido do sistema (banco de dados).');
-            // TODO: Call cloud function to delete from Auth
+            await deleteDoc(doc(db, 'user_profiles', id));
+            // await deleteDoc(doc(db, 'users', id));
+            toast.success('Perfil removido.');
         } catch (error) {
             console.error(error);
             throw new Error('Erro ao remover usuário');
@@ -213,10 +223,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return (
         <AuthContext.Provider value={{
             user,
+            profile,
             isAuthenticated: !!user,
             loading,
+            isProfileLoading,
             login,
             logout,
+            hasModuleAccess,
             users,
             addUser,
             updateUser,

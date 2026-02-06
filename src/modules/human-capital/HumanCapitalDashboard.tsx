@@ -1,19 +1,21 @@
 ﻿import React, { useState, useEffect, useMemo } from 'react';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { fetchOvertimeData } from '@/src/modules/human-capital/services/totvs';
 import Dashboard from '@/src/modules/human-capital/components/Dashboard';
 import DataGrid from '@/src/modules/human-capital/components/DataGrid';
 import GeminiPanel from '@/src/modules/human-capital/components/GeminiPanel';
 import AnalysisPanel from '@/src/modules/human-capital/components/AnalysisPanel';
 import FilterBar, { FilterState } from '@/src/modules/human-capital/components/FilterBar';
-import ProfileManager from '@/src/modules/human-capital/components/ProfileManager';
+import ProfileManager from '@/src/modules/iam/components/ProfileManager'; // Updated IAM path
+
 import Planning from '@/src/modules/human-capital/components/Planning';
-import { canManageProfiles, canPlan } from '@/src/modules/human-capital/services/auth';
+import { canManageProfiles, canPlan } from '../iam/types'; // Updated import
 import { formatDateForApi } from '@/src/modules/human-capital/utils/formatters';
-import { LayoutDashboard, Table, Settings, Database, CheckCircle2, AlertTriangle, Menu, Sparkles, CalendarRange, UserCog, LogOut, BarChart3, RefreshCw, X } from 'lucide-react';
+import { LayoutDashboard, Table, Settings, Database, CheckCircle2, AlertTriangle, Menu, Sparkles, CalendarRange, UserCog, LogOut, BarChart3, RefreshCw, X, Lock } from 'lucide-react';
 import { ApiConfig, OvertimeRecord, FetchStatus, UserProfile } from '@/src/modules/human-capital/types';
 import { SidebarBase, SidebarItem } from '../../../layout/SidebarBase';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 // Configuração padrão da API TOTVS
 const DEFAULT_CONFIG: ApiConfig = {
@@ -34,17 +36,20 @@ enum Tab {
 }
 
 const HumanCapitalDashboard: React.FC = () => {
-  const { user: nexusUser, logout: signOut } = useAuth();
+  const { profile, hasModuleAccess, logout: signOut, isProfileLoading } = useAuth();
   const navigate = useNavigate();
 
-  // Adapter: Converte o usuário do Portal-Commercial para o formato esperado pelo RH
-  const currentUser: UserProfile | null = useMemo(() => nexusUser ? ({
-    id: nexusUser.id,
-    name: nexusUser.name || nexusUser.email || 'Usuário',
-    email: nexusUser.email || '',
-    role: 'DEV_MASTER', // TODO: Mapear roles reais do Portal-Commercial
-    avatar: '👤'
-  }) : null, [nexusUser]);
+  const currentUser: UserProfile | null = useMemo(() => {
+    if (!profile || !profile.modules.human_capital?.enabled) return null;
+    return {
+      id: profile.uid,
+      name: profile.displayName,
+      email: profile.email,
+      role: profile.modules.human_capital.role,
+      scope: profile.modules.human_capital.scope,
+      avatar: '👤'
+    };
+  }, [profile]);
 
   const [simulatedUser, setSimulatedUser] = useState<UserProfile | null>(null);
   const effectiveUser = simulatedUser || currentUser;
@@ -66,6 +71,15 @@ const HumanCapitalDashboard: React.FC = () => {
     month: (new Date().getMonth() + 1).toString().padStart(2, '0'),
     dateMode: 'CALENDAR'
   });
+
+  useEffect(() => {
+    if (!isProfileLoading) {
+      if (!hasModuleAccess('human_capital')) {
+        // toast.error("Acesso negado ao módulo Capital Humano.");
+        // navigate('/'); 
+      }
+    }
+  }, [isProfileLoading, hasModuleAccess, navigate]);
 
   useEffect(() => {
     if (effectiveUser) {
@@ -166,6 +180,16 @@ const HumanCapitalDashboard: React.FC = () => {
     return items;
   }, [effectiveUser, activeTab]);
 
+  if (isProfileLoading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="animate-pulse text-blue-600 font-medium">Carregando perfil...</div></div>;
+
+  if (!hasModuleAccess('human_capital')) return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-gray-500 gap-4">
+      <Lock size={48} className="text-gray-300" />
+      <h2 className="text-xl font-bold">Acesso Restrito</h2>
+      <p>Seu perfil não possui acesso ao módulo Capital Humano.</p>
+      <button onClick={() => navigate('/')} className="text-blue-600 underline text-sm">Voltar ao início</button>
+    </div>
+  );
 
   if (!effectiveUser) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="animate-pulse text-blue-600 font-medium">Carregando Perfil Capital Humano...</div></div>;
 
@@ -181,7 +205,7 @@ const HumanCapitalDashboard: React.FC = () => {
         userDisplay={{
           name: effectiveUser.name || 'Usuário',
           role: effectiveUser.role || 'Membro',
-          avatarUrl: effectiveUser.avatar === '👤' ? undefined : effectiveUser.avatar // Mock avatar text check
+          avatarUrl: effectiveUser.avatar === '👤' ? undefined : effectiveUser.avatar
         }}
         onLogout={handleLogout}
       />
@@ -207,7 +231,7 @@ const HumanCapitalDashboard: React.FC = () => {
 
         <div className="flex-1 overflow-y-auto p-4 lg:p-8 scroll-smooth">
           {(activeTab === Tab.DASHBOARD || activeTab === Tab.DATA || activeTab === Tab.ANALYSIS) && (
-            <FilterBar filters={filters} setFilters={setFilters} options={filterOptions} onClear={clearFilters} />
+            <FilterBar filters={filters} setFilters={setFilters} options={filterOptions} onClear={clearFilters} /> // Note: Profile/Scope filter logic might need to be passed here? For now, using scopedData handles visibility.
           )}
 
           <div className="animate-in fade-in duration-500 slide-in-from-bottom-2">
@@ -215,7 +239,7 @@ const HumanCapitalDashboard: React.FC = () => {
             {activeTab === Tab.DATA && <DataGrid data={filteredData} />}
             {activeTab === Tab.ANALYSIS && <AnalysisPanel data={filteredData} selectedYear={filters.year} />}
             {activeTab === Tab.PLANNING && canPlan(effectiveUser.role) && <Planning user={effectiveUser} employees={scopedData} />}
-            {activeTab === Tab.PROFILES && canManageProfiles(effectiveUser.role) && <ProfileManager currentUser={effectiveUser} onProfileChange={setSimulatedUser} />}
+            {activeTab === Tab.PROFILES && canManageProfiles(effectiveUser.role) && <ProfileManager />}
             {activeTab === Tab.SETTINGS && (
               <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center text-gray-500">
                 <Settings className="mx-auto mb-4 text-gray-300" size={48} />
@@ -223,7 +247,6 @@ const HumanCapitalDashboard: React.FC = () => {
               </div>
             )}
 
-            {/* Gemini AI Card - Moved inside content area or kept as widget? User said "NÃO usar o card “Gemini AI” dentro do sidebar por enquanto". Can keep the floating panel trigger elsewhere? Or just remove access for now as per "estética idêntica". The floating panel trigger was in the sidebar. I'll remove it from sidebar. If I want to keep AI functionality, I should put the button somewhere else, e.g. Header. But to stick to "mesmo padrão estético", I might just hide it or put it in header. I'll add it to Header to preserve feature if possible, or just omit if no space. User didn't ban it, just said "NÃO usar... dentro do sidebar". I'll add a small button in Header. */}
             <button
               onClick={() => setShowAiPanel(true)}
               className="fixed bottom-6 right-6 bg-gradient-to-br from-indigo-500 to-purple-600 text-white p-4 rounded-full shadow-xl hover:shadow-2xl hover:scale-105 transition-all z-40 group"

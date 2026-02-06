@@ -32,13 +32,16 @@ export interface DashboardMetrics {
     employeeCount: number;
 }
 
-export type UserRole = 'DEV_MASTER' | 'MASTER' | 'LEVEL_A_01' | 'LEVEL_B_01' | 'LEVEL_C_01';
+import { HCRole, Scope } from '../iam/types';
+
+export type UserRole = HCRole;
 
 export interface UserProfile {
     id: string;
     name: string;
     email: string;
     role: UserRole;
+    scope?: Scope; // Added scope
     chapa?: string;
     costCenter?: string;
     avatar?: string;
