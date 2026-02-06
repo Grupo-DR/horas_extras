@@ -1,7 +1,6 @@
-
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { OvertimeRecord } from '../types';
+import { OvertimeRecord, BudgetRecord, SalaryAllocation } from '../types';
 import { RealOvertimeRecord } from '../data/realOvertime';
 import { formatDecimalHours } from '../utils/formatters';
 import { TrendingUp, AlertTriangle, CalendarDays, DollarSign, Clock, X, CheckCircle2 } from 'lucide-react';
@@ -215,13 +214,57 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, selectedYear, realO
     const [monthModalOpen, setMonthModalOpen] = useState(false);
     const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
 
-    const budgets = useMemo(() => getBudgets(), []);
+    // State for Async Data
+    const [budgets, setBudgets] = useState<BudgetRecord[]>([]);
+    const [salariesMap, setSalariesMap] = useState<Record<string, number>>({});
+
+    // UseEffect to fetch async data
+    useEffect(() => {
+        const fetchFinancialData = async () => {
+            try {
+                // Since the chart shows the whole year, and the API is by month, 
+                // we iterate to fetch data for all months of the selected year.
+                // This mimics the "get all" behavior needed for the yearly chart.
+                const monthsPromises = Array.from({ length: 12 }, (_, i) => {
+                    const monthKey = `${selectedYear}-${String(i + 1).padStart(2, '0')}`;
+                    return Promise.all([
+                        getBudgets(monthKey).catch(() => []),
+                        getSalaries(monthKey).catch(() => [])
+                    ]);
+                });
+
+                const results = await Promise.all(monthsPromises);
+
+                // Aggregate results
+                const allBudgets: BudgetRecord[] = [];
+                const allSalaries: SalaryAllocation[] = [];
+
+                results.forEach(([b, s]) => {
+                    if (b) allBudgets.push(...b);
+                    if (s) allSalaries.push(...s);
+                });
+
+                setBudgets(allBudgets);
+
+                const map: Record<string, number> = {};
+                allSalaries.forEach(s => {
+                    if (s.chapa && s.salary) {
+                        map[s.chapa] = s.salary;
+                    }
+                });
+                setSalariesMap(map);
+
+            } catch (error) {
+                console.error("Failed to load financial data for analysis:", error);
+            }
+        };
+
+        fetchFinancialData();
+    }, [selectedYear]);
+
+    // Planning records are essentially synchronous (local storage) but we wrap in useMemo
+    // Note: getAllPlanningRecords is now safe (see planning.ts fix)
     const planningRecords = useMemo(() => getAllPlanningRecords(), []);
-    const salariesMap = useMemo(() => {
-        const map: Record<string, number> = {};
-        getSalaries().forEach(s => map[s.chapa] = s.salary);
-        return map;
-    }, []);
 
     const chartData = useMemo(() => {
         const months = Array.from({ length: 12 }, (_, i) => {
@@ -241,7 +284,6 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, selectedYear, realO
 
             // Calculate Real Values
             let realHours = 0;
-            let realCost = 0;
             let he60 = 0;
             let he100 = 0;
             let night = 0;
@@ -256,14 +298,6 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, selectedYear, realO
                 if (evt.includes('100')) he100 += hours;
                 if (evt.includes('NOTURNO') || evt.includes('20')) night += hours;
                 if (evt.includes('INTER')) interjourney += hours;
-
-                const sal = salariesMap[r.CHAPA];
-                if (sal) {
-                    const isSunday = new Date(r.DATA).getDay() === 0;
-                    const baseHour = sal / 220;
-                    const multiplier = r.EVENTO.includes('60') ? 1.6 : r.EVENTO.includes('100') ? 2.0 : 1.0;
-                    // Simplifying logic for chart visualization
-                }
             });
 
             // Calculate Real Values (Financial specific using manual data)
@@ -311,7 +345,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, selectedYear, realO
                 isPartial: parseInt(selectedYear) === 2026 && index === 0 // Mark Jan 2026 as partial/ongoing
             };
         });
-    }, [data, selectedYear, viewMode, budgets, planningRecords, salariesMap]);
+    }, [data, selectedYear, viewMode, budgets, planningRecords, salariesMap, realOvertime]);
 
     // Compliance Metrics
     const complianceData = useMemo(() => {
