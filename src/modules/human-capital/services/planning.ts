@@ -52,6 +52,9 @@ export const getPlanning = async (
     preferCache = false
 ): Promise<PlanningRecord[]> => {
     try {
+        // Guard against undefined monthKey
+        if (!monthKey) return [];
+
         let records: PlanningRecord[] = [];
 
         if (isOnline() && !preferCache) {
@@ -108,6 +111,9 @@ export const saveSalaries = async (salaries: SalaryAllocation[], user: UserProfi
 };
 
 export const getSalaries = async (monthKey: string, user?: UserProfile): Promise<SalaryAllocation[]> => {
+    // Guard: Require monthKey
+    if (!monthKey) return [];
+
     try {
         if (isOnline()) {
             const rows = await FirestoreService.getSalaryAllocationsByMonthKey(monthKey, user?.scope);
@@ -141,6 +147,9 @@ export const saveBudgets = async (budgets: BudgetRecord[], user: UserProfile) =>
 };
 
 export const getBudgets = async (monthKey: string, user?: UserProfile): Promise<BudgetRecord[]> => {
+    // Guard: Require monthKey
+    if (!monthKey) return [];
+
     try {
         if (isOnline()) {
             const rows = await FirestoreService.getBudgetsByMonthKey(monthKey, user?.scope);
@@ -195,11 +204,14 @@ export const migrateToFirestore = async (user: UserProfile) => {
 // Add this to satisfy Dashboard.tsx imports until refactor
 // --- LEGACY SUPPORT ---
 // Fix: removed async to prevent 'forEach is not a function' crash in legacy Dashboard
+// --- LEGACY SUPPORT ---
+// Fix: removed async to prevent 'forEach is not a function' crash in legacy Dashboard
 export const getAllPlanningRecords = (): PlanningRecord[] => {
     try {
         const data = localStorage.getItem('hc_planning_records_v2');
         if (data) {
-            return JSON.parse(data) as PlanningRecord[];
+            // FIX: Ensure we never return null if parse result is null (which happens for string "null")
+            return (JSON.parse(data) || []) as PlanningRecord[];
         }
     } catch (error) {
         console.error("Error reading local planning records:", error);

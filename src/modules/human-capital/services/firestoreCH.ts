@@ -55,6 +55,9 @@ export const upsertBudgets = async (budgets: BudgetRecord[], user: UserProfile) 
 };
 
 export const getBudgetsByMonthKey = async (monthKey: string, scope?: Scope) => {
+    // GUARD: Prevent query crash if monthKey is missing
+    if (!monthKey) return [];
+
     const q = query(collection(db, COL_BUDGETS), where('monthKey', '==', monthKey));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(d => d.data() as BudgetRecord);
@@ -95,6 +98,7 @@ export const upsertSalaryAllocations = async (allocations: SalaryAllocation[], u
 };
 
 export const getSalaryAllocationsByMonthKey = async (monthKey: string, scope?: Scope) => {
+    if (!monthKey) return [];
     const q = query(collection(db, COL_SALARIES), where('monthKey', '==', monthKey));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(d => d.data() as SalaryAllocation);

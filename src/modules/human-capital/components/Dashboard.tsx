@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, SalaryRecord } from '../types';
 import { RealOvertimeRecord } from '../data/realOvertime'; // Import type
 import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, AlertTriangle, Moon, Sun, Scale, Percent, ArrowUpRight, ArrowDownRight, X, User, DollarSign, ListFilter } from 'lucide-react';
@@ -229,11 +229,36 @@ const Dashboard: React.FC<DashboardProps> = ({ data, realOvertime }) => {
     const [funcViewMode, setFuncViewMode] = useState<ViewMode>('hours');
 
     const planningRecords = useMemo(() => getAllPlanningRecords(), []);
-    const budgets = useMemo(() => getBudgets(), []);
-    const salariesMap = useMemo(() => {
-        const map: Record<string, number> = {};
-        getSalaries().forEach(s => map[s.chapa] = s.salary);
-        return map;
+
+    // State for Async Data
+    const [budgets, setBudgets] = useState<BudgetRecord[]>([]);
+    const [salariesMap, setSalariesMap] = useState<Record<string, number>>({});
+
+    // FETCH DATA EFFECT
+    useEffect(() => {
+        const fetchData = async () => {
+            // Determine current month key (YYYY-MM) to fetch relevant context
+            // Assuming current month context as per user request:
+            const now = new Date();
+            const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+            try {
+                // Fetch Budgets
+                const fetchedBudgets = await getBudgets(monthKey);
+                setBudgets(fetchedBudgets);
+
+                // Fetch Salaries
+                const fetchedSalaries = await getSalaries(monthKey);
+                const map: Record<string, number> = {};
+                fetchedSalaries.forEach(s => map[s.chapa] = s.salary);
+                setSalariesMap(map);
+
+            } catch (err) {
+                console.error("Dashboard data load failed", err);
+            }
+        };
+
+        fetchData();
     }, []);
 
     const metrics = useMemo(() => {
