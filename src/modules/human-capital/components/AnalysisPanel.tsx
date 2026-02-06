@@ -4,7 +4,7 @@ import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 import { OvertimeRecord } from '../types';
 import { RealOvertimeRecord } from '../data/realOvertime';
 import { formatDecimalHours } from '../utils/formatters';
-import { TrendingUp, AlertTriangle, CalendarDays, DollarSign, Clock } from 'lucide-react';
+import { TrendingUp, AlertTriangle, CalendarDays, DollarSign, Clock, X, CheckCircle2 } from 'lucide-react';
 import { getAllPlanningRecords, getBudgets, getSalaries } from '../services/planning';
 
 interface AnalysisPanelProps {
@@ -14,6 +14,125 @@ interface AnalysisPanelProps {
 }
 
 type ViewMode = 'hours' | 'finance';
+
+const formatDateKey = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const MonthDetailsModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    monthKey: string; // YYYY-MM
+    data: OvertimeRecord[];
+    planningText: string;
+}> = ({ isOpen, onClose, monthKey, data, planningText }) => {
+    if (!isOpen) return null;
+
+    const [year, month] = monthKey.split('-').map(Number);
+    const monthName = new Date(year, month - 1, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+
+    const daysInMonth = useMemo(() => {
+        const days = [];
+        const date = new Date(year, month - 1, 1);
+        while (date.getMonth() === month - 1) {
+            days.push(new Date(date));
+            date.setDate(date.getDate() + 1);
+        }
+        return days;
+    }, [year, month]);
+
+    const dailyData = useMemo(() => {
+        const map = new Map<string, { real: number, events: string[] }>();
+        data.forEach(r => {
+            const d = new Date(r.DATA);
+            // Verify if record belongs to selected month (safeguard)
+            if (d.getFullYear() === year && (d.getMonth() + 1) === month) {
+                const key = formatDateKey(d);
+                const existing = map.get(key) || { real: 0, events: [] };
+                existing.real += Number(r.HORAS) || 0;
+                if (r.EVENTO && !existing.events.includes(r.EVENTO)) existing.events.push(r.EVENTO);
+                map.set(key, existing);
+            }
+        });
+        return map;
+    }, [data, year, month]);
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 flex justify-between items-center text-white shrink-0">
+                    <div>
+                        <h3 className="text-xl font-bold capitalize">{monthName}</h3>
+                        <p className="text-blue-100 text-sm">Detalhes Diários • {planningText}</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+                        <X size={24} />
+                    </button>
+                </div>
+
+                <div className="p-6 overflow-y-auto bg-gray-50 flex-1">
+                    <div className="grid grid-cols-7 gap-2 mb-2 text-center">
+                        {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
+                            <div key={d} className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{d}</div>
+                        ))}
+                    </div>
+                    <div className="grid grid-cols-7 gap-2">
+                        {Array.from({ length: daysInMonth[0].getDay() }).map((_, i) => (
+                            <div key={`empty-${i}`} className="h-24 bg-transparent" />
+                        ))}
+
+                        {daysInMonth.map(day => {
+                            const dateKey = formatDateKey(day);
+                            const info = dailyData.get(dateKey) || { real: 0, events: [] };
+                            const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+                            const isSunday = day.getDay() === 0;
+
+                            return (
+                                <div
+                                    key={dateKey}
+                                    title={`Eventos: ${info.events.join(', ') || 'Nenhum'}`}
+                                    className={`h-24 border rounded-xl p-3 flex flex-col justify-between transition-all hover:scale-[1.02] ${info.real > 0 ? 'bg-white border-blue-200 shadow-md ring-1 ring-blue-50' : 'bg-white/50 border-gray-100'
+                                        } ${isWeekend ? 'bg-orange-50/30' : ''}`}
+                                >
+                                    <div className="flex justify-between items-start">
+                                        <span className={`text-xs font-bold ${isWeekend ? 'text-orange-500' : 'text-gray-400'}`}>
+                                            {day.getDate()}
+                                        </span>
+                                        {info.real > 0 && (
+                                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${isSunday ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                {isSunday ? '100%' : '60%'}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="text-right">
+                                        {info.real > 0 ? (
+                                            <div className="flex flex-col">
+                                                <span className="text-xs text-gray-400 font-medium">Real</span>
+                                                <span className="text-base font-bold font-mono text-gray-800">{formatDecimalHours(info.real)}</span>
+                                            </div>
+                                        ) : (
+                                            <span className="text-xs text-gray-200">-</span>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+                <div className="p-4 bg-gray-100 border-t border-gray-200 text-center">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest flex items-center justify-center gap-2">
+                        <CheckCircle2 size={12} className="text-emerald-500" />
+                        Clique nos dias para mais detalhes (em breve)
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 const CustomTooltip = ({ active, payload, label, viewMode }: any) => {
     if (active && payload && payload.length) {
@@ -82,6 +201,9 @@ const CustomTooltip = ({ active, payload, label, viewMode }: any) => {
                         </div>
                     </div>
                 )}
+                <div className="mt-2 pt-2 border-t border-gray-50 text-[10px] text-gray-400 text-center italic">
+                    Clique para ver detalhes do mês
+                </div>
             </div>
         );
     }
@@ -90,6 +212,9 @@ const CustomTooltip = ({ active, payload, label, viewMode }: any) => {
 
 const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, selectedYear, realOvertime }) => {
     const [viewMode, setViewMode] = useState<ViewMode>('finance');
+    const [monthModalOpen, setMonthModalOpen] = useState(false);
+    const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
+
     const budgets = useMemo(() => getBudgets(), []);
     const planningRecords = useMemo(() => getAllPlanningRecords(), []);
     const salariesMap = useMemo(() => {
@@ -105,6 +230,9 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, selectedYear, realO
         });
 
         return months.map((month, index) => {
+            // FIX 1: Use specific month key (YYYY-MM) for budget filtering
+            const monthKey = `${selectedYear}-${String(index + 1).padStart(2, '0')}`;
+
             // Filter Real Data
             const monthData = data.filter(r => {
                 const d = new Date(r.DATA);
@@ -163,9 +291,9 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, selectedYear, realO
                 }
             });
 
-            // Calculate Budget
+            // Calculate Budget (FIXED: Filter by monthKey)
             const monthlyBudget = budgets
-                .filter(b => b.month.toLowerCase() === month.toLowerCase())
+                .filter(b => b.monthKey === monthKey)
                 .reduce((acc, curr) => acc + curr.value, 0);
 
             const displayMonth = month.charAt(0).toUpperCase() + month.slice(1).substring(0, 2);
@@ -173,12 +301,14 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, selectedYear, realO
             return {
                 name: displayMonth,
                 fullMonth: month,
+                monthIndex: index, // For drilldown click
+                year: selectedYear, // For drilldown click
                 Real: viewMode === 'finance' ? realFinancialValue : realHours,
                 Planejado: viewMode === 'finance' ? plannedCost : plannedHours,
                 Budget: viewMode === 'finance' ? monthlyBudget : 0,
                 amt: viewMode === 'finance' ? realFinancialValue : realHours,
                 he60, he100, night, interjourney,
-                isPartial: parseInt(selectedYear) === 2026 && index === 0 // Mark Jan 2026 as partial/ongoing if needed
+                isPartial: parseInt(selectedYear) === 2026 && index === 0 // Mark Jan 2026 as partial/ongoing
             };
         });
     }, [data, selectedYear, viewMode, budgets, planningRecords, salariesMap]);
@@ -196,8 +326,29 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, selectedYear, realO
         ];
     }, [data]);
 
+    const handleChartClick = (state: any) => {
+        if (state && state.activePayload && state.activePayload.length > 0) {
+            const payload = state.activePayload[0].payload;
+            const year = payload.year;
+            const month = (payload.monthIndex + 1).toString().padStart(2, '0');
+            setSelectedMonthKey(`${year}-${month}`);
+            setMonthModalOpen(true);
+        }
+    };
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Modal Drilldown */}
+            {selectedMonthKey && (
+                <MonthDetailsModal
+                    isOpen={monthModalOpen}
+                    onClose={() => setMonthModalOpen(false)}
+                    monthKey={selectedMonthKey}
+                    data={data} // Use filtered data from parent
+                    planningText={viewMode === 'finance' ? 'Visualização Financeira' : 'Visualização de Horas'}
+                />
+            )}
+
             <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
                 <div className="flex justify-between items-center mb-6">
                     <div>
@@ -230,7 +381,12 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, selectedYear, realO
 
                 <div className="h-[300px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <ComposedChart
+                            data={chartData}
+                            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                            onClick={handleChartClick}
+                            className="cursor-pointer"
+                        >
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                             <XAxis
                                 dataKey="name"

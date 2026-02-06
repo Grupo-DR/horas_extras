@@ -199,14 +199,13 @@ const HumanCapitalDashboard: React.FC = () => {
 
     const items: SidebarItem[] = [
       { key: Tab.DASHBOARD, label: "Visão Geral", icon: LayoutDashboard, onClick: () => setActiveTab(Tab.DASHBOARD), isActive: activeTab === Tab.DASHBOARD },
-      { key: Tab.DATA, label: "Dados Detalhados", icon: Table, onClick: () => setActiveTab(Tab.DATA), isActive: activeTab === Tab.DATA },
+      { key: Tab.ANALYSIS, label: "Análise de Dados", icon: BarChart3, onClick: () => setActiveTab(Tab.ANALYSIS), isActive: activeTab === Tab.ANALYSIS },
+      { key: Tab.DATA, label: "Histórico", icon: Table, onClick: () => setActiveTab(Tab.DATA), isActive: activeTab === Tab.DATA },
     ];
 
     if (canPlan(effectiveUser.role)) {
       items.push({ key: Tab.PLANNING, label: "Planejamento", icon: CalendarRange, onClick: () => setActiveTab(Tab.PLANNING), isActive: activeTab === Tab.PLANNING });
     }
-
-    items.push({ key: Tab.ANALYSIS, label: "Análise Financeira", icon: BarChart3, onClick: () => setActiveTab(Tab.ANALYSIS), isActive: activeTab === Tab.ANALYSIS });
 
     if (canManageProfiles(effectiveUser.role)) {
       items.push({ key: Tab.PROFILES, label: "Gestão de Perfis", icon: UserCog, onClick: () => setActiveTab(Tab.PROFILES), isActive: activeTab === Tab.PROFILES });
@@ -253,9 +252,9 @@ const HumanCapitalDashboard: React.FC = () => {
           <div className="flex items-center gap-4">
             <h2 className="text-xl font-bold text-gray-800 tracking-tight">
               {activeTab === Tab.DASHBOARD && 'Dashboard Geral'}
-              {activeTab === Tab.DATA && 'Gerenciamento de Dados'}
+              {activeTab === Tab.ANALYSIS && 'Análise de Dados'}
+              {activeTab === Tab.DATA && 'Histórico de Registros'}
               {activeTab === Tab.PLANNING && 'Planejamento de Horas'}
-              {activeTab === Tab.ANALYSIS && 'Análise de Evolução Financeira'}
               {activeTab === Tab.PROFILES && 'Administração de Usuários'}
               {activeTab === Tab.SETTINGS && 'Configuração do Sistema'}
             </h2>

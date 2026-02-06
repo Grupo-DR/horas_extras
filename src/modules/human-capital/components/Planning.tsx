@@ -898,28 +898,24 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
                                 return (
                                     <tr key={emp.chapa} className="hover:bg-gray-50/50 transition-colors">
                                         <td className="px-6 py-3 sticky left-0 bg-white z-10 border-r border-gray-100 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                                            <div className="flex items-center gap-3 cursor-pointer group" onClick={() => handleEmployeeClick(emp)}>
-                                                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold group-hover:bg-blue-600 group-hover:text-white transition-colors">{emp.nome.charAt(0)}</div>
-                                                <div className="min-w-0">
-                                                    <div className="font-bold text-gray-900 truncate max-w-[180px] group-hover:text-blue-600 transition-colors">{emp.nome}</div>
-                                                    <div className="text-[9px] text-gray-400 font-mono uppercase tracking-tighter">
-                                                        {emp.chapa} • {emp.regional} • {emp.cc}
+                                            <div
+                                                onClick={() => handleEmployeeClick(emp)}
+                                                className="group cursor-pointer flex items-center gap-3 w-full"
+                                            >
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-bold text-gray-800 tracking-tight truncate group-hover:text-blue-600 transition-colors text-[0.8rem]">
+                                                            {emp.nome}
+                                                        </span>
+                                                        {salaries[emp.chapa] ? (
+                                                            <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shrink-0" title="Salário vinculado" />
+                                                        ) : (
+                                                            <div className="w-2 h-2 rounded-full bg-red-400 shadow-sm shrink-0" title="Sem salário vinculado" />
+                                                        )}
                                                     </div>
-                                                    <div className="text-[9px] text-gray-500 font-mono italic flex flex-col">
-                                                        {(() => {
-                                                            const allocs = activeAllocations.filter(a => a.chapa === emp.chapa);
-                                                            if (allocs.length === 0) return <span>S/ Salário</span>;
-
-                                                            const rateioStr = allocs.map(a => `${(a.allocation * 100).toFixed(0)}% ${a.costCenter}`).join(' | ');
-                                                            // Also show salary value? "R$ 10.000 (Rateio: ...)"
-                                                            const salValue = allocs[0].salary.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                                                            return (
-                                                                <>
-                                                                    <span>{salValue}</span>
-                                                                    {allocs.length > 0 && <span className="text-[8px] text-indigo-500 font-bold">Rateio: {rateioStr}</span>}
-                                                                </>
-                                                            );
-                                                        })()}
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        <span className="bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded text-[10px] font-mono border border-gray-200">{emp.chapa}</span>
+                                                        <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded text-[10px] border border-blue-100 truncate max-w-[120px]">{normalizeCC(emp.cc)}</span>
                                                     </div>
                                                 </div>
                                             </div>
