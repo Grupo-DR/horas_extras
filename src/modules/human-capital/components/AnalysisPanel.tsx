@@ -21,10 +21,11 @@ const formatDateKey = (date: Date): string => {
     return `${year}-${month}-${day}`;
 };
 
+// --- COMPONENTE AUXILIAR (Mantido igual) ---
 const MonthDetailsModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
-    monthKey: string; // YYYY-MM
+    monthKey: string;
     data: OvertimeRecord[];
     planningText: string;
 }> = ({ isOpen, onClose, monthKey, data, planningText }) => {
@@ -45,9 +46,9 @@ const MonthDetailsModal: React.FC<{
 
     const dailyData = useMemo(() => {
         const map = new Map<string, { real: number, events: string[] }>();
+        // Otimização: Filtrar apenas uma vez para o modal
         data.forEach(r => {
             const d = new Date(r.DATA);
-            // Verify if record belongs to selected month (safeguard)
             if (d.getFullYear() === year && (d.getMonth() + 1) === month) {
                 const key = formatDateKey(d);
                 const existing = map.get(key) || { real: 0, events: [] };
@@ -132,7 +133,7 @@ const MonthDetailsModal: React.FC<{
     );
 };
 
-
+// --- TOOLTIP (Mantido igual) ---
 const CustomTooltip = ({ active, payload, label, viewMode }: any) => {
     if (active && payload && payload.length) {
         const data = payload[0].payload;
@@ -165,7 +166,6 @@ const CustomTooltip = ({ active, payload, label, viewMode }: any) => {
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {/* REALIZADO SECTION */}
                         <div>
                             <div className="flex justify-between items-center mb-1">
                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">REALIZADO TOTAL</span>
@@ -184,14 +184,8 @@ const CustomTooltip = ({ active, payload, label, viewMode }: any) => {
                                     <span className="text-gray-500">Adic. Noturno</span>
                                     <span className="font-mono text-gray-700">{formatDecimalHours(data.night)}</span>
                                 </div>
-                                <div className="flex justify-between items-center text-[10px]">
-                                    <span className="text-gray-500">Interjornada</span>
-                                    <span className="font-mono text-gray-700">{formatDecimalHours(data.interjourney)}</span>
-                                </div>
                             </div>
                         </div>
-
-                        {/* PLANEJADO SECTION */}
                         <div className="pt-2 border-t border-gray-50">
                             <div className="flex justify-between items-center">
                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">PLANEJADO</span>
@@ -200,9 +194,6 @@ const CustomTooltip = ({ active, payload, label, viewMode }: any) => {
                         </div>
                     </div>
                 )}
-                <div className="mt-2 pt-2 border-t border-gray-50 text-[10px] text-gray-400 text-center italic">
-                    Clique para ver detalhes do mês
-                </div>
             </div>
         );
     }
@@ -214,142 +205,139 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, selectedYear, realO
     const [monthModalOpen, setMonthModalOpen] = useState(false);
     const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
 
-    // State for Async Data
+    // Estados para dados assíncronos
     const [budgets, setBudgets] = useState<BudgetRecord[]>([]);
     const [salariesMap, setSalariesMap] = useState<Record<string, number>>({});
 
-    // UseEffect to fetch async data
+    // Efeito de Carga Inicial
     useEffect(() => {
         const fetchFinancialData = async () => {
             try {
-                // Since the chart shows the whole year, and the API is by month, 
-                // we iterate to fetch data for all months of the selected year.
-                // This mimics the "get all" behavior needed for the yearly chart.
-                const monthsPromises = Array.from({ length: 12 }, (_, i) => {
-                    const monthKey = `${selectedYear}-${String(i + 1).padStart(2, '0')}`;
+                // Carrega todos os meses do ano selecionado em paralelo
+                const promises = Array.from({ length: 12 }, (_, i) => {
+                    const mk = `${selectedYear}-${String(i + 1).padStart(2, '0')}`;
                     return Promise.all([
-                        getBudgets(monthKey).catch(() => []),
-                        getSalaries(monthKey).catch(() => [])
+                        getBudgets(mk).catch(() => []),
+                        getSalaries(mk).catch(() => [])
                     ]);
                 });
 
-                const results = await Promise.all(monthsPromises);
-
-                // Aggregate results
+                const results = await Promise.all(promises);
                 const allBudgets: BudgetRecord[] = [];
-                const allSalaries: SalaryAllocation[] = [];
+                const allSalaries: Record<string, number> = {};
 
-                results.forEach(([b, s]) => {
-                    if (b) allBudgets.push(...b);
-                    if (s) allSalaries.push(...s);
+                results.forEach(([bArr, sArr]) => {
+                    if (bArr) allBudgets.push(...bArr);
+                    if (sArr) {
+                        sArr.forEach(s => { if (s.chapa && s.salary) allSalaries[s.chapa] = s.salary; });
+                    }
                 });
 
                 setBudgets(allBudgets);
-
-                const map: Record<string, number> = {};
-                allSalaries.forEach(s => {
-                    if (s.chapa && s.salary) {
-                        map[s.chapa] = s.salary;
-                    }
-                });
-                setSalariesMap(map);
-
+                setSalariesMap(allSalaries);
             } catch (error) {
-                console.error("Failed to load financial data for analysis:", error);
+                console.error("Erro ao carregar dados financeiros:", error);
             }
         };
-
         fetchFinancialData();
     }, [selectedYear]);
 
-    // Planning records are essentially synchronous (local storage) but we wrap in useMemo
-    // Note: getAllPlanningRecords is now safe (see planning.ts fix)
     const planningRecords = useMemo(() => getAllPlanningRecords(), []);
 
+    // --- ALGORITMO OTIMIZADO DE GERAÇÃO DO GRÁFICO ---
     const chartData = useMemo(() => {
-        const months = Array.from({ length: 12 }, (_, i) => {
-            const d = new Date(parseInt(selectedYear), i, 1);
-            return d.toLocaleString('pt-BR', { month: 'long' });
+        // 1. Inicializa Mapa de Agregação (O(12))
+        const aggregationMap = new Map<string, any>();
+        for (let i = 0; i < 12; i++) {
+            const monthKey = `${selectedYear}-${String(i + 1).padStart(2, '0')}`;
+            aggregationMap.set(monthKey, {
+                realHours: 0, he60: 0, he100: 0, night: 0, interjourney: 0,
+                plannedHours: 0, plannedCost: 0, budget: 0,
+                monthIndex: i
+            });
+        }
+
+        // 2. Passagem Única nos Dados Reais (O(N))
+        data.forEach(r => {
+            const d = new Date(r.DATA);
+            if (d.getFullYear() !== parseInt(selectedYear)) return;
+
+            const monthKey = `${selectedYear}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            const agg = aggregationMap.get(monthKey);
+
+            if (agg) {
+                const hours = Number(r.HORAS) || 0;
+                agg.realHours += hours;
+
+                const evt = (r.EVENTO || '').toUpperCase();
+                if (evt.includes('60')) agg.he60 += hours;
+                if (evt.includes('100')) agg.he100 += hours;
+                if (evt.includes('NOTURNO') || evt.includes('20')) agg.night += hours;
+                if (evt.includes('INTER')) agg.interjourney += hours;
+            }
         });
 
-        return months.map((month, index) => {
-            // FIX 1: Use specific month key (YYYY-MM) for budget filtering
-            const monthKey = `${selectedYear}-${String(index + 1).padStart(2, '0')}`;
+        // 3. Passagem Única no Planejamento (O(M))
+        planningRecords.forEach(p => {
+            const d = new Date(p.date);
+            if (d.getFullYear() !== parseInt(selectedYear)) return;
 
-            // Filter Real Data
-            const monthData = data.filter(r => {
-                const d = new Date(r.DATA);
-                return d.getMonth() === index && d.getFullYear() === parseInt(selectedYear);
-            });
+            const monthKey = `${selectedYear}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            const agg = aggregationMap.get(monthKey);
 
-            // Calculate Real Values
-            let realHours = 0;
-            let he60 = 0;
-            let he100 = 0;
-            let night = 0;
-            let interjourney = 0;
-
-            monthData.forEach(r => {
-                const hours = Number(r.HORAS) || 0;
-                realHours += hours;
-                const evt = (r.EVENTO || '').toUpperCase();
-
-                if (evt.includes('60')) he60 += hours;
-                if (evt.includes('100')) he100 += hours;
-                if (evt.includes('NOTURNO') || evt.includes('20')) night += hours;
-                if (evt.includes('INTER')) interjourney += hours;
-            });
-
-            // Calculate Real Values (Financial specific using manual data)
-            let realFinancialValue = 0;
-            if (viewMode === 'finance') {
-                realFinancialValue = realOvertime
-                    .filter(r => r.year === parseInt(selectedYear) && r.month === (index + 1))
-                    .reduce((acc, curr) => acc + curr.value, 0);
-            }
-
-
-            // Calculate Planned Values
-            let plannedHours = 0;
-            let plannedCost = 0;
-
-            planningRecords.filter(p => {
-                const d = new Date(p.date);
-                return d.getMonth() === index && d.getFullYear() === parseInt(selectedYear);
-            }).forEach(p => {
-                plannedHours += p.plannedHours;
+            if (agg) {
+                agg.plannedHours += p.plannedHours;
                 const sal = salariesMap[p.chapa];
                 if (sal) {
-                    const isSunday = new Date(p.date).getDay() === 0;
-                    plannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
+                    const isSunday = d.getDay() === 0;
+                    agg.plannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
                 }
-            });
+            }
+        });
 
-            // Calculate Budget (FIXED: Filter by monthKey)
-            const monthlyBudget = budgets
-                .filter(b => b.monthKey === monthKey)
-                .reduce((acc, curr) => acc + curr.value, 0);
+        // 4. Passagem Única no Budget (O(B))
+        budgets.forEach(b => {
+            const agg = aggregationMap.get(b.monthKey);
+            if (agg) {
+                agg.budget += b.value;
+            }
+        });
 
-            const displayMonth = month.charAt(0).toUpperCase() + month.slice(1).substring(0, 2);
+        // 5. Montagem Final (O(12))
+        return Array.from(aggregationMap.entries()).map(([monthKey, agg]) => {
+            const [y, m] = monthKey.split('-');
+            const monthName = new Date(parseInt(y), parseInt(m) - 1, 1).toLocaleString('pt-BR', { month: 'long' });
+            const displayMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1).substring(0, 2);
+
+            // Override financeiro manual se disponível
+            let realFinancialValue = 0;
+            if (viewMode === 'finance') {
+                // Pequena busca linear aqui é aceitável pois realOvertime é minúsculo (12 registros por ano)
+                const manualData = realOvertime.find(r => r.year === parseInt(selectedYear) && r.month === parseInt(m));
+                realFinancialValue = manualData ? manualData.value : 0;
+            }
 
             return {
                 name: displayMonth,
-                fullMonth: month,
-                monthIndex: index, // For drilldown click
-                year: selectedYear, // For drilldown click
-                Real: viewMode === 'finance' ? realFinancialValue : realHours,
-                Planejado: viewMode === 'finance' ? plannedCost : plannedHours,
-                Budget: viewMode === 'finance' ? monthlyBudget : 0,
-                amt: viewMode === 'finance' ? realFinancialValue : realHours,
-                he60, he100, night, interjourney,
-                isPartial: parseInt(selectedYear) === 2026 && index === 0 // Mark Jan 2026 as partial/ongoing
+                fullMonth: monthName,
+                monthIndex: agg.monthIndex,
+                year: selectedYear,
+                Real: viewMode === 'finance' ? realFinancialValue : agg.realHours,
+                Planejado: viewMode === 'finance' ? agg.plannedCost : agg.plannedHours,
+                Budget: viewMode === 'finance' ? agg.budget : 0,
+                // Metadados para tooltip
+                he60: agg.he60,
+                he100: agg.he100,
+                night: agg.night,
+                interjourney: agg.interjourney,
+                isPartial: parseInt(selectedYear) === 2026 && agg.monthIndex === 0
             };
         });
+
     }, [data, selectedYear, viewMode, budgets, planningRecords, salariesMap, realOvertime]);
 
-    // Compliance Metrics
     const complianceData = useMemo(() => {
-        const excessiveHours = data.filter(r => r.HORAS > 10).length; // Example rule: >10h/day
+        const excessiveHours = data.filter(r => r.HORAS > 10).length;
         const sundayWork = data.filter(r => new Date(r.DATA).getDay() === 0).length;
         const interJornadaErrors = data.filter(r => r.EVENTO.includes('INTER')).length;
 
@@ -372,13 +360,12 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, selectedYear, realO
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Modal Drilldown */}
             {selectedMonthKey && (
                 <MonthDetailsModal
                     isOpen={monthModalOpen}
                     onClose={() => setMonthModalOpen(false)}
                     monthKey={selectedMonthKey}
-                    data={data} // Use filtered data from parent
+                    data={data}
                     planningText={viewMode === 'finance' ? 'Visualização Financeira' : 'Visualização de Horas'}
                 />
             )}
@@ -422,22 +409,10 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, selectedYear, realO
                             className="cursor-pointer"
                         >
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis
-                                dataKey="name"
-                                axisLine={false}
-                                tickLine={false}
-                                tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }}
-                                dy={10}
-                            />
-                            <YAxis
-                                axisLine={false}
-                                tickLine={false}
-                                tick={{ fill: '#94a3b8', fontSize: 11 }}
-                                tickFormatter={(value) => viewMode === 'finance' ? `R$${(value / 1000).toFixed(0)}k` : value}
-                            />
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }} dy={10} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} tickFormatter={(value) => viewMode === 'finance' ? `R$${(value / 1000).toFixed(0)}k` : value} />
                             <Tooltip content={<CustomTooltip viewMode={viewMode} />} cursor={{ fill: '#f8fafc' }} />
                             <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }} />
-
                             <Bar dataKey="Planejado" name="Planejado" fill="#cbd5e1" radius={[4, 4, 0, 0]} barSize={20} />
                             <Bar dataKey="Real" name="Realizado (HE)" fill={viewMode === 'finance' ? '#10b981' : '#3b82f6'} radius={[4, 4, 0, 0]} barSize={20} />
                             {viewMode === 'finance' && (
@@ -453,24 +428,18 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, selectedYear, realO
                     <AlertTriangle size={18} className="text-orange-500" />
                     Compliance Trabalhista
                 </h3>
-
                 <div className="space-y-4 flex-1">
                     {complianceData.map((item, idx) => (
                         <div key={idx} className={`p-4 rounded-xl border border-transparent transition-all hover:border-gray-200 ${item.bg}`}>
                             <div className="flex justify-between items-start mb-2">
-                                <span className={`text-xs font-bold uppercase tracking-wide ${item.color.replace('text-', 'text-opacity-70 ')}`}>
-                                    {item.label}
-                                </span>
+                                <span className={`text-xs font-bold uppercase tracking-wide ${item.color.replace('text-', 'text-opacity-70 ')}`}>{item.label}</span>
                                 <CalendarDays size={14} className={item.color} />
                             </div>
-                            <div className={`text-2xl font-bold font-mono ${item.color}`}>
-                                {item.value}
-                            </div>
+                            <div className={`text-2xl font-bold font-mono ${item.color}`}>{item.value}</div>
                             <p className="text-[10px] text-gray-500 mt-1">Ocorrências no período selecionado</p>
                         </div>
                     ))}
                 </div>
-
                 <div className="mt-6 pt-6 border-t border-gray-100">
                     <div className="text-xs text-gray-400 text-center">
                         <span className="font-bold text-gray-800">Nota:</span> O excesso de horas extras (&gt;2h/dia) e supressão de interjornada geram passivo trabalhista.

@@ -1,8 +1,8 @@
 import { OvertimeRecord, ApiConfig } from '../types';
 
-// Mock Data matching your specific JSON structure
+// Mock Data (Mantido para fallback)
 export const generateMockData = (): OvertimeRecord[] => {
-    // Use the exact structure provided in the prompt for the mock
+    // ... mesmo mock data anterior ...
     const rawMock = [
         {
             "CHAPA": "2337",
@@ -11,8 +11,8 @@ export const generateMockData = (): OvertimeRecord[] => {
             "CODCCUSTO": "303702",
             "DESCRICAO": "SERV CORRECAO GEOMETRICA SOCADORA - RUMO",
             "DATA": "2025-08-01T00:00:00-03:00",
-            "HORAS_TRABALHADAS_PERIODO_PONTO": 8.0, // 8h 00m
-            "HORA_EXTRA_60": 0.45 // 0h 45m
+            "HORAS_TRABALHADAS_PERIODO_PONTO": 8.0,
+            "HORA_EXTRA_60": 0.45
         },
         {
             "CHAPA": "1846",
@@ -21,9 +21,9 @@ export const generateMockData = (): OvertimeRecord[] => {
             "CODCCUSTO": "301903",
             "DESCRICAO": "MANUT. INFRA NORTE ZAR – TMI",
             "DATA": "2025-12-25T00:00:00-03:00",
-            "HORA_EXTRA_100": 4.8, // 4h 08m (TOTVS Format)
-            "INTER_JORNADA60": 4.8, // 4h 08m
-            "ADICIONAL_NOTURNO_20": 4.43 // 4h 43m
+            "HORA_EXTRA_100": 4.8,
+            "INTER_JORNADA60": 4.8,
+            "ADICIONAL_NOTURNO_20": 4.43
         },
         {
             "CHAPA": "9999",
@@ -32,27 +32,26 @@ export const generateMockData = (): OvertimeRecord[] => {
             "CODCCUSTO": "101010",
             "DESCRICAO": "ADMINISTRATIVO SEDE",
             "DATA": "2025-08-15T00:00:00-03:00",
-            "HORA_EXTRA_100": 2.15, // 2h 15m
-            "INTER_JORNADA60": 0.30 // 0h 30m
+            "HORA_EXTRA_100": 2.15,
+            "INTER_JORNADA60": 0.30
         }
     ];
-
     return parseTotvsResponse(rawMock);
 };
 
-// Helper to identify if a JSON key represents hours
-const isHourKey = (key: string): boolean => {
-    const upper = key.toUpperCase();
-    return (
-        (upper.includes('HORA') || upper.includes('JORNADA') || upper.includes('ADICIONAL')) &&
-        !upper.includes('DATA') // Exclude fields like DATA_PAGAMENTO if they exist
-    );
-};
+// WHITELIST para Performance:
+// Apenas estes campos serão processados como eventos de hora,
+// evitando iterar sobre todas as chaves do objeto.
+const KNOWN_HOUR_FIELDS = [
+    'HORA_EXTRA_60',
+    'HORA_EXTRA_100',
+    'ADICIONAL_NOTURNO_20',
+    'INTER_JORNADA60',
+    'HORAS_TRABALHADAS_PERIODO_PONTO',
+    'HORA_EXTRA_50',   // Adicionado por precaução
+    'ADICIONAL_NOTURNO' // Variação comum
+];
 
-// Helper to convert TOTVS "Float" format to Standard Decimal Hours
-// Rule: "X.X" is "X:0X" and "X.XX" is "X:XX"
-// Example: 4.8 -> 4:08 -> 4 + 8/60 hours
-// Example: 4.43 -> 4:43 -> 4 + 43/60 hours
 const convertTotvsHourToDecimal = (value: number): number => {
     const sign = value < 0 ? -1 : 1;
     const absValue = Math.abs(value);
@@ -60,47 +59,36 @@ const convertTotvsHourToDecimal = (value: number): number => {
     const parts = str.split('.');
 
     const hours = parseInt(parts[0], 10);
-
-    // If no decimal part, it's just integer hours
     if (parts.length === 1) return hours * sign;
-
-    // The decimal part represents the minutes integer directly
-    // "4.8" -> parts[1] is "8" -> 8 minutes
-    // "4.43" -> parts[1] is "43" -> 43 minutes
     const minutes = parseInt(parts[1], 10);
-
     return sign * (hours + (minutes / 60));
 };
 
-// Logic to transform the specific JSON structure into our UI model
 const parseTotvsResponse = (data: any[]): OvertimeRecord[] => {
     const records: OvertimeRecord[] = [];
-
     if (!Array.isArray(data)) return [];
 
     data.forEach((item) => {
-        // Basic fields
+        // Campos Básicos (Extração Direta)
         const baseRecord = {
             CHAPA: String(item.CHAPA || ''),
             NOME: String(item.NOME || 'Desconhecido'),
             FUNCAO: String(item.FUNCAO || ''),
             CODCCUSTO: String(item.CODCCUSTO || ''),
-            SECAO: String(item.DESCRICAO || item.SECAO || 'Sem Seção'), // Map DESCRICAO to SECAO
+            SECAO: String(item.DESCRICAO || item.SECAO || 'Sem Seção'),
             DATA: String(item.DATA || new Date().toISOString()),
         };
 
-        // Iterate over all keys to find hour fields (Dynamic Parsing)
-        Object.keys(item).forEach((key) => {
+        // OTIMIZAÇÃO: Loop apenas na Whitelist
+        KNOWN_HOUR_FIELDS.forEach((key) => {
             const value = item[key];
 
-            // If the key looks like an hour field and has a numeric value > 0
-            if (isHourKey(key) && typeof value === 'number' && value !== 0) {
+            // Verifica se a chave existe e tem valor > 0
+            if (value !== undefined && typeof value === 'number' && value !== 0) {
                 records.push({
                     ...baseRecord,
-                    EVENTO: key.replace(/_/g, ' '), // Prettify: HORA_EXTRA_60 -> HORA EXTRA 60
-                    HORAS: convertTotvsHourToDecimal(value), // Convert TOTVS format to Decimal
-                    // Since VALOR is missing in JSON, we can estimate it or leave as 0. 
-                    // Setting 0 avoids "undefined" errors.
+                    EVENTO: key.replace(/_/g, ' '),
+                    HORAS: convertTotvsHourToDecimal(value),
                     VALOR: 0
                 });
             }
@@ -120,7 +108,6 @@ export const fetchOvertimeData = async (config: ApiConfig): Promise<OvertimeReco
         };
 
         let fetchUrl = config.url;
-        // Ensure parameters are attached if the user didn't include them in the base URL input
         if (!fetchUrl.includes('parameters=') && config.startDate && config.endDate) {
             const joinChar = fetchUrl.includes('?') ? '&' : '?';
             const params = `PLN_B1_D=${config.startDate};PLN_B2_D=${config.endDate}`;
@@ -137,8 +124,6 @@ export const fetchOvertimeData = async (config: ApiConfig): Promise<OvertimeReco
         }
 
         const json = await response.json();
-
-        // Handle wrapped responses (e.g. { items: [...] })
         let rawData = json;
         if (!Array.isArray(json) && json.Items) {
             rawData = json.Items;
