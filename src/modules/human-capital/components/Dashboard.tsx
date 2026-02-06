@@ -1,11 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, SalaryRecord } from '../types';
+import { RealOvertimeRecord } from '../data/realOvertime'; // Import type
 import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, AlertTriangle, Moon, Sun, Scale, Percent, ArrowUpRight, ArrowDownRight, X, User, DollarSign, ListFilter } from 'lucide-react';
 import { formatDecimalHours } from '../utils/formatters';
 import { getAllPlanningRecords, getBudgets, getSalaries } from '../services/planning';
 
 interface DashboardProps {
     data: OvertimeRecord[];
+    realOvertime: RealOvertimeRecord[];
 }
 
 type ViewMode = 'hours' | 'finance';
@@ -216,7 +218,7 @@ const CostCenterDetailModal: React.FC<{
     );
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ data }) => {
+const Dashboard: React.FC<DashboardProps> = ({ data, realOvertime }) => {
     const [dashboardViewMode, setDashboardViewMode] = useState<ViewMode>('finance');
 
     const [ccSearch, setCcSearch] = useState('');
@@ -266,7 +268,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
             }
         });
 
-        const totalRealValueHE = realValue60 + realValue100;
+        const totalRealValueHE = realOvertime.reduce((acc, curr) => acc + curr.value, 0); // Use injected Real Overtime Data
         const realValueDSR = totalRealValueHE / 6;
         const totalRealCost = totalRealValueHE + realValueAdicNoturno + realValueDSR;
 
@@ -299,7 +301,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
             totalPlannedValue,
             totalBudget
         };
-    }, [data, planningRecords, budgets, salariesMap]);
+    }, [data, planningRecords, budgets, salariesMap, realOvertime]);
 
     const ccSummary = useMemo(() => {
         const map: Record<string, { real: number; planned: number; name: string; realCost: number; plannedCost: number; budget: number }> = {};
@@ -534,7 +536,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
                             }}
                         />
                         <StatsCard
-                            title="Realizado Acumulado"
+                            title="Realizado Acumulado (HE)"
                             value={`R$ ${metrics.totalRealCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
                             icon={<Calculator size={20} />}
                             color={metrics.totalRealCost > metrics.totalBudget ? "bg-red-600" : "bg-emerald-600"}

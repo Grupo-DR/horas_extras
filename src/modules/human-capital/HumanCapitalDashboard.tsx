@@ -6,16 +6,15 @@ import DataGrid from '@/src/modules/human-capital/components/DataGrid';
 import GeminiPanel from '@/src/modules/human-capital/components/GeminiPanel';
 import AnalysisPanel from '@/src/modules/human-capital/components/AnalysisPanel';
 import FilterBar, { FilterState } from '@/src/modules/human-capital/components/FilterBar';
-import ProfileManager from '@/src/modules/iam/components/ProfileManager'; // Updated IAM path
-
+import ProfileManager from '@/src/modules/iam/components/ProfileManager';
 import Planning from '@/src/modules/human-capital/components/Planning';
-import { canManageProfiles, canPlan } from '../iam/types'; // Updated import
+import { canManageProfiles, canPlan } from '../iam/types';
 import { formatDateForApi } from '@/src/modules/human-capital/utils/formatters';
-import { LayoutDashboard, Table, Settings, Database, CheckCircle2, AlertTriangle, Menu, Sparkles, CalendarRange, UserCog, LogOut, BarChart3, RefreshCw, X, Lock } from 'lucide-react';
+import { LayoutDashboard, Table, Settings, CheckCircle2, AlertTriangle, Sparkles, CalendarRange, UserCog, Lock, BarChart3 } from 'lucide-react';
 import { ApiConfig, OvertimeRecord, FetchStatus, UserProfile } from '@/src/modules/human-capital/types';
 import { SidebarBase, SidebarItem } from '../../../layout/SidebarBase';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { realOvertimeData, RealOvertimeRecord } from '@/src/modules/human-capital/data/realOvertime';
 
 // Configuração padrão da API TOTVS
 const DEFAULT_CONFIG: ApiConfig = {
@@ -75,8 +74,7 @@ const HumanCapitalDashboard: React.FC = () => {
   useEffect(() => {
     if (!isProfileLoading) {
       if (!hasModuleAccess('human_capital')) {
-        // toast.error("Acesso negado ao módulo Capital Humano.");
-        // navigate('/'); 
+        // Handle access denial
       }
     }
   }, [isProfileLoading, hasModuleAccess, navigate]);
@@ -99,9 +97,48 @@ const HumanCapitalDashboard: React.FC = () => {
     setStatus('success');
   };
 
+  const getRegional = (cc: string): string => {
+    const normalized = cc.replace(/\./g, '').trim();
+    const REGIONAL_MAP: Record<string, string> = {
+      '301201': 'Regional 01', '301502': 'Regional 01', '301503': 'Regional 01',
+      '302801': 'Regional 01', '304301': 'Regional 01', '304501': 'Regional 01',
+      '301804': 'Regional 02', '301805': 'Regional 02', '301806': 'Regional 02',
+      '301903': 'Regional 02', '304401': 'Regional 02', '304402': 'Regional 02',
+      '1001': 'Sede', '1002': 'Sede', '1003': 'Sede', '1004': 'Sede', '1005': 'Sede',
+      '10101': 'Sede', '10301': 'Sede', '10401': 'Sede', '10501': 'Sede', '10601': 'Sede',
+      '300001': 'Sede'
+    };
+    return REGIONAL_MAP[normalized] || 'Outros';
+  };
+
+  const filteredRealOvertime = useMemo(() => {
+    if (!effectiveUser?.scope) return realOvertimeData;
+    const scope = effectiveUser.scope;
+
+    return realOvertimeData.filter(item => {
+      if (scope.type === 'ALL') return true;
+      const regional = getRegional(item.costCenter);
+      const normalizedCC = item.costCenter.replace(/\./g, '');
+      if (scope.type === 'REGIONAL') return scope.regionals.includes(regional);
+      if (scope.type === 'COST_CENTER') return scope.costCenters.includes(normalizedCC);
+      return false;
+    });
+  }, [effectiveUser]);
+
   const scopedData = useMemo(() => {
     if (!effectiveUser) return [];
-    return data;
+    if (!data) return [];
+    const scope = effectiveUser.scope;
+    if (!scope || scope.type === 'ALL') return data;
+
+    return data.filter(item => {
+      const cc = item.CODCCUSTO || '';
+      const regional = getRegional(cc);
+      const normalizedCC = cc.replace(/\./g, '');
+      if (scope.type === 'REGIONAL') return scope.regionals.includes(regional);
+      if (scope.type === 'COST_CENTER') return scope.costCenters.includes(normalizedCC);
+      return false;
+    });
   }, [data, effectiveUser]);
 
   const filterOptions = useMemo(() => {
@@ -235,9 +272,9 @@ const HumanCapitalDashboard: React.FC = () => {
           )}
 
           <div className="animate-in fade-in duration-500 slide-in-from-bottom-2">
-            {activeTab === Tab.DASHBOARD && <Dashboard data={filteredData} />}
+            {activeTab === Tab.DASHBOARD && <Dashboard data={filteredData} realOvertime={filteredRealOvertime} />}
             {activeTab === Tab.DATA && <DataGrid data={filteredData} />}
-            {activeTab === Tab.ANALYSIS && <AnalysisPanel data={filteredData} selectedYear={filters.year} />}
+            {activeTab === Tab.ANALYSIS && <AnalysisPanel data={filteredData} selectedYear={filters.year} realOvertime={filteredRealOvertime} />}
             {activeTab === Tab.PLANNING && canPlan(effectiveUser.role) && <Planning user={effectiveUser} employees={scopedData} />}
             {activeTab === Tab.PROFILES && canManageProfiles(effectiveUser.role) && <ProfileManager />}
             {activeTab === Tab.SETTINGS && (

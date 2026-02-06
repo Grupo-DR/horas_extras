@@ -2,6 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { OvertimeRecord } from '../types';
+import { RealOvertimeRecord } from '../data/realOvertime';
 import { formatDecimalHours } from '../utils/formatters';
 import { TrendingUp, AlertTriangle, CalendarDays, DollarSign, Clock } from 'lucide-react';
 import { getAllPlanningRecords, getBudgets, getSalaries } from '../services/planning';
@@ -9,6 +10,7 @@ import { getAllPlanningRecords, getBudgets, getSalaries } from '../services/plan
 interface AnalysisPanelProps {
     data: OvertimeRecord[];
     selectedYear: string;
+    realOvertime: RealOvertimeRecord[];
 }
 
 type ViewMode = 'hours' | 'finance';
@@ -18,7 +20,9 @@ const CustomTooltip = ({ active, payload, label, viewMode }: any) => {
         const data = payload[0].payload;
         return (
             <div className="bg-white p-4 border border-gray-100 shadow-xl rounded-xl min-w-[200px]">
-                <p className="font-bold text-gray-800 mb-3 border-b border-gray-100 pb-2 text-sm uppercase tracking-wide">{label}</p>
+                <p className="font-bold text-gray-800 mb-3 border-b border-gray-100 pb-2 text-sm uppercase tracking-wide">
+                    {label} {payload[0]?.payload?.isPartial ? <span className="text-xs text-amber-500 font-normal ml-2">(Período em andamento)</span> : ''}
+                </p>
 
                 {viewMode === 'finance' ? (
                     <div className="space-y-2">
@@ -35,7 +39,7 @@ const CustomTooltip = ({ active, payload, label, viewMode }: any) => {
                             </span>
                         </div>
                         <div className="flex justify-between items-center text-xs pt-1 border-t border-gray-50">
-                            <span className="text-gray-500 font-bold">REALIZADO</span>
+                            <span className="text-gray-500 font-bold">REALIZADO (HE)</span>
                             <span className="font-mono font-bold text-emerald-600 text-sm">
                                 R$ {data.Real.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                             </span>
@@ -84,7 +88,7 @@ const CustomTooltip = ({ active, payload, label, viewMode }: any) => {
     return null;
 };
 
-const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, selectedYear }) => {
+const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, selectedYear, realOvertime }) => {
     const [viewMode, setViewMode] = useState<ViewMode>('finance');
     const budgets = useMemo(() => getBudgets(), []);
     const planningRecords = useMemo(() => getAllPlanningRecords(), []);
@@ -131,9 +135,17 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, selectedYear }) => 
                     const baseHour = sal / 220;
                     const multiplier = r.EVENTO.includes('60') ? 1.6 : r.EVENTO.includes('100') ? 2.0 : 1.0;
                     // Simplifying logic for chart visualization
-                    realCost += baseHour * (isSunday ? 2.0 : multiplier) * hours;
                 }
             });
+
+            // Calculate Real Values (Financial specific using manual data)
+            let realFinancialValue = 0;
+            if (viewMode === 'finance') {
+                realFinancialValue = realOvertime
+                    .filter(r => r.year === parseInt(selectedYear) && r.month === (index + 1))
+                    .reduce((acc, curr) => acc + curr.value, 0);
+            }
+
 
             // Calculate Planned Values
             let plannedHours = 0;
@@ -161,11 +173,12 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, selectedYear }) => 
             return {
                 name: displayMonth,
                 fullMonth: month,
-                Real: viewMode === 'finance' ? realCost : realHours,
+                Real: viewMode === 'finance' ? realFinancialValue : realHours,
                 Planejado: viewMode === 'finance' ? plannedCost : plannedHours,
-                Budget: viewMode === 'finance' ? monthlyBudget : 0, // Budget only makes sense for finance
-                amt: viewMode === 'finance' ? realCost : realHours,
-                he60, he100, night, interjourney // Passed for tooltip
+                Budget: viewMode === 'finance' ? monthlyBudget : 0,
+                amt: viewMode === 'finance' ? realFinancialValue : realHours,
+                he60, he100, night, interjourney,
+                isPartial: parseInt(selectedYear) === 2026 && index === 0 // Mark Jan 2026 as partial/ongoing if needed
             };
         });
     }, [data, selectedYear, viewMode, budgets, planningRecords, salariesMap]);
@@ -236,7 +249,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, selectedYear }) => 
                             <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }} />
 
                             <Bar dataKey="Planejado" name="Planejado" fill="#cbd5e1" radius={[4, 4, 0, 0]} barSize={20} />
-                            <Bar dataKey="Real" name="Realizado" fill={viewMode === 'finance' ? '#10b981' : '#3b82f6'} radius={[4, 4, 0, 0]} barSize={20} />
+                            <Bar dataKey="Real" name="Realizado (HE)" fill={viewMode === 'finance' ? '#10b981' : '#3b82f6'} radius={[4, 4, 0, 0]} barSize={20} />
                             {viewMode === 'finance' && (
                                 <Line type="monotone" dataKey="Budget" name="Budget" stroke="#6366f1" strokeWidth={2} dot={{ r: 4, fill: '#6366f1', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
                             )}
