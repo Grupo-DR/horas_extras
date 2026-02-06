@@ -1,5 +1,5 @@
 
-import { PlanningRecord, SalaryRecord, BudgetRecord } from '../types';
+import { PlanningRecord, SalaryRecord, BudgetRecord, SalaryAllocation } from '../types';
 
 // In-memory store for demo purposes. 
 // In a real app this would be in a DB, but we use a local variable here.
@@ -37,21 +37,21 @@ export const getPlanning = async (
 };
 
 // Salary Management
-export const saveSalaries = (salaries: SalaryRecord[]) => {
-    localStorage.setItem('employee_salaries', JSON.stringify(salaries));
+export const saveSalaries = (salaries: SalaryAllocation[]) => {
+    localStorage.setItem('employee_salaries_v2', JSON.stringify(salaries));
 };
 
-export const getSalaries = (): SalaryRecord[] => {
-    const data = localStorage.getItem('employee_salaries');
+export const getSalaries = (): SalaryAllocation[] => {
+    const data = localStorage.getItem('employee_salaries_v2');
     return data ? JSON.parse(data) : [];
 };
 
 // Budget Management
 export const saveBudgets = (budgets: BudgetRecord[]) => {
-    localStorage.setItem('department_budgets', JSON.stringify(budgets));
+    localStorage.setItem('department_budgets_v2', JSON.stringify(budgets));
 };
 
 export const getBudgets = (): BudgetRecord[] => {
-    const data = localStorage.getItem('department_budgets');
+    const data = localStorage.getItem('department_budgets_v2');
     return data ? JSON.parse(data) : [];
 };

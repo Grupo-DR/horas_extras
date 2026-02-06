@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { OvertimeRecord, UserProfile, PlanningRecord, SalaryRecord, BudgetRecord } from '../types';
+import { OvertimeRecord, UserProfile, PlanningRecord, SalaryRecord, BudgetRecord, SalaryAllocation } from '../types';
 import { savePlanning, getPlanning, saveSalaries, getSalaries, saveBudgets, getBudgets } from '../services/planning';
 import { Calendar as CalendarIcon, Save, LayoutList, CalendarDays, ChevronLeft, ChevronRight, User, Calculator, Users, X, FileUp, AlertTriangle, TrendingUp, Wallet, ArrowUpRight, ArrowDownRight, Building2, MapPin, CheckCircle2 } from 'lucide-react';
 import { formatDecimalHours, parseTimeToDecimal } from '../utils/formatters';
@@ -193,12 +193,12 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
     useEffect(() => { setCurrentWeekStart(periodStart); }, [periodStart]);
 
     const [plans, setPlans] = useState<Record<string, number>>({});
-    const [salaries, setSalaries] = useState<Record<string, number>>({});
+    const [salaries, setSalaries] = useState<SalaryAllocation[]>([]);
     const [budgets, setBudgets] = useState<BudgetRecord[]>([]);
     const [saving, setSaving] = useState(false);
 
     const [modalOpen, setModalOpen] = useState(false);
-    const [selectedEmployee, setSelectedEmployee] = useState<{ name: string, chapa: string } | null>(null);
+    const [selectedEmployee, setSelectedEmployee] = useState<{ name: string, chapa: string, salary: number } | null>(null);
 
     // Alert State
     const [alert, setAlert] = useState<{ type: 'success' | 'error', message: string } | null>(null);
@@ -227,9 +227,44 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
         return Array.from(set).sort();
     }, [employees]);
 
+    // Derived: Active Salary Allocations for Selected Month
+    const activeAllocations = useMemo(() => {
+        // Filter salaries for the selected month (or fallback logic)
+        const relevant = salaries.filter(s => s.monthKey === selectedMonth && s.status === 'A');
+
+        if (relevant.length === 0 && salaries.length > 0) {
+            // Fallback Logic:
+            const grouped = new Map<string, SalaryAllocation[]>();
+            salaries.forEach(s => {
+                if (s.status === 'A' && s.monthKey <= selectedMonth) {
+                    const existing = grouped.get(s.chapa) || [];
+                    existing.push(s);
+                    grouped.set(s.chapa, existing);
+                }
+            });
+
+            const fallback: SalaryAllocation[] = [];
+            grouped.forEach((recs) => {
+                recs.sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+                const bestMonth = recs[0].monthKey;
+                fallback.push(...recs.filter(r => r.monthKey === bestMonth));
+            });
+            return fallback;
+        }
+
+        return relevant;
+    }, [salaries, selectedMonth]);
+
     const uniqueEmployees = useMemo(() => {
         const map = new Map<string, { nome: string; cc: string; chapa: string; regional: string }>();
+
+        // Set of active chapas in base
+        const activeChapas = new Set(activeAllocations.map(s => s.chapa));
+
         employees.forEach(e => {
+            // Filter: Must be active
+            if (!activeChapas.has(e.CHAPA)) return;
+
             const reg = getRegional(e.CODCCUSTO);
             const matchesCC = !ccFilter || e.CODCCUSTO === ccFilter;
             const matchesRegional = !regionalFilter || reg === regionalFilter;
@@ -239,13 +274,11 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
             }
         });
         return Array.from(map.values()).sort((a, b) => a.nome.localeCompare(b.nome));
-    }, [employees, ccFilter, regionalFilter]);
+    }, [employees, ccFilter, regionalFilter, activeAllocations]);
 
     useEffect(() => {
         const storedSalaries = getSalaries();
-        const sMap: Record<string, number> = {};
-        storedSalaries.forEach(s => sMap[s.chapa] = s.salary);
-        setSalaries(sMap);
+        setSalaries(storedSalaries);
 
         const storedBudgets = getBudgets();
         setBudgets(storedBudgets);
@@ -284,8 +317,47 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
     };
 
     const handleEmployeeClick = (emp: { nome: string; chapa: string }) => {
-        setSelectedEmployee({ name: emp.nome, chapa: emp.chapa });
+        const allocs = activeAllocations.filter(a => a.chapa === emp.chapa);
+        const salary = allocs.length > 0 ? allocs[0].salary : 0;
+        setSelectedEmployee({ name: emp.nome, chapa: emp.chapa, salary });
         setModalOpen(true);
+    };
+
+    const parseMonthKey = (monthVal: any, yearVal: any): string => {
+        // Case 1: Javascript Date
+        if (monthVal instanceof Date) {
+            return formatDateKey(monthVal).slice(0, 7);
+        }
+        // Case 2: Excel Serial Date (number > 20000)
+        if (typeof monthVal === 'number' && monthVal > 20000) {
+            // Approximate check for Excel dates
+            const date = new Date((monthVal - 25569) * 86400 * 1000);
+            // Adjust for timezone if needed, but usually works for month/year extraction
+            // Adding a few hours to avoid timezone issues rolling back a day
+            date.setHours(12);
+            return formatDateKey(date).slice(0, 7);
+        }
+        // Case 3: String Parsing
+        if (typeof monthVal === 'string') {
+            const cleaned = monthVal.trim();
+            // Check for "YYYY-MM" or "YYYY-MM-DD"
+            if (cleaned.match(/^\d{4}-\d{2}/)) {
+                return cleaned.slice(0, 7);
+            }
+
+            // Check for Month Name (Requires Year)
+            const monthIndex = MONTH_NAMES.findIndex(m => m.toLowerCase() === cleaned.toLowerCase());
+            if (monthIndex >= 0 && yearVal) {
+                const yyyy = String(yearVal).trim();
+                const mm = String(monthIndex + 1).padStart(2, '0');
+                return `${yyyy}-${mm}`;
+            }
+        }
+        return '';
+    };
+
+    const normalizeCC = (cc: string): string => {
+        return cc.replace(/\./g, '').trim();
     };
 
     const handleSalaryImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -299,38 +371,108 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
                 const workbook = XLSX.read(data, { type: 'binary' });
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
-                const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
 
-                const salaryMap: Record<string, number> = { ...salaries };
+                if (json.length === 0) {
+                    setAlert({ type: 'error', message: "Arquivo vazio." });
+                    return;
+                }
+
+                // Header Mapping
+                let headerRowIndex = -1;
+                const colMap: Record<string, number> = {};
+
+                // Find header
+                for (let i = 0; i < Math.min(json.length, 10); i++) {
+                    const row = json[i];
+                    const rowStr = row.map(c => String(c).toLowerCase());
+                    if (rowStr.some(c => c.includes('chapa') || c.includes('nome'))) {
+                        headerRowIndex = i;
+                        row.forEach((cell, idx) => {
+                            const c = String(cell).toLowerCase().trim();
+                            if (c.includes('mês') || c.includes('mes')) colMap['month'] = idx;
+                            if (c.includes('chapa')) colMap['chapa'] = idx;
+                            if (c.includes('status')) colMap['status'] = idx;
+                            if (c.includes('cc') || c.includes('centro')) colMap['cc'] = idx;
+                            if (c.includes('aloc') || c.includes('rateio')) colMap['allocation'] = idx;
+                            if (c.includes('salário') || c.includes('salario')) colMap['salary'] = idx;
+                        });
+                        break;
+                    }
+                }
+
+                if (headerRowIndex === -1 || colMap['chapa'] === undefined || colMap['status'] === undefined) {
+                    setAlert({ type: 'error', message: "Colunas obrigatórias não encontradas: Chapa, Status. (Opcionais: Mês, CC, Alocação, Salário)" });
+                    return;
+                }
+
+                const newSalaries: SalaryAllocation[] = [];
                 let count = 0;
-                let duplicateCount = 0;
 
-                json.forEach((row: any, index: number) => {
-                    if (index === 0 && (String(row[0]).toLowerCase().includes('chapa') || String(row[1]).toLowerCase().includes('salário'))) return;
+                for (let i = headerRowIndex + 1; i < json.length; i++) {
+                    const row = json[i];
+                    if (!row || row.length === 0) continue;
 
-                    const chapa = String(row[0] || '').trim();
-                    let salaryVal = row[1];
+                    const chapa = String(row[colMap['chapa']] || '').trim();
+                    if (!chapa) continue;
 
-                    if (typeof salaryVal === 'string') {
-                        salaryVal = parseFloat(salaryVal.replace('R$', '').replace(/\./g, '').replace(',', '.').trim());
+                    const status = String(row[colMap['status']] || '').trim();
+                    const monthVal = colMap['month'] !== undefined ? row[colMap['month']] : undefined;
+
+                    const monthKey = monthVal ? parseMonthKey(monthVal, undefined) : selectedMonth;
+
+                    const cc = colMap['cc'] !== undefined ? normalizeCC(String(row[colMap['cc']] || '')) : '';
+
+                    let allocation = 1.0;
+                    if (colMap['allocation'] !== undefined) {
+                        const rawAlloc = row[colMap['allocation']];
+                        if (typeof rawAlloc === 'number') allocation = rawAlloc;
+                        else if (typeof rawAlloc === 'string') {
+                            if (rawAlloc.includes('%')) {
+                                allocation = parseFloat(rawAlloc.replace('%', '').replace(',', '.')) / 100;
+                            } else {
+                                allocation = parseFloat(rawAlloc.replace(',', '.'));
+                            }
+                        }
                     }
 
-                    if (chapa && !isNaN(salaryVal)) {
-                        if (salaryMap[chapa] !== undefined) duplicateCount++;
-                        salaryMap[chapa] = salaryVal;
+                    let salary = 0;
+                    if (colMap['salary'] !== undefined) {
+                        const rawSal = row[colMap['salary']];
+                        if (typeof rawSal === 'number') salary = rawSal;
+                        else if (typeof rawSal === 'string') {
+                            salary = parseFloat(rawSal.replace('R$', '').replace(/\./g, '').replace(',', '.').trim());
+                        }
+                    }
+
+                    if (monthKey && chapa && status) {
+                        newSalaries.push({
+                            monthKey,
+                            chapa,
+                            status,
+                            costCenter: cc,
+                            allocation,
+                            salary
+                        });
                         count++;
                     }
-                });
+                }
 
                 if (count > 0) {
-                    const newSalaries: SalaryRecord[] = Object.entries(salaryMap).map(([chapa, salary]) => ({ chapa, salary }));
-                    saveSalaries(newSalaries);
-                    setSalaries(salaryMap);
-                    setAlert({ type: 'success', message: `${count} salários importados com sucesso! ${duplicateCount > 0 ? `(${duplicateCount} duplicatas atualizadas)` : ''}` });
+                    const existing = [...salaries];
+                    const importedMonths = new Set(newSalaries.map(s => s.monthKey));
+                    const filteredExisting = existing.filter(s => !importedMonths.has(s.monthKey));
+
+                    const merged = [...filteredExisting, ...newSalaries];
+                    saveSalaries(merged);
+                    setSalaries(merged);
+                    setAlert({ type: 'success', message: `${count} registros salariais importados/atualizados!` });
                 } else {
-                    setAlert({ type: 'error', message: "Nenhum dado válido encontrado. Use Coluna A para Chapa e B para Salário." });
+                    setAlert({ type: 'error', message: "Nenhum dado válido." });
                 }
+
             } catch (err) {
+                console.error(err);
                 setAlert({ type: 'error', message: "Falha ao processar arquivo de salários." });
             }
         };
@@ -349,37 +491,82 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
                 const workbook = XLSX.read(data, { type: 'binary' });
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
-                const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+
+                if (json.length === 0) {
+                    setAlert({ type: 'error', message: "Arquivo vazio." });
+                    return;
+                }
+
+                // Header Mapping
+                let headerRowIndex = -1;
+                const colMap: Record<string, number> = {};
+
+                // Find header row (looking for "Mês" or "Mes")
+                for (let i = 0; i < Math.min(json.length, 10); i++) {
+                    const row = json[i];
+                    const rowStr = row.map(c => String(c).toLowerCase());
+                    if (rowStr.some(c => c.includes('mês') || c.includes('mes'))) {
+                        headerRowIndex = i;
+                        row.forEach((cell, idx) => {
+                            const c = String(cell).toLowerCase().trim();
+                            if (c.includes('mês') || c.includes('mes')) colMap['month'] = idx;
+                            if (c.includes('ano') || c.includes('year')) colMap['year'] = idx;
+                            if (c.includes('cc') || c.includes('centro') || c.includes('cost')) colMap['cc'] = idx;
+                            if (c.includes('valor') || c.includes('value') || c.includes('orcado') || c.includes('budget')) colMap['value'] = idx;
+                        });
+                        break;
+                    }
+                }
+
+                if (headerRowIndex === -1 || colMap['month'] === undefined || colMap['cc'] === undefined || colMap['value'] === undefined) {
+                    setAlert({ type: 'error', message: "Colunas obrigatórias não encontradas: Mês, CC, Valor." });
+                    return;
+                }
 
                 const newBudgets: BudgetRecord[] = [];
                 let count = 0;
 
-                json.forEach((row: any, index: number) => {
-                    if (index === 0 && (String(row[0]).toLowerCase().includes('mês'))) return;
+                for (let i = headerRowIndex + 1; i < json.length; i++) {
+                    const row = json[i];
+                    if (!row || row.length === 0) continue;
 
-                    const month = String(row[0] || '').trim();
-                    const costCenter = String(row[1] || '').trim();
-                    let budgetVal = row[2];
+                    const monthVal = row[colMap['month']];
+                    const yearVal = colMap['year'] !== undefined ? row[colMap['year']] : undefined;
+                    const ccVal = row[colMap['cc']];
+                    const valVal = row[colMap['value']];
 
-                    if (typeof budgetVal === 'string') {
-                        budgetVal = parseFloat(budgetVal.replace('R$', '').replace(/\./g, '').replace(',', '.').trim());
+                    if (!monthVal && !ccVal) continue;
+
+                    const monthKey = parseMonthKey(monthVal, yearVal);
+                    const costCenter = normalizeCC(String(ccVal || ''));
+                    let value = valVal;
+
+                    if (typeof value === 'string') {
+                        value = parseFloat(value.replace('R$', '').replace(/\./g, '').replace(',', '.').trim());
                     }
 
-                    if (month && costCenter && !isNaN(budgetVal)) {
-                        newBudgets.push({ month, costCenter, value: budgetVal });
+                    if (monthKey && costCenter && !isNaN(value)) {
+                        newBudgets.push({
+                            monthKey,
+                            month: String(monthVal),
+                            costCenter,
+                            value
+                        });
                         count++;
                     }
-                });
+                }
 
                 if (count > 0) {
                     saveBudgets(newBudgets);
                     setBudgets(newBudgets);
-                    setAlert({ type: 'success', message: `${count} registros de budget importados com sucesso!` });
+                    setAlert({ type: 'success', message: `${count} budgets importados com sucesso! (Chave: YYYY-MM)` });
                 } else {
-                    setAlert({ type: 'error', message: "Nenhum budget válido encontrado. Colunas: Mês, CC DR, Valor." });
+                    setAlert({ type: 'error', message: "Nenhum budget válido." });
                 }
             } catch (err) {
-                setAlert({ type: 'error', message: "Falha ao processar arquivo de budget." });
+                console.error(err);
+                setAlert({ type: 'error', message: "Erro ao processar arquivo de budget." });
             }
         };
         reader.readAsBinaryString(file);
@@ -403,14 +590,24 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
     };
 
     const calculatePersonStats = useMemo(() => {
-        return (chapa: string) => {
+        return (chapa: string, employeeCC: string) => {
             let totalHours = 0;
             let totalValue = 0;
-            const salary = salaries[chapa];
+
+            // Find allocation for the specific CC
+            const normalizedCC = normalizeCC(employeeCC);
+            const userAllocations = activeAllocations.filter(a => a.chapa === chapa);
+            const specificAlloc = userAllocations.find(a => normalizeCC(a.costCenter) === normalizedCC);
+
+            // Fallback: If no specific allocation for this CC, use 100% of the salary found in any allocation
+            // (Assuming salary is constant across allocations for the same chapa)
+            const baseSalary = userAllocations.length > 0 ? userAllocations[0].salary : 0;
+            const allocationFactor = specificAlloc ? specificAlloc.allocation : 1.0;
+            const effectiveSalary = baseSalary * allocationFactor; // Base for this CC
 
             if (mode === 'MONTHLY') {
                 totalHours = plans[chapa] || 0;
-                if (salary) totalValue = (salary / 220) * 1.6 * totalHours;
+                if (effectiveSalary) totalValue = (effectiveSalary / 220) * 1.6 * totalHours;
             } else {
                 const curr = new Date(periodStart);
                 while (curr <= periodEnd) {
@@ -418,9 +615,9 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
                     const hours = plans[key] || 0;
                     totalHours += hours;
 
-                    if (salary && hours > 0) {
+                    if (effectiveSalary && hours > 0) {
                         const isSunday = curr.getDay() === 0;
-                        const baseHour = salary / 220;
+                        const baseHour = effectiveSalary / 220;
                         const multiplier = isSunday ? 2.0 : 1.6;
                         totalValue += baseHour * multiplier * hours;
                     }
@@ -429,11 +626,11 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
             }
             return { totalHours, totalValue };
         };
-    }, [plans, salaries, mode, periodStart, periodEnd]);
+    }, [plans, activeAllocations, mode, periodStart, periodEnd]);
 
     const teamTotals = useMemo(() => {
         return uniqueEmployees.reduce((acc, emp) => {
-            const stats = calculatePersonStats(emp.chapa);
+            const stats = calculatePersonStats(emp.chapa, emp.cc);
             return {
                 hours: acc.hours + stats.totalHours,
                 value: acc.value + stats.totalValue
@@ -442,12 +639,8 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
     }, [uniqueEmployees, calculatePersonStats]);
 
     const currentBudget = useMemo(() => {
-        const parts = selectedMonth.split('-');
-        const monthNum = parseInt(parts[1], 10);
-        const monthStr = MONTH_NAMES[monthNum - 1];
-
         return budgets.reduce((acc, b) => {
-            const matchesMonth = b.month.toLowerCase() === monthStr.toLowerCase();
+            const matchesMonth = b.monthKey === selectedMonth; // Direct YYYY-MM comparison
             const matchesCC = !ccFilter || b.costCenter === ccFilter;
             const matchesRegional = !regionalFilter || getRegional(b.costCenter) === regionalFilter;
             const isAuthorized = user.role === 'LEVEL_B_01' ? b.costCenter === user.costCenter : true;
@@ -670,7 +863,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {uniqueEmployees.map(emp => {
-                                const stats = calculatePersonStats(emp.chapa);
+                                const stats = calculatePersonStats(emp.chapa, emp.cc);
                                 const exceedsLimit = stats.totalHours > 44;
 
                                 return (
@@ -683,8 +876,21 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
                                                     <div className="text-[9px] text-gray-400 font-mono uppercase tracking-tighter">
                                                         {emp.chapa} • {emp.regional} • {emp.cc}
                                                     </div>
-                                                    <div className="text-[9px] text-gray-400 font-mono italic">
-                                                        {salaries[emp.chapa] ? `Salário: R$ ${salaries[emp.chapa].toLocaleString('pt-BR')}` : 'S/ Salário'}
+                                                    <div className="text-[9px] text-gray-500 font-mono italic flex flex-col">
+                                                        {(() => {
+                                                            const allocs = activeAllocations.filter(a => a.chapa === emp.chapa);
+                                                            if (allocs.length === 0) return <span>S/ Salário</span>;
+
+                                                            const rateioStr = allocs.map(a => `${(a.allocation * 100).toFixed(0)}% ${a.costCenter}`).join(' | ');
+                                                            // Also show salary value? "R$ 10.000 (Rateio: ...)"
+                                                            const salValue = allocs[0].salary.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                                                            return (
+                                                                <>
+                                                                    <span>{salValue}</span>
+                                                                    {allocs.length > 0 && <span className="text-[8px] text-indigo-500 font-bold">Rateio: {rateioStr}</span>}
+                                                                </>
+                                                            );
+                                                        })()}
                                                     </div>
                                                 </div>
                                             </div>

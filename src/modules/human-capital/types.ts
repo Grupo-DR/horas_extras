@@ -59,7 +59,17 @@ export interface SalaryRecord {
     salary: number;
 }
 
+export interface SalaryAllocation {
+    monthKey: string;      // 'YYYY-MM'
+    chapa: string;
+    status: string;        // 'A' etc
+    costCenter: string;    // CC normalizado
+    allocation: number;    // 0..1
+    salary: number;        // salário cheio
+}
+
 export interface BudgetRecord {
+    monthKey: string; // 'YYYY-MM' added
     month: string; // "Janeiro", "Fevereiro", etc.
     costCenter: string;
     value: number;
