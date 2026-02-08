@@ -76,7 +76,10 @@ const HumanCapitalDashboard: React.FC = () => {
   const [config, setConfig] = useState<ApiConfig>(DEFAULT_CONFIG);
   const [data, setData] = useState<OvertimeRecord[]>([]);
   const [status, setStatus] = useState<FetchStatus>('idle');
-  const [activeTab, setActiveTab] = useState<Tab>(Tab.DATA);
+  const [activeTab, setActiveTab] = useState<Tab>(Tab.DASHBOARD);
+
+  // ... (keeping other lines same if not part of this block, but mainly reverting the state init)
+
   const [showAiPanel, setShowAiPanel] = useState(false);
 
   // Inicializa filtros com função helper
@@ -214,9 +217,9 @@ const HumanCapitalDashboard: React.FC = () => {
   const sidebarItems: SidebarItem[] = useMemo(() => {
     if (!effectiveUser) return [];
     const items: SidebarItem[] = [
-      { key: Tab.DATA, label: "Visão Geral (Tabela)", icon: Table, onClick: () => setActiveTab(Tab.DATA), isActive: activeTab === Tab.DATA },
-      { key: Tab.DASHBOARD, label: "Dashboard (Gráficos)", icon: LayoutDashboard, onClick: () => setActiveTab(Tab.DASHBOARD), isActive: activeTab === Tab.DASHBOARD },
+      { key: Tab.DASHBOARD, label: "Visão Geral", icon: LayoutDashboard, onClick: () => setActiveTab(Tab.DASHBOARD), isActive: activeTab === Tab.DASHBOARD },
       { key: Tab.ANALYSIS, label: "Análise de Dados", icon: BarChart3, onClick: () => setActiveTab(Tab.ANALYSIS), isActive: activeTab === Tab.ANALYSIS },
+      { key: Tab.DATA, label: "Histórico", icon: Table, onClick: () => setActiveTab(Tab.DATA), isActive: activeTab === Tab.DATA },
     ];
     if (canPlan(effectiveUser.role)) items.push({ key: Tab.PLANNING, label: "Planejamento", icon: CalendarRange, onClick: () => setActiveTab(Tab.PLANNING), isActive: activeTab === Tab.PLANNING });
     if (canManageProfiles(effectiveUser.role)) items.push({ key: Tab.PROFILES, label: "Gestão de Perfis", icon: UserCog, onClick: () => setActiveTab(Tab.PROFILES), isActive: activeTab === Tab.PROFILES });
