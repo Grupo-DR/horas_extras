@@ -17,36 +17,24 @@ Formate sua resposta em Markdown. Seja conciso, profissional e orientado a dados
 `;
 
 export const analyzeOvertimeData = async (data: OvertimeRecord[]): Promise<string> => {
-    // Limit data size for context window if necessary, though Flash has a large window.
-    // We send a summary if the dataset is massive, but 150-500 records is fine for raw JSON.
+  // Limit data size for context window if necessary, though Flash has a large window.
+  // We send a summary if the dataset is massive, but 150-500 records is fine for raw JSON.
+  
+  if (!process.env.API_KEY) {
+    return "Erro: Chave de API não encontrada. Por favor, configure seu ambiente.";
+  }
 
-    // Check for API key in multiple possible environment variables
-    // process.env.API_KEY is injected by the build system in production
-    if (!process.env.API_KEY && !process.env.VITE_GEMINI_API_KEY && !process.env.REACT_APP_GEMINI_API_KEY) {
-        // NOTE: Adjusted env var name for Portal-commercial standards if needed, 
-        // but 'process.env.API_KEY' usually works in create-react-app or vite with define.
-        // However, typically Vite uses import.meta.env.VITE_...
-        // I will leave close to original but maybe fallback
-    }
-
-    // Retrieve API Key from environment, prioritizing the one injected by build (API_KEY)
-    const apiKey = process.env.API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.REACT_APP_GEMINI_API_KEY || '';
-
-    if (!apiKey) {
-        return "Erro: Chave de API não encontrada. Por favor, verifique a configuração (API_KEY, VITE_GEMINI_API_KEY).";
-    }
-
-    const ai = new GoogleGenAI({ apiKey });
-
-    // Calculate a quick summary to guide the model
-    const totalCost = data.reduce((acc, curr) => acc + curr.VALOR, 0);
-    const totalHours = data.reduce((acc, curr) => acc + curr.HORAS, 0);
-
-    const prompt = `
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
+  // Calculate a quick summary to guide the model
+  const totalCost = data.reduce((acc, curr) => acc + curr.VALOR, 0);
+  const totalHours = data.reduce((acc, curr) => acc + curr.HORAS, 0);
+  
+  const prompt = `
   Analise o seguinte conjunto de dados de horas extras para o período.
   
   Métricas de Resumo:
-  - Custo Total Estimado: R$ ${totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+  - Custo Total Estimado: R$ ${totalCost.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
   - Total de Horas: ${totalHours.toFixed(2)}
   - Contagem de Registros: ${data.length}
 
@@ -56,19 +44,19 @@ export const analyzeOvertimeData = async (data: OvertimeRecord[]): Promise<strin
   Por favor, forneça um "Resumo Executivo Gerencial" com 3 descobertas principais e 2 recomendações de economia de custos.
   `;
 
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-1.5-flash', // Updated to a stable model name if 'gemini-3-flash-preview' is not valid in this context, but keeping original if user insists. Will use a standard one.
-            contents: prompt,
-            config: {
-                systemInstruction: SYSTEM_INSTRUCTION,
-                temperature: 0.4, // Lower temperature for analytical consistency
-            },
-        });
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+        temperature: 0.4, // Lower temperature for analytical consistency
+      },
+    });
 
-        return response.text || "Nenhum insight gerado.";
-    } catch (error) {
-        console.error("Falha na análise do Gemini:", error);
-        return "Não foi possível gerar insights no momento. Verifique sua chave de API e conexão.";
-    }
+    return response.text || "Nenhum insight gerado.";
+  } catch (error) {
+    console.error("Falha na análise do Gemini:", error);
+    return "Não foi possível gerar insights no momento. Verifique sua chave de API e conexão.";
+  }
 };
