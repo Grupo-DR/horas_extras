@@ -218,3 +218,24 @@ export const getAllPlanningRecords = (): PlanningRecord[] => {
     }
     return [];
 };
+
+// --- LEGACY SYNC GETTERS ---
+export const getBudgetsSync = (): BudgetRecord[] => {
+    try {
+        const data = localStorage.getItem('department_budgets_v2');
+        if (data) return (JSON.parse(data) || []) as BudgetRecord[];
+    } catch (e) {
+        console.error("Error reading local budgets:", e);
+    }
+    return [];
+};
+
+export const getSalariesSync = (): SalaryAllocation[] => {
+    try {
+        const data = localStorage.getItem('employee_salaries_v2');
+        if (data) return (JSON.parse(data) || []) as SalaryAllocation[];
+    } catch (e) {
+        console.error("Error reading local salaries:", e);
+    }
+    return [];
+};

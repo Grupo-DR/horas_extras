@@ -267,15 +267,6 @@ const HumanCapitalDashboard: React.FC = () => {
             {activeTab === Tab.DASHBOARD && (
               <Dashboard
                 data={filteredData}
-                realOvertime={filteredRealOvertime}
-                // Passando o contexto completo para garantir que o Dashboard saiba calcular o Budget correto
-                filterContext={{
-                  startDate: filters.startDate,
-                  endDate: filters.endDate,
-                  mode: filters.dateMode,
-                  year: filters.year,
-                  month: filters.month
-                }}
               />
             )}
             {activeTab === Tab.DATA && <DataGrid data={filteredData} />}
