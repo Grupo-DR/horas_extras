@@ -1,7 +1,7 @@
 
 import { db } from '@/services/firebaseConfig';
 import { collection, doc, writeBatch, query, where, getDocs, addDoc, Timestamp, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
-import { BudgetRecord, SalaryAllocation, PlanningRecord, UserProfile, WorkTeam } from '../types';
+import { BudgetRecord, SalaryAllocation, PlanningRecord, UserProfile, WorkTeam, ManualEmployee } from '../types';
 import { Scope } from '../../iam/types';
 
 const COL_BUDGETS = 'hc_budgets';
@@ -210,4 +210,24 @@ export const deleteTeam = async (teamId: string) => {
     // Let's do deleteDoc for simplicity as requested "apagar".
     // Wait, if we use deleteDoc, we need to import it. 
     // 'deleteDoc' is not imported. Let's use deleteDoc from firebase/firestore.
+};
+
+// --- MANUAL EMPLOYEES ---
+
+const COL_MANUAL_EMPLOYEES = 'hc_manual_employees';
+
+export const upsertManualEmployee = async (employee: ManualEmployee, user: UserProfile) => {
+    if (!employee.id) return;
+    const ref = doc(db, COL_MANUAL_EMPLOYEES, employee.id);
+    await setDoc(ref, {
+        ...employee,
+        updatedAt: Timestamp.now(),
+        updatedBy: user.email
+    }, { merge: true });
+};
+
+export const getManualEmployees = async () => {
+    const q = query(collection(db, COL_MANUAL_EMPLOYEES));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => d.data() as ManualEmployee);
 };

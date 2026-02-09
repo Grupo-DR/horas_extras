@@ -85,3 +85,12 @@ export interface WorkTeam {
     managerName?: string;
     memberChapas: string[];
 }
+
+export interface ManualEmployee {
+    id: string; // UUID
+    chapa: string; // Unique identifier (manual: M-UUID or custom)
+    name: string;
+    costCenter: string;
+    role: string;
+    status: 'ACTIVE' | 'INACTIVE';
+}
