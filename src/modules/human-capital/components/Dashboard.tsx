@@ -129,34 +129,7 @@ const FunctionDetailModal: React.FC<{
   );
 };
 
-// ... (CostCenterDetailModal remains unchanged, skipped in replacement range)
 
-// ... inside Dashboard component ...
-
-const funcDetailData = useMemo(() => {
-  if (!selectedFuncModal) return [];
-  const empMap: Record<string, { name: string; he60: number; he100: number; interjornada: number }> = {};
-
-  data.filter(r => r.FUNCAO === selectedFuncModal).forEach(r => {
-    if (!empMap[r.CHAPA]) empMap[r.CHAPA] = { name: r.NOME, he60: 0, he100: 0, interjornada: 0 };
-
-    const hours = (Number(r.HORAS) || 0);
-    const evt = (r.EVENTO || '').toUpperCase();
-
-    if (evt.includes('EXTRA')) {
-      if (evt.includes('60')) {
-        empMap[r.CHAPA].he60 += hours;
-      } else if (evt.includes('100')) {
-        empMap[r.CHAPA].he100 += hours;
-      }
-    } else if (evt.includes('INTER')) {
-      empMap[r.CHAPA].interjornada += hours;
-    }
-  });
-
-  return Object.entries(empMap).map(([chapa, info]) => ({ chapa, ...info }))
-    .sort((a, b) => (b.he60 + b.he100 + b.interjornada) - (a.he60 + a.he100 + a.interjornada));
-}, [data, selectedFuncModal]);
 
 const CostCenterDetailModal: React.FC<{
   isOpen: boolean;
