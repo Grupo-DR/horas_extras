@@ -77,3 +77,11 @@ export interface BudgetRecord {
     costCenter: string;
     value: number;
 }
+
+export interface WorkTeam {
+    id: string;
+    name: string;
+    costCenter: string;
+    managerName?: string;
+    memberChapas: string[];
+}

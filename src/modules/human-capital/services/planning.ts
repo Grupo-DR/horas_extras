@@ -1,5 +1,5 @@
 
-import { PlanningRecord, SalaryRecord, BudgetRecord, SalaryAllocation, UserProfile } from '../types';
+import { PlanningRecord, SalaryRecord, BudgetRecord, SalaryAllocation, UserProfile, WorkTeam } from '../types';
 import * as FirestoreService from './firestoreCH';
 import { Scope } from '../../iam/types';
 
@@ -238,4 +238,59 @@ export const getSalariesSync = (): SalaryAllocation[] => {
         console.error("Error reading local salaries:", e);
     }
     return [];
+};
+// --- TEAMS ---
+
+export const saveTeams = async (teams: WorkTeam[], user: UserProfile) => {
+    try {
+        if (isOnline()) {
+            await FirestoreService.upsertTeams(teams, user);
+        }
+        localStorage.setItem('hc_work_teams_v1', JSON.stringify(teams));
+    } catch (e) {
+        console.error("Save Teams Failed:", e);
+        localStorage.setItem('hc_work_teams_v1', JSON.stringify(teams));
+    }
+};
+
+export const getTeamsSync = (): WorkTeam[] => {
+    try {
+        const data = localStorage.getItem('hc_work_teams_v1');
+        if (data) return (JSON.parse(data) || []) as WorkTeam[];
+    } catch (e) {
+        console.error("Error reading local teams:", e);
+    }
+    return [];
+};
+
+export const getTeams = async (user?: UserProfile): Promise<WorkTeam[]> => {
+    try {
+        if (isOnline()) {
+            const rows = await FirestoreService.getTeams(user?.scope);
+            localStorage.setItem('hc_work_teams_v1', JSON.stringify(rows));
+            return rows;
+        }
+        throw new Error("Offline");
+    } catch (error) {
+        console.warn("Fetching teams failed/offline, using cache", error);
+        return getTeamsSync();
+    }
+};
+
+export const deleteTeam = async (teamId: string, user: UserProfile) => {
+    try {
+        if (isOnline()) {
+            await FirestoreService.deleteTeam(teamId);
+        }
+        // Update local cache
+        const current = getTeamsSync();
+        const updated = current.filter(t => t.id !== teamId);
+        localStorage.setItem('hc_work_teams_v1', JSON.stringify(updated));
+    } catch (e) {
+        console.error("Delete Team Failed:", e);
+        // Optimistic update locally
+        const current = getTeamsSync();
+        const updated = current.filter(t => t.id !== teamId);
+        localStorage.setItem('hc_work_teams_v1', JSON.stringify(updated));
+    }
 };
