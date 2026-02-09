@@ -70,13 +70,13 @@ const FunctionDetailModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   functionName: string;
-  employees: { name: string; chapa: string; hours: number }[];
+  employees: { name: string; chapa: string; he60: number; he100: number; interjornada: number }[];
 }> = ({ isOpen, onClose, functionName, employees }) => {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[85vh]">
         <div className="bg-blue-600 p-6 flex justify-between items-center text-white shrink-0 relative z-30">
           <div>
             <h3 className="text-xl font-bold">{functionName}</h3>
@@ -91,17 +91,21 @@ const FunctionDetailModal: React.FC<{
           <table className="w-full text-left text-sm text-gray-600 border-collapse">
             <thead className="sticky top-0 z-20 shadow-sm">
               <tr className="bg-gray-100">
-                <th className="px-6 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Colaborador</th>
                 <th className="px-6 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Chapa</th>
-                <th className="px-6 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200 text-right">Horas</th>
+                <th className="px-6 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Colaborador</th>
+                <th className="px-6 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200 text-right">Horas 60%</th>
+                <th className="px-6 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200 text-right">Horas 100%</th>
+                <th className="px-6 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200 text-right">Interjornada</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {employees.map((emp, idx) => (
                 <tr key={emp.chapa + idx} className="hover:bg-blue-50/50 transition-colors">
-                  <td className="px-6 py-3 font-medium text-gray-900">{emp.name}</td>
                   <td className="px-6 py-3 font-mono text-gray-400 text-xs">{emp.chapa}</td>
-                  <td className="px-6 py-3 text-right font-bold font-mono text-blue-600">{formatDecimalHours(emp.hours)}</td>
+                  <td className="px-6 py-3 font-medium text-gray-900">{emp.name}</td>
+                  <td className="px-6 py-3 text-right font-mono text-blue-600">{formatDecimalHours(emp.he60)}</td>
+                  <td className="px-6 py-3 text-right font-mono text-red-600">{formatDecimalHours(emp.he100)}</td>
+                  <td className="px-6 py-3 text-right font-mono text-amber-600">{formatDecimalHours(emp.interjornada)}</td>
                 </tr>
               ))}
             </tbody>
@@ -114,9 +118,9 @@ const FunctionDetailModal: React.FC<{
             <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">{employees.length} COLABORADORES NA LISTA</span>
           </div>
           <div className="bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
-            <span className="text-[10px] font-bold text-gray-400 uppercase">Total de Horas:</span>
+            <span className="text-[10px] font-bold text-gray-400 uppercase">Total Geral:</span>
             <span className="text-lg font-bold text-gray-900 font-mono">
-              {formatDecimalHours(employees.reduce((acc, curr) => acc + curr.hours, 0))}
+              {formatDecimalHours(employees.reduce((acc, curr) => acc + curr.he60 + curr.he100 + curr.interjornada, 0))}
             </span>
           </div>
         </div>
@@ -124,6 +128,35 @@ const FunctionDetailModal: React.FC<{
     </div>
   );
 };
+
+// ... (CostCenterDetailModal remains unchanged, skipped in replacement range)
+
+// ... inside Dashboard component ...
+
+const funcDetailData = useMemo(() => {
+  if (!selectedFuncModal) return [];
+  const empMap: Record<string, { name: string; he60: number; he100: number; interjornada: number }> = {};
+
+  data.filter(r => r.FUNCAO === selectedFuncModal).forEach(r => {
+    if (!empMap[r.CHAPA]) empMap[r.CHAPA] = { name: r.NOME, he60: 0, he100: 0, interjornada: 0 };
+
+    const hours = (Number(r.HORAS) || 0);
+    const evt = (r.EVENTO || '').toUpperCase();
+
+    if (evt.includes('EXTRA')) {
+      if (evt.includes('60')) {
+        empMap[r.CHAPA].he60 += hours;
+      } else if (evt.includes('100')) {
+        empMap[r.CHAPA].he100 += hours;
+      }
+    } else if (evt.includes('INTER')) {
+      empMap[r.CHAPA].interjornada += hours;
+    }
+  });
+
+  return Object.entries(empMap).map(([chapa, info]) => ({ chapa, ...info }))
+    .sort((a, b) => (b.he60 + b.he100 + b.interjornada) - (a.he60 + a.he100 + a.interjornada));
+}, [data, selectedFuncModal]);
 
 const CostCenterDetailModal: React.FC<{
   isOpen: boolean;
@@ -375,13 +408,27 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
 
   const funcDetailData = useMemo(() => {
     if (!selectedFuncModal) return [];
-    const empMap: Record<string, { name: string; hours: number }> = {};
+    const empMap: Record<string, { name: string; he60: number; he100: number; interjornada: number }> = {};
+
     data.filter(r => r.FUNCAO === selectedFuncModal).forEach(r => {
-      if (!empMap[r.CHAPA]) empMap[r.CHAPA] = { name: r.NOME, hours: 0 };
-      empMap[r.CHAPA].hours += (Number(r.HORAS) || 0);
+      if (!empMap[r.CHAPA]) empMap[r.CHAPA] = { name: r.NOME, he60: 0, he100: 0, interjornada: 0 };
+
+      const hours = (Number(r.HORAS) || 0);
+      const evt = (r.EVENTO || '').toUpperCase();
+
+      if (evt.includes('EXTRA')) {
+        if (evt.includes('60')) {
+          empMap[r.CHAPA].he60 += hours;
+        } else if (evt.includes('100')) {
+          empMap[r.CHAPA].he100 += hours;
+        }
+      } else if (evt.includes('INTER')) {
+        empMap[r.CHAPA].interjornada += hours;
+      }
     });
+
     return Object.entries(empMap).map(([chapa, info]) => ({ chapa, ...info }))
-      .sort((a, b) => b.hours - a.hours);
+      .sort((a, b) => (b.he60 + b.he100 + b.interjornada) - (a.he60 + a.he100 + a.interjornada));
   }, [data, selectedFuncModal]);
 
   const ccDetailData = useMemo(() => {
