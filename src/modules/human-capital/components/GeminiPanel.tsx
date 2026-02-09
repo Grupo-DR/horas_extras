@@ -63,7 +63,7 @@ const GeminiPanel: React.FC<GeminiPanelProps> = ({ data, isVisible, onClose }) =
                 </div>
             </div>
 
-            <div className="p-8 min-h-[200px]">
+            <div className="p-8 min-h-[200px] flex-1 overflow-y-auto scroll-smooth">
                 {loading ? (
                     <div className="flex flex-col items-center justify-center h-full py-12 gap-4 animate-pulse">
                         <Sparkles size={48} className="text-purple-400 animate-bounce" />
