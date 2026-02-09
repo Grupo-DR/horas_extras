@@ -10,7 +10,7 @@ export const savePlanning = async (plans: PlanningRecord[]): Promise<void> => {
     const index = planningStore.findIndex(
       p => p.chapa === plan.chapa && p.date === plan.date && p.type === plan.type
     );
-    
+
     if (index >= 0) {
       planningStore[index] = plan;
     } else {
@@ -24,7 +24,7 @@ export const getAllPlanningRecords = (): PlanningRecord[] => {
 };
 
 export const getPlanning = async (
-  costCenter: string | undefined, 
+  costCenter: string | undefined,
   month: string, // YYYY-MM
   type: 'DAILY' | 'MONTHLY'
 ): Promise<PlanningRecord[]> => {
@@ -55,3 +55,6 @@ export const getBudgets = (): BudgetRecord[] => {
   const data = localStorage.getItem('department_budgets');
   return data ? JSON.parse(data) : [];
 };
+
+// Manual Employee Management
+

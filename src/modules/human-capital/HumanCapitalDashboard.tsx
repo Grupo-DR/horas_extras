@@ -11,10 +11,13 @@ import Planning from '@/src/modules/human-capital/components/Planning';
 import { canManageProfiles, canPlan } from '../iam/types';
 import { formatDateForApi } from '@/src/modules/human-capital/utils/formatters';
 import { LayoutDashboard, Table, Settings, CheckCircle2, AlertTriangle, Sparkles, CalendarRange, UserCog, Lock, BarChart3 } from 'lucide-react';
-import { ApiConfig, OvertimeRecord, FetchStatus, UserProfile } from '@/src/modules/human-capital/types';
+import { ApiConfig, OvertimeRecord, FetchStatus, UserProfile, ManualEmployee } from '@/src/modules/human-capital/types';
 import { SidebarBase, SidebarItem } from '../../../layout/SidebarBase';
 import { useNavigate } from 'react-router-dom';
 import { realOvertimeData, RealOvertimeRecord } from '@/src/modules/human-capital/data/realOvertime';
+import { getManualEmployees, upsertManualEmployee } from '@/src/modules/human-capital/services/firestoreCH';
+import { CreateEmployeeModal } from '@/src/modules/human-capital/components/CreateEmployeeModal';
+import { UserPlus } from 'lucide-react';
 
 // Configuração padrão da API TOTVS
 const DEFAULT_CONFIG: ApiConfig = {
@@ -78,6 +81,10 @@ const HumanCapitalDashboard: React.FC = () => {
   const [status, setStatus] = useState<FetchStatus>('idle');
   const [activeTab, setActiveTab] = useState<Tab>(Tab.DASHBOARD);
 
+  // Manual Employees State (Global for HC Module)
+  const [manualEmployees, setManualEmployees] = useState<ManualEmployee[]>([]);
+  const [isCreateEmployeeOpen, setIsCreateEmployeeOpen] = useState(false);
+
   // ... (keeping other lines same if not part of this block, but mainly reverting the state init)
 
   const [showAiPanel, setShowAiPanel] = useState(false);
@@ -119,6 +126,39 @@ const HumanCapitalDashboard: React.FC = () => {
     } catch (e) {
       console.error("Failed to load HC data", e);
       setStatus('error');
+    }
+  };
+
+  // Carrega colaboradores manuais
+  useEffect(() => {
+    const loadManual = async () => {
+      try {
+        const manuals = await getManualEmployees();
+        setManualEmployees(manuals);
+      } catch (error) {
+        console.error("Erro ao carregar colaboradores manuais:", error);
+      }
+    };
+    loadManual();
+  }, []);
+
+  const handleCreateEmployee = async (name: string, chapa: string, cc: string, role: string) => {
+    if (!effectiveUser) return;
+    const newEmp: ManualEmployee = {
+      id: chapa,
+      chapa,
+      name,
+      costCenter: cc,
+      role,
+      status: 'ACTIVE'
+    };
+    try {
+      await upsertManualEmployee(newEmp, effectiveUser);
+      setManualEmployees(prev => [...prev, newEmp]);
+      alert('Colaborador criado com sucesso!');
+    } catch (error) {
+      console.error("Erro ao criar colaborador:", error);
+      alert('Erro ao criar colaborador.');
     }
   };
 
@@ -251,6 +291,12 @@ const HumanCapitalDashboard: React.FC = () => {
               {activeTab === Tab.PROFILES && 'Administração de Usuários'}
               {activeTab === Tab.SETTINGS && 'Configuração do Sistema'}
             </h2>
+            <button
+              onClick={() => setIsCreateEmployeeOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide flex items-center gap-2 transition-colors shadow-sm ml-4"
+            >
+              <UserPlus size={16} /> Novo Colaborador
+            </button>
           </div>
           <div className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide flex items-center space-x-1.5 shadow-sm ${status === 'success' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}`}>
             {status === 'success' ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
@@ -277,7 +323,7 @@ const HumanCapitalDashboard: React.FC = () => {
                 selectedYear={filters.year}
               />
             )}
-            {activeTab === Tab.PLANNING && canPlan(effectiveUser.role) && <Planning user={effectiveUser} employees={scopedData} />}
+            {activeTab === Tab.PLANNING && canPlan(effectiveUser.role) && <Planning user={effectiveUser} employees={scopedData} manualEmployees={manualEmployees} />}
             {activeTab === Tab.PROFILES && canManageProfiles(effectiveUser.role) && <ProfileManager />}
             {activeTab === Tab.SETTINGS && (
               <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center text-gray-500">
@@ -293,6 +339,14 @@ const HumanCapitalDashboard: React.FC = () => {
             >
               <Sparkles size={24} className="group-hover:animate-pulse" />
             </button>
+
+            {/* Global Modals */}
+            <CreateEmployeeModal
+              isOpen={isCreateEmployeeOpen}
+              onClose={() => setIsCreateEmployeeOpen(false)}
+              onSave={handleCreateEmployee}
+              costCenters={Array.from(new Set(scopedData.map(d => d.CODCCUSTO))).sort()}
+            />
           </div>
         </div>
 
