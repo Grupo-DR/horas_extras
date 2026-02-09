@@ -299,51 +299,90 @@ const Planning: React.FC<PlanningProps> = ({ user, employees }) => {
                 const workbook = XLSX.read(data, { type: 'binary' });
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
+                // Read with header: 1 to get array of arrays
                 const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
+                if (json.length === 0) {
+                    setAlert({ type: 'error', message: "Arquivo vazio." });
+                    return;
+                }
+
+                // Identify Header Row (row 0)
+                const headers = (json[0] as any[]).map(h => String(h).toUpperCase().trim());
+
+                // Identify Columns by Name (flexible)
+                const idxChapa = headers.findIndex(h => h.includes('CHAPA'));
+                const idxSalario = headers.findIndex(h => h.includes('SALÁRIO') || h.includes('SALARIO'));
+                const idxMes = headers.findIndex(h => h.includes('MÊS') || h.includes('MES'));
+                const idxStatus = headers.findIndex(h => h.includes('STATUS'));
+
+                if (idxChapa === -1 || idxSalario === -1 || idxMes === -1 || idxStatus === -1) {
+                    setAlert({ type: 'error', message: "Colunas obrigatórias não encontradas: Chapa, Salário, Mês, Status." });
+                    return;
+                }
+
                 const salaryAllocations: SalaryAllocation[] = [];
-                const salaryMap: Record<string, number> = { ...salaries };
+                const salaryMap: Record<string, number> = { ...salaries }; // Updates current view
                 let count = 0;
-                let duplicateCount = 0;
 
-                json.forEach((row: any, index: number) => {
-                    if (index === 0 && (String(row[0]).toLowerCase().includes('chapa') || String(row[1]).toLowerCase().includes('salário'))) return;
+                const currentYear = new Date().getFullYear();
 
-                    const chapa = String(row[0] || '').trim();
-                    let salaryVal = row[1];
+                // Iterate from row 1
+                for (let i = 1; i < json.length; i++) {
+                    const row = json[i] as any[];
+                    if (!row || row.length === 0) continue;
+
+                    const chapa = String(row[idxChapa] || '').trim();
+                    const status = String(row[idxStatus] || '').trim().toUpperCase();
+                    const mesName = String(row[idxMes] || '').trim();
+                    let salaryVal = row[idxSalario];
+
+                    // Filter: Only Status 'A'
+                    if (status !== 'A') continue;
 
                     if (typeof salaryVal === 'string') {
                         salaryVal = parseFloat(salaryVal.replace('R$', '').replace(/\./g, '').replace(',', '.').trim());
                     }
 
-                    if (chapa && !isNaN(salaryVal)) {
-                        if (salaryMap[chapa] !== undefined) duplicateCount++;
-                        salaryMap[chapa] = salaryVal;
+                    if (chapa && mesName && !isNaN(salaryVal)) {
+                        // Map Month Name to YYYY-MM
+                        const monthIndex = MONTH_NAMES.findIndex(m => m.toLowerCase() === mesName.toLowerCase());
+
+                        if (monthIndex === -1) continue; // Invalid month name
+
+                        const monthKey = `${currentYear}-${String(monthIndex + 1).padStart(2, '0')}`;
 
                         // Find employee for CC mapping (if available, else 'Unknown')
                         const emp = employees.find(e => e.CHAPA === chapa);
                         const costCenter = emp?.CODCCUSTO || 'UNKNOWN';
 
+                        // If the imported month matches the currently selected month in UI, update the UI
+                        if (monthKey === selectedMonth) {
+                            salaryMap[chapa] = salaryVal;
+                        }
+
                         salaryAllocations.push({
-                            monthKey: selectedMonth, // Default current month
+                            monthKey,
                             chapa,
                             salary: salaryVal,
-                            allocation: 1.0, // Default 100%
+                            allocation: 1.0,
                             costCenter,
-                            status: 'A' // Default Active
+                            status: 'A'
                         });
                         count++;
                     }
-                });
+                }
 
                 if (count > 0) {
                     saveSalaries(salaryAllocations, user);
-                    setSalaries(salaryMap); // Update UI map immediately
-                    setAlert({ type: 'success', message: `${count} salários importados com sucesso! ${duplicateCount > 0 ? `(${duplicateCount} duplicatas atualizadas)` : ''}` });
+                    setSalaries(salaryMap); // Update UI immediately if relevant
+                    setAlert({ type: 'success', message: `${count} salários importados com sucesso! (Filtro Status 'A' aplicado)` });
                 } else {
-                    setAlert({ type: 'error', message: "Nenhum dado válido encontrado. Use Coluna A para Chapa e B para Salário." });
+                    setAlert({ type: 'error', message: "Nenhum registro válido (Status A com Mês válido) encontrado." });
                 }
+
             } catch (err) {
+                console.error(err);
                 setAlert({ type: 'error', message: "Falha ao processar arquivo de salários." });
             }
         };
