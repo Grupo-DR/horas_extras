@@ -70,7 +70,7 @@ const FunctionDetailModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   functionName: string;
-  employees: { name: string; chapa: string; he60: number; he100: number; interjornada: number }[];
+  employees: { name: string; cc: string; chapa: string; he60: number; he100: number; interjornada: number }[];
 }> = ({ isOpen, onClose, functionName, employees }) => {
   if (!isOpen) return null;
 
@@ -91,6 +91,7 @@ const FunctionDetailModal: React.FC<{
           <table className="w-full text-left text-sm text-gray-600 border-collapse">
             <thead className="sticky top-0 z-20 shadow-sm">
               <tr className="bg-gray-100">
+                <th className="px-6 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">CC</th>
                 <th className="px-6 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Chapa</th>
                 <th className="px-6 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Colaborador</th>
                 <th className="px-6 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200 text-right">Horas 60%</th>
@@ -101,6 +102,7 @@ const FunctionDetailModal: React.FC<{
             <tbody className="divide-y divide-gray-100">
               {employees.map((emp, idx) => (
                 <tr key={emp.chapa + idx} className="hover:bg-blue-50/50 transition-colors">
+                  <td className="px-6 py-3 font-mono text-gray-400 text-xs">{emp.cc}</td>
                   <td className="px-6 py-3 font-mono text-gray-400 text-xs">{emp.chapa}</td>
                   <td className="px-6 py-3 font-medium text-gray-900">{emp.name}</td>
                   <td className="px-6 py-3 text-right font-mono text-blue-600">{formatDecimalHours(emp.he60)}</td>
@@ -381,10 +383,10 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
 
   const funcDetailData = useMemo(() => {
     if (!selectedFuncModal) return [];
-    const empMap: Record<string, { name: string; he60: number; he100: number; interjornada: number }> = {};
+    const empMap: Record<string, { name: string; cc: string; he60: number; he100: number; interjornada: number }> = {};
 
     data.filter(r => r.FUNCAO === selectedFuncModal).forEach(r => {
-      if (!empMap[r.CHAPA]) empMap[r.CHAPA] = { name: r.NOME, he60: 0, he100: 0, interjornada: 0 };
+      if (!empMap[r.CHAPA]) empMap[r.CHAPA] = { name: r.NOME, cc: r.CODCCUSTO || '-', he60: 0, he100: 0, interjornada: 0 };
 
       const hours = (Number(r.HORAS) || 0);
       const evt = (r.EVENTO || '').toUpperCase();
