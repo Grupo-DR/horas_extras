@@ -354,7 +354,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis dataKey="name" tick={{ fontSize: 9, fontWeight: 700 }} axisLine={false} />
               <YAxis tick={{ fontSize: 9 }} axisLine={false} tickFormatter={val => `R$ ${val / 1000}k`} />
-              <Tooltip formatter={(v: any) => formatCurrencyWithZero(v)} />
+              <Tooltip content={<CustomDailyTooltip />} />
               <Legend />
               <Bar dataKey="plan" name="Planejado" fill="#cbd5e1" radius={[4, 4, 0, 0]} />
               <Line dataKey="real" name="Realizado" stroke="#6366f1" strokeWidth={3} dot={{ r: 4, fill: '#6366f1' }} />
