@@ -35,6 +35,19 @@ export interface PlanningAssignment {
   services: PlannedService[];
 }
 
+export interface UploadMetadata {
+  id: string;
+  workId: string;
+  cycleKey: string;
+  fileName: string;
+  recordCount: number;
+  uploadedAt: any; // Firestore Timestamp
+}
+
+export interface UploadDetail extends UploadMetadata {
+  records?: ConstructionRecord[]; // Optional, may not exist for large uploads
+}
+
 export interface TrechoMapping {
   km_inicial: number;
   km_final: number;
@@ -53,6 +66,6 @@ export interface LocationInfo {
   supervisao: string;
 }
 
-export type ViewType = 'dashboard' | 'table' | 'upload' | 'services' | 'planning';
+export type ViewType = 'dashboard' | 'table' | 'upload' | 'services' | 'planning' | 'history';
 
 

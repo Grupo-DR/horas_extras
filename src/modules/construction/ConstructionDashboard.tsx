@@ -7,6 +7,7 @@ import Dashboard from './components/Dashboard';
 import DataTable from './components/DataTable';
 import PriceList from './components/PriceList';
 import Planning from './components/Planning';
+import { UploadHistory } from './components/UploadHistory';
 import { DEFAULT_SERVICE_PRICES } from './utils/constants';
 import { constructionService } from './services/firestore';
 import { Loader2 } from 'lucide-react';
@@ -195,6 +196,7 @@ const App: React.FC = () => {
         />
       )}
       {view === 'table' && <DataTable data={data} servicePrices={servicePrices} />}
+      {view === 'history' && <UploadHistory workId="OBRA-01" />}
     </Layout>
   );
 };

@@ -2,7 +2,7 @@
 import React from 'react';
 import {
   LayoutDashboard, Table, UploadCloud, HardHat,
-  Coins, CalendarRange, Download, Trash2, Cloud, LogOut
+  Coins, CalendarRange, Download, Trash2, Cloud, LogOut, History
 } from 'lucide-react';
 import { ViewType } from '../types';
 import { useNavigate } from 'react-router-dom';
@@ -59,12 +59,12 @@ const Layout: React.FC<LayoutProps> = ({
                 <span>Planejamento</span>
               </button>
               <button
-                onClick={() => setView('table')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeView === 'table' ? 'bg-amber-500 text-slate-900 font-semibold' : 'hover:bg-slate-800 text-slate-400'
+                onClick={() => setView('history')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeView === 'history' ? 'bg-amber-500 text-slate-900 font-semibold' : 'hover:bg-slate-800 text-slate-400'
                   }`}
               >
-                <Table className="w-5 h-5" />
-                <span>Registros Detalhados</span>
+                <History className="w-5 h-5" />
+                <span>Histórico de RDOs</span>
               </button>
             </>
           )}

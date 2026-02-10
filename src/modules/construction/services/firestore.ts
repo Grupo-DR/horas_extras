@@ -180,5 +180,44 @@ export const constructionService = {
             console.error("Error updating planning:", error);
             throw error;
         }
+    },
+
+    async getUploads(workId: string = 'OBRA-01'): Promise<any[]> {
+        try {
+            const q = query(
+                collection(db, COLLECTIONS.UPLOADS),
+                where('workId', '==', workId),
+                orderBy('uploadedAt', 'desc')
+            );
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(doc => ({
+                id: doc.id,
+                workId: doc.data().workId,
+                cycleKey: doc.data().cycleKey,
+                fileName: doc.data().fileName,
+                recordCount: doc.data().recordCount,
+                uploadedAt: doc.data().uploadedAt
+            }));
+        } catch (error) {
+            console.error("Error fetching uploads:", error);
+            return [];
+        }
+    },
+
+    async getUpload(uploadId: string): Promise<any | null> {
+        try {
+            const docRef = doc(db, COLLECTIONS.UPLOADS, uploadId);
+            const snapshot = await getDoc(docRef);
+            if (snapshot.exists()) {
+                return {
+                    id: snapshot.id,
+                    ...snapshot.data()
+                };
+            }
+            return null;
+        } catch (error) {
+            console.error("Error fetching upload:", error);
+            return null;
+        }
     }
 };
