@@ -141,19 +141,34 @@ const App: React.FC = () => {
         <Planning
           data={data} assignments={assignments} servicePrices={servicePrices}
           onAddAssignment={async (a) => {
-            const next = [...assignments, a];
-            setAssignments(next);
-            await constructionService.updatePlanning(currentCycle, next, 'OBRA-01');
+            try {
+              const next = [...assignments, a];
+              setAssignments(next);
+              await constructionService.updatePlanning(currentCycle, next, 'OBRA-01');
+            } catch (error) {
+              console.error('Erro ao adicionar planejamento:', error);
+              alert('Erro ao salvar planejamento. Tente novamente.');
+            }
           }}
           onRemoveAssignment={async (id) => {
-            const next = assignments.filter(x => x.id !== id);
-            setAssignments(next);
-            await constructionService.updatePlanning(currentCycle, next, 'OBRA-01');
+            try {
+              const next = assignments.filter(x => x.id !== id);
+              setAssignments(next);
+              await constructionService.updatePlanning(currentCycle, next, 'OBRA-01');
+            } catch (error) {
+              console.error('Erro ao remover planejamento:', error);
+              alert('Erro ao remover planejamento. Tente novamente.');
+            }
           }}
           onUpdateAssignment={async (u) => {
-            const next = assignments.map(x => x.id === u.id ? u : x);
-            setAssignments(next);
-            await constructionService.updatePlanning(currentCycle, next, 'OBRA-01');
+            try {
+              const next = assignments.map(x => x.id === u.id ? u : x);
+              setAssignments(next);
+              await constructionService.updatePlanning(currentCycle, next, 'OBRA-01');
+            } catch (error) {
+              console.error('Erro ao atualizar planejamento:', error);
+              alert('Erro ao atualizar planejamento. Tente novamente.');
+            }
           }}
         />
       )}
