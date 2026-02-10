@@ -37,12 +37,20 @@ const FileUpload: React.FC<FileUploadProps> = ({ onImportSuccess }) => {
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
-        let records: ConstructionRecord[] = isExcel
+        const result = isExcel
           ? excelToRecords(e.target?.result as ArrayBuffer)
           : csvToRecords(e.target?.result as string);
 
+        // 1. Check Critical Errors
+        if (result.errors.length > 0) {
+          setError(result.errors.join("; "));
+          setIsProcessing(false);
+          return;
+        }
+
+        const records = result.records;
         if (records.length === 0) {
-          setError("Arquivo vazio ou formato inválido.");
+          setError("Nenhum registro válido encontrado. Verifique se as colunas 'Data' e 'Frota' estão preenchidas.");
           setIsProcessing(false);
           return;
         }
@@ -59,23 +67,18 @@ const FileUpload: React.FC<FileUploadProps> = ({ onImportSuccess }) => {
 
         // Group records by Cycle
         const recordsByCycle: Record<string, any[]> = {};
-        let validationErrors = 0;
+        let processingErrors = 0;
 
         records.forEach(r => {
           const isoDate = toISODate(r.data);
 
-          // Basic Client-Side Validation
           if (!isoDate || !r.frota) {
-            console.warn('Skipping invalid row:', r);
-            validationErrors++;
+            // Should have been caught by parser, but double checking
+            processingErrors++;
             return;
           }
 
-          const cycle = getCycleKey(r.data); // Use DD/MM/YYYY for calculation as expected by utils
-          // Utils.getCycleKey (frontend) might expect Date object or string. 
-          // In 'utils/calculations.ts', let's assume it handles string or Date. 
-          // If it mimics the backend one I wrote, it handles both.
-
+          const cycle = getCycleKey(r.data);
           if (!recordsByCycle[cycle]) recordsByCycle[cycle] = [];
 
           recordsByCycle[cycle].push({
@@ -90,22 +93,35 @@ const FileUpload: React.FC<FileUploadProps> = ({ onImportSuccess }) => {
           });
         });
 
-        if (validationErrors > 0) {
-          console.warn(`Skipped ${validationErrors} rows due to missing Date or Equipment Code.`);
+        // Warnings for skipped rows
+        const skipped = result.warningCount + processingErrors;
+        if (skipped > 0) {
+          console.warn(`Skipped ${skipped} rows due to validation issues.`);
+          setStatusMessage(`Atenção: ${skipped} linhas ignoradas (dados incompletos)...`);
+          // We don't block, but we maybe should show a toast/alert at the end
         }
 
         // Send to API
-        setStatusMessage(`Enviando ${records.length - validationErrors} registros para a nuvem...`);
+        setStatusMessage(`Enviando ${records.length - processingErrors} registros para a nuvem...`);
         const cycles = Object.keys(recordsByCycle);
 
         for (const cycle of cycles) {
-          console.log(`Sending payload for cycle ${cycle}:`, recordsByCycle[cycle]); // Debug Log
-          setStatusMessage(`Enviando ${records.length - validationErrors} registros para o ciclo ${cycle}...`);
-          await constructionService.saveRecords(cycle, recordsByCycle[cycle]);
+          console.log(`Sending payload for cycle ${cycle}:`, recordsByCycle[cycle]);
+          setStatusMessage(`Enviando ${recordsByCycle[cycle].length} registros para o ciclo ${cycle}...`);
+
+          await constructionService.saveRecords(
+            cycle,
+            recordsByCycle[cycle],
+            'OBRA-01',
+            file.name // Audit parameter
+          );
         }
 
         setStatusMessage("Sucesso!");
         setTimeout(() => {
+          if (skipped > 0) {
+            alert(`Importação concluída com sucesso!\n\n${records.length} registros processados.\n${skipped} linhas ignoradas por dados incompletos.`);
+          }
           onImportSuccess();
           setIsProcessing(false);
           setStatusMessage("");
@@ -113,7 +129,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onImportSuccess }) => {
 
       } catch (err: any) {
         console.error(err);
-        setError("Erro ao processar/enviar: " + (err.message || "Erro desconhecido"));
+        setError("Erro ao processar: " + (err.message || "Falha desconhecida. Verifique o formato do arquivo."));
         setIsProcessing(false);
       }
     };
@@ -126,7 +142,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onImportSuccess }) => {
     <div className="max-w-4xl mx-auto space-y-10">
       <div className="text-center">
         <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Central de Importação</h2>
-        <p className="mt-2 text-slate-500 font-medium">Os dados são processados e armazenados diretamente na nuvem (Google Sheets).</p>
+        <p className="mt-2 text-slate-500 font-medium">Os dados são processados e armazenados diretamente na nuvem (Firestore).</p>
       </div>
 
       <div

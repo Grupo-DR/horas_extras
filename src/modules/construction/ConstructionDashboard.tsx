@@ -61,9 +61,10 @@ const App: React.FC = () => {
     if (!cycle) return;
     try {
       setIsLoading(true);
+      const workId = 'OBRA-01'; // Default Context
       const [records, planData] = await Promise.all([
-        constructionService.getRecords(cycle),
-        constructionService.getPlanning(cycle)
+        constructionService.getRecords(cycle, workId),
+        constructionService.getPlanning(cycle, workId)
       ]);
 
       // No mapping needed if we store as ConstructionRecord
@@ -71,10 +72,8 @@ const App: React.FC = () => {
       setData(records);
 
       // Map Planning
-      // planData is PlanningTarget[] (category, hours, budget)
-      // Frontend expects PlanningAssignment (daily)
-      // We still have the mismatch, but we keep the logic
-      setAssignments([]);
+      // planData is now PlanningAssignment[] thanks to our service update
+      setAssignments(planData);
 
     } catch (e) {
       console.error("Failed to fetch data", e);
@@ -96,14 +95,12 @@ const App: React.FC = () => {
     alert("Importação realizada com sucesso! Atualizando dados...");
   };
 
-  // Mocking Google Props as we removed GAPI
-  const isGoogleConnected = true;
+
 
   return (
     <Layout
       activeView={view} setView={setView} hasData={data.length > 0}
       onExportBackup={() => { }} onClearData={() => setData([])}
-      isGoogleConnected={isGoogleConnected} onSyncGoogle={() => { }}
     >
       {isLoading && (
         <div className="fixed inset-0 z-[100] bg-white/60 backdrop-blur-sm flex items-center justify-center">
@@ -143,9 +140,21 @@ const App: React.FC = () => {
       {view === 'planning' && (
         <Planning
           data={data} assignments={assignments} servicePrices={servicePrices}
-          onAddAssignment={a => setAssignments(p => [...p, a])}
-          onRemoveAssignment={id => setAssignments(p => p.filter(x => x.id !== id))}
-          onUpdateAssignment={u => setAssignments(p => p.map(x => x.id === u.id ? u : x))}
+          onAddAssignment={async (a) => {
+            const next = [...assignments, a];
+            setAssignments(next);
+            await constructionService.updatePlanning(currentCycle, next, 'OBRA-01');
+          }}
+          onRemoveAssignment={async (id) => {
+            const next = assignments.filter(x => x.id !== id);
+            setAssignments(next);
+            await constructionService.updatePlanning(currentCycle, next, 'OBRA-01');
+          }}
+          onUpdateAssignment={async (u) => {
+            const next = assignments.map(x => x.id === u.id ? u : x);
+            setAssignments(next);
+            await constructionService.updatePlanning(currentCycle, next, 'OBRA-01');
+          }}
         />
       )}
       {view === 'table' && <DataTable data={data} servicePrices={servicePrices} />}

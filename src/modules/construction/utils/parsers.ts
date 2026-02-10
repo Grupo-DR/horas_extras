@@ -68,12 +68,26 @@ const getValue = (row: any, targetKey: string): any => {
   return foundKey ? row[foundKey] : undefined;
 };
 
-export const excelToRecords = (buffer: ArrayBuffer): ConstructionRecord[] => {
+export interface ParseResult {
+  records: ConstructionRecord[];
+  errors: string[];
+  warningCount: number;
+}
+
+const REQUIRED_HEADERS = ['DATA', 'FROTA']; // Minimal required to identify a record
+
+const validateHeaders = (headers: string[]): string[] => {
+  const missing = REQUIRED_HEADERS.filter(req => !headers.some(h => h.toUpperCase().includes(req)));
+  return missing;
+};
+
+export const excelToRecords = (buffer: ArrayBuffer): ParseResult => {
   const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
+  const result: ParseResult = { records: [], errors: [], warningCount: 0 };
 
   let targetSheetName = '';
 
-  // Procura aba com 'RENTAL' no nome (ex: "MEDIÇÃO RENTAL")
+  // Procura aba com 'RENTAL' no nome
   for (const name of workbook.SheetNames) {
     if (name.toUpperCase().includes('RENTAL')) {
       targetSheetName = name;
@@ -81,60 +95,120 @@ export const excelToRecords = (buffer: ArrayBuffer): ConstructionRecord[] => {
     }
   }
 
-  // Se não achar pelo nome, tenta pelos headers na primeira aba
+  // Fallback: Busca por headers
   if (!targetSheetName) {
-    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-    const data: any[][] = XLSX.utils.sheet_to_json(firstSheet, { header: 1, range: 0 });
-    if (data.length > 0) {
-      const headers = data[0].map(h => String(h).trim().toUpperCase());
-      if (headers.includes('RDO MOBRA') || headers.includes('ROD RENTAL')) {
-        targetSheetName = workbook.SheetNames[0];
+    for (const name of workbook.SheetNames) {
+      const sheet = workbook.Sheets[name];
+      const json = XLSX.utils.sheet_to_json(sheet, { header: 1, range: 0 });
+      if (json.length > 0) {
+        const headers = (json[0] as any[]).map(h => String(h).trim().toUpperCase());
+        if (headers.some(h => h.includes('RDO') || h.includes('FROTA'))) {
+          targetSheetName = name;
+          break;
+        }
       }
     }
   }
 
-  // Fallback final
   if (!targetSheetName) targetSheetName = workbook.SheetNames[0];
 
   const worksheet = workbook.Sheets[targetSheetName];
-  // Header na linha 1 (índice 0)
   const data: any[] = XLSX.utils.sheet_to_json(worksheet);
 
-  if (data.length === 0) return [];
+  if (data.length === 0) {
+    result.errors.push("Planilha vazia ou sem dados reconhecíveis.");
+    return result;
+  }
 
-  return data.map((row: any) => ({
-    data: formatDateBR(getValue(row, 'Data')),
-    frota: String(getValue(row, 'Frota') || ''),
-    trechoFinal: String(getValue(row, 'Trecho Final') || ''),
-    item: String(getValue(row, 'Item') || ''),
-    producao: parseNumber(getValue(row, 'Produção') || getValue(row, 'Qntd. Produção')),
-    codSapRental: String(getValue(row, 'Cód. SAP RENTAL') || ''),
-    codSapMobra: String(getValue(row, 'Cód. SAP MOBRA') || ''),
-    operador: String(getValue(row, 'Operador') || ''),
-    horaInicio: String(getValue(row, 'Hr Inicial') || ''),
-    horaTermino: String(getValue(row, 'Hr Final') || '')
-  }));
+  // Validate Headers based on first row keys
+  if (data.length > 0) {
+    const headers = Object.keys(data[0]);
+    const missingHeaders = validateHeaders(headers);
+    if (missingHeaders.length > 0) {
+      result.errors.push(`Colunas obrigatórias não encontradas na aba '${targetSheetName}': ${missingHeaders.join(', ')}`);
+      // Critical failure if keys are missing
+      return result;
+    }
+  }
+
+  data.forEach((row: any, index: number) => {
+    const rowNum = index + 2; // +2 considering header and 0-index
+
+    // Defensive Reads
+    const rawDate = getValue(row, 'Data');
+    const rawFrota = getValue(row, 'Frota');
+
+    if (!rawDate || !rawFrota) {
+      // Silent skip empty rows often found in Excel
+      return;
+    }
+
+    const fmtDate = formatDateBR(rawDate);
+    const fmtFrota = String(rawFrota || '').trim();
+
+    if (!fmtDate || !fmtFrota) {
+      result.warningCount++;
+      return;
+    }
+
+    // Safe Parser
+    result.records.push({
+      data: fmtDate,
+      frota: fmtFrota,
+      trechoFinal: String(getValue(row, 'Trecho Final') || ''),
+      item: String(getValue(row, 'Item') || ''),
+      producao: parseNumber(getValue(row, 'Produção') || getValue(row, 'Qntd. Produção')),
+      codSapRental: String(getValue(row, 'Cód. SAP RENTAL') || ''),
+      codSapMobra: String(getValue(row, 'Cód. SAP MOBRA') || ''),
+      operador: String(getValue(row, 'Operador') || ''),
+      horaInicio: String(getValue(row, 'Hr Inicial') || ''),
+      horaTermino: String(getValue(row, 'Hr Final') || '')
+    });
+  });
+
+  return result;
 };
 
-export const csvToRecords = (csvText: string): ConstructionRecord[] => {
+export const csvToRecords = (csvText: string): ParseResult => {
+  const result: ParseResult = { records: [], errors: [], warningCount: 0 };
   const lines = csvText.split('\n');
-  if (lines.length < 2) return [];
+  if (lines.length < 2) {
+    result.errors.push("Arquivo CSV vazio ou inválido.");
+    return result;
+  }
 
-  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-  const records: ConstructionRecord[] = [];
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').toUpperCase());
+  const missingHeaders = validateHeaders(headers);
+
+  if (missingHeaders.length > 0) {
+    result.errors.push(`Colunas obrigatórias ausentes no CSV: ${missingHeaders.join(', ')}`);
+    return result;
+  }
+
+  const originalHeaders = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
 
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
+
+    // Robust simple CSV split (limitations apply to commas inside quotes without extensive regex)
     const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/^"|"$/g, ''));
 
     const rowObj: any = {};
-    headers.forEach((h, idx) => { rowObj[h] = values[idx]; });
-    const getVal = (key: string) => getValue(rowObj, key);
+    originalHeaders.forEach((h, idx) => { rowObj[h] = values[idx]; });
 
-    records.push({
-      data: formatDateBR(getVal('Data')),
-      frota: String(getVal('Frota') || ''),
+    const getVal = (key: string) => getValue(rowObj, key);
+    const rawDate = getVal('Data');
+    const rawFrota = getVal('Frota');
+
+    if (!rawDate || !rawFrota) {
+      result.warningCount++;
+      continue;
+    }
+
+    result.records.push({
+      data: formatDateBR(rawDate),
+      frota: String(rawFrota || ''),
       trechoFinal: String(getVal('Trecho Final') || ''),
       item: String(getVal('Item') || ''),
       producao: parseNumber(getVal('Produção') || getVal('Qntd. Produção')),
@@ -145,7 +219,7 @@ export const csvToRecords = (csvText: string): ConstructionRecord[] => {
       horaTermino: String(getVal('Hr Final') || '')
     });
   }
-  return records;
+  return result;
 };
 
 // --- Teste Unitário Manual ---

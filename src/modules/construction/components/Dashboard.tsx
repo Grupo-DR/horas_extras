@@ -13,7 +13,7 @@ import {
 import {
   calculateRecordFinancials, formatCurrency, formatCurrencyWithZero,
   getTrechoInfo, getEquipmentCategory, calculateAssignmentTotal,
-  getPeriodInfo, getProductivityStatus, getUnifiedServiceInfo, getCycleKey
+  getPeriodInfo, getProductivityStatus, getUnifiedServiceInfo, getCycleKey, getPeriodFromCycle
 } from '../utils/calculations';
 
 interface DashboardProps {
@@ -39,8 +39,13 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
     const filteredRecords = data.filter(r => getCycleKey(r.data) === selectedCycle);
 
     // Obter datas do ciclo (Ex: se ciclo é 05-2024, periodo é 21/04 a 20/05)
-    const [month, year] = (selectedCycle || '').split('-').map(Number);
-    const refDate = new Date(year, month - 1, 15); // Meio do mês para garantir detecção do período
+    // Usando a função canônica para garantir regra 21-20
+    const { start, end } = getPeriodFromCycle(selectedCycle);
+
+    // getPeriodInfo agora usa getPeriodFromCycle internamente, então podemos passar qualquer data dentro do range
+    // Mas para manter compatibilidade com o retorno esperado de getPeriodInfo (que inclui dias úteis/medidos), chamamos ele.
+    // Ele precisa apenas de uma data de referência. Usamos o meio do período.
+    const refDate = new Date((start.getTime() + end.getTime()) / 2);
     const period = getPeriodInfo(refDate, filteredRecords);
 
     let realTotal = 0, realProdutivo = 0, realImprodutivo = 0;

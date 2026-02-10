@@ -1,13 +1,14 @@
 
 import React, { useState, useMemo } from 'react';
 import { ConstructionRecord, PlanningAssignment, ServicePrice, PlannedService } from '../types';
-import { 
-  ChevronLeft, ChevronRight, Truck, Calendar as CalendarIcon, 
+import {
+  ChevronLeft, ChevronRight, Truck, Calendar as CalendarIcon,
   Plus, X, GripVertical, Trash2, Calculator, Settings2, Edit3
 } from 'lucide-react';
-import { 
-  getEquipmentCategory, getUnifiedServiceInfo, formatCurrencyWithZero, 
-  isServiceRelevantForEquipment, calculateAssignmentTotal, getPeriodInfo 
+import {
+  getEquipmentCategory, getUnifiedServiceInfo, formatCurrencyWithZero,
+  isServiceRelevantForEquipment, calculateAssignmentTotal, getPeriodInfo,
+  getCycleKey, getPeriodFromCycle
 } from '../utils/calculations';
 
 interface PlanningProps {
@@ -19,8 +20,8 @@ interface PlanningProps {
   onUpdateAssignment: (assignment: PlanningAssignment) => void;
 }
 
-const Planning: React.FC<PlanningProps> = ({ 
-  data, assignments, servicePrices, onAddAssignment, onRemoveAssignment, onUpdateAssignment 
+const Planning: React.FC<PlanningProps> = ({
+  data, assignments, servicePrices, onAddAssignment, onRemoveAssignment, onUpdateAssignment
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -47,38 +48,51 @@ const Planning: React.FC<PlanningProps> = ({
 
   const filteredCatalogItems = useMemo(() => {
     if (!activeAssignment) return allCatalogItems;
-    return allCatalogItems.filter(item => 
+    return allCatalogItems.filter(item =>
       isServiceRelevantForEquipment(activeAssignment.frota, item.descricao)
     );
   }, [activeAssignment, allCatalogItems]);
 
   // Lógica do Calendário Travado no Ciclo (Exatamente 21 a 20)
+  // Baseado na data atualmente selecionada.
+  const periodDates = useMemo(() => {
+    // 1. Obter a string YYYY-MM-DD segura
+    const dateStr = currentDate.toISOString().split('T')[0];
+
+    // 2. Chamar getCycleKey para saber onde estamos (ex: '05-2024')
+    const cycle = getCycleKey(dateStr);
+
+    // 3. Chamar a função CANÔNICA para obter range (21/04 a 20/05)
+    return getPeriodFromCycle(cycle);
+  }, [currentDate]);
+
   const calendarDays = useMemo(() => {
     const days = [];
-    const start = new Date(period.start);
-    const end = new Date(period.end);
-    
+    const start = periodDates.start;
+    const end = periodDates.end;
+
     // Alinhamento com o dia da semana (Dom a Sáb) para manter o grid visual
     const firstDayWeekday = start.getDay();
     for (let i = 0; i < firstDayWeekday; i++) days.push(null);
-    
+
     let current = new Date(start);
+    // Loop dia a dia até chegar no end
     while (current <= end) {
       days.push(current.toISOString().split('T')[0]);
       current.setDate(current.getDate() + 1);
     }
-    
+
     return days;
-  }, [period]);
+  }, [periodDates]);
 
   const monthLabel = period.end.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
-  
+
   const handlePrevMonth = () => {
     const newDate = new Date(currentDate);
     newDate.setMonth(newDate.getMonth() - 1);
     setCurrentDate(newDate);
   };
-  
+
   const handleNextMonth = () => {
     const newDate = new Date(currentDate);
     newDate.setMonth(newDate.getMonth() + 1);
@@ -172,7 +186,7 @@ const Planning: React.FC<PlanningProps> = ({
           <div className="grid grid-cols-7 flex-1">
             {calendarDays.map((day, idx) => {
               if (!day) return <div key={`empty-${idx}`} className="border-b border-r border-slate-50 bg-slate-50/20" />;
-              
+
               const dayAssignments = getDayAssignments(day);
               const dayTotal = dayAssignments.reduce((acc, a) => acc + calculateAssignmentTotal(a, servicePrices), 0);
               const isToday = day === new Date().toISOString().split('T')[0];
@@ -226,7 +240,7 @@ const Planning: React.FC<PlanningProps> = ({
               </div>
               <button onClick={() => setSelectedDay(null)} className="p-2 hover:bg-white rounded-full transition-colors text-slate-400 shadow-sm"><X className="w-5 h-5" /></button>
             </div>
-            
+
             <div className="p-6 overflow-y-auto max-h-[60vh] space-y-3">
               {getDayAssignments(selectedDay).length === 0 ? (
                 <div className="py-12 text-center text-slate-400 italic text-xs uppercase tracking-widest font-bold">Sem planejamento p/ este dia</div>

@@ -55,8 +55,4 @@ export interface LocationInfo {
 
 export type ViewType = 'dashboard' | 'table' | 'upload' | 'services' | 'planning';
 
-export interface PlanningTarget {
-  category: string;
-  plannedHours: number;
-  budget: number;
-}
+

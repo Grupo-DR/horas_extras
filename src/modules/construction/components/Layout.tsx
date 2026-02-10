@@ -15,12 +15,10 @@ interface LayoutProps {
   hasData: boolean;
   onExportBackup: () => void;
   onClearData: () => void;
-  isGoogleConnected: boolean;
-  onSyncGoogle: () => void;
 }
 
 const Layout: React.FC<LayoutProps> = ({
-  children, activeView, setView, hasData, onExportBackup, onClearData, isGoogleConnected, onSyncGoogle
+  children, activeView, setView, hasData, onExportBackup, onClearData
 }) => {
   const navigate = useNavigate();
   const { logout } = useAuth();
@@ -95,16 +93,7 @@ const Layout: React.FC<LayoutProps> = ({
         {/* Persistence Actions */}
         <div className="p-4 border-t border-slate-800 space-y-2">
           {/* ... existing buttons ... */}
-          <button
-            onClick={onSyncGoogle}
-            className={`w-full flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${isGoogleConnected
-              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20'
-              : 'bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10'
-              }`}
-          >
-            <Cloud className={`w-4 h-4 ${isGoogleConnected ? 'text-emerald-400' : 'text-slate-400'}`} />
-            {isGoogleConnected ? 'Sincronizado' : 'Nuvem (Sheets)'}
-          </button>
+
 
           <button
             onClick={onExportBackup}
@@ -141,9 +130,9 @@ const Layout: React.FC<LayoutProps> = ({
           </h1>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full">
-              <div className={`w-2 h-2 rounded-full ${isGoogleConnected ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-300'}`}></div>
+              <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
               <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">
-                {isGoogleConnected ? 'Google Sheets Ativo' : 'Armazenamento Local'}
+                Database: Firestore
               </span>
             </div>
             <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full">

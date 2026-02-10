@@ -12,12 +12,13 @@ import {
     Timestamp
 } from 'firebase/firestore';
 import { db } from '../../../../services/firebaseConfig';
-import { ConstructionRecord, PlanningTarget } from '../types';
+import { ConstructionRecord, PlanningAssignment } from '../types';
 
 const COLLECTIONS = {
     CYCLES: 'construction_cycles',
     RECORDS: 'construction_records',
-    PLANNING: 'construction_planning'
+    PLANNING: 'construction_planning',
+    UPLOADS: 'construction_uploads'
 };
 
 
@@ -49,11 +50,12 @@ export const constructionService = {
         });
     },
 
-    async getRecords(cycleKey: string): Promise<ConstructionRecord[]> {
+    async getRecords(cycleKey: string, workId: string = 'OBRA-01'): Promise<ConstructionRecord[]> {
         try {
             const q = query(
                 collection(db, COLLECTIONS.RECORDS),
-                where('cycleKey', '==', cycleKey)
+                where('cycleKey', '==', cycleKey),
+                where('workId', '==', workId)
             );
             const snapshot = await getDocs(q);
 
@@ -67,13 +69,29 @@ export const constructionService = {
         }
     },
 
-    async saveRecords(cycleKey: string, records: any[]): Promise<void> {
+    async saveRecords(cycleKey: string, records: any[], workId: string = 'OBRA-01', fileName: string = 'upload.xlsx'): Promise<void> {
         try {
             // Ensure cycle exists
             await this.createCycle(cycleKey);
 
-            // 1. Delete existing records for this cycle to avoid duplicates (Overwrite strategy)
-            const q = query(collection(db, COLLECTIONS.RECORDS), where('cycleKey', '==', cycleKey));
+            // 1. Audit: Save the full upload payload to history
+            // We store the raw records array to preserve exactly what was uploaded
+            await addDoc(collection(db, COLLECTIONS.UPLOADS), {
+                workId,
+                cycleKey,
+                fileName,
+                recordCount: records.length,
+                uploadedAt: Timestamp.now(),
+                records // Audit copy
+            });
+
+            // 2. Delete existing records for this cycle/work to ensure "Unique Active RDO"
+            // We now filter by workId as well
+            const q = query(
+                collection(db, COLLECTIONS.RECORDS),
+                where('cycleKey', '==', cycleKey),
+                where('workId', '==', workId)
+            );
             const snapshot = await getDocs(q);
 
             const MAX_BATCH_SIZE = 400; // Leave buffer
@@ -92,12 +110,13 @@ export const constructionService = {
                 }
             });
 
-            // Add operations
+            // 3. Insert new records
             records.forEach((record) => {
                 const docRef = doc(collection(db, COLLECTIONS.RECORDS));
                 currentBatch.set(docRef, {
                     ...record,
                     cycleKey,
+                    workId, // Persist context
                     createdAt: Timestamp.now()
                 });
                 operationCount++;
@@ -122,13 +141,23 @@ export const constructionService = {
         }
     },
 
-    async getPlanning(cycleKey: string): Promise<PlanningTarget[]> {
+    async getPlanning(cycleKey: string, workId: string = 'OBRA-01'): Promise<PlanningAssignment[]> {
         try {
-            const docRef = doc(db, COLLECTIONS.PLANNING, cycleKey);
+            // Construct a composite ID or query?
+            // Since planning is a single document per cycle currently, we need to adapt it.
+            // If we want (workId, periodId) uniqueness, the doc ID should probably be `${workId}_${cycleKey}`.
+            // OR we use a query.
+            // Current implementation uses `doc(db, COLLECTIONS.PLANNING, cycleKey)`.
+            // This is NOT unique per workId. It assumes one global planning per cycle.
+            // We MUST change this to support multi-work.
+            // Strategy: Use `${workId}_${cycleKey}` as Doc ID.
+
+            const docId = `${workId}_${cycleKey}`;
+            const docRef = doc(db, COLLECTIONS.PLANNING, docId);
             const snapshot = await getDoc(docRef);
 
             if (snapshot.exists()) {
-                return snapshot.data().targets as PlanningTarget[];
+                return snapshot.data().assignments as PlanningAssignment[];
             }
             return [];
         } catch (error) {
@@ -137,12 +166,14 @@ export const constructionService = {
         }
     },
 
-    async updatePlanning(cycleKey: string, targets: PlanningTarget[]): Promise<void> {
+    async updatePlanning(cycleKey: string, assignments: PlanningAssignment[], workId: string = 'OBRA-01'): Promise<void> {
         try {
-            const docRef = doc(db, COLLECTIONS.PLANNING, cycleKey);
+            const docId = `${workId}_${cycleKey}`;
+            const docRef = doc(db, COLLECTIONS.PLANNING, docId);
             await setDoc(docRef, {
                 cycleKey,
-                targets,
+                workId,
+                assignments, // Storing strict JSON array
                 updatedAt: Timestamp.now()
             });
         } catch (error) {

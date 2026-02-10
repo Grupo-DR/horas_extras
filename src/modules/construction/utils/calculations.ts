@@ -66,31 +66,96 @@ export const getEquipmentCategory = (frota: string): string => {
 /**
  * Lógica de Período Customizado (Dia 21 ao dia 20 do mês seguinte)
  */
-export const getPeriodInfo = (referenceDate: Date = new Date(), records: ConstructionRecord[] = []) => {
-  let start: Date;
-  let end: Date;
-
-  if (referenceDate.getDate() >= 21) {
-    start = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 21);
-    end = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 20);
-  } else {
-    start = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 1, 21);
-    end = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 20);
+/**
+ * Retorna as datas de início e fim para um determinado ciclo (MM-YYYY).
+ * Regra: Dia 21 do mês anterior até dia 20 do mês do ciclo.
+ * Ex: Ciclo 05-2024 -> 21/04/2024 a 20/05/2024
+ */
+export const getPeriodFromCycle = (cycleKey: string): { start: Date, end: Date } => {
+  if (!cycleKey || !cycleKey.includes('-')) {
+    // Fallback: Retorna o período atual se a chave for inválida
+    return getPeriodFromCycle(getCycleKey(new Date().toISOString().split('T')[0]));
   }
+
+  const [monthStr, yearStr] = cycleKey.split('-');
+  const month = parseInt(monthStr, 10);
+  const year = parseInt(yearStr, 10);
+
+  // Mês do ciclo é o mês final (20/MM). 
+  // O início é no mês anterior (21/MM-1).
+  const start = new Date(year, month - 2, 21); // month - 1 é o mês atual (0-index), month - 2 é o anterior.
+  const end = new Date(year, month - 1, 20);
 
   start.setHours(0, 0, 0, 0);
   end.setHours(23, 59, 59, 999);
 
+  return { start, end };
+};
+
+/**
+ * Lógica de Período Customizado (Dia 21 ao dia 20 do mês seguinte)
+ * Refatorado para usar getPeriodFromCycle como fonte da verdade.
+ */
+export const getPeriodInfo = (referenceDate: Date | string = new Date(), records: ConstructionRecord[] = []) => {
+  let refDateStr: string = '';
+
+  // 1. Obter uma string de data válida YYYY-MM-DD
+  if (referenceDate instanceof Date && !isNaN(referenceDate.getTime())) {
+    refDateStr = referenceDate.toISOString().split('T')[0];
+  } else if (typeof referenceDate === 'string') {
+    // Tenta normalizar para YYYY-MM-DD para o getCycleKey
+    if (referenceDate.includes('/')) {
+      const parts = referenceDate.split('/');
+      if (parts.length === 3) refDateStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
+    } else {
+      refDateStr = referenceDate;
+    }
+  } else {
+    refDateStr = new Date().toISOString().split('T')[0];
+  }
+
+  // 2. Determinar Ciclo e Período via Função Canônica
+  const cycleKey = getCycleKey(refDateStr);
+  const { start, end } = getPeriodFromCycle(cycleKey);
+
   const totalDaysInPeriod = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
 
   const measuredDates = new Set<string>();
-  records.forEach(r => {
-    const [d, m, y] = r.data.split('/').map(Number);
-    const date = new Date(y, m - 1, d);
-    if (date >= start && date <= end) {
-      measuredDates.add(r.data);
-    }
-  });
+
+  // 3. Robust Record Counting
+  if (Array.isArray(records)) {
+    records.forEach(r => {
+      if (!r || !r.data) return;
+
+      let d: number = 0, m: number = 0, y: number = 0;
+
+      if (r.data.includes('/')) {
+        // DD/MM/YYYY
+        const parts = r.data.split('/').map(Number);
+        if (parts.length === 3) {
+          d = parts[0];
+          m = parts[1];
+          y = parts[2];
+        }
+      } else if (r.data.includes('-')) {
+        // YYYY-MM-DD
+        const parts = r.data.split('-').map(Number);
+        if (parts.length === 3) {
+          y = parts[0];
+          m = parts[1];
+          d = parts[2];
+        }
+      }
+
+      // Valid numbers check
+      if (d > 0 && m > 0 && y > 0) {
+        const date = new Date(y, m - 1, d);
+        if (!isNaN(date.getTime()) && date >= start && date <= end) {
+          measuredDates.add(r.data);
+        }
+      }
+    });
+  }
 
   const daysWithMeasurement = measuredDates.size || 0;
   const remainingDays = Math.max(0, totalDaysInPeriod - daysWithMeasurement);
