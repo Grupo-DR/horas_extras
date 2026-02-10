@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  Line, ComposedChart, Legend, Cell, LabelList
+  Line, ComposedChart, Legend, Cell, LabelList, Scatter
 } from 'recharts';
 import { ConstructionRecord, ServicePrice, PlanningAssignment } from '../types';
 import {
@@ -15,7 +15,7 @@ import {
   getTrechoInfo, getEquipmentCategory, calculateAssignmentTotal,
   getPeriodInfo, getProductivityStatus, getUnifiedServiceInfo, getCycleKey, getPeriodFromCycle
 } from '../utils/calculations';
-import { CustomDailyTooltip, CategoryDetailModal } from './DashboardComponents';
+import { CustomDailyTooltip, CategoryDetailModal, DayDetailModal } from './DashboardComponents';
 
 interface DashboardProps {
   data: ConstructionRecord[];
@@ -34,6 +34,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
   const [selectedTrechoDetail, setSelectedTrechoDetail] = useState<any>(null);
   const [selectedCategoryDetail, setSelectedCategoryDetail] = useState<any>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [selectedDayDetail, setSelectedDayDetail] = useState<any>(null);
 
 
   const stats = useMemo(() => {
@@ -243,9 +244,46 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
       }))
       .sort((a, b) => b.actual - a.actual);
 
+    // Tabela de Equipamentos Improdutivos (apenas valores improdutivos)
+    const idleEquipmentTable: Record<string, {
+      idle: number;
+      equipmentDetails: { frota: string; idle: number }[]
+    }> = {};
+
+    filteredRecords.forEach((curr) => {
+      const financials = calculateRecordFinancials(curr, servicePrices);
+      if (financials.status === 'IMPRODUTIVA') {
+        const category = getEquipmentCategory(curr.frota);
+        if (!idleEquipmentTable[category]) {
+          idleEquipmentTable[category] = { idle: 0, equipmentDetails: [] };
+        }
+        idleEquipmentTable[category].idle += financials.total;
+
+        let detail = idleEquipmentTable[category].equipmentDetails.find(d => d.frota === curr.frota);
+        if (!detail) {
+          detail = { frota: curr.frota, idle: 0 };
+          idleEquipmentTable[category].equipmentDetails.push(detail);
+        }
+        detail.idle += financials.total;
+      }
+    });
+
+    // Sort equipment details by idle value
+    Object.values(idleEquipmentTable).forEach(cat => {
+      cat.equipmentDetails.sort((a, b) => b.idle - a.idle);
+    });
+
+    const idleComparison = Object.entries(idleEquipmentTable)
+      .map(([category, data]) => ({
+        category,
+        idle: data.idle,
+        equipmentDetails: data.equipmentDetails
+      }))
+      .sort((a, b) => b.idle - a.idle);
+
     return {
       realTotal, realProdutivo, realImprodutivo, planejadoTotal, period, chartData,
-      paretoCategory, idleTrechoTable, paretoRevenue, paretoIdle, equipmentComparison
+      paretoCategory, idleTrechoTable, paretoRevenue, paretoIdle, equipmentComparison, idleComparison
     };
   }, [data, selectedCycle, servicePrices, assignments]);
 
@@ -316,10 +354,16 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis dataKey="name" tick={{ fontSize: 9, fontWeight: 700 }} axisLine={false} />
               <YAxis tick={{ fontSize: 9 }} axisLine={false} tickFormatter={val => `R$ ${val / 1000}k`} />
-              <Tooltip content={<CustomDailyTooltip />} />
+              <Tooltip formatter={(v: any) => formatCurrencyWithZero(v)} />
               <Legend />
               <Bar dataKey="plan" name="Planejado" fill="#cbd5e1" radius={[4, 4, 0, 0]} />
               <Line dataKey="real" name="Realizado" stroke="#6366f1" strokeWidth={3} dot={{ r: 4, fill: '#6366f1' }} />
+              <Scatter
+                dataKey="real"
+                fill="#6366f1"
+                onClick={(data) => setSelectedDayDetail(data.payload)}
+                style={{ cursor: 'pointer' }}
+              />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
@@ -382,7 +426,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
                   name="Improdutivo"
                   radius={[0, 4, 4, 0]}
                   onClick={(data) => {
-                    const category = stats.equipmentComparison.find(c => c.category === data.name);
+                    const category = stats.idleComparison.find(c => c.category === data.name);
                     if (category) {
                       setSelectedCategoryDetail({ ...category, type: 'idle' });
                     }
@@ -494,6 +538,14 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
           category={selectedCategoryDetail}
           onClose={() => setSelectedCategoryDetail(null)}
           type={selectedCategoryDetail.type}
+        />
+      )}
+
+      {/* Day Detail Modal */}
+      {selectedDayDetail && (
+        <DayDetailModal
+          day={selectedDayDetail}
+          onClose={() => setSelectedDayDetail(null)}
         />
       )}
     </div>
