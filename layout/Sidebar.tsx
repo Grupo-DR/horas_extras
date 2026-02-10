@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FileText, CheckSquare, Users, Target, Settings, HardHat } from 'lucide-react';
+import { LayoutDashboard, FileText, CheckSquare, Users, Target, Settings } from 'lucide-react';
 import { AppModule } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { ModuleKey } from '../types/auth';
@@ -55,13 +55,7 @@ export const Sidebar: React.FC = () => {
             path: '/crm/clients',
             authModule: 'crm' as ModuleKey
         },
-        {
-            module: 'CONSTRUCTION',
-            label: 'Módulo Obra',
-            icon: HardHat,
-            path: '/construction',
-            authModule: 'construction' as ModuleKey
-        },
+
     ];
 
     const visibleItems = rawItems.filter(item => canView(item.authModule));

@@ -11,7 +11,7 @@ import {
     writeBatch,
     Timestamp
 } from 'firebase/firestore';
-import { db } from '@/services/firebaseConfig';
+import { db } from '../../../../services/firebaseConfig';
 import { ConstructionRecord, PlanningTarget } from '../types';
 
 const COLLECTIONS = {

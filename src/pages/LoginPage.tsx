@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 export const LoginPage = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    type LoginModule = 'COMMERCIAL' | 'HUMAN_CAPITAL';
+    type LoginModule = 'COMMERCIAL' | 'HUMAN_CAPITAL' | 'CONSTRUCTION';
     const [loginModule, setLoginModule] = useState<LoginModule>('COMMERCIAL');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -25,7 +25,14 @@ export const LoginPage = () => {
             await signIn(email, password);
 
             toast.success('Bem-vindo ao Portal DR Nexus!');
-            navigate(loginModule === 'HUMAN_CAPITAL' ? '/human-capital' : '/');
+            toast.success('Bem-vindo ao Portal DR Nexus!');
+            if (loginModule === 'HUMAN_CAPITAL') {
+                navigate('/human-capital');
+            } else if (loginModule === 'CONSTRUCTION') {
+                navigate('/construction');
+            } else {
+                navigate('/');
+            }
         } catch (err) {
             console.error(err);
             setError('Falha no login. Verifique suas credenciais.');
@@ -106,6 +113,7 @@ export const LoginPage = () => {
                             >
                                 <option value="COMMERCIAL">Comercial</option>
                                 <option value="HUMAN_CAPITAL">Capital Humano</option>
+                                <option value="CONSTRUCTION">Obras</option>
                             </select>
 
                             <p className="mt-2 text-[11px] text-slate-400">
@@ -125,7 +133,7 @@ export const LoginPage = () => {
                                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                             ) : (
                                 <>
-                                    <span>Entrar no Portal {loginModule === 'COMMERCIAL' ? 'Comercial' : 'RH'}</span>
+                                    <span>Entrar no Portal {loginModule === 'COMMERCIAL' ? 'Comercial' : loginModule === 'HUMAN_CAPITAL' ? 'RH' : 'Obras'}</span>
                                     <ArrowRight size={18} />
                                 </>
                             )}
