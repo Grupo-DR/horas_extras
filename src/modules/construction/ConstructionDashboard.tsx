@@ -42,8 +42,8 @@ const App: React.FC = () => {
       const sortedCycles = fetchedCycles.sort(); // YYYY-MM format sorts naturally
       setCycles(sortedCycles);
       if (sortedCycles.length > 0 && !currentCycle) {
-        // Select latest cycle (last in sorted array)
-        const latest = sortedCycles[sortedCycles.length - 1];
+        // getCycles returns desc order, so first item is latest
+        const latest = sortedCycles[0];
         setCurrentCycle(latest);
       }
     } catch (e) {
@@ -90,11 +90,32 @@ const App: React.FC = () => {
     }
   }, [currentCycle]); // Removed 'view' dependency to avoid loops
 
-  const handleImportSuccess = () => {
-    fetchCycles();
-    // Ideally jump to dashboard and latest cycle
-    alert("Importação realizada com sucesso! Atualizando dados...");
-  };
+  // Handle successful import - refresh cycles and select latest
+  const handleImportSuccess = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const fetchedCycles = await constructionService.getCycles();
+      const sortedCycles = fetchedCycles.sort();
+      setCycles(sortedCycles);
+
+      // Select latest cycle (first in desc order)
+      if (sortedCycles.length > 0) {
+        const latest = sortedCycles[0];
+        setCurrentCycle(latest);
+        // Fetch data for the latest cycle
+        await fetchDataForCycle(latest);
+      }
+
+      // Switch to dashboard view
+      setView('dashboard');
+    } catch (e) {
+      console.error("Failed to refresh after import", e);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchDataForCycle]);
+
+
 
 
 

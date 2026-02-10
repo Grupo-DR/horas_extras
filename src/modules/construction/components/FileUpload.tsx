@@ -55,25 +55,13 @@ const FileUpload: React.FC<FileUploadProps> = ({ onImportSuccess }) => {
           return;
         }
 
-        // Helper to convert DD/MM/YYYY to YYYY-MM-DD
-        const toISODate = (brDate: string): string => {
-          if (!brDate) return '';
-          const parts = brDate.split('/');
-          if (parts.length === 3) {
-            return `${parts[2]}-${parts[1]}-${parts[0]}`;
-          }
-          return brDate; // Fallback if already ISO or unexpected
-        };
-
-        // Group records by Cycle
-        const recordsByCycle: Record<string, any[]> = {};
+        // Group records by Cycle (using ConstructionRecord format)
+        const recordsByCycle: Record<string, ConstructionRecord[]> = {};
         let processingErrors = 0;
 
         records.forEach(r => {
-          const isoDate = toISODate(r.data);
-
-          if (!isoDate || !r.frota) {
-            // Should have been caught by parser, but double checking
+          // Validate required fields
+          if (!r.data || !r.frota) {
             processingErrors++;
             return;
           }
@@ -81,15 +69,18 @@ const FileUpload: React.FC<FileUploadProps> = ({ onImportSuccess }) => {
           const cycle = getCycleKey(r.data);
           if (!recordsByCycle[cycle]) recordsByCycle[cycle] = [];
 
+          // Save in ConstructionRecord format (NOT date/equipmentCode)
           recordsByCycle[cycle].push({
-            date: isoDate, // Send YYYY-MM-DD to Backend
-            equipmentCode: r.frota,
-            operator: r.operador || '',
-            startTime: r.horaInicio || '',
-            endTime: r.horaTermino || '',
-            codeSAP: r.codSapMobra || r.codSapRental || '',
-            description: r.item || '',
-            quantity: r.producao || 0
+            data: r.data,              // DD/MM/YYYY format
+            frota: r.frota,
+            trechoFinal: r.trechoFinal || '',
+            item: r.item || '',
+            producao: r.producao || 0,
+            codSapRental: r.codSapRental || '',
+            codSapMobra: r.codSapMobra || '',
+            operador: r.operador || '',
+            horaInicio: r.horaInicio || '',
+            horaTermino: r.horaTermino || ''
           });
         });
 
