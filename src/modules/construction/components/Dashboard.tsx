@@ -15,6 +15,7 @@ import {
   getTrechoInfo, getEquipmentCategory, calculateAssignmentTotal,
   getPeriodInfo, getProductivityStatus, getUnifiedServiceInfo, getCycleKey, getPeriodFromCycle
 } from '../utils/calculations';
+import { CustomDailyTooltip, CategoryDetailModal } from './DashboardComponents';
 
 interface DashboardProps {
   data: ConstructionRecord[];
@@ -31,6 +32,9 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
 
   const [selectedCycle, setSelectedCycle] = useState<string>(availableCycles[0] || '');
   const [selectedTrechoDetail, setSelectedTrechoDetail] = useState<any>(null);
+  const [selectedCategoryDetail, setSelectedCategoryDetail] = useState<any>(null);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+
 
   const stats = useMemo(() => {
     if (!selectedCycle && availableCycles.length > 0) return null;
@@ -92,11 +96,38 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
       byDatePlan[formatted] = (byDatePlan[formatted] || 0) + totalA;
     });
 
+    // Preparar dados detalhados por data para tooltip
+    const byDateEquipments: Record<string, { frota: string; value: number; planned: number }[]> = {};
+
+    filteredRecords.forEach((curr) => {
+      const financials = calculateRecordFinancials(curr, servicePrices);
+      if (!byDateEquipments[curr.data]) byDateEquipments[curr.data] = [];
+      const existing = byDateEquipments[curr.data].find(e => e.frota === curr.frota);
+      if (existing) {
+        existing.value += financials.total;
+      } else {
+        byDateEquipments[curr.data].push({ frota: curr.frota, value: financials.total, planned: 0 });
+      }
+    });
+
+    filteredAssignments.forEach(a => {
+      const parts = a.date.split('-');
+      const formatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
+      if (!byDateEquipments[formatted]) byDateEquipments[formatted] = [];
+      const existing = byDateEquipments[formatted].find(e => e.frota === a.frota);
+      if (existing) {
+        existing.planned += calculateAssignmentTotal(a, servicePrices);
+      } else {
+        byDateEquipments[formatted].push({ frota: a.frota, value: 0, planned: calculateAssignmentTotal(a, servicePrices) });
+      }
+    });
+
     const chartData = Array.from(new Set([...Object.keys(byDateReal), ...Object.keys(byDatePlan)]))
       .map(d => ({
         name: d,
         real: byDateReal[d] || 0,
         plan: byDatePlan[d] || 0,
+        equipments: byDateEquipments[d] || [],
         ts: new Date(d.split('/')[2] + '-' + d.split('/')[1] + '-' + d.split('/')[0]).getTime()
       })).sort((a, b) => a.ts - b.ts);
 
@@ -146,30 +177,59 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
       });
 
     // Tabela de Equipamentos: Planejado vs Real
-    const equipmentTable: Record<string, { planned: number; actual: number; equipments: string[] }> = {};
+    const equipmentTable: Record<string, {
+      planned: number;
+      actual: number;
+      equipments: string[];
+      equipmentDetails: { frota: string; planned: number; actual: number; difference: number }[]
+    }> = {};
 
     filteredRecords.forEach((curr) => {
       const financials = calculateRecordFinancials(curr, servicePrices);
       const category = getEquipmentCategory(curr.frota);
       if (!equipmentTable[category]) {
-        equipmentTable[category] = { planned: 0, actual: 0, equipments: [] };
+        equipmentTable[category] = { planned: 0, actual: 0, equipments: [], equipmentDetails: [] };
       }
       equipmentTable[category].actual += financials.total;
       if (!equipmentTable[category].equipments.includes(curr.frota)) {
         equipmentTable[category].equipments.push(curr.frota);
       }
+
+      // Track individual equipment
+      let detail = equipmentTable[category].equipmentDetails.find(d => d.frota === curr.frota);
+      if (!detail) {
+        detail = { frota: curr.frota, planned: 0, actual: 0, difference: 0 };
+        equipmentTable[category].equipmentDetails.push(detail);
+      }
+      detail.actual += financials.total;
     });
 
     filteredAssignments.forEach(a => {
       const category = getEquipmentCategory(a.frota);
       const totalA = calculateAssignmentTotal(a, servicePrices);
       if (!equipmentTable[category]) {
-        equipmentTable[category] = { planned: 0, actual: 0, equipments: [] };
+        equipmentTable[category] = { planned: 0, actual: 0, equipments: [], equipmentDetails: [] };
       }
       equipmentTable[category].planned += totalA;
       if (!equipmentTable[category].equipments.includes(a.frota)) {
         equipmentTable[category].equipments.push(a.frota);
       }
+
+      // Track individual equipment
+      let detail = equipmentTable[category].equipmentDetails.find(d => d.frota === a.frota);
+      if (!detail) {
+        detail = { frota: a.frota, planned: 0, actual: 0, difference: 0 };
+        equipmentTable[category].equipmentDetails.push(detail);
+      }
+      detail.planned += totalA;
+    });
+
+    // Calculate differences
+    Object.values(equipmentTable).forEach(cat => {
+      cat.equipmentDetails.forEach(detail => {
+        detail.difference = detail.actual - detail.planned;
+      });
+      cat.equipmentDetails.sort((a, b) => b.actual - a.actual);
     });
 
     const equipmentComparison = Object.entries(equipmentTable)
@@ -178,7 +238,8 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
         planned: data.planned,
         actual: data.actual,
         difference: data.actual - data.planned,
-        equipments: data.equipments.sort()
+        equipments: data.equipments.sort(),
+        equipmentDetails: data.equipmentDetails
       }))
       .sort((a, b) => b.actual - a.actual);
 
@@ -255,7 +316,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis dataKey="name" tick={{ fontSize: 9, fontWeight: 700 }} axisLine={false} />
               <YAxis tick={{ fontSize: 9 }} axisLine={false} tickFormatter={val => `R$ ${val / 1000}k`} />
-              <Tooltip formatter={(v: any) => formatCurrencyWithZero(v)} />
+              <Tooltip content={<CustomDailyTooltip />} />
               <Legend />
               <Bar dataKey="plan" name="Planejado" fill="#cbd5e1" radius={[4, 4, 0, 0]} />
               <Line dataKey="real" name="Realizado" stroke="#6366f1" strokeWidth={3} dot={{ r: 4, fill: '#6366f1' }} />
@@ -277,7 +338,18 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
                 <XAxis type="number" tick={{ fontSize: 9 }} axisLine={false} tickFormatter={val => `R$ ${val / 1000}k`} />
                 <YAxis dataKey="name" type="category" tick={{ fontSize: 9, fontWeight: 700 }} axisLine={false} width={120} />
                 <Tooltip formatter={(v: any) => formatCurrencyWithZero(v)} />
-                <Bar dataKey="value" name="Faturamento" radius={[0, 4, 4, 0]}>
+                <Bar
+                  dataKey="value"
+                  name="Faturamento"
+                  radius={[0, 4, 4, 0]}
+                  onClick={(data) => {
+                    const category = stats.equipmentComparison.find(c => c.category === data.name);
+                    if (category) {
+                      setSelectedCategoryDetail({ ...category, type: 'revenue' });
+                    }
+                  }}
+                  style={{ cursor: 'pointer' }}
+                >
                   {stats.paretoRevenue.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
@@ -305,7 +377,18 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
                 <XAxis type="number" tick={{ fontSize: 9 }} axisLine={false} tickFormatter={val => `R$ ${val / 1000}k`} />
                 <YAxis dataKey="name" type="category" tick={{ fontSize: 9, fontWeight: 700 }} axisLine={false} width={120} />
                 <Tooltip formatter={(v: any) => formatCurrencyWithZero(v)} />
-                <Bar dataKey="value" name="Improdutivo" radius={[0, 4, 4, 0]}>
+                <Bar
+                  dataKey="value"
+                  name="Improdutivo"
+                  radius={[0, 4, 4, 0]}
+                  onClick={(data) => {
+                    const category = stats.equipmentComparison.find(c => c.category === data.name);
+                    if (category) {
+                      setSelectedCategoryDetail({ ...category, type: 'idle' });
+                    }
+                  }}
+                  style={{ cursor: 'pointer' }}
+                >
                   {stats.paretoIdle.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
@@ -337,44 +420,81 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {stats.equipmentComparison.map((row, i) => (
-                  <React.Fragment key={i}>
-                    <tr className="hover:bg-slate-50 transition-colors bg-slate-50/50">
-                      <td className="py-3 px-4">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-bold text-slate-900">{row.category}</span>
-                          <div className="flex gap-1 mt-1 flex-wrap">
-                            {row.equipments.slice(0, 5).map((eq, j) => (
-                              <span key={j} className="text-[9px] text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
-                                {eq}
-                              </span>
-                            ))}
-                            {row.equipments.length > 5 && (
-                              <span className="text-[9px] text-slate-400 px-2 py-0.5">
-                                +{row.equipments.length - 5} mais
-                              </span>
-                            )}
+                {stats.equipmentComparison.map((row, i) => {
+                  const isExpanded = expandedCategories.has(row.category);
+
+                  return (
+                    <React.Fragment key={i}>
+                      {/* Category Row */}
+                      <tr
+                        className="hover:bg-slate-50 transition-colors bg-slate-50/50 cursor-pointer"
+                        onClick={() => {
+                          const newExpanded = new Set(expandedCategories);
+                          if (isExpanded) {
+                            newExpanded.delete(row.category);
+                          } else {
+                            newExpanded.add(row.category);
+                          }
+                          setExpandedCategories(newExpanded);
+                        }}
+                      >
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <ChevronRight
+                              className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                            />
+                            <span className="text-sm font-bold text-slate-900">{row.category}</span>
+                            <span className="text-xs text-slate-400">({row.equipments.length} equipamentos)</span>
                           </div>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <span className="text-sm font-bold text-slate-600">{formatCurrencyWithZero(row.planned)}</span>
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <span className="text-sm font-bold text-indigo-600">{formatCurrencyWithZero(row.actual)}</span>
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <span className={`text-sm font-bold ${row.difference >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                          {row.difference >= 0 ? '+' : ''}{formatCurrencyWithZero(row.difference)}
-                        </span>
-                      </td>
-                    </tr>
-                  </React.Fragment>
-                ))}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <span className="text-sm font-bold text-slate-600">{formatCurrencyWithZero(row.planned)}</span>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <span className="text-sm font-bold text-indigo-600">{formatCurrencyWithZero(row.actual)}</span>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <span className={`text-sm font-bold ${row.difference >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                            {row.difference >= 0 ? '+' : ''}{formatCurrencyWithZero(row.difference)}
+                          </span>
+                        </td>
+                      </tr>
+
+                      {/* Expanded Equipment Details */}
+                      {isExpanded && row.equipmentDetails.map((eq, j) => (
+                        <tr key={`${i}-${j}`} className="bg-slate-50/30">
+                          <td className="py-2 px-4 pl-12">
+                            <span className="text-xs text-slate-600">{eq.frota}</span>
+                          </td>
+                          <td className="py-2 px-4 text-right">
+                            <span className="text-xs text-slate-500">{formatCurrencyWithZero(eq.planned)}</span>
+                          </td>
+                          <td className="py-2 px-4 text-right">
+                            <span className="text-xs text-indigo-500">{formatCurrencyWithZero(eq.actual)}</span>
+                          </td>
+                          <td className="py-2 px-4 text-right">
+                            <span className={`text-xs font-semibold ${eq.difference >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                              {eq.difference >= 0 ? '+' : ''}{formatCurrencyWithZero(eq.difference)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
+      )}
+
+      {/* Category Detail Modal */}
+      {selectedCategoryDetail && (
+        <CategoryDetailModal
+          category={selectedCategoryDetail}
+          onClose={() => setSelectedCategoryDetail(null)}
+          type={selectedCategoryDetail.type}
+        />
       )}
     </div>
   );
