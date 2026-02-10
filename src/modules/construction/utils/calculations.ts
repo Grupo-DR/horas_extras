@@ -159,14 +159,36 @@ export const getPeriodInfo = (referenceDate: Date | string = new Date(), records
   }
 
   const daysWithMeasurement = measuredDates.size || 0;
-  const remainingDays = Math.max(0, totalDaysInPeriod - daysWithMeasurement);
+
+  // Calcular dias úteis restantes (segunda a sexta) do dia atual até o fim do período
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let remainingBusinessDays = 0;
+  const currentDate = new Date(today);
+
+  // Se hoje está dentro do período, conta a partir de hoje
+  // Senão, conta a partir do início do período
+  if (currentDate < start) {
+    currentDate.setTime(start.getTime());
+  }
+
+  // Contar dias úteis até o final do período
+  while (currentDate <= end) {
+    const dayOfWeek = currentDate.getDay();
+    // 0 = Domingo, 6 = Sábado
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      remainingBusinessDays++;
+    }
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
 
   return {
     start,
     end,
     totalDaysInPeriod,
     daysWithMeasurement,
-    remainingDays
+    remainingDays: remainingBusinessDays
   };
 };
 
