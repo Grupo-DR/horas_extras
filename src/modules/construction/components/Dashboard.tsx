@@ -109,7 +109,83 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
       cities: Object.entries(byTrechoCityImprod[key]).map(([name, value]) => ({ name, value }))
     })).sort((a, b) => b.value - a.value);
 
-    return { realTotal, realProdutivo, realImprodutivo, planejadoTotal, period, chartData, paretoCategory, idleTrechoTable };
+
+    // Pareto de Faturamento por Tipo de Equipamento (ABC)
+    const paretoRevenue = Object.entries(byCategoryReal)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, value], index, arr) => {
+        const total = arr.reduce((sum, [, v]) => sum + v, 0);
+        const accumulated = arr.slice(0, index + 1).reduce((sum, [, v]) => sum + v, 0);
+        const accumulatedPercentage = (accumulated / total) * 100;
+        let abcClass = 'C';
+        if (accumulatedPercentage <= 80) abcClass = 'A';
+        else if (accumulatedPercentage <= 95) abcClass = 'B';
+        return { name, value, abcClass };
+      });
+
+    // Pareto de Horas Improdutivas por Tipo de Equipamento (ABC)
+    const byCategoryIdle: Record<string, number> = {};
+    filteredRecords.forEach((curr) => {
+      const financials = calculateRecordFinancials(curr, servicePrices);
+      const category = getEquipmentCategory(curr.frota);
+      if (financials.status === 'IMPRODUTIVA') {
+        byCategoryIdle[category] = (byCategoryIdle[category] || 0) + financials.total;
+      }
+    });
+
+    const paretoIdle = Object.entries(byCategoryIdle)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, value], index, arr) => {
+        const total = arr.reduce((sum, [, v]) => sum + v, 0);
+        const accumulated = arr.slice(0, index + 1).reduce((sum, [, v]) => sum + v, 0);
+        const accumulatedPercentage = (accumulated / total) * 100;
+        let abcClass = 'C';
+        if (accumulatedPercentage <= 80) abcClass = 'A';
+        else if (accumulatedPercentage <= 95) abcClass = 'B';
+        return { name, value, abcClass };
+      });
+
+    // Tabela de Equipamentos: Planejado vs Real
+    const equipmentTable: Record<string, { planned: number; actual: number; equipments: string[] }> = {};
+
+    filteredRecords.forEach((curr) => {
+      const financials = calculateRecordFinancials(curr, servicePrices);
+      const category = getEquipmentCategory(curr.frota);
+      if (!equipmentTable[category]) {
+        equipmentTable[category] = { planned: 0, actual: 0, equipments: [] };
+      }
+      equipmentTable[category].actual += financials.total;
+      if (!equipmentTable[category].equipments.includes(curr.frota)) {
+        equipmentTable[category].equipments.push(curr.frota);
+      }
+    });
+
+    filteredAssignments.forEach(a => {
+      const category = getEquipmentCategory(a.frota);
+      const totalA = calculateAssignmentTotal(a, servicePrices);
+      if (!equipmentTable[category]) {
+        equipmentTable[category] = { planned: 0, actual: 0, equipments: [] };
+      }
+      equipmentTable[category].planned += totalA;
+      if (!equipmentTable[category].equipments.includes(a.frota)) {
+        equipmentTable[category].equipments.push(a.frota);
+      }
+    });
+
+    const equipmentComparison = Object.entries(equipmentTable)
+      .map(([category, data]) => ({
+        category,
+        planned: data.planned,
+        actual: data.actual,
+        difference: data.actual - data.planned,
+        equipments: data.equipments.sort()
+      }))
+      .sort((a, b) => b.actual - a.actual);
+
+    return {
+      realTotal, realProdutivo, realImprodutivo, planejadoTotal, period, chartData,
+      paretoCategory, idleTrechoTable, paretoRevenue, paretoIdle, equipmentComparison
+    };
   }, [data, selectedCycle, servicePrices, assignments]);
 
   if (!stats) return (
@@ -187,6 +263,119 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* Pareto de Faturamento por Tipo de Equipamento */}
+      {stats.paretoRevenue.length > 0 && (
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+          <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-emerald-500" /> Pareto de Faturamento por Tipo de Equipamento
+          </h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={stats.paretoRevenue} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                <XAxis type="number" tick={{ fontSize: 9 }} axisLine={false} tickFormatter={val => `R$ ${val / 1000}k`} />
+                <YAxis dataKey="name" type="category" tick={{ fontSize: 9, fontWeight: 700 }} axisLine={false} width={120} />
+                <Tooltip formatter={(v: any) => formatCurrencyWithZero(v)} />
+                <Bar dataKey="value" name="Faturamento" radius={[0, 4, 4, 0]}>
+                  {stats.paretoRevenue.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={entry.abcClass === 'A' ? '#10b981' : entry.abcClass === 'B' ? '#f59e0b' : '#ef4444'}
+                    />
+                  ))}
+                  <LabelList dataKey="abcClass" position="right" style={{ fontSize: 10, fontWeight: 'bold' }} />
+                </Bar>
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* Pareto de Horas Improdutivas por Tipo de Equipamento */}
+      {stats.paretoIdle.length > 0 && (
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+          <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-500" /> Pareto de R$ Horas Improdutivas por Tipo de Equipamento
+          </h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={stats.paretoIdle} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                <XAxis type="number" tick={{ fontSize: 9 }} axisLine={false} tickFormatter={val => `R$ ${val / 1000}k`} />
+                <YAxis dataKey="name" type="category" tick={{ fontSize: 9, fontWeight: 700 }} axisLine={false} width={120} />
+                <Tooltip formatter={(v: any) => formatCurrencyWithZero(v)} />
+                <Bar dataKey="value" name="Improdutivo" radius={[0, 4, 4, 0]}>
+                  {stats.paretoIdle.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={entry.abcClass === 'A' ? '#ef4444' : entry.abcClass === 'B' ? '#f59e0b' : '#94a3b8'}
+                    />
+                  ))}
+                  <LabelList dataKey="abcClass" position="right" style={{ fontSize: 10, fontWeight: 'bold' }} />
+                </Bar>
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* Tabela de Equipamentos: Planejado vs Real */}
+      {stats.equipmentComparison.length > 0 && (
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+          <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2">
+            <Truck className="w-4 h-4 text-indigo-500" /> Comparativo: Planejado vs Realizado por Tipo de Equipamento
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-slate-500 uppercase tracking-wider">Tipo de Equipamento</th>
+                  <th className="text-right py-3 px-4 text-[10px] font-black text-slate-500 uppercase tracking-wider">Faturamento Planejado</th>
+                  <th className="text-right py-3 px-4 text-[10px] font-black text-slate-500 uppercase tracking-wider">Faturamento Real</th>
+                  <th className="text-right py-3 px-4 text-[10px] font-black text-slate-500 uppercase tracking-wider">Diferença</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {stats.equipmentComparison.map((row, i) => (
+                  <React.Fragment key={i}>
+                    <tr className="hover:bg-slate-50 transition-colors bg-slate-50/50">
+                      <td className="py-3 px-4">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-slate-900">{row.category}</span>
+                          <div className="flex gap-1 mt-1 flex-wrap">
+                            {row.equipments.slice(0, 5).map((eq, j) => (
+                              <span key={j} className="text-[9px] text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+                                {eq}
+                              </span>
+                            ))}
+                            {row.equipments.length > 5 && (
+                              <span className="text-[9px] text-slate-400 px-2 py-0.5">
+                                +{row.equipments.length - 5} mais
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <span className="text-sm font-bold text-slate-600">{formatCurrencyWithZero(row.planned)}</span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <span className="text-sm font-bold text-indigo-600">{formatCurrencyWithZero(row.actual)}</span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <span className={`text-sm font-bold ${row.difference >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                          {row.difference >= 0 ? '+' : ''}{formatCurrencyWithZero(row.difference)}
+                        </span>
+                      </td>
+                    </tr>
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
