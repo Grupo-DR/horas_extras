@@ -1,0 +1,22 @@
+[
+    {
+        "trecho": "T-01",
+        "supervisao": "Imperatriz"
+    },
+    {
+        "trecho": "T-02",
+        "supervisao": "Araguaina"
+    },
+    {
+        "trecho": "T-03",
+        "supervisao": "Palmas"
+    },
+    {
+        "trecho": "T-04",
+        "supervisao": "São Luis"
+    },
+    {
+        "trecho": "VLI",
+        "supervisao": "VLI - 2015"
+    }
+]

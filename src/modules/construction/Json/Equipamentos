@@ -1,0 +1,1932 @@
+[
+    {
+        "codigo": "1BZ700JAHLD000144",
+        "descricao": "TRATOR DE ESTEIRA JOHN DEERE",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 1200.00,
+        "valor_mes": 36000.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "CA-001",
+        "descricao": "CAMINHÃO DE ABASTECIMENTO",
+        "placa": "FTU5J70",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 266.67,
+        "valor_mes": 8000.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-008",
+        "descricao": "CAMINHÃO",
+        "placa": "EVT8H49",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 466.67,
+        "valor_mes": 14000.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-009",
+        "descricao": "CAMINHÃO",
+        "placa": "EVT9989",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 466.67,
+        "valor_mes": 14000.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-010",
+        "descricao": "CAMINHÃO",
+        "placa": "FBD1657",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 466.67,
+        "valor_mes": 14000.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-011",
+        "descricao": "CAMINHÃO",
+        "placa": "FNN4778",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 436.33,
+        "valor_mes": 13090.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-013",
+        "descricao": "CAMINHÃO",
+        "placa": "EZM3I19",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 518.00,
+        "valor_mes": 15540.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-014",
+        "descricao": "CAMINHÃO",
+        "placa": "EZM3I18",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 518.00,
+        "valor_mes": 15540.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-015",
+        "descricao": "CAMINHÃO",
+        "placa": "FTA2A90",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 436.33,
+        "valor_mes": 13090.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-018",
+        "descricao": "CAMINHÃO",
+        "placa": "FML3770",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 436.33,
+        "valor_mes": 13090.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-019",
+        "descricao": "CAMINHÃO",
+        "placa": "FNL0G99",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 436.33,
+        "valor_mes": 13090.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-021",
+        "descricao": "CAMINHÃO",
+        "placa": "FFS0I75",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 518.00,
+        "valor_mes": 15540.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-022",
+        "descricao": "CAMINHÃO",
+        "placa": "FLT2203",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 518.00,
+        "valor_mes": 15540.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-023",
+        "descricao": "CAMINHÃO",
+        "placa": "FUG9650",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 518.00,
+        "valor_mes": 15540.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-024",
+        "descricao": "CAMINHÃO",
+        "placa": "FTF9B60",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 518.00,
+        "valor_mes": 15540.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-025",
+        "descricao": "CAMINHÃO",
+        "placa": "FFS0I92",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 518.00,
+        "valor_mes": 15540.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-026",
+        "descricao": "CAMINHÃO CARGA VIVA - CAVALO",
+        "placa": null,
+        "dir_ind": "Indireto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": null,
+        "valor_mes": null,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-028",
+        "descricao": "CAMINHÃO",
+        "placa": "EFS9H83",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 436.33,
+        "valor_mes": 13090.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-032",
+        "descricao": "CAMINHÃO",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 69.61,
+        "valor_mes": 2088.40,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-033",
+        "descricao": "CAMINHÃO CAÇAMBA",
+        "placa": "FSK6H60",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 436.33,
+        "valor_mes": 13090.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-034",
+        "descricao": "CAMINHÃO",
+        "placa": "BPQ1I48",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 215.84,
+        "valor_mes": 6475.27,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-035",
+        "descricao": "CAMINHÃO",
+        "placa": "FJI3D97",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 215.84,
+        "valor_mes": 6475.27,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-036",
+        "descricao": "CAMINHÃO",
+        "placa": "GDC9C48",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 215.84,
+        "valor_mes": 6475.27,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-037",
+        "descricao": "CAMINHÃO",
+        "placa": "FTP2J68",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 227.80,
+        "valor_mes": 6834.07,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-038",
+        "descricao": "CAMINHÃO",
+        "placa": "FML5C98",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 227.80,
+        "valor_mes": 6834.07,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-039",
+        "descricao": "CAMINHÃO",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 227.80,
+        "valor_mes": 6834.07,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-040",
+        "descricao": "CAMINHÃO",
+        "placa": "CCU8A19",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 227.80,
+        "valor_mes": 6834.07,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-041",
+        "descricao": "CAMINHÃO BASCULANTE",
+        "placa": "FZD6G38",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 227.80,
+        "valor_mes": 6834.07,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-041",
+        "descricao": "CAMINHÃO BASCULANTE",
+        "placa": null,
+        "dir_ind": "Indireto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": null,
+        "valor_mes": null,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-042",
+        "descricao": "CAMINHÃO",
+        "placa": "GGK8D07",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 227.80,
+        "valor_mes": 6834.07,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-043",
+        "descricao": "CAMINHÃO",
+        "placa": "GFO4H78",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 227.80,
+        "valor_mes": 6834.07,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-044",
+        "descricao": "CAMINHÃO BASCULANTE",
+        "placa": "TLX5G40",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 227.80,
+        "valor_mes": 6834.07,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-045",
+        "descricao": "CAMINHÃO BASCULANTE",
+        "placa": "TIS5A60",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 227.80,
+        "valor_mes": 6834.07,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-046",
+        "descricao": "CAMINHÃO BASCULANTE",
+        "placa": "TKF3E80",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 227.80,
+        "valor_mes": 6834.07,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-047",
+        "descricao": "CAMINHÃO BASCULANTE",
+        "placa": "TLJ5A40",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 227.80,
+        "valor_mes": 6834.07,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-048",
+        "descricao": "CAMINHÃO BASCULANTE",
+        "placa": "TLT4J10",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 227.80,
+        "valor_mes": 6834.07,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-049",
+        "descricao": "CAMINHÃO BASCULANTE",
+        "placa": "TJY6J50",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 227.80,
+        "valor_mes": 6834.07,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-050",
+        "descricao": "CAMINHÃO BASCULANTE",
+        "placa": "TKQ9J50",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 227.80,
+        "valor_mes": 6834.07,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-051",
+        "descricao": "CAMINHÃO BASCULANTE",
+        "placa": "TLI0G70",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 227.80,
+        "valor_mes": 6834.07,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-052",
+        "descricao": "CAMINHÃO BASCULANTE",
+        "placa": "TJR8F40",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 227.80,
+        "valor_mes": 6834.07,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-053",
+        "descricao": "CAMINHÃO BASCULANTE",
+        "placa": "TJU3H50",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 227.80,
+        "valor_mes": 6834.07,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CB-054",
+        "descricao": "CAMINHÃO BASCULANTE",
+        "placa": "TLF8G89",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 227.80,
+        "valor_mes": 6834.07,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CC-001",
+        "descricao": "CAMINHÃO CARROCERIA CARGA SECA",
+        "placa": "FBD2B28",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 368.67,
+        "valor_mes": 11060.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CC-002",
+        "descricao": "CAMINHÃO CARROCERIA CARGA SECA",
+        "placa": "DAH6D13",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 368.67,
+        "valor_mes": 11060.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CE-002",
+        "descricao": "CAMINHÃO ESPARGIDOR",
+        "placa": "EFS9H81",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 127.57,
+        "valor_mes": 3827.20,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CG-001",
+        "descricao": "CAMINHÃO GUINDAUTO",
+        "placa": "163.82",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 163.82,
+        "valor_mes": 4914.71,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CM-001",
+        "descricao": "CAMINHÃO CAVALO MECÂNICO",
+        "placa": "CYS5D01",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 175.00,
+        "valor_mes": 5250.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CM-002",
+        "descricao": "CAMINHÃO CAVALO MECÂNICO",
+        "placa": "FBD2F89",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 466.67,
+        "valor_mes": 14000.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CM-003",
+        "descricao": "CAMINHÃO CAVALO MECÂNICO",
+        "placa": "FSD1I90",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 513.33,
+        "valor_mes": 15400.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CM-004",
+        "descricao": "CAMINHÃO CAVALO MECÂNICO",
+        "placa": "MKR5G09",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 199.33,
+        "valor_mes": 5980.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CM-005",
+        "descricao": "CAMINHÃO CAVALO MECÂNICO",
+        "placa": "TLB7C09",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 199.33,
+        "valor_mes": 5980.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CM-006",
+        "descricao": "CAMINHÃO CAVALO MECÂNICO",
+        "placa": "TLI8H79",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 199.33,
+        "valor_mes": 5980.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CP-002",
+        "descricao": "CAMINHÃO PRANCHA",
+        "placa": "FWX1D80",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 606.67,
+        "valor_mes": 18200.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CP-003",
+        "descricao": "CAMINHÃO PRANCHA",
+        "placa": "FSJ1E15",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 606.67,
+        "valor_mes": 18200.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CP-004",
+        "descricao": "CAMINHÃO PRANCHA",
+        "placa": "FER5D30",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 606.67,
+        "valor_mes": 18200.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CP-005",
+        "descricao": "CAMINHÃO PRANCHA",
+        "placa": "FFN4I67",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 606.67,
+        "valor_mes": 18200.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CT-003",
+        "descricao": "CAMINHÃO TANQUE",
+        "placa": "FKB2589",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 326.67,
+        "valor_mes": 9800.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "CT-004",
+        "descricao": "CAMINHÃO TANQUE",
+        "placa": "EFS9H89",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 326.67,
+        "valor_mes": 9800.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "EH-002",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 466.67,
+        "valor_mes": 14000.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-002",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 478.33,
+        "valor_mes": 14350.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-004",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 478.33,
+        "valor_mes": 14350.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-005",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 651.00,
+        "valor_mes": 19530.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-006",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 564.67,
+        "valor_mes": 16940.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-007",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 564.67,
+        "valor_mes": 16940.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-008",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 651.00,
+        "valor_mes": 19530.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-011",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 564.67,
+        "valor_mes": 16940.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-012",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 564.67,
+        "valor_mes": 16940.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-013",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 478.33,
+        "valor_mes": 14350.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-014",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 564.67,
+        "valor_mes": 16940.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-015",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 564.67,
+        "valor_mes": 16940.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-016",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 478.33,
+        "valor_mes": 14350.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-017",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 270.16,
+        "valor_mes": 8104.74,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-018",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 270.16,
+        "valor_mes": 8104.74,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-019",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 325.66,
+        "valor_mes": 9769.86,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-020",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 332.29,
+        "valor_mes": 9968.66,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-021",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 452.68,
+        "valor_mes": 13580.31,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-022",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 612.11,
+        "valor_mes": 18363.20,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-023",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 1058.00,
+        "valor_mes": 31740.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-024",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 1058.00,
+        "valor_mes": 31740.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-025",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 460.00,
+        "valor_mes": 13800.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-026",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 460.00,
+        "valor_mes": 13800.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-027",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 552.00,
+        "valor_mes": 16560.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-028",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 368.00,
+        "valor_mes": 11040.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-029",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 368.00,
+        "valor_mes": 11040.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-030",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 368.00,
+        "valor_mes": 11040.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-059",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo de terceiro",
+        "valor_dia": 595.00,
+        "valor_mes": 17850.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-060",
+        "descricao": "ESCAVADEIRA HIDRÁULICA - CAT 318 DL - ENC. ISSAC",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo de terceiro",
+        "valor_dia": 595.00,
+        "valor_mes": 17850.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-061",
+        "descricao": "ESCAVADEIRA HIDRÁULICA - CAT 318 DL",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo de terceiro",
+        "valor_dia": 595.00,
+        "valor_mes": 17850.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-062",
+        "descricao": "ESCAVADEIRA HIDRÁULICA - CAT 318 DL",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo de terceiro",
+        "valor_dia": 595.00,
+        "valor_mes": 17850.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-063",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo de terceiro",
+        "valor_dia": 595.00,
+        "valor_mes": 17850.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-064",
+        "descricao": "ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo de terceiro",
+        "valor_dia": 595.00,
+        "valor_mes": 17850.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EH-ARMAC",
+        "descricao": "ESCAVADEIRA HIDRÁULICA - ARMAC -",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo de terceiro",
+        "valor_dia": 595.00,
+        "valor_mes": 17850.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EM-001",
+        "descricao": "EMPILHADEIRA STILL CLX 25 G10 A COMBUSTAO",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 128.33,
+        "valor_mes": 3850.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EPP0037",
+        "descricao": "ROÇADEIRA HUSQVARNA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 17.50,
+        "valor_mes": 525.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "ES00461",
+        "descricao": "EH - ESCAVADEIRA HIDRAULICA - ARMAC - JS130LC",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo de terceiro",
+        "valor_dia": 700.00,
+        "valor_mes": 21000.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "EVF4098",
+        "descricao": "CAM. BASC. MGM (OBRA GERDAU)",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo de terceiro",
+        "valor_dia": null,
+        "valor_mes": null,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "FA-001",
+        "descricao": "FRESADORA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 67.47,
+        "valor_mes": 2024.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "GA-001",
+        "descricao": "GRADE AGRICOLA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 46.67,
+        "valor_mes": 1400.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "GA-002",
+        "descricao": "GRADE AGRICOLA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 46.67,
+        "valor_mes": 1400.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "GE-001",
+        "descricao": "GERADOR ESTACIONARIO",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 34.96,
+        "valor_mes": 1048.80,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "IM-061",
+        "descricao": "IMPLEMENTO ROPS E FOPS 1",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 13.56,
+        "valor_mes": 406.86,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "IM-062",
+        "descricao": "IMPLEMENTO ROPS E FOPS 2",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 13.56,
+        "valor_mes": 406.86,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "IM-063",
+        "descricao": "IMPLEMENTO ROPS E FOPS 3",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 13.56,
+        "valor_mes": 406.86,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "M-001",
+        "descricao": "MOTOCICLO",
+        "placa": "FWT5I50",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 28.70,
+        "valor_mes": 861.00,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "M-002",
+        "descricao": "MOTOCICLO",
+        "placa": "GBG1C10",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 28.70,
+        "valor_mes": 861.00,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "MC-001",
+        "descricao": "MINI PÁ CARREGADEIRA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 350.00,
+        "valor_mes": 10500.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "ME-001",
+        "descricao": "MINI ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 359.33,
+        "valor_mes": 10780.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "ME-002",
+        "descricao": "MINI ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 359.33,
+        "valor_mes": 10780.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "ME-004",
+        "descricao": "MINI ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 359.33,
+        "valor_mes": 10780.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "ME-005",
+        "descricao": "MINI ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 190.13,
+        "valor_mes": 5704.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "ME-006",
+        "descricao": "MINI ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 190.13,
+        "valor_mes": 5704.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "ME-007",
+        "descricao": "MINI ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 190.13,
+        "valor_mes": 5704.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "ME-008",
+        "descricao": "MINI ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 225.09,
+        "valor_mes": 6752.80,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "ME-009",
+        "descricao": "MINI ESCAVADEIRA HIDRÁULICA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 225.09,
+        "valor_mes": 6752.80,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "MN - 9200284",
+        "descricao": "MOTONIVELADORA 120 VLR - 9200284 - BONANÇA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo de terceiro",
+        "valor_dia": 1333.33,
+        "valor_mes": 40000.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "MN-003",
+        "descricao": "MOTONIVELADORA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 980.00,
+        "valor_mes": 29400.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "MN-004",
+        "descricao": "MOTONIVELADORA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 828.00,
+        "valor_mes": 24840.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "MN-005",
+        "descricao": "MOTONIVELADORA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 889.33,
+        "valor_mes": 26680.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "MN-006",
+        "descricao": "MOTONIVELADORA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 793.33,
+        "valor_mes": 23800.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "MN-NACO",
+        "descricao": "MOTONIVELADORA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo de terceiro",
+        "valor_dia": 1166.67,
+        "valor_mes": 35000.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "NB-502",
+        "descricao": "SERVIDOR XEON E3-1220 V5, RAM 8GB, HDD 1TB 2X, WIN S-",
+        "placa": null,
+        "dir_ind": "Indireto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 5.83,
+        "valor_mes": 175.00,
+        "classificacao": "COMPUTADORES E PERIFÉRICOS"
+    },
+    {
+        "codigo": "NL-001",
+        "descricao": "NIVELADORA DE LASTRO",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 613.33,
+        "valor_mes": 18400.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "PA-001",
+        "descricao": "PAVIMENTADORA DE ASFALTO",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 1166.67,
+        "valor_mes": 35000.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "PC-002",
+        "descricao": "PÁ CARREGADEIRA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 583.33,
+        "valor_mes": 17500.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "PC-003",
+        "descricao": "PÁ CARREGADEIRA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 513.33,
+        "valor_mes": 15400.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "PC-004",
+        "descricao": "PÁ CARREGADEIRA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 513.33,
+        "valor_mes": 15400.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "PC-005",
+        "descricao": "PÁ CARREGADEIRA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 513.33,
+        "valor_mes": 15400.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "PWE-5J97",
+        "descricao": "CAMINHÃO PIPA 10.000 L - VW 15.190",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo de terceiro",
+        "valor_dia": 483.33,
+        "valor_mes": 14500.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "QPH5554",
+        "descricao": "Veiculo Leve - Fiat Doblò",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo de terceiro",
+        "valor_dia": 93.33,
+        "valor_mes": 2800.00,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "QPP5924",
+        "descricao": "Veiculo Leve - VW Saveiro - Mecânico",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo de terceiro",
+        "valor_dia": 60.00,
+        "valor_mes": 1800.00,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "QUR7G92",
+        "descricao": "Veiculo Leve - FIAT DOBLÒ - ANS",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo de terceiro",
+        "valor_dia": 93.33,
+        "valor_mes": 2800.00,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "RC-001",
+        "descricao": "ROLO COMPACTADOR",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 338.33,
+        "valor_mes": 10150.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "RC-002",
+        "descricao": "ROLO COMPACTADOR",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 338.33,
+        "valor_mes": 10150.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "RC-003",
+        "descricao": "ROLO COMPACTADOR",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 338.33,
+        "valor_mes": 10150.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "RC-004",
+        "descricao": "ROLO COMPACTADOR",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 338.33,
+        "valor_mes": 10150.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "RC-005",
+        "descricao": "ROLO COMPACTADOR",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 420.00,
+        "valor_mes": 12600.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "RC-006",
+        "descricao": "ROLO COMPACTADOR",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 460.00,
+        "valor_mes": 13800.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "RC-007",
+        "descricao": "ROLO COMPACTADOR",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 460.00,
+        "valor_mes": 13800.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "RC-008",
+        "descricao": "ROLO COMPACTADOR",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 460.00,
+        "valor_mes": 13800.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "RE00290",
+        "descricao": "RE - RETRO ESCAVADEIRA - ARMAC - RE00290",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo de terceiro",
+        "valor_dia": 363.33,
+        "valor_mes": 10900.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "RE-011",
+        "descricao": "RETROESCAVADEIRA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 420.00,
+        "valor_mes": 12600.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "RE-014",
+        "descricao": "RETROESCAVADEIRA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 420.00,
+        "valor_mes": 12600.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "RE-015",
+        "descricao": "RETROESCAVADEIRA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 420.00,
+        "valor_mes": 12600.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "RE-016",
+        "descricao": "RETROESCAVADEIRA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 420.00,
+        "valor_mes": 12600.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "RE-017",
+        "descricao": "RETROESCAVADEIRA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 420.00,
+        "valor_mes": 12600.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "RE-018",
+        "descricao": "RETROESCAVADEIRA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 210.62,
+        "valor_mes": 6318.69,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "RE-019",
+        "descricao": "RETROESCAVADEIRA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 210.62,
+        "valor_mes": 6318.69,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "RE-020",
+        "descricao": "RETROESCAVADEIRA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 285.20,
+        "valor_mes": 8556.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "RE-021",
+        "descricao": "RETROESCAVADEIRA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 285.20,
+        "valor_mes": 8556.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "RE-024",
+        "descricao": "RETROESCAVADEIRA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 333.33,
+        "valor_mes": 10000.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "RE-059",
+        "descricao": "RETROESCAVADEIRA 416 F - ENCARREGADO DIOGO",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo de terceiro",
+        "valor_dia": 378.00,
+        "valor_mes": 11340.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "RH-001",
+        "descricao": "ROMPEDOR HIDRÁULICO P/ ESCAVADEIRA",
+        "placa": null,
+        "dir_ind": "Indireto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 163.33,
+        "valor_mes": 4900.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "RH-002",
+        "descricao": "ROMPEDOR HIDRÁULICO AZTECH - RETRO",
+        "placa": null,
+        "dir_ind": "Indireto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 24.44,
+        "valor_mes": 733.24,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "RNC7825",
+        "descricao": "Veiculo de Transporte - VW Express Enc. Leandro",
+        "placa": null,
+        "dir_ind": "Indireto",
+        "propriedade": "Ativo de terceiro",
+        "valor_dia": 166.67,
+        "valor_mes": 5000.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "RNM5C71",
+        "descricao": "VEICULO DE TRANSPORTE - DOBLO",
+        "placa": null,
+        "dir_ind": "Indireto",
+        "propriedade": "Ativo de terceiro",
+        "valor_dia": 93.33,
+        "valor_mes": 2800.00,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "RTA1I17",
+        "descricao": "GOL ANS (OBRA GERDAU)",
+        "placa": null,
+        "dir_ind": "Indireto",
+        "propriedade": "Ativo de terceiro",
+        "valor_dia": null,
+        "valor_mes": null,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "SL-001",
+        "descricao": "SOCADORA DE LASTRO",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 1717.33,
+        "valor_mes": 51520.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "SR-001",
+        "descricao": "REBOQUE-BASCULANTE",
+        "placa": "FBD2H09",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 245.00,
+        "valor_mes": 7350.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "SR-002",
+        "descricao": "REBOQUE - PRANCHA",
+        "placa": "FBD3J29",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 326.67,
+        "valor_mes": 9800.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "SR-003",
+        "descricao": "REBOQUE - CARGA SECA",
+        "placa": "FRG3D90",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 233.33,
+        "valor_mes": 7000.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "SR-004",
+        "descricao": "REBOQUE - CARGA SECA",
+        "placa": "CVP6C70",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 233.33,
+        "valor_mes": 7000.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "SR-005",
+        "descricao": "REBOQUE - PRANCHA",
+        "placa": "FQF6C70",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 326.67,
+        "valor_mes": 9800.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "SR-006",
+        "descricao": "REBOQUE - PRANCHA",
+        "placa": "GKE2H59",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 326.67,
+        "valor_mes": 9800.00,
+        "classificacao": "Veículos Pesados"
+    },
+    {
+        "codigo": "TB-001",
+        "descricao": "TRATOR AGRICOLA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 408.87,
+        "valor_mes": 12266.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "TE-001",
+        "descricao": "TRATOR DE ESTEIRA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 980.00,
+        "valor_mes": 29400.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "TE00187",
+        "descricao": "TE - TRATOR DE ESTEIRA - ARMAC - JOHN DEERE",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo de terceiro",
+        "valor_dia": 1233.33,
+        "valor_mes": 37000.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "TE-002",
+        "descricao": "TRATOR DE ESTEIRA",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 980.00,
+        "valor_mes": 29400.00,
+        "classificacao": "Maquinas e Equipamentos"
+    },
+    {
+        "codigo": "VL-013",
+        "descricao": "GOL 1.0",
+        "placa": null,
+        "dir_ind": "Indireto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": null,
+        "valor_mes": null,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-022",
+        "descricao": "VEICULO LEVE - F-350",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 62.56,
+        "valor_mes": 1876.80,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-033",
+        "descricao": "VEICULO LEVE - FORD KA",
+        "placa": "FWW0D19",
+        "dir_ind": "Indireto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 57.38,
+        "valor_mes": 1721.30,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-035",
+        "descricao": "VEICULO LEVE - OROCH",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 36.80,
+        "valor_mes": 1104.00,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-036",
+        "descricao": "VEICULO LEVE - OROCH",
+        "placa": null,
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 39.87,
+        "valor_mes": 1196.00,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-037",
+        "descricao": "VEICULO LEVE - SAVEIRO RB",
+        "placa": "FUY5E39",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 90.65,
+        "valor_mes": 2719.50,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-038",
+        "descricao": "VEICULO LEVE - SAVEIRO RB",
+        "placa": "FUX0I09",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 90.65,
+        "valor_mes": 2719.50,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-039",
+        "descricao": "VEICULO LEVE - SAVEIRO RB",
+        "placa": "GBM4519",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 90.65,
+        "valor_mes": 2719.50,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-040",
+        "descricao": "VEICULO LEVE - SAVEIRO RB",
+        "placa": "GER4729",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 90.65,
+        "valor_mes": 2719.50,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-041",
+        "descricao": "VEICULO LEVE - SAVEIRO RB",
+        "placa": "DRC5392",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 90.65,
+        "valor_mes": 2719.50,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-042",
+        "descricao": "VEICULO LEVE - SAVEIRO RB",
+        "placa": "FNY0G39",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 90.65,
+        "valor_mes": 2719.50,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-046",
+        "descricao": "VEICULO LEVE - GOL",
+        "placa": "EYY0D70",
+        "dir_ind": "Direto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 57.38,
+        "valor_mes": 1721.30,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-047",
+        "descricao": "VEICULO LEVE - GOL",
+        "placa": "DLR4810",
+        "dir_ind": "Indireto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 57.38,
+        "valor_mes": 1721.30,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-048",
+        "descricao": "VEICULO LEVE - GOL",
+        "placa": "DAS9640",
+        "dir_ind": "Indireto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 57.38,
+        "valor_mes": 1721.30,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-049",
+        "descricao": "VEICULO LEVE - GOL",
+        "placa": "DMF1C30",
+        "dir_ind": "Indireto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 57.38,
+        "valor_mes": 1721.30,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-050",
+        "descricao": "VEICULO LEVE - SAVEIRO",
+        "placa": "CIY6700",
+        "dir_ind": "Indireto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 90.65,
+        "valor_mes": 2719.50,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-051",
+        "descricao": "VEICULO LEVE - SAVEIRO",
+        "placa": "DDI6C97",
+        "dir_ind": "Indireto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 90.65,
+        "valor_mes": 2719.50,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-052",
+        "descricao": "VEICULO LEVE - VW POLO",
+        "placa": "SUJ9E28",
+        "dir_ind": "Indireto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 47.02,
+        "valor_mes": 1410.57,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-053",
+        "descricao": "VEICULO LEVE - VW POLO",
+        "placa": "SWG5J18",
+        "dir_ind": "Indireto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 47.02,
+        "valor_mes": 1410.57,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-054",
+        "descricao": "VEICULO LEVE - VW POLO",
+        "placa": "SUJ3I58",
+        "dir_ind": "Indireto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 47.02,
+        "valor_mes": 1410.57,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-055",
+        "descricao": "VEICULO LEVE - VW POLO",
+        "placa": "SSW4C57",
+        "dir_ind": "Indireto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 47.02,
+        "valor_mes": 1410.57,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-056",
+        "descricao": "VEICULO LEVE - VW POLO",
+        "placa": "SWZ8I17",
+        "dir_ind": "Indireto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 47.02,
+        "valor_mes": 1410.57,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-057",
+        "descricao": "VEICULO LEVE - VW POLO",
+        "placa": "SWH1J98",
+        "dir_ind": "Indireto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 47.02,
+        "valor_mes": 1410.57,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-058",
+        "descricao": "VEICULO LEVE - VW POLO",
+        "placa": "SUI6C07",
+        "dir_ind": "Indireto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 47.02,
+        "valor_mes": 1410.57,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-059",
+        "descricao": "VEICULO LEVE - VW POLO",
+        "placa": "SWD2F77",
+        "dir_ind": "Indireto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 47.02,
+        "valor_mes": 1410.57,
+        "classificacao": "Veículos Leves"
+    },
+    {
+        "codigo": "VL-060",
+        "descricao": "VEICULO LEVE - VW POLO",
+        "placa": "A GERAR",
+        "dir_ind": "Indireto",
+        "propriedade": "Ativo próprio",
+        "valor_dia": 47.02,
+        "valor_mes": 1410.57,
+        "classificacao": "Veículos Leves"
+    }
+]

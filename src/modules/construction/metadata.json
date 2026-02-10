@@ -1,0 +1,5 @@
+{
+  "name": "Mobra & Rental Construction Analytics",
+  "description": "A comprehensive dashboard for construction equipment and labor costs, supporting Excel/CSV data ingestion for RDO (Relatório Diário de Obras) analysis.",
+  "requestFramePermissions": []
+}

@@ -1,0 +1,146 @@
+[
+    {
+        "km_inicial": 0.001,
+        "km_final": 16,
+        "cidade": "Açailândia",
+        "trecho": "T-01"
+    },
+    {
+        "km_inicial": 16.001,
+        "km_final": 44,
+        "cidade": "S.F. Brejão",
+        "trecho": "T-01"
+    },
+    {
+        "km_inicial": 44.001,
+        "km_final": 78,
+        "cidade": "João Lisboa",
+        "trecho": "T-01"
+    },
+    {
+        "km_inicial": 78.001,
+        "km_final": 96.397,
+        "cidade": "Imperatriz",
+        "trecho": "T-01"
+    },
+    {
+        "km_inicial": 96.398,
+        "km_final": 122.82,
+        "cidade": "Edson Lobão",
+        "trecho": "T-01"
+    },
+    {
+        "km_inicial": 122.821,
+        "km_final": 152.303,
+        "cidade": "Ribamar Fiquene",
+        "trecho": "T-01"
+    },
+    {
+        "km_inicial": 152.304,
+        "km_final": 172.403,
+        "cidade": "Campestre",
+        "trecho": "T-01"
+    },
+    {
+        "km_inicial": 172.404,
+        "km_final": 195,
+        "cidade": "Porto Franco",
+        "trecho": "T-01"
+    },
+    {
+        "km_inicial": 195.1,
+        "km_final": 213.603,
+        "cidade": "Estreito",
+        "trecho": "T-02"
+    },
+    {
+        "km_inicial": 213.604,
+        "km_final": 218.976,
+        "cidade": "Aguiarnópolis",
+        "trecho": "T-02"
+    },
+    {
+        "km_inicial": 218.977,
+        "km_final": 253.5,
+        "cidade": "Palmeiras Do",
+        "trecho": "T-02"
+    },
+    {
+        "km_inicial": 253.501,
+        "km_final": 274.15,
+        "cidade": "Darcinópolis",
+        "trecho": "T-02"
+    },
+    {
+        "km_inicial": 274.151,
+        "km_final": 299.999,
+        "cidade": "Babaçulândia",
+        "trecho": "T-02"
+    },
+    {
+        "km_inicial": 300,
+        "km_final": 300,
+        "cidade": "São Luís",
+        "trecho": "T-04"
+    },
+    {
+        "km_inicial": 300.001,
+        "km_final": 356.619,
+        "cidade": "Babaçulândia",
+        "trecho": "T-02"
+    },
+    {
+        "km_inicial": 356.62,
+        "km_final": 385.4,
+        "cidade": "Araguaína",
+        "trecho": "T-02"
+    },
+    {
+        "km_inicial": 385.4,
+        "km_final": 465.4,
+        "cidade": "Palmeirante",
+        "trecho": "T-02"
+    },
+    {
+        "km_inicial": 465.401,
+        "km_final": 520.455,
+        "cidade": "Tupiratins",
+        "trecho": "T-03"
+    },
+    {
+        "km_inicial": 520.456,
+        "km_final": 536.741,
+        "cidade": "Guaraí",
+        "trecho": "T-03"
+    },
+    {
+        "km_inicial": 536.742,
+        "km_final": 580.293,
+        "cidade": "Tupirama",
+        "trecho": "T-03"
+    },
+    {
+        "km_inicial": 580.294,
+        "km_final": 608.637,
+        "cidade": "Rio Dos Bois",
+        "trecho": "T-03"
+    },
+    {
+        "km_inicial": 608.638,
+        "km_final": 698.981,
+        "cidade": "Miracema",
+        "trecho": "T-03"
+    },
+    {
+        "km_inicial": 698.982,
+        "km_final": 735.6,
+        "cidade": "Porto Nacional",
+        "trecho": "T-03"
+    },
+    {
+        "km_inicial": 900,
+        "km_final": 902,
+        "cidade": "Eng. VLI",
+        "trecho": "T-04"
+    }
+]

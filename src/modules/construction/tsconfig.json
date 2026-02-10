@@ -4,7 +4,6 @@
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
     "module": "ESNext",
-    "baseUrl": ".",
     "lib": [
       "ES2022",
       "DOM",
@@ -13,13 +12,13 @@
     "skipLibCheck": true,
     "types": [
       "node",
-      "react",
-      "react-dom"
+      "vite/client"
     ],
     "moduleResolution": "bundler",
     "isolatedModules": true,
     "moduleDetection": "force",
     "allowJs": true,
+    "esModuleInterop": true,
     "jsx": "react-jsx",
     "paths": {
       "@/*": [
@@ -28,13 +27,5 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  },
-  "include": [
-    "src",
-    "pages",
-    "components",
-    "services",
-    "*.ts",
-    "*.tsx"
-  ]
+  }
 }

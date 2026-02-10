@@ -25,6 +25,7 @@ import { AccountSettings } from './pages/config/AccountSettings';
 // Módulo Capital Humano
 // Note: HumanCapitalDashboard is in src/modules/human-capital because index.tsx is in root
 import HumanCapitalDashboard from './src/modules/human-capital/HumanCapitalDashboard';
+import ConstructionDashboard from './src/modules/construction/ConstructionDashboard';
 
 const App = () => {
   return (
@@ -68,6 +69,16 @@ root.render(
                 element={
                   <PrivateRoute>
                     <HumanCapitalDashboard />
+                  </PrivateRoute>
+                }
+              />
+
+              {/* MÓDULO OBRA (Layout Independente) */}
+              <Route
+                path="/construction/*"
+                element={
+                  <PrivateRoute>
+                    <ConstructionDashboard />
                   </PrivateRoute>
                 }
               />

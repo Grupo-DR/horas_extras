@@ -1,0 +1,371 @@
+[
+    {
+        "item": "3.1",
+        "codigo_sap": null,
+        "descricao": "MOBILIZACAO INICIAL",
+        "unidade": "VB",
+        "preco_unitario": null,
+        "quantidade": 1,
+        "valor_total": null
+    },
+    {
+        "item": "100",
+        "codigo_sap": "S.VP-01477",
+        "descricao": "MOBILIZAÇÃO DE RETROESCAVADEIRA C/ OPERADOR",
+        "unidade": "VB",
+        "preco_unitario": 963.41,
+        "quantidade": 1,
+        "valor_total": 919.25
+    },
+    {
+        "item": "110",
+        "codigo_sap": "S.VP-01478",
+        "descricao": "DESMOBILIZAÇÃO DE RETROESCAVADEIRA C/ OPERADOR",
+        "unidade": "VB",
+        "preco_unitario": 963.41,
+        "quantidade": 1,
+        "valor_total": 919.25
+    },
+    {
+        "item": "120",
+        "codigo_sap": "S.VP-01395",
+        "descricao": "HR PRODUTIVA RETROESCAVADEIRA C/OPERADOR",
+        "unidade": "H",
+        "preco_unitario": 65.42,
+        "quantidade": 14832,
+        "valor_total": 940348.80
+    },
+    {
+        "item": "130",
+        "codigo_sap": "S.VP-01396",
+        "descricao": "HR IMPRODUTIVA RETROESCAVADEIRA C/OPERADOR",
+        "unidade": "H",
+        "preco_unitario": 65.42,
+        "quantidade": 4912,
+        "valor_total": 311420.80
+    },
+    {
+        "item": "140",
+        "codigo_sap": "S.VP-01397",
+        "descricao": "MOBILIZAÇÃO PA CARREGADEIRA C/ OPERADOR",
+        "unidade": "VB",
+        "preco_unitario": 1045.98,
+        "quantidade": 1,
+        "valor_total": 1014.34
+    },
+    {
+        "item": "150",
+        "codigo_sap": "S.VP-01398",
+        "descricao": "DESMOBILIZAÇÃO DE PA CARREGADEIRA C/OPERADOR",
+        "unidade": "VB",
+        "preco_unitario": 1045.98,
+        "quantidade": 1,
+        "valor_total": 1014.34
+    },
+    {
+        "item": "160",
+        "codigo_sap": "S.VP-01399",
+        "descricao": "HORA PRODUTIVA PA CARREGADEIRA C/OPERADOR",
+        "unidade": "H",
+        "preco_unitario": 65.42,
+        "quantidade": 10188,
+        "valor_total": 645919.20
+    },
+    {
+        "item": "170",
+        "codigo_sap": "S.VP-01400",
+        "descricao": "HORA IMPRODUTIVA PA CARREGADEIRA C/OPERADOR",
+        "unidade": "H",
+        "preco_unitario": 65.42,
+        "quantidade": 3006,
+        "valor_total": 190580.40
+    },
+    {
+        "item": "180",
+        "codigo_sap": "S.VP-01401",
+        "descricao": "MOBILIZAÇÃO CAMINHÃO BASCULANTE - C/MOTORISTA",
+        "unidade": "VB",
+        "preco_unitario": 281.11,
+        "quantidade": 2,
+        "valor_total": 545.22
+    },
+    {
+        "item": "190",
+        "codigo_sap": "S.VP-01402",
+        "descricao": "DESMOBILIZAÇÃO CAMINHÃO BASCULANTE - C/MOTORISTA",
+        "unidade": "VB",
+        "preco_unitario": 281.11,
+        "quantidade": 2,
+        "valor_total": 545.22
+    },
+    {
+        "item": "200",
+        "codigo_sap": "S.VP-01403",
+        "descricao": "KM RODADO CAMINHÃO BASCULANTE - C/MOTORISTA",
+        "unidade": "KM",
+        "preco_unitario": 1.81,
+        "quantidade": 648000,
+        "valor_total": 1140480.00
+    },
+    {
+        "item": "210",
+        "codigo_sap": "S.VP-01404",
+        "descricao": "HORA IMPRODUTIVA BASCULANTE - C/MOTORISTA",
+        "unidade": "H",
+        "preco_unitario": 65.42,
+        "quantidade": 2454,
+        "valor_total": 155583.60
+    },
+    {
+        "item": "220",
+        "codigo_sap": "S.VP-01405",
+        "descricao": "MOBILIZAÇÃO DE CAMINHÃO PIPA C/MOTOTISTA",
+        "unidade": "VB",
+        "preco_unitario": 319.71,
+        "quantidade": 9,
+        "valor_total": 2795.85
+    },
+    {
+        "item": "230",
+        "codigo_sap": "S.VP-01406",
+        "descricao": "DESMOBILIZAÇÃO DE CAMINHÃO PIPA C/MOTOTISTA",
+        "unidade": "VB",
+        "preco_unitario": 319.71,
+        "quantidade": 9,
+        "valor_total": 2795.85
+    },
+    {
+        "item": "240",
+        "codigo_sap": "S.VP-01407",
+        "descricao": "HORA PRODUTIVA CAMINHÃO PIPA",
+        "unidade": "H",
+        "preco_unitario": 65.42,
+        "quantidade": 590,
+        "valor_total": 37406.00
+    },
+    {
+        "item": "250",
+        "codigo_sap": "S.VP-01408",
+        "descricao": "HORA IMPRODUTIVA CAMINHÃO PIPA C/ MOTORISTA",
+        "unidade": "H",
+        "preco_unitario": 65.42,
+        "quantidade": 2985,
+        "valor_total": 189249.00
+    },
+    {
+        "item": "260",
+        "codigo_sap": "S.VP-01409",
+        "descricao": "MOBILIZAÇÃO DE MOTONIVELADORA C/OPERADOR",
+        "unidade": "VB",
+        "preco_unitario": 1188.01,
+        "quantidade": 2,
+        "valor_total": 2284.76
+    },
+    {
+        "item": "270",
+        "codigo_sap": "S.VP-01410",
+        "descricao": "DESMOBILIZAÇÃO DE MOTONIVELADORA C/OPERADOR",
+        "unidade": "VB",
+        "preco_unitario": 1188.01,
+        "quantidade": 2,
+        "valor_total": 2284.76
+    },
+    {
+        "item": "280",
+        "codigo_sap": "S.VP-01411",
+        "descricao": "HORA PRODUTIVA MOTONIVELADORA C/OPERADOR",
+        "unidade": "H",
+        "preco_unitario": 87.27,
+        "quantidade": 9040,
+        "valor_total": 764964.80
+    },
+    {
+        "item": "290",
+        "codigo_sap": "S.VP-01412",
+        "descricao": "HORA IMPRODUTIVA MOTONIVELADORA C/OPERADOR",
+        "unidade": "H",
+        "preco_unitario": 87.27,
+        "quantidade": 2749,
+        "valor_total": 232620.38
+    },
+    {
+        "item": "3.25",
+        "codigo_sap": "S.VP-01413",
+        "descricao": "MOBILIZAÇÃO DE TRATOR ESTEIRA – C/OPERADOR",
+        "unidade": "VB",
+        "preco_unitario": 925.23,
+        "quantidade": 1,
+        "valor_total": 887.55
+    },
+    {
+        "item": "3.26",
+        "codigo_sap": "S.VP-01414",
+        "descricao": "DESMOBILIZAÇÃO DE TRATOR ESTEIRA – C/OPERADOR",
+        "unidade": "VB",
+        "preco_unitario": 925.23,
+        "quantidade": 1,
+        "valor_total": 887.55
+    },
+    {
+        "item": "3.27",
+        "codigo_sap": "S.VP-01415",
+        "descricao": "HORA PRODUTIVA TRATOR ESTEIRA – C/ OPERADOR",
+        "unidade": "H",
+        "preco_unitario": 65.42,
+        "quantidade": 330,
+        "valor_total": 20922.00
+    },
+    {
+        "item": "3.28",
+        "codigo_sap": "S.VP-01416",
+        "descricao": "HORA IMPRODUTIVA TRATOR ESTEIRA – C/ OPERADOR",
+        "unidade": "H",
+        "preco_unitario": 65.42,
+        "quantidade": 270,
+        "valor_total": 17118.00
+    },
+    {
+        "item": "380",
+        "codigo_sap": "S.VP-01417",
+        "descricao": "MOBILIZAÇÃO CARRETA PRANCHA - C/ MOTORISTA",
+        "unidade": "VB",
+        "preco_unitario": 785.33,
+        "quantidade": 1,
+        "valor_total": 761.58
+    },
+    {
+        "item": "390",
+        "codigo_sap": "S.VP-01418",
+        "descricao": "DESMOBILIZAÇÃO CARRETA PRANCHA - C/ MOTORISTA",
+        "unidade": "VB",
+        "preco_unitario": 785.33,
+        "quantidade": 1,
+        "valor_total": 761.58
+    },
+    {
+        "item": "400",
+        "codigo_sap": "S.VP-01419",
+        "descricao": "KM RODADO CARRETA PRANCHA - C/ MOTORISTA",
+        "unidade": "KM",
+        "preco_unitario": 2.50,
+        "quantidade": 4008,
+        "valor_total": 9699.36
+    },
+    {
+        "item": "410",
+        "codigo_sap": "S.VP-01420",
+        "descricao": "HORA IMPRODUTIVA CARRETA PRANCHA - C/ MOTORISTA",
+        "unidade": "H",
+        "preco_unitario": 87.27,
+        "quantidade": 1023,
+        "valor_total": 86566.26
+    },
+    {
+        "item": "460",
+        "codigo_sap": "S.VP-01421",
+        "descricao": "MOBILIZAÇÃO MINIESCAVADEIRA C/ OPERADOR",
+        "unidade": "VB",
+        "preco_unitario": 908.71,
+        "quantidade": 1,
+        "valor_total": 881.21
+    },
+    {
+        "item": "470",
+        "codigo_sap": "S.VP-01422",
+        "descricao": "DESMOBILIZAÇÃO MINIESCAVADEIRA C/ OPERADOR",
+        "unidade": "VB",
+        "preco_unitario": 908.70,
+        "quantidade": 1,
+        "valor_total": 881.21
+    },
+    {
+        "item": "480",
+        "codigo_sap": "S.VP-01423",
+        "descricao": "HORA PRODUTIVA MINIESCAVADEIRA HIDRAULICA C/ OPERADOR",
+        "unidade": "H",
+        "preco_unitario": 65.42,
+        "quantidade": 4644,
+        "valor_total": 294429.60
+    },
+    {
+        "item": "490",
+        "codigo_sap": "S.VP-01424",
+        "descricao": "HORA IMPRODUTIVA MINIESCAVADEIRA HIDRAULICA C/ OPERADOR",
+        "unidade": "H",
+        "preco_unitario": 65.42,
+        "quantidade": 1584,
+        "valor_total": 100425.60
+    },
+    {
+        "item": "500",
+        "codigo_sap": "S.VP-01425",
+        "descricao": "MOBILIZAÇÃO ESCAVADEIRA HIDRAULICA",
+        "unidade": "VB",
+        "preco_unitario": 1632.59,
+        "quantidade": 1,
+        "valor_total": 1583.21
+    },
+    {
+        "item": "510",
+        "codigo_sap": "S.VP-01426",
+        "descricao": "DESMOBILIZAÇÃO ESCAVADEIRA HIDRAULICA",
+        "unidade": "VB",
+        "preco_unitario": 1632.60,
+        "quantidade": 1,
+        "valor_total": 1583.21
+    },
+    {
+        "item": "520",
+        "codigo_sap": "S.VP-01427",
+        "descricao": "HORA PRODUTIVA ESCAVADEIRA HIDRAULICA",
+        "unidade": "H",
+        "preco_unitario": 65.42,
+        "quantidade": 5850,
+        "valor_total": 370890.00
+    },
+    {
+        "item": "530",
+        "codigo_sap": "S.VP-01428",
+        "descricao": "HORA IMPRODUTIVA ESCAVADEIRA HIDRAULICA",
+        "unidade": "H",
+        "preco_unitario": 65.42,
+        "quantidade": 1950,
+        "valor_total": 123630.00
+    },
+    {
+        "item": "3.41",
+        "codigo_sap": "S.VP-01429",
+        "descricao": "MOBILIZAÇÃO ROLO COMPACTADOR C/ OPERADOR",
+        "unidade": "VB",
+        "preco_unitario": 1013.30,
+        "quantidade": 1,
+        "valor_total": 982.65
+    },
+    {
+        "item": "3.42",
+        "codigo_sap": "S.VP-01430",
+        "descricao": "DESMOBILIZAÇÃO ROLO COMPACTADOR C/ OPERADOR",
+        "unidade": "VB",
+        "preco_unitario": 697.80,
+        "quantidade": 1,
+        "valor_total": 676.69
+    },
+    {
+        "item": "3.43",
+        "codigo_sap": "S.VP-01431",
+        "descricao": "HORA PRODUTIVA ROLO COMPACTADOR C/OPERADOR",
+        "unidade": "H",
+        "preco_unitario": 65.42,
+        "quantidade": 930,
+        "valor_total": 58962.00
+    },
+    {
+        "item": "3.44",
+        "codigo_sap": "S.VP-01432",
+        "descricao": "HORA IMPRODUTIVA ROLO COMPACTADOR C/OPERADOR",
+        "unidade": "H",
+        "preco_unitario": 65.42,
+        "quantidade": 310,
+        "valor_total": 19654.00
+    }
+]
