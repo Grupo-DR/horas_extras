@@ -36,11 +36,12 @@ export const getCycleKey = (dateStr: string): string => {
   if (day >= 21) {
     const nextMonth = new Date(year, month, 1);
     const m = String(nextMonth.getMonth() + 1).padStart(2, '0');
-    return `${m}-${nextMonth.getFullYear()}`;
+    const y = nextMonth.getFullYear();
+    return `${y}-${m}`; // YYYY-MM format for proper sorting
   } else {
     // Se for antes de 21, pertence ao ciclo deste mês
     const m = String(month).padStart(2, '0');
-    return `${m}-${year}`;
+    return `${year}-${m}`; // YYYY-MM format for proper sorting
   }
 };
 
@@ -77,7 +78,7 @@ export const getPeriodFromCycle = (cycleKey: string): { start: Date, end: Date }
     return getPeriodFromCycle(getCycleKey(new Date().toISOString().split('T')[0]));
   }
 
-  const [monthStr, yearStr] = cycleKey.split('-');
+  const [yearStr, monthStr] = cycleKey.split('-'); // YYYY-MM format
   const month = parseInt(monthStr, 10);
   const year = parseInt(yearStr, 10);
 

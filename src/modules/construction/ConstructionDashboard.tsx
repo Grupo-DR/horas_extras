@@ -39,10 +39,11 @@ const App: React.FC = () => {
     try {
       setIsLoading(true);
       const fetchedCycles = await constructionService.getCycles();
-      setCycles(fetchedCycles);
-      if (fetchedCycles.length > 0 && !currentCycle) {
-        // Default to latest cycle
-        const latest = fetchedCycles[fetchedCycles.length - 1]; // Assuming sorted
+      const sortedCycles = fetchedCycles.sort(); // YYYY-MM format sorts naturally
+      setCycles(sortedCycles);
+      if (sortedCycles.length > 0 && !currentCycle) {
+        // Select latest cycle (last in sorted array)
+        const latest = sortedCycles[sortedCycles.length - 1];
         setCurrentCycle(latest);
       }
     } catch (e) {
