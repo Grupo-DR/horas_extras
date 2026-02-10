@@ -16,7 +16,7 @@ export const LoginPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false); // Controls the visual transition
     const [showLoadingVideo, setShowLoadingVideo] = useState(false); // Controls the overlay
 
-    type LoginModule = 'COMMERCIAL' | 'HUMAN_CAPITAL';
+    type LoginModule = 'COMMERCIAL' | 'HUMAN_CAPITAL' | 'CONSTRUCTION';
     const [loginModule, setLoginModule] = useState<LoginModule>('COMMERCIAL');
 
     // Refs for Video Control
@@ -51,7 +51,14 @@ export const LoginPage: React.FC = () => {
             // 5. Success - Redirect
             // Optional: Wait a tiny bit for fade? No, redirect immediately after video.
             toast.success('Bem-vindo ao Portal DR Nexus!');
-            navigate(loginModule === 'HUMAN_CAPITAL' ? '/human-capital' : '/');
+
+            if (loginModule === 'HUMAN_CAPITAL') {
+                navigate('/human-capital');
+            } else if (loginModule === 'CONSTRUCTION') {
+                navigate('/construction');
+            } else {
+                navigate('/');
+            }
 
         } catch (error: any) {
             // 6. Error Handling - Revert UI
@@ -192,6 +199,7 @@ export const LoginPage: React.FC = () => {
                             >
                                 <option value="COMMERCIAL">Comercial</option>
                                 <option value="HUMAN_CAPITAL">Capital Humano</option>
+                                <option value="CONSTRUCTION">Obras</option>
                             </select>
 
                             <p className="mt-2 text-[11px] text-slate-400">
@@ -205,7 +213,7 @@ export const LoginPage: React.FC = () => {
                             className="w-full group relative overflow-hidden bg-white text-black font-bold py-3.5 rounded-lg transition-all hover:scale-[1.02] hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <span className="relative z-10 flex items-center justify-center gap-2">
-                                ENTRAR <Play className="w-3 h-3 fill-current" />
+                                ENTRAR NO PORTAL {loginModule === 'COMMERCIAL' ? 'COMERCIAL' : loginModule === 'HUMAN_CAPITAL' ? 'RH' : 'OBRAS'} <Play className="w-3 h-3 fill-current" />
                             </span>
                             <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-blue-200 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         </button>
