@@ -3,12 +3,13 @@ import React, { useState, useMemo } from 'react';
 import { ConstructionRecord, PlanningAssignment, ServicePrice, PlannedService } from '../types';
 import {
   ChevronLeft, ChevronRight, Truck, Calendar as CalendarIcon,
-  Plus, X, GripVertical, Trash2, Calculator, Settings2, Edit3
+  Plus, X, GripVertical, Trash2, Calculator, Settings2, Edit3,
+  TrendingUp, Activity, AlertCircle
 } from 'lucide-react';
 import {
   getEquipmentCategory, getUnifiedServiceInfo, formatCurrencyWithZero,
   isServiceRelevantForEquipment, calculateAssignmentTotal, getPeriodInfo,
-  getCycleKey, getPeriodFromCycle
+  getCycleKey, getPeriodFromCycle, getProductivityStatus
 } from '../utils/calculations';
 
 interface PlanningProps {
@@ -87,6 +88,35 @@ const Planning: React.FC<PlanningProps> = ({
 
   const monthLabel = period.end.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
 
+  // Calculate planning metrics
+  const planningMetrics = useMemo(() => {
+    let totalPlanned = 0;
+    let productivePlanned = 0;
+    let unproductivePlanned = 0;
+
+    assignments.forEach(assignment => {
+      assignment.services.forEach(service => {
+        const info = getUnifiedServiceInfo(service.item, servicePrices);
+        const value = (service.producao || 0) * info.precoTotal;
+        totalPlanned += value;
+
+        // Check if service is productive or unproductive
+        const rentalPrice = servicePrices.find(p => p.item === service.item && p.category === 'RENTAL');
+        const mobraPrice = servicePrices.find(p => p.item === service.item && p.category === 'MOBRA');
+        const sapCode = rentalPrice?.codigo_sap || mobraPrice?.codigo_sap || '';
+        const status = getProductivityStatus(sapCode, servicePrices);
+
+        if (status === 'PRODUTIVA') {
+          productivePlanned += value;
+        } else if (status === 'IMPRODUTIVA') {
+          unproductivePlanned += value;
+        }
+      });
+    });
+
+    return { totalPlanned, productivePlanned, unproductivePlanned };
+  }, [assignments, servicePrices]);
+
   const handlePrevMonth = () => {
     const newDate = new Date(currentDate);
     newDate.setMonth(newDate.getMonth() - 1);
@@ -131,24 +161,24 @@ const Planning: React.FC<PlanningProps> = ({
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 h-[calc(100vh-200px)]">
+    <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-200px)]">
       {/* Barra Lateral: Equipamentos Disponíveis */}
-      <div className="w-full lg:w-72 bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden">
-        <div className="p-5 border-b border-slate-100 bg-slate-50/50">
+      <div className="w-full lg:w-56 bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden">
+        <div className="p-4 border-b border-slate-100 bg-slate-50/50">
           <h3 className="font-black text-slate-800 flex items-center gap-2 uppercase text-xs tracking-widest">
             <Truck className="w-4 h-4 text-amber-500" /> Equipamentos
           </h3>
-          <p className="text-[10px] text-slate-400 mt-1 font-bold uppercase">Arraste p/ o calendário (21-20)</p>
+          <p className="text-[10px] text-slate-400 mt-1 font-bold uppercase">Arraste p/ calendário</p>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
           {availableEquipment.map(equip => (
             <div
               key={equip.id}
               draggable
               onDragStart={() => onDragStart(equip.id)}
-              className="p-3 bg-white border border-slate-100 rounded-xl cursor-grab active:cursor-grabbing hover:border-amber-300 hover:shadow-md transition-all group flex items-center justify-between"
+              className="p-2.5 bg-white border border-slate-100 rounded-xl cursor-grab active:cursor-grabbing hover:border-amber-300 hover:shadow-md transition-all group flex items-center justify-between"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <GripVertical className="w-3 h-3 text-slate-300 group-hover:text-amber-400" />
                 <div>
                   <div className="text-xs font-black text-slate-800">{equip.id}</div>
@@ -162,6 +192,46 @@ const Planning: React.FC<PlanningProps> = ({
 
       {/* Calendário de Período 21 a 20 */}
       <div className="flex-1 flex flex-col gap-4">
+        {/* Summary Cards */}
+        <div className="grid grid-cols-3 gap-4">
+          {/* Total Planejado */}
+          <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl shadow-sm p-4 text-white">
+            <div className="flex items-center justify-between mb-2">
+              <div className="bg-white/20 p-2 rounded-xl">
+                <TrendingUp className="w-5 h-5" />
+              </div>
+              <span className="text-xs font-black uppercase tracking-wider opacity-90">Total</span>
+            </div>
+            <div className="text-2xl font-black font-mono">{formatCurrencyWithZero(planningMetrics.totalPlanned)}</div>
+            <div className="text-[10px] font-bold uppercase tracking-widest opacity-75 mt-1">Planejado</div>
+          </div>
+
+          {/* Produtivo Planejado */}
+          <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl shadow-sm p-4 text-white">
+            <div className="flex items-center justify-between mb-2">
+              <div className="bg-white/20 p-2 rounded-xl">
+                <Activity className="w-5 h-5" />
+              </div>
+              <span className="text-xs font-black uppercase tracking-wider opacity-90">Produtivo</span>
+            </div>
+            <div className="text-2xl font-black font-mono">{formatCurrencyWithZero(planningMetrics.productivePlanned)}</div>
+            <div className="text-[10px] font-bold uppercase tracking-widest opacity-75 mt-1">Planejado</div>
+          </div>
+
+          {/* Improdutivo Planejado */}
+          <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl shadow-sm p-4 text-white">
+            <div className="flex items-center justify-between mb-2">
+              <div className="bg-white/20 p-2 rounded-xl">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <span className="text-xs font-black uppercase tracking-wider opacity-90">Improdutivo</span>
+            </div>
+            <div className="text-2xl font-black font-mono">{formatCurrencyWithZero(planningMetrics.unproductivePlanned)}</div>
+            <div className="text-[10px] font-bold uppercase tracking-widest opacity-75 mt-1">Planejado</div>
+          </div>
+        </div>
+
+        {/* Calendar Header */}
         <div className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
           <div className="flex items-center gap-4">
             <h2 className="text-lg font-black text-slate-800 uppercase tracking-tighter flex items-center gap-2">
