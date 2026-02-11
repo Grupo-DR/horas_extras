@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  Line, ComposedChart, Legend, Cell, LabelList, Scatter, ReferenceLine
+  Line, ComposedChart, Legend, Cell, LabelList, ReferenceLine
 } from 'recharts';
 import { ConstructionRecord, ServicePrice, PlanningAssignment } from '../types';
 import {
@@ -15,7 +15,7 @@ import {
   getTrechoInfo, getEquipmentCategory, calculateAssignmentTotal,
   getPeriodInfo, getProductivityStatus, getUnifiedServiceInfo, getCycleKey, getPeriodFromCycle
 } from '../utils/calculations';
-import { CustomDailyTooltip, CategoryDetailModal, DayDetailModal } from './DashboardComponents';
+import { CategoryDetailModal, DayDetailModal } from './DashboardComponents';
 import budgetData from '../data/budgets.json';
 
 interface DashboardProps {
@@ -382,17 +382,22 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis dataKey="name" tick={{ fontSize: 9, fontWeight: 700 }} axisLine={false} />
               <YAxis tick={{ fontSize: 9 }} axisLine={false} tickFormatter={val => `R$ ${val / 1000}k`} />
-              <Tooltip content={<CustomDailyTooltip />} />
               <Legend />
               <Bar dataKey="plan" name="Planejado" fill="#cbd5e1" radius={[4, 4, 0, 0]} />
-              <Line dataKey="real" name="Realizado" stroke="#6366f1" strokeWidth={3} dot={{ r: 4, fill: '#6366f1' }} />
-              <ReferenceLine y={stats.dailyBudget} stroke="#3b82f6" strokeDasharray="5 5" strokeWidth={2} label={{ value: 'Budget Diário', position: 'insideTopRight', fill: '#3b82f6', fontSize: 10, fontWeight: 'bold' }} />
-              <Scatter
+              <Line
                 dataKey="real"
-                fill="#6366f1"
-                onClick={(data) => setSelectedDayDetail(data.payload)}
-                style={{ cursor: 'pointer' }}
+                name="Realizado"
+                stroke="#6366f1"
+                strokeWidth={3}
+                dot={{ r: 4, fill: '#6366f1' }}
+                activeDot={{
+                  r: 6,
+                  fill: '#6366f1',
+                  cursor: 'pointer',
+                  onClick: (e: any, payload: any) => setSelectedDayDetail(payload.payload)
+                }}
               />
+              <ReferenceLine y={stats.dailyBudget} stroke="#3b82f6" strokeDasharray="5 5" strokeWidth={2} label={{ value: 'Budget Diário', position: 'insideTopRight', fill: '#3b82f6', fontSize: 10, fontWeight: 'bold' }} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
