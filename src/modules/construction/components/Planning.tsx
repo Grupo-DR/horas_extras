@@ -120,7 +120,12 @@ const Planning: React.FC<PlanningProps> = ({
   const planningMetrics = useMemo(() => {
     let totalPlanned = 0;
 
-    assignments.forEach(assignment => {
+    // Filter assignments to only include those in the current calendar period
+    const periodAssignments = assignments.filter(assignment =>
+      calendarDays.includes(assignment.date)
+    );
+
+    periodAssignments.forEach(assignment => {
       assignment.services.forEach(service => {
         const info = getUnifiedServiceInfo(service.item, servicePrices);
         const value = (service.producao || 0) * info.precoTotal;
@@ -138,7 +143,7 @@ const Planning: React.FC<PlanningProps> = ({
       adherence,
       difference: totalPlanned - budgetInfo.totalBudget
     };
-  }, [assignments, servicePrices, budgetInfo]);
+  }, [assignments, servicePrices, budgetInfo, calendarDays]);
 
   const handlePrevMonth = () => {
     const newDate = new Date(currentDate);
