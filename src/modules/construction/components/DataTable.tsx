@@ -13,19 +13,18 @@ interface DataTableProps {
 const DataTable: React.FC<DataTableProps> = ({ data, servicePrices = DEFAULT_SERVICE_PRICES }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Processa e filtra dados para excluir registros sem faturamento positivo
+  // Processa dados com informações financeiras e geográficas
   const recordsWithFinancials = useMemo(() => {
     return data
       .map(record => ({
         ...record,
         financials: calculateRecordFinancials(record, servicePrices),
         geo: getTrechoInfo(record.trechoFinal)
-      }))
-      .filter(item => item.financials.total > 0);
+      }));
   }, [data, servicePrices]);
 
-  const filtered = recordsWithFinancials.filter(record => 
-    Object.values(record).some(val => 
+  const filtered = recordsWithFinancials.filter(record =>
+    Object.values(record).some(val =>
       String(val).toLowerCase().includes(searchTerm.toLowerCase())
     ) ||
     record.geo.cidade.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -107,9 +106,9 @@ const DataTable: React.FC<DataTableProps> = ({ data, servicePrices = DEFAULT_SER
                     <div className="flex flex-col">
                       <span className="text-[11px] font-bold text-slate-700">{record.geo.cidade}</span>
                       <div className="flex items-center gap-1">
-                         <span className="text-[9px] font-medium text-slate-400 uppercase">{record.geo.trecho}</span>
-                         {record.trechoFinal && record.geo.trecho && <span className="text-[9px] text-slate-300">|</span>}
-                         <span className="text-[9px] text-slate-400 font-mono">{record.trechoFinal}</span>
+                        <span className="text-[9px] font-medium text-slate-400 uppercase">{record.geo.trecho}</span>
+                        {record.trechoFinal && record.geo.trecho && <span className="text-[9px] text-slate-300">|</span>}
+                        <span className="text-[9px] text-slate-400 font-mono">{record.trechoFinal}</span>
                       </div>
                     </div>
                   </div>
