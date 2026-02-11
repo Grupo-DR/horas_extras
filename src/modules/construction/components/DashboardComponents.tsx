@@ -202,60 +202,58 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({ day, onClose }) 
                                 <tr className="border-b border-slate-200">
                                     <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Frota</th>
                                     <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Localização</th>
-                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Item / Serviço</th>
-                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Descrição do Serviço</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Unidade</th>
                                     <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Produção</th>
-                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Faturamento</th>
-                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-700 uppercase tracking-wider text-right bg-amber-50/50">Total</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-amber-700 uppercase tracking-wider text-right bg-amber-50/50">Total</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Planejado</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-700 uppercase tracking-wider text-right">Diferença</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {records.map((record: any, idx: number) => (
-                                    <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                                        <td className="px-4 py-3">
-                                            <span className="text-[11px] font-bold text-slate-900">{record.frota}</span>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex flex-col">
-                                                <span className="text-[11px] font-bold text-slate-700">{record.geo?.cidade || '-'}</span>
-                                                <div className="flex items-center gap-1">
-                                                    <span className="text-[9px] font-medium text-slate-400 uppercase">{record.geo?.trecho || ''}</span>
-                                                    {record.trechoFinal && record.geo?.trecho && <span className="text-[9px] text-slate-300">|</span>}
-                                                    <span className="text-[9px] text-slate-400 font-mono">{record.trechoFinal || ''}</span>
+                                {records.map((record: any, idx: number) => {
+                                    // Calculate planned value for this specific record (if exists in planning)
+                                    const plannedValue = 0; // TODO: Match with planning data if needed
+                                    const difference = (record.financials?.total || 0) - plannedValue;
+
+                                    return (
+                                        <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                            <td className="px-4 py-3">
+                                                <span className="text-[11px] font-bold text-slate-900">{record.frota}</span>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[11px] font-bold text-slate-700">{record.geo?.cidade || '-'}</span>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-[9px] font-medium text-slate-400 uppercase">{record.geo?.trecho || ''}</span>
+                                                        {record.trechoFinal && record.geo?.trecho && <span className="text-[9px] text-slate-300">|</span>}
+                                                        <span className="text-[9px] text-slate-400 font-mono">{record.trechoFinal || ''}</span>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex flex-col">
+                                            </td>
+                                            <td className="px-4 py-3">
                                                 <span className="text-[11px] text-slate-700 font-medium">{record.item}</span>
-                                                {record.codeSAP && (
-                                                    <span className="text-[9px] text-slate-400 font-mono">SAP: {record.codeSAP}</span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {record.financials?.status === 'PRODUTIVA' ? (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[9px] font-bold">
-                                                    PROD
+                                            </td>
+                                            <td className="px-4 py-3 text-center">
+                                                <span className="text-[10px] font-bold text-slate-600 uppercase">{record.financials?.unidade || '-'}</span>
+                                            </td>
+                                            <td className="px-4 py-3 text-[11px] font-bold text-slate-900 text-right">
+                                                {record.producao?.toLocaleString() || '0'}
+                                            </td>
+                                            <td className="px-4 py-3 text-[11px] font-bold text-amber-600 text-right bg-amber-50/20">
+                                                {formatCurrencyWithZero(record.financials?.total || 0)}
+                                            </td>
+                                            <td className="px-4 py-3 text-[11px] font-bold text-slate-600 text-right">
+                                                {formatCurrencyWithZero(plannedValue)}
+                                            </td>
+                                            <td className="px-4 py-3 text-[11px] font-bold text-right">
+                                                <span className={difference >= 0 ? 'text-emerald-600' : 'text-red-600'}>
+                                                    {difference >= 0 ? '+' : ''}{formatCurrencyWithZero(difference)}
                                                 </span>
-                                            ) : (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[9px] font-bold">
-                                                    IMPROD
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 text-[11px] font-bold text-slate-900 text-right">
-                                            {record.producao?.toLocaleString() || '0'}
-                                        </td>
-                                        <td className="px-4 py-3 text-right">
-                                            <div className="text-[9px] font-semibold text-blue-600">{formatCurrencyWithZero(record.financials?.valorRental || 0)}</div>
-                                            <div className="text-[9px] font-semibold text-emerald-600">{formatCurrencyWithZero(record.financials?.valorMobra || 0)}</div>
-                                        </td>
-                                        <td className="px-4 py-3 text-[11px] font-bold text-amber-600 text-right bg-amber-50/20">
-                                            {formatCurrencyWithZero(record.financials?.total || 0)}
-                                        </td>
-                                    </tr>
-                                ))}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     ) : (
