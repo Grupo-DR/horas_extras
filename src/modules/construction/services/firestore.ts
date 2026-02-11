@@ -9,7 +9,8 @@ import {
     orderBy,
     addDoc,
     writeBatch,
-    Timestamp
+    Timestamp,
+    deleteDoc
 } from 'firebase/firestore';
 import { db } from '../../../../services/firebaseConfig';
 import { ConstructionRecord, PlanningAssignment } from '../types';
@@ -218,6 +219,58 @@ export const constructionService = {
         } catch (error) {
             console.error("Error fetching upload:", error);
             return null;
+        }
+    },
+    async deleteCycleData(cycleKey: string, workId: string = 'OBRA-01'): Promise<void> {
+        try {
+            const MAX_BATCH_SIZE = 400;
+
+            // Helper to commit batches
+            const deleteInBatches = async (querySnapshot: any) => {
+                let batch = writeBatch(db);
+                let count = 0;
+                const batches = [];
+
+                querySnapshot.docs.forEach((doc: any) => {
+                    batch.delete(doc.ref);
+                    count++;
+                    if (count >= MAX_BATCH_SIZE) {
+                        batches.push(batch);
+                        batch = writeBatch(db);
+                        count = 0;
+                    }
+                });
+
+                if (count > 0) batches.push(batch);
+                await Promise.all(batches.map(b => b.commit()));
+            };
+
+            // 1. Get Records to delete
+            const recordsQ = query(
+                collection(db, COLLECTIONS.RECORDS),
+                where('cycleKey', '==', cycleKey),
+                where('workId', '==', workId)
+            );
+            const recordsSnap = await getDocs(recordsQ);
+            await deleteInBatches(recordsSnap);
+
+            // 2. Get Uploads to delete
+            const uploadsQ = query(
+                collection(db, COLLECTIONS.UPLOADS),
+                where('cycleKey', '==', cycleKey),
+                where('workId', '==', workId)
+            );
+            const uploadsSnap = await getDocs(uploadsQ);
+            await deleteInBatches(uploadsSnap);
+
+            // 3. Delete Planning (Single Doc)
+            const planningId = `${workId}_${cycleKey}`;
+            const planningRef = doc(db, COLLECTIONS.PLANNING, planningId);
+            await deleteDoc(doc(db, COLLECTIONS.PLANNING, planningId)); // Direct delete, no batch needed if single
+
+        } catch (error) {
+            console.error("Error deleting cycle data:", error);
+            throw error;
         }
     }
 };

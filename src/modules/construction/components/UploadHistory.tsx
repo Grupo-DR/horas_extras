@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { constructionService } from '../services/firestore';
 import { UploadMetadata, ConstructionRecord } from '../types';
-import { History, FileText, Calendar, Package, ChevronRight, X, Loader2 } from 'lucide-react';
+import { History, FileText, Calendar, Package, ChevronRight, X, Loader2, Trash2 } from 'lucide-react';
 import DataTable from './DataTable';
 
 interface UploadHistoryProps {
@@ -99,11 +99,10 @@ export const UploadHistory: React.FC<UploadHistoryProps> = ({ workId = 'OBRA-01'
                     {uploads.map((upload) => (
                         <div
                             key={upload.id}
-                            onClick={() => handleSelectUpload(upload)}
-                            className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow cursor-pointer border border-slate-200"
+                            className="bg-white rounded-xl shadow-sm p-6 border border-slate-200 hover:shadow-md transition-all group relative"
                         >
-                            <div className="flex items-center justify-between">
-                                <div className="flex-1">
+                            <div className="flex items-center justify-between" onClick={() => handleSelectUpload(upload)}>
+                                <div className="flex-1 cursor-pointer">
                                     <div className="flex items-center gap-3 mb-2">
                                         <FileText className="w-5 h-5 text-amber-500" />
                                         <h3 className="font-semibold text-lg">{upload.fileName}</h3>
@@ -122,8 +121,29 @@ export const UploadHistory: React.FC<UploadHistoryProps> = ({ workId = 'OBRA-01'
                                         </div>
                                     </div>
                                 </div>
-                                <ChevronRight className="w-5 h-5 text-slate-400" />
+                                <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-amber-500 transition-colors" />
                             </div>
+
+                            <button
+                                onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm(`Tem certeza que deseja apagar TODOS os dados do ciclo ${upload.cycleKey}? Isso não pode ser desfeito.`)) {
+                                        try {
+                                            setIsLoading(true);
+                                            await constructionService.deleteCycleData(upload.cycleKey, workId);
+                                            await loadUploads(); // Refresh list
+                                        } catch (error) {
+                                            alert("Erro ao apagar dados.");
+                                        } finally {
+                                            setIsLoading(false);
+                                        }
+                                    }
+                                }}
+                                className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                                title="Apagar dados deste ciclo (Cuidado!)"
+                            >
+                                <Trash2 className="w-5 h-5" />
+                            </button>
                         </div>
                     ))}
                 </div>
