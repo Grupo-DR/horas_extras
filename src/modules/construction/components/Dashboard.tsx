@@ -22,16 +22,46 @@ interface DashboardProps {
   data: ConstructionRecord[];
   servicePrices: ServicePrice[];
   assignments: PlanningAssignment[];
+  availableCycles?: string[];
+  selectedCycle?: string;
+  onCycleChange?: (cycle: string) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments }) => {
-  // Extrair todos os ciclos disponíveis nos dados
+const Dashboard: React.FC<DashboardProps> = ({
+  data,
+  servicePrices,
+  assignments,
+  availableCycles: externalCycles,
+  selectedCycle: externalSelectedCycle,
+  onCycleChange
+}) => {
+  // Extrair todos os ciclos disponíveis nos dados (fallback se não vier de fora)
   const availableCycles = useMemo(() => {
+    if (externalCycles && externalCycles.length > 0) {
+      return externalCycles;
+    }
     const cycles = Array.from(new Set(data.map(r => getCycleKey(r.data)))).sort().reverse();
     return cycles;
-  }, [data]);
+  }, [data, externalCycles]);
 
-  const [selectedCycle, setSelectedCycle] = useState<string>(availableCycles[0] || '');
+  const [selectedCycle, setSelectedCycle] = useState<string>(
+    externalSelectedCycle || availableCycles[0] || ''
+  );
+
+  // Sync internal state with external prop if it changes
+  React.useEffect(() => {
+    if (externalSelectedCycle && externalSelectedCycle !== selectedCycle) {
+      setSelectedCycle(externalSelectedCycle);
+    }
+  }, [externalSelectedCycle]);
+
+  const handleCycleChange = (cycle: string) => {
+    setSelectedCycle(cycle);
+    if (onCycleChange) {
+      onCycleChange(cycle);
+    }
+  };
+
   const [selectedTrechoDetail, setSelectedTrechoDetail] = useState<any>(null);
   const [selectedCategoryDetail, setSelectedCategoryDetail] = useState<any>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -360,7 +390,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
         </div>
         <select
           value={selectedCycle}
-          onChange={(e) => setSelectedCycle(e.target.value)}
+          onChange={(e) => handleCycleChange(e.target.value)}
           className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-black text-slate-700 outline-none focus:ring-2 focus:ring-amber-500/20"
         >
           {availableCycles.map(c => (

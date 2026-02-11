@@ -143,7 +143,14 @@ const App: React.FC = () => {
           We might need to modify Dashboard to handle the external 'currentCycle' or just let it be.
       */}
       {view === 'dashboard' && (
-        <Dashboard data={data} servicePrices={servicePrices} assignments={assignments} />
+        <Dashboard
+          data={data}
+          servicePrices={servicePrices}
+          assignments={assignments}
+          availableCycles={cycles}
+          selectedCycle={currentCycle}
+          onCycleChange={(cycle) => setCurrentCycle(cycle)}
+        />
       )}
 
       {view === 'planning' && (
