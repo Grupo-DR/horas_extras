@@ -301,40 +301,6 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({ day, onClose }) 
                     )}
                 </div>
 
-                {/* Footer - Category Summaries */}
-                {records.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-slate-200">
-                        <p className="text-[10px] font-bold text-slate-500 uppercase mb-3">Resumo por Categoria</p>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                            {sortedCategories.map((categoryKey) => {
-                                const categoryName = EQUIPMENT_CATEGORIES[categoryKey] || categoryKey;
-                                const summary = categorySummaries[categoryKey];
-
-                                return (
-                                    <div key={categoryKey} className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                                        <p className="text-[9px] font-bold text-slate-500 uppercase mb-2">{categoryName}</p>
-                                        <div className="space-y-1">
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-[8px] text-slate-400">Planejado:</span>
-                                                <span className="text-[9px] font-bold text-slate-600">{formatCurrencyWithZero(summary.planned)}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-[8px] text-slate-400">Total:</span>
-                                                <span className="text-[9px] font-bold text-amber-600">{formatCurrencyWithZero(summary.total)}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center pt-1 border-t border-slate-200">
-                                                <span className="text-[8px] text-slate-400">Diferença:</span>
-                                                <span className={`text-[9px] font-bold ${summary.difference >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                                                    {summary.difference >= 0 ? '+' : ''}{formatCurrencyWithZero(summary.difference)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );
