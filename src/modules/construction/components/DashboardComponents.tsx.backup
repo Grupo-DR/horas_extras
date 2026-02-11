@@ -213,87 +213,68 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({ day, onClose }) 
                     </div>
                 </div>
 
-                {/* RDO Records Table - Grouped by Category */}
+                {/* RDO Records Table */}
                 <div className="flex-1 overflow-auto">
                     {records.length > 0 ? (
-                        <div className="space-y-6">
-                            {sortedCategories.map((categoryKey) => {
-                                const categoryRecords = recordsByCategory[categoryKey];
-                                const categoryName = EQUIPMENT_CATEGORIES[categoryKey] || categoryKey;
+                        <table className="w-full text-left border-collapse">
+                            <thead className="sticky top-0 bg-slate-50 z-10">
+                                <tr className="border-b border-slate-200">
+                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Frota</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Localização</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Descrição do Serviço</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Unidade</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Produção</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-amber-700 uppercase tracking-wider text-right bg-amber-50/50">Total</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Planejado</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-700 uppercase tracking-wider text-right">Diferença</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {records.map((record: any, idx: number) => {
+                                    // Calculate planned value for this specific record (if exists in planning)
+                                    const plannedValue = 0; // TODO: Match with planning data if needed
+                                    const difference = (record.financials?.total || 0) - plannedValue;
 
-                                return (
-                                    <div key={categoryKey} className="border border-slate-200 rounded-xl overflow-hidden">
-                                        {/* Category Header */}
-                                        <div className="bg-slate-100 px-4 py-2 border-b border-slate-200">
-                                            <div className="flex justify-between items-center">
-                                                <h4 className="text-xs font-black text-slate-700 uppercase">{categoryName}</h4>
-                                                <span className="text-[10px] text-slate-500 font-bold">{categoryRecords.length} registro{categoryRecords.length !== 1 ? 's' : ''}</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Category Table */}
-                                        <table className="w-full text-left border-collapse">
-                                            <thead className="bg-slate-50">
-                                                <tr className="border-b border-slate-200">
-                                                    <th className="px-4 py-2 text-[9px] font-bold text-slate-500 uppercase tracking-wider">Frota</th>
-                                                    <th className="px-4 py-2 text-[9px] font-bold text-slate-500 uppercase tracking-wider">Localização</th>
-                                                    <th className="px-4 py-2 text-[9px] font-bold text-slate-500 uppercase tracking-wider">Descrição do Serviço</th>
-                                                    <th className="px-4 py-2 text-[9px] font-bold text-slate-500 uppercase tracking-wider text-center">Unidade</th>
-                                                    <th className="px-4 py-2 text-[9px] font-bold text-slate-500 uppercase tracking-wider text-right">Produção</th>
-                                                    <th className="px-4 py-2 text-[9px] font-bold text-amber-700 uppercase tracking-wider text-right bg-amber-50/50">Total</th>
-                                                    <th className="px-4 py-2 text-[9px] font-bold text-slate-500 uppercase tracking-wider text-right">Planejado</th>
-                                                    <th className="px-4 py-2 text-[9px] font-bold text-slate-700 uppercase tracking-wider text-right">Diferença</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-100">
-                                                {categoryRecords.map((record: any, idx: number) => {
-                                                    const plannedValue = 0;
-                                                    const recordDifference = (record.financials?.total || 0) - plannedValue;
-
-                                                    return (
-                                                        <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                                                            <td className="px-4 py-2">
-                                                                <span className="text-[10px] font-bold text-slate-900">{record.frota}</span>
-                                                            </td>
-                                                            <td className="px-4 py-2">
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-[10px] font-bold text-slate-700">{record.geo?.cidade || '-'}</span>
-                                                                    <div className="flex items-center gap-1">
-                                                                        <span className="text-[8px] font-medium text-slate-400 uppercase">{record.geo?.trecho || ''}</span>
-                                                                        {record.trechoFinal && record.geo?.trecho && <span className="text-[8px] text-slate-300">|</span>}
-                                                                        <span className="text-[8px] text-slate-400 font-mono">{record.trechoFinal || ''}</span>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-4 py-2">
-                                                                <span className="text-[10px] text-slate-700 font-medium">{record.financials?.descricao || record.item}</span>
-                                                            </td>
-                                                            <td className="px-4 py-2 text-center">
-                                                                <span className="text-[9px] font-bold text-slate-600 uppercase">{record.financials?.unidade || '-'}</span>
-                                                            </td>
-                                                            <td className="px-4 py-2 text-[10px] font-bold text-slate-900 text-right">
-                                                                {record.producao?.toLocaleString() || '0'}
-                                                            </td>
-                                                            <td className="px-4 py-2 text-[10px] font-bold text-amber-600 text-right bg-amber-50/20">
-                                                                {formatCurrencyWithZero(record.financials?.total || 0)}
-                                                            </td>
-                                                            <td className="px-4 py-2 text-[10px] font-bold text-slate-600 text-right">
-                                                                {formatCurrencyWithZero(plannedValue)}
-                                                            </td>
-                                                            <td className="px-4 py-2 text-[10px] font-bold text-right">
-                                                                <span className={recordDifference >= 0 ? 'text-emerald-600' : 'text-red-600'}>
-                                                                    {recordDifference >= 0 ? '+' : ''}{formatCurrencyWithZero(recordDifference)}
-                                                                </span>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                                    return (
+                                        <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                            <td className="px-4 py-3">
+                                                <span className="text-[11px] font-bold text-slate-900">{record.frota}</span>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[11px] font-bold text-slate-700">{record.geo?.cidade || '-'}</span>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-[9px] font-medium text-slate-400 uppercase">{record.geo?.trecho || ''}</span>
+                                                        {record.trechoFinal && record.geo?.trecho && <span className="text-[9px] text-slate-300">|</span>}
+                                                        <span className="text-[9px] text-slate-400 font-mono">{record.trechoFinal || ''}</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <span className="text-[11px] text-slate-700 font-medium">{record.financials?.descricao || record.item}</span>
+                                            </td>
+                                            <td className="px-4 py-3 text-center">
+                                                <span className="text-[10px] font-bold text-slate-600 uppercase">{record.financials?.unidade || '-'}</span>
+                                            </td>
+                                            <td className="px-4 py-3 text-[11px] font-bold text-slate-900 text-right">
+                                                {record.producao?.toLocaleString() || '0'}
+                                            </td>
+                                            <td className="px-4 py-3 text-[11px] font-bold text-amber-600 text-right bg-amber-50/20">
+                                                {formatCurrencyWithZero(record.financials?.total || 0)}
+                                            </td>
+                                            <td className="px-4 py-3 text-[11px] font-bold text-slate-600 text-right">
+                                                {formatCurrencyWithZero(plannedValue)}
+                                            </td>
+                                            <td className="px-4 py-3 text-[11px] font-bold text-right">
+                                                <span className={difference >= 0 ? 'text-emerald-600' : 'text-red-600'}>
+                                                    {difference >= 0 ? '+' : ''}{formatCurrencyWithZero(difference)}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     ) : (
                         <div className="flex flex-col items-center justify-center py-12 text-slate-400">
                             <p className="text-sm italic">Nenhum registro de RDO encontrado para este dia</p>
@@ -301,37 +282,15 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({ day, onClose }) 
                     )}
                 </div>
 
-                {/* Footer - Category Summaries */}
+                {/* Footer Summary */}
                 {records.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-slate-200">
-                        <p className="text-[10px] font-bold text-slate-500 uppercase mb-3">Resumo por Categoria</p>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                            {sortedCategories.map((categoryKey) => {
-                                const categoryName = EQUIPMENT_CATEGORIES[categoryKey] || categoryKey;
-                                const summary = categorySummaries[categoryKey];
-
-                                return (
-                                    <div key={categoryKey} className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                                        <p className="text-[9px] font-bold text-slate-500 uppercase mb-2">{categoryName}</p>
-                                        <div className="space-y-1">
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-[8px] text-slate-400">Planejado:</span>
-                                                <span className="text-[9px] font-bold text-slate-600">{formatCurrencyWithZero(summary.planned)}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-[8px] text-slate-400">Total:</span>
-                                                <span className="text-[9px] font-bold text-amber-600">{formatCurrencyWithZero(summary.total)}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center pt-1 border-t border-slate-200">
-                                                <span className="text-[8px] text-slate-400">Diferença:</span>
-                                                <span className={`text-[9px] font-bold ${summary.difference >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                                                    {summary.difference >= 0 ? '+' : ''}{formatCurrencyWithZero(summary.difference)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                    <div className="mt-4 pt-4 border-t border-slate-200 flex justify-between items-center">
+                        <p className="text-xs text-slate-500">
+                            <span className="font-bold">{records.length}</span> registro{records.length !== 1 ? 's' : ''} encontrado{records.length !== 1 ? 's' : ''}
+                        </p>
+                        <div className="text-right">
+                            <p className="text-[10px] text-slate-400 uppercase font-bold">Total do Dia</p>
+                            <p className="text-xl font-black text-amber-600">{formatCurrencyWithZero(totalReal)}</p>
                         </div>
                     </div>
                 )}
