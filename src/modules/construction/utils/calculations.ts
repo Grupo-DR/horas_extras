@@ -247,14 +247,15 @@ export const calculateRecordFinancials = (record: ConstructionRecord, prices: Se
   const priceRental = prices.find(s => s.codigo_sap?.trim().toUpperCase() === normalizedRental)?.preco_unitario || 0;
   const priceMobra = prices.find(s => s.codigo_sap?.trim().toUpperCase() === normalizedMobra)?.preco_unitario || 0;
 
-  // Get unit from price data
+  // Get unit and description from price data
   const serviceInfo = prices.find(s => s.codigo_sap?.trim().toUpperCase() === normalizedRental || s.codigo_sap?.trim().toUpperCase() === normalizedMobra);
   const unidade = serviceInfo?.unidade || '-';
+  const descricao = serviceInfo?.descricao || record.item; // Fallback to item if not found
 
   const valorRental = record.producao * priceRental;
   const valorMobra = record.producao * priceMobra;
   const status = getProductivityStatus(record.codSapRental || record.codSapMobra, prices);
-  return { valorRental, valorMobra, total: valorRental + valorMobra, status, unidade };
+  return { valorRental, valorMobra, total: valorRental + valorMobra, status, unidade, descricao };
 };
 
 export const formatCurrency = (val: number | null): string => {

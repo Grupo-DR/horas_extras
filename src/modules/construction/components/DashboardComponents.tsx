@@ -232,7 +232,7 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({ day, onClose }) 
                                                 </div>
                                             </td>
                                             <td className="px-4 py-3">
-                                                <span className="text-[11px] text-slate-700 font-medium">{record.item}</span>
+                                                <span className="text-[11px] text-slate-700 font-medium">{record.financials?.descricao || record.item}</span>
                                             </td>
                                             <td className="px-4 py-3 text-center">
                                                 <span className="text-[10px] font-bold text-slate-600 uppercase">{record.financials?.unidade || '-'}</span>
