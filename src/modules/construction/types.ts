@@ -66,6 +66,15 @@ export interface LocationInfo {
   supervisao: string;
 }
 
-export type ViewType = 'dashboard' | 'table' | 'upload' | 'services' | 'planning' | 'history' | 'iam';
+export interface Equipment {
+  id: string;
+  frota: string;
+  type: string; // 'CAMINHÃO', 'RETROESCAVADEIRA', etc.
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
+  active: boolean;
+}
+
+export type ViewType = 'dashboard' | 'table' | 'upload' | 'services' | 'planning' | 'history' | 'iam' | 'equipments';
 
 

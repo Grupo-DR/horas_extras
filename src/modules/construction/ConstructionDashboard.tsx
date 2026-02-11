@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useState, useEffect, useCallback } from 'react';
-import { ConstructionRecord, ViewType, ServicePrice, PlanningAssignment } from './types';
+import { ConstructionRecord, ViewType, ServicePrice, PlanningAssignment, Equipment } from './types';
 import Layout from './components/Layout';
 import FileUpload from './components/FileUpload';
 import Dashboard from './components/Dashboard';
@@ -12,6 +12,7 @@ import { DEFAULT_SERVICE_PRICES } from './utils/constants';
 import { constructionService } from './services/firestore';
 import { Loader2 } from 'lucide-react';
 import ProfileManager from '../iam/components/ProfileManager';
+import EquipmentManager from './components/EquipmentManager';
 
 const App: React.FC = () => {
   const STORAGE_KEYS = {
@@ -22,6 +23,7 @@ const App: React.FC = () => {
   const [cycles, setCycles] = useState<string[]>([]);
   const [currentCycle, setCurrentCycle] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  const [equipments, setEquipments] = useState<Equipment[]>([]);
 
   const [servicePrices, setServicePrices] = useState<ServicePrice[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.PRICES);
@@ -36,28 +38,34 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEYS.PRICES, JSON.stringify(servicePrices));
   }, [servicePrices]);
 
-  // Initial Fetch: Cycles
-  const fetchCycles = useCallback(async () => {
+  // Initial Fetch: Cycles AND Equipments
+  const fetchCyclesAndEquipments = useCallback(async () => {
     try {
       setIsLoading(true);
-      const fetchedCycles = await constructionService.getCycles();
+      const [fetchedCycles, fetchedEquipments] = await Promise.all([
+        constructionService.getCycles(),
+        constructionService.getEquipments()
+      ]);
+
       const sortedCycles = fetchedCycles.sort(); // YYYY-MM format sorts naturally
       setCycles(sortedCycles);
+      setEquipments(fetchedEquipments);
+
       if (sortedCycles.length > 0 && !currentCycle) {
         // getCycles returns desc order, so first item is latest
         const latest = sortedCycles[0];
         setCurrentCycle(latest);
       }
     } catch (e) {
-      console.error("Failed to fetch cycles", e);
+      console.error("Failed to fetch data", e);
     } finally {
       setIsLoading(false);
     }
   }, [currentCycle]);
 
   useEffect(() => {
-    fetchCycles();
-  }, [fetchCycles]);
+    fetchCyclesAndEquipments();
+  }, [fetchCyclesAndEquipments]);
 
   // Fetch Data when Cycle Changes
   const fetchDataForCycle = useCallback(async (cycle: string) => {
@@ -84,6 +92,13 @@ const App: React.FC = () => {
       setIsLoading(false);
     }
   }, []);
+
+  // Refresh equipments when entering planning or equipment manager
+  useEffect(() => {
+    if (view === 'planning' || view === 'equipments') {
+      constructionService.getEquipments().then(setEquipments).catch(console.error);
+    }
+  }, [view]);
 
   useEffect(() => {
     if (currentCycle) {
@@ -156,7 +171,7 @@ const App: React.FC = () => {
 
       {view === 'planning' && (
         <Planning
-          data={data} assignments={assignments} servicePrices={servicePrices}
+          data={data} assignments={assignments} servicePrices={servicePrices} equipments={equipments}
           onAddAssignment={async (a) => {
             try {
               const next = [...assignments, a];
@@ -192,6 +207,7 @@ const App: React.FC = () => {
       {view === 'table' && <DataTable data={data} servicePrices={servicePrices} />}
       {view === 'history' && <UploadHistory workId="OBRA-01" />}
       {view === 'iam' && <ProfileManager />}
+      {view === 'equipments' && <EquipmentManager />}
     </Layout>
   );
 };

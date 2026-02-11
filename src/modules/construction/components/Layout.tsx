@@ -2,7 +2,7 @@
 import React from 'react';
 import {
   LayoutDashboard, Table, UploadCloud, HardHat,
-  Coins, CalendarRange, Download, Trash2, Cloud, LogOut, History, Users
+  Coins, CalendarRange, Download, Trash2, Cloud, LogOut, History, Users, Truck
 } from 'lucide-react';
 import { ViewType } from '../types';
 import { useNavigate } from 'react-router-dom';
@@ -93,6 +93,17 @@ const Layout: React.FC<LayoutProps> = ({
             <span>Importar Dados</span>
           </button>
 
+          <button
+            onClick={() => setView('equipments')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeView === 'equipments' ? 'bg-amber-500 text-slate-900 font-semibold' : 'hover:bg-slate-800 text-slate-400'
+              }`}
+          >
+            <Trash2 className="w-5 h-5" /> {/* Using Trash2/Truck as icon placeholder, maybe Truck is better but already used? Truck is used for Operacional/Dashboard maybe? No, LayoutDashboard is used. */}
+            {/* Wait, the user asked for "Gestão Equipamentos". Icon: Truck. */}
+            <Truck className="w-5 h-5" />
+            <span>Gestão Equipamentos</span>
+          </button>
+
           {canManageProfiles(profile) && (
             <button
               onClick={() => setView('iam')}
@@ -134,7 +145,8 @@ const Layout: React.FC<LayoutProps> = ({
               activeView === 'dashboard' ? 'Painel de Indicadores' :
                 activeView === 'services' ? 'Tabela de Preços SAP' :
                   activeView === 'planning' ? 'Planejamento de Frota' :
-                    activeView === 'iam' ? 'Gestão de Usuários' : 'Tabela de Operações'}
+                    activeView === 'iam' ? 'Gestão de Usuários' :
+                      activeView === 'equipments' ? 'Gestão de Equipamentos' : 'Tabela de Operações'}
           </h1>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full">

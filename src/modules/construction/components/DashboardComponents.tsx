@@ -3,7 +3,7 @@ import { formatCurrencyWithZero, getEquipmentCategory } from '../utils/calculati
 import { X } from 'lucide-react';
 import { EQUIPMENT_CATEGORIES } from '../utils/constants';
 
-// Custom Tooltip para o gr�fico de evolu��o di�ria
+// Custom Tooltip para o gráfico de evolução diária
 export const CustomDailyTooltip = ({ active, payload }: any) => {
     if (!active || !payload || !payload[0]) return null;
 
@@ -27,7 +27,7 @@ export const CustomDailyTooltip = ({ active, payload }: any) => {
                     <span className="text-sm font-bold text-indigo-600">{formatCurrencyWithZero(totalReal)}</span>
                 </div>
                 <div className="flex justify-between items-center pt-2 border-t">
-                    <span className="text-xs font-bold text-slate-700">Diferen�a:</span>
+                    <span className="text-xs font-bold text-slate-700">Diferença:</span>
                     <span className={`text-sm font-bold ${difference >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                         {difference >= 0 ? '+' : ''}{formatCurrencyWithZero(difference)}
                     </span>
@@ -92,7 +92,7 @@ export const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({ catego
                             <p className="text-lg font-black text-indigo-600">{formatCurrencyWithZero(category.actual || category.idle || 0)}</p>
                         </div>
                         <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase">Diferen�a</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase">Diferença</p>
                             <p className={`text-lg font-black ${((category.actual || category.idle || 0) - (category.planned || 0)) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                                 {((category.actual || category.idle || 0) - (category.planned || 0)) >= 0 ? '+' : ''}{formatCurrencyWithZero((category.actual || category.idle || 0) - (category.planned || 0))}
                             </p>
@@ -149,7 +149,7 @@ export const CategoryDetailModal: React.FC<CategoryDetailModalProps> = ({ catego
     );
 };
 
-// Modal para detalhes de um dia espec�fico
+// Modal para detalhes de um dia específico
 interface DayDetailModalProps {
     day: any;
     onClose: () => void;
@@ -206,7 +206,7 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({ day, onClose }) 
                         <p className="text-lg font-black text-indigo-600">{formatCurrencyWithZero(totalReal)}</p>
                     </div>
                     <div className={`p-3 rounded-xl ${difference >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
-                        <p className="text-[10px] font-bold uppercase" style={{ color: difference >= 0 ? '#10b981' : '#ef4444' }}>Diferen�a</p>
+                        <p className="text-[10px] font-bold uppercase" style={{ color: difference >= 0 ? '#10b981' : '#ef4444' }}>Diferença</p>
                         <p className={`text-lg font-black ${difference >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                             {difference >= 0 ? '+' : ''}{formatCurrencyWithZero(difference)}
                         </p>
@@ -236,13 +236,13 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({ day, onClose }) 
                                             <thead className="bg-slate-50">
                                                 <tr className="border-b border-slate-200">
                                                     <th className="px-4 py-2 text-[9px] font-bold text-slate-500 uppercase tracking-wider">Frota</th>
-                                                    <th className="px-4 py-2 text-[9px] font-bold text-slate-500 uppercase tracking-wider">Localiza��o</th>
-                                                    <th className="px-4 py-2 text-[9px] font-bold text-slate-500 uppercase tracking-wider">Descri��o do Servi�o</th>
+                                                    <th className="px-4 py-2 text-[9px] font-bold text-slate-500 uppercase tracking-wider">Localização</th>
+                                                    <th className="px-4 py-2 text-[9px] font-bold text-slate-500 uppercase tracking-wider">Descrição do Serviço</th>
                                                     <th className="px-4 py-2 text-[9px] font-bold text-slate-500 uppercase tracking-wider text-center">Unidade</th>
-                                                    <th className="px-4 py-2 text-[9px] font-bold text-slate-500 uppercase tracking-wider text-right">Produ��o</th>
+                                                    <th className="px-4 py-2 text-[9px] font-bold text-slate-500 uppercase tracking-wider text-right">Produção</th>
                                                     <th className="px-4 py-2 text-[9px] font-bold text-amber-700 uppercase tracking-wider text-right bg-amber-50/50">Total</th>
                                                     <th className="px-4 py-2 text-[9px] font-bold text-slate-500 uppercase tracking-wider text-right">Planejado</th>
-                                                    <th className="px-4 py-2 text-[9px] font-bold text-slate-700 uppercase tracking-wider text-right">Diferen�a</th>
+                                                    <th className="px-4 py-2 text-[9px] font-bold text-slate-700 uppercase tracking-wider text-right">Diferença</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
@@ -305,5 +305,3 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({ day, onClose }) 
         </div>
     );
 };
-
-

@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { ConstructionRecord, PlanningAssignment, ServicePrice, PlannedService } from '../types';
+import { ConstructionRecord, PlanningAssignment, ServicePrice, PlannedService, Equipment } from '../types';
 import {
   ChevronLeft, ChevronRight, Truck, Calendar as CalendarIcon,
   Plus, X, GripVertical, Trash2, Calculator, Settings2, Edit3,
@@ -17,13 +17,14 @@ interface PlanningProps {
   data: ConstructionRecord[];
   assignments: PlanningAssignment[];
   servicePrices: ServicePrice[];
+  equipments: Equipment[];
   onAddAssignment: (assignment: PlanningAssignment) => void;
   onRemoveAssignment: (id: string) => void;
   onUpdateAssignment: (assignment: PlanningAssignment) => void;
 }
 
 const Planning: React.FC<PlanningProps> = ({
-  data, assignments, servicePrices, onAddAssignment, onRemoveAssignment, onUpdateAssignment
+  data, assignments, servicePrices, equipments, onAddAssignment, onRemoveAssignment, onUpdateAssignment
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -33,13 +34,32 @@ const Planning: React.FC<PlanningProps> = ({
   // Informações do ciclo baseadas na data atual selecionada (21 a 20)
   const period = useMemo(() => getPeriodInfo(currentDate, data), [currentDate, data]);
 
+  // Filter available equipment based on the VALID PERIOD for each equipment vs Current Planning Period
   const availableEquipment = useMemo(() => {
+    // If no equipments are registered or passed, fallback to 'data' extraction (legacy support or ease of use?)
+    // Requirement says: "os equipamentos cadastrados aparecem".
+    if (equipments && equipments.length > 0) {
+      return equipments.filter(eq => {
+        if (!eq.active) return false;
+        // Check date overlap
+        // Equipment Start <= Period End AND (Equipment End >= Period Start OR Equipment End is null)
+        const eqStart = new Date(eq.startDate);
+        const eqEnd = eq.endDate ? new Date(eq.endDate) : new Date('9999-12-31');
+
+        return eqStart <= period.end && eqEnd >= period.start;
+      }).map(eq => ({
+        id: eq.frota,
+        category: eq.type // Use 'type' from registry as category
+      })).sort((a, b) => a.id.localeCompare(b.id));
+    }
+
+    // Fallback: extract from RDO data if registry is empty
     const frotas = Array.from(new Set(data.map(r => r.frota))).filter(f => f && f !== 'null') as string[];
     return frotas.map(f => ({
       id: f,
       category: getEquipmentCategory(f)
     })).sort((a, b) => a.id.localeCompare(b.id));
-  }, [data]);
+  }, [data, equipments, period]);
 
   const allCatalogItems = useMemo(() => {
     const items = (Array.from(new Set(servicePrices.map(p => p.item))) as string[]).sort((a, b) => a.localeCompare(b));

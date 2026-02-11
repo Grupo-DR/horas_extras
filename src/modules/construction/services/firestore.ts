@@ -272,5 +272,46 @@ export const constructionService = {
             console.error("Error deleting cycle data:", error);
             throw error;
         }
+    },
+
+    // EQUIPMENT MANAGEMENT
+    async getEquipments(): Promise<any[]> {
+        try {
+            const q = query(collection(db, 'construction_equipments'));
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (error) {
+            console.error("Error fetching equipments:", error);
+            return [];
+        }
+    },
+
+    async addEquipment(equipment: Omit<any, 'id'>): Promise<string> {
+        try {
+            const docRef = await addDoc(collection(db, 'construction_equipments'), equipment);
+            return docRef.id;
+        } catch (error) {
+            console.error("Error adding equipment:", error);
+            throw error;
+        }
+    },
+
+    async updateEquipment(id: string, equipment: Partial<any>): Promise<void> {
+        try {
+            const docRef = doc(db, 'construction_equipments', id);
+            await setDoc(docRef, equipment, { merge: true });
+        } catch (error) {
+            console.error("Error updating equipment:", error);
+            throw error;
+        }
+    },
+
+    async deleteEquipment(id: string): Promise<void> {
+        try {
+            await deleteDoc(doc(db, 'construction_equipments', id));
+        } catch (error) {
+            console.error("Error deleting equipment:", error);
+            throw error;
+        }
     }
 };
