@@ -63,9 +63,15 @@ export const canPlan = (role?: HCRole): boolean => {
     return ['HC_ADMIN', 'HC_MANAGER', 'HC_COSTCENTER_PLANNER'].includes(role);
 };
 
-export const canManageProfiles = (role?: HCRole): boolean => {
-    if (!role) return false;
-    return role === 'HC_ADMIN';
+export const canManageProfiles = (profile: UserProfileDoc | null | undefined): boolean => {
+    if (!profile) return false;
+    if (profile.isSuperAdmin) return true;
+    return (
+        profile.modules.human_capital?.role === 'HC_ADMIN' ||
+        profile.modules.commercial?.role === 'COMMERCIAL_ADMIN' ||
+        profile.modules.commercial?.role === 'IAM_ADMIN' ||
+        profile.modules.construction?.role === 'CONSTRUCTION_ADMIN'
+    );
 };
 
 export const canReadAll = (role?: HCRole): boolean => {

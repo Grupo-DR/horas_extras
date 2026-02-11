@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { UserProfileDoc, HCRole, CommercialRole, Scope, ScopeType, ConstructionRole } from '../types';
+import { UserProfileDoc, HCRole, CommercialRole, Scope, ScopeType, ConstructionRole, canManageProfiles } from '../types';
 import { getAllProfiles, updateUserRoles, createUserProfile } from '../profileService';
 import { useAuth } from '@/contexts/AuthContext';
 import { Users, Search, Edit2, Shield, AlertTriangle, Save, X, Building2, MapPin, Plus, HardHat } from 'lucide-react';
@@ -121,7 +121,7 @@ const ProfileManager: React.FC = () => {
     if (loading) return <div className="p-10 flex check-center"><div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div></div>;
 
     // Check access (Extra safety, though parent should handle)
-    const canManage = profile?.isSuperAdmin || profile?.modules.human_capital?.role === 'HC_ADMIN';
+    const canManage = canManageProfiles(profile);
     if (!canManage) return <div className="p-10 text-red-600 font-bold">Acesso negado.</div>;
 
     return (

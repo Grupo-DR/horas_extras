@@ -23,7 +23,7 @@ const Layout: React.FC<LayoutProps> = ({
   children, activeView, setView, hasData, onExportBackup, onClearData
 }) => {
   const navigate = useNavigate();
-  const { logout, user } = useAuth(); // Need user to check permissions
+  const { logout, user, profile } = useAuth(); // Need profile permissions
   const [isSwitcherOpen, setIsSwitcherOpen] = React.useState(false);
 
   const handleLogout = () => {
@@ -93,7 +93,7 @@ const Layout: React.FC<LayoutProps> = ({
             <span>Importar Dados</span>
           </button>
 
-          {user && canManageProfiles(user.role as any) && (
+          {canManageProfiles(profile) && (
             <button
               onClick={() => setView('iam')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeView === 'iam' ? 'bg-amber-500 text-slate-900 font-semibold' : 'hover:bg-slate-800 text-slate-400'

@@ -262,7 +262,7 @@ const HumanCapitalDashboard: React.FC = () => {
       { key: Tab.DATA, label: "Histórico", icon: Table, onClick: () => setActiveTab(Tab.DATA), isActive: activeTab === Tab.DATA },
     ];
     if (canPlan(effectiveUser.role)) items.push({ key: Tab.PLANNING, label: "Planejamento", icon: CalendarRange, onClick: () => setActiveTab(Tab.PLANNING), isActive: activeTab === Tab.PLANNING });
-    if (canManageProfiles(effectiveUser.role)) items.push({ key: Tab.PROFILES, label: "Gestão de Usuários", icon: UserCog, onClick: () => setActiveTab(Tab.PROFILES), isActive: activeTab === Tab.PROFILES });
+    if (canManageProfiles(profile)) items.push({ key: Tab.PROFILES, label: "Gestão de Usuários", icon: UserCog, onClick: () => setActiveTab(Tab.PROFILES), isActive: activeTab === Tab.PROFILES });
     items.push({ key: Tab.SETTINGS, label: "Configurações", icon: Settings, onClick: () => setActiveTab(Tab.SETTINGS), isActive: activeTab === Tab.SETTINGS });
     return items;
   }, [effectiveUser, activeTab]);
@@ -324,7 +324,7 @@ const HumanCapitalDashboard: React.FC = () => {
               />
             )}
             {activeTab === Tab.PLANNING && canPlan(effectiveUser.role) && <Planning user={effectiveUser} employees={scopedData} manualEmployees={manualEmployees} />}
-            {activeTab === Tab.PROFILES && canManageProfiles(effectiveUser.role) && <ProfileManager />}
+            {activeTab === Tab.PROFILES && canManageProfiles(profile) && <ProfileManager />}
             {activeTab === Tab.SETTINGS && (
               <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center text-gray-500">
                 <Settings className="mx-auto mb-4 text-gray-300" size={48} />
