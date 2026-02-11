@@ -4,13 +4,14 @@ import { ConstructionRecord, PlanningAssignment, ServicePrice, PlannedService } 
 import {
   ChevronLeft, ChevronRight, Truck, Calendar as CalendarIcon,
   Plus, X, GripVertical, Trash2, Calculator, Settings2, Edit3,
-  TrendingUp, Activity, AlertCircle
+  DollarSign, Target, TrendingUp
 } from 'lucide-react';
 import {
   getEquipmentCategory, getUnifiedServiceInfo, formatCurrencyWithZero,
   isServiceRelevantForEquipment, calculateAssignmentTotal, getPeriodInfo,
-  getCycleKey, getPeriodFromCycle, getProductivityStatus
+  getCycleKey, getPeriodFromCycle
 } from '../utils/calculations';
+import budgetData from '../data/budgets.json';
 
 interface PlanningProps {
   data: ConstructionRecord[];
@@ -88,34 +89,56 @@ const Planning: React.FC<PlanningProps> = ({
 
   const monthLabel = period.end.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
 
+  // Calculate budget for the planning period
+  // Budget logic: planning period uses NEXT month's budget
+  const budgetInfo = useMemo(() => {
+    // Get the cycle end date (e.g., if planning Jan 21 - Feb 20, end is Feb 20)
+    const cycleEndDate = period.end;
+
+    // Budget month is the NEXT month after cycle end
+    const budgetMonth = cycleEndDate.getMonth() + 2; // +1 for next month, +1 because getMonth() is 0-indexed
+    const budgetYear = budgetMonth > 12 ? cycleEndDate.getFullYear() + 1 : cycleEndDate.getFullYear();
+    const normalizedBudgetMonth = budgetMonth > 12 ? 1 : budgetMonth;
+
+    // Find budgets for this month/year
+    const monthBudgets = budgetData.budgets.filter(
+      b => b.month === normalizedBudgetMonth && b.year === budgetYear
+    );
+
+    // Sum all budgets for this month (Construtora + Rental)
+    const totalBudget = monthBudgets.reduce((sum, b) => sum + b.value, 0);
+
+    return {
+      month: normalizedBudgetMonth,
+      year: budgetYear,
+      totalBudget,
+      budgets: monthBudgets
+    };
+  }, [period]);
+
   // Calculate planning metrics
   const planningMetrics = useMemo(() => {
     let totalPlanned = 0;
-    let productivePlanned = 0;
-    let unproductivePlanned = 0;
 
     assignments.forEach(assignment => {
       assignment.services.forEach(service => {
         const info = getUnifiedServiceInfo(service.item, servicePrices);
         const value = (service.producao || 0) * info.precoTotal;
         totalPlanned += value;
-
-        // Check if service is productive or unproductive
-        const rentalPrice = servicePrices.find(p => p.item === service.item && p.category === 'RENTAL');
-        const mobraPrice = servicePrices.find(p => p.item === service.item && p.category === 'MOBRA');
-        const sapCode = rentalPrice?.codigo_sap || mobraPrice?.codigo_sap || '';
-        const status = getProductivityStatus(sapCode, servicePrices);
-
-        if (status === 'PRODUTIVA') {
-          productivePlanned += value;
-        } else if (status === 'IMPRODUTIVA') {
-          unproductivePlanned += value;
-        }
       });
     });
 
-    return { totalPlanned, productivePlanned, unproductivePlanned };
-  }, [assignments, servicePrices]);
+    // Calculate adherence percentage
+    const adherence = budgetInfo.totalBudget > 0
+      ? (totalPlanned / budgetInfo.totalBudget) * 100
+      : 0;
+
+    return {
+      totalPlanned,
+      adherence,
+      difference: totalPlanned - budgetInfo.totalBudget
+    };
+  }, [assignments, servicePrices, budgetInfo]);
 
   const handlePrevMonth = () => {
     const newDate = new Date(currentDate);
@@ -180,40 +203,47 @@ const Planning: React.FC<PlanningProps> = ({
 
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-4">
+        {/* Budget Card */}
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-sm p-4 text-white">
+          <div className="flex items-center justify-between mb-2">
+            <div className="bg-white/20 p-2 rounded-xl">
+              <DollarSign className="w-5 h-5" />
+            </div>
+            <span className="text-xs font-black uppercase tracking-wider opacity-90">Budget</span>
+          </div>
+          <div className="text-2xl font-black font-mono">{formatCurrencyWithZero(budgetInfo.totalBudget)}</div>
+          <div className="text-[10px] font-bold uppercase tracking-widest opacity-75 mt-1">
+            {new Date(budgetInfo.year, budgetInfo.month - 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}
+          </div>
+        </div>
+
         {/* Total Planejado */}
         <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl shadow-sm p-4 text-white">
           <div className="flex items-center justify-between mb-2">
             <div className="bg-white/20 p-2 rounded-xl">
               <TrendingUp className="w-5 h-5" />
             </div>
-            <span className="text-xs font-black uppercase tracking-wider opacity-90">Total</span>
+            <span className="text-xs font-black uppercase tracking-wider opacity-90">Planejado</span>
           </div>
           <div className="text-2xl font-black font-mono">{formatCurrencyWithZero(planningMetrics.totalPlanned)}</div>
-          <div className="text-[10px] font-bold uppercase tracking-widest opacity-75 mt-1">Planejado</div>
+          <div className="text-[10px] font-bold uppercase tracking-widest opacity-75 mt-1">
+            {planningMetrics.difference >= 0 ? '+' : ''}{formatCurrencyWithZero(planningMetrics.difference)}
+          </div>
         </div>
 
-        {/* Produtivo Planejado */}
-        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl shadow-sm p-4 text-white">
+        {/* Aderência ao Budget */}
+        <div className={`bg-gradient-to-br rounded-2xl shadow-sm p-4 text-white ${planningMetrics.adherence <= 100 ? 'from-emerald-500 to-emerald-600' : 'from-red-500 to-red-600'
+          }`}>
           <div className="flex items-center justify-between mb-2">
             <div className="bg-white/20 p-2 rounded-xl">
-              <Activity className="w-5 h-5" />
+              <Target className="w-5 h-5" />
             </div>
-            <span className="text-xs font-black uppercase tracking-wider opacity-90">Produtivo</span>
+            <span className="text-xs font-black uppercase tracking-wider opacity-90">Aderência</span>
           </div>
-          <div className="text-2xl font-black font-mono">{formatCurrencyWithZero(planningMetrics.productivePlanned)}</div>
-          <div className="text-[10px] font-bold uppercase tracking-widest opacity-75 mt-1">Planejado</div>
-        </div>
-
-        {/* Improdutivo Planejado */}
-        <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl shadow-sm p-4 text-white">
-          <div className="flex items-center justify-between mb-2">
-            <div className="bg-white/20 p-2 rounded-xl">
-              <AlertCircle className="w-5 h-5" />
-            </div>
-            <span className="text-xs font-black uppercase tracking-wider opacity-90">Improdutivo</span>
+          <div className="text-2xl font-black font-mono">{planningMetrics.adherence.toFixed(1)}%</div>
+          <div className="text-[10px] font-bold uppercase tracking-widest opacity-75 mt-1">
+            {planningMetrics.adherence <= 100 ? 'Dentro do Budget' : 'Acima do Budget'}
           </div>
-          <div className="text-2xl font-black font-mono">{formatCurrencyWithZero(planningMetrics.unproductivePlanned)}</div>
-          <div className="text-[10px] font-bold uppercase tracking-widest opacity-75 mt-1">Planejado</div>
         </div>
       </div>
 

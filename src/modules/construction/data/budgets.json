@@ -1,0 +1,172 @@
+{
+    "budgets": [
+        {
+            "month": 1,
+            "year": 2026,
+            "ccDr": "3015.02",
+            "value": 200000.00,
+            "class": "Construtora"
+        },
+        {
+            "month": 2,
+            "year": 2026,
+            "ccDr": "3015.02",
+            "value": 205000.00,
+            "class": "Construtora"
+        },
+        {
+            "month": 3,
+            "year": 2026,
+            "ccDr": "3015.02",
+            "value": 202000.00,
+            "class": "Construtora"
+        },
+        {
+            "month": 4,
+            "year": 2026,
+            "ccDr": "3015.02",
+            "value": 204000.00,
+            "class": "Construtora"
+        },
+        {
+            "month": 5,
+            "year": 2026,
+            "ccDr": "3015.02",
+            "value": 197000.00,
+            "class": "Construtora"
+        },
+        {
+            "month": 6,
+            "year": 2026,
+            "ccDr": "3015.02",
+            "value": 195000.00,
+            "class": "Construtora"
+        },
+        {
+            "month": 7,
+            "year": 2026,
+            "ccDr": "3015.02",
+            "value": 213000.00,
+            "class": "Construtora"
+        },
+        {
+            "month": 8,
+            "year": 2026,
+            "ccDr": "3015.02",
+            "value": 219624.30,
+            "class": "Construtora"
+        },
+        {
+            "month": 9,
+            "year": 2026,
+            "ccDr": "3015.02",
+            "value": 220000.00,
+            "class": "Construtora"
+        },
+        {
+            "month": 10,
+            "year": 2026,
+            "ccDr": "3015.02",
+            "value": 222000.00,
+            "class": "Construtora"
+        },
+        {
+            "month": 11,
+            "year": 2026,
+            "ccDr": "3015.02",
+            "value": 225000.00,
+            "class": "Construtora"
+        },
+        {
+            "month": 12,
+            "year": 2026,
+            "ccDr": "3015.02",
+            "value": 190000.00,
+            "class": "Construtora"
+        },
+        {
+            "month": 1,
+            "year": 2026,
+            "ccDr": "3015.03",
+            "value": 750000.00,
+            "class": "Rental"
+        },
+        {
+            "month": 2,
+            "year": 2026,
+            "ccDr": "3015.03",
+            "value": 760000.00,
+            "class": "Rental"
+        },
+        {
+            "month": 3,
+            "year": 2026,
+            "ccDr": "3015.03",
+            "value": 755000.00,
+            "class": "Rental"
+        },
+        {
+            "month": 4,
+            "year": 2026,
+            "ccDr": "3015.03",
+            "value": 762000.00,
+            "class": "Rental"
+        },
+        {
+            "month": 5,
+            "year": 2026,
+            "ccDr": "3015.03",
+            "value": 758000.00,
+            "class": "Rental"
+        },
+        {
+            "month": 6,
+            "year": 2026,
+            "ccDr": "3015.03",
+            "value": 745000.00,
+            "class": "Rental"
+        },
+        {
+            "month": 7,
+            "year": 2026,
+            "ccDr": "3015.03",
+            "value": 787000.00,
+            "class": "Rental"
+        },
+        {
+            "month": 8,
+            "year": 2026,
+            "ccDr": "3015.03",
+            "value": 811475.70,
+            "class": "Rental"
+        },
+        {
+            "month": 9,
+            "year": 2026,
+            "ccDr": "3015.03",
+            "value": 805000.00,
+            "class": "Rental"
+        },
+        {
+            "month": 10,
+            "year": 2026,
+            "ccDr": "3015.03",
+            "value": 807000.00,
+            "class": "Rental"
+        },
+        {
+            "month": 11,
+            "year": 2026,
+            "ccDr": "3015.03",
+            "value": 810000.00,
+            "class": "Rental"
+        },
+        {
+            "month": 12,
+            "year": 2026,
+            "ccDr": "3015.03",
+            "value": 751475.70,
+            "class": "Rental"
+        }
+    ]
+}
