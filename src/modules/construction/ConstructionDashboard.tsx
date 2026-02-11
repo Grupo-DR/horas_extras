@@ -143,21 +143,7 @@ const App: React.FC = () => {
           We might need to modify Dashboard to handle the external 'currentCycle' or just let it be.
       */}
       {view === 'dashboard' && (
-        <div className="space-y-4">
-          {/* Cycle Selector Override for App-Level Control */}
-          {cycles.length > 0 && (
-            <div className="flex justify-end px-8">
-              <select
-                value={currentCycle}
-                onChange={(e) => setCurrentCycle(e.target.value)}
-                className="bg-white border border-slate-200 rounded-lg px-3 py-1 text-xs font-bold shadow-sm"
-              >
-                {cycles.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-          )}
-          <Dashboard data={data} servicePrices={servicePrices} assignments={assignments} />
-        </div>
+        <Dashboard data={data} servicePrices={servicePrices} assignments={assignments} />
       )}
 
       {view === 'planning' && (
