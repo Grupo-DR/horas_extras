@@ -44,6 +44,10 @@ export const getOrCreateUserProfile = async (authUser: FirebaseUser): Promise<Us
                 enabled: isSuperAdmin,
                 role: isSuperAdmin ? 'HC_ADMIN' : 'HC_AUDITOR_VIEWER',
                 scope: { type: 'ALL' } // Default scope
+            },
+            construction: {
+                enabled: isSuperAdmin,
+                role: isSuperAdmin ? 'CONSTRUCTION_ADMIN' : 'CONSTRUCTION_VIEWER' // Default role
             }
         },
         createdAt: new Date().toISOString(),
@@ -56,6 +60,7 @@ export const getOrCreateUserProfile = async (authUser: FirebaseUser): Promise<Us
     if (!isSuperAdmin) {
         newProfile.modules.commercial!.enabled = false;
         newProfile.modules.human_capital!.enabled = false;
+        newProfile.modules.construction!.enabled = false;
     }
 
     try {
@@ -63,6 +68,34 @@ export const getOrCreateUserProfile = async (authUser: FirebaseUser): Promise<Us
         return newProfile;
     } catch (error) {
         console.error("Error creating user profile:", error);
+        throw error;
+    }
+};
+
+export const createUserProfile = async (uid: string, email: string, displayName: string): Promise<void> => {
+    try {
+        const existing = await getUserProfile(uid);
+        if (existing) throw new Error("Perfil de usuário já existe.");
+
+        const newProfile: UserProfileDoc = {
+            uid,
+            email,
+            displayName,
+            isSuperAdmin: false,
+            modules: {
+                commercial: { enabled: false, role: 'COMMERCIAL_VIEWER' },
+                human_capital: { enabled: false, role: 'HC_AUDITOR_VIEWER', scope: { type: 'ALL' } },
+                construction: { enabled: false, role: 'CONSTRUCTION_VIEWER' }
+            },
+            createdAt: new Date().toISOString(),
+            createdBy: 'admin_manual_sync',
+            updatedAt: new Date().toISOString(),
+            updatedBy: 'admin_manual_sync'
+        };
+
+        await setDoc(doc(db, COLLECTION, uid), newProfile);
+    } catch (error) {
+        console.error("Error creating manual profile:", error);
         throw error;
     }
 };
@@ -86,13 +119,16 @@ export const getAllProfiles = async (): Promise<UserProfileDoc[]> => {
 };
 
 export const updateUserRoles = async (uid: string, iamUpdates: {
-    commercial?: { enabled: boolean; role: 'COMMERCIAL_ADMIN' | 'COMMERCIAL_VIEWER' | 'IAM_ADMIN' }; // Inline type to avoid import cycle if not exported from types
+    commercial?: { enabled: boolean; role: 'COMMERCIAL_ADMIN' | 'COMMERCIAL_VIEWER' | 'IAM_ADMIN' };
     human_capital?: { enabled: boolean; role: 'HC_ADMIN' | 'HC_MANAGER' | 'HC_COSTCENTER_PLANNER' | 'HC_AUDITOR_VIEWER'; scope: any };
+    construction?: { enabled: boolean; role: 'CONSTRUCTION_ADMIN' | 'CONSTRUCTION_MANAGER' | 'CONSTRUCTION_VIEWER' };
 }) => {
     const ref = doc(db, COLLECTION, uid);
     const updates: any = {};
     if (iamUpdates.commercial) updates['modules.commercial'] = iamUpdates.commercial;
     if (iamUpdates.human_capital) updates['modules.human_capital'] = iamUpdates.human_capital;
+    if (iamUpdates.construction) updates['modules.construction'] = iamUpdates.construction;
+
     updates['updatedAt'] = new Date().toISOString();
     await updateDoc(ref, updates);
 };

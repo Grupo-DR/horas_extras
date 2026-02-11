@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { UserProfileDoc, HCRole, CommercialRole, Scope, ScopeType } from '../types';
-import { getAllProfiles, updateUserRoles } from '../profileService';
+import { UserProfileDoc, HCRole, CommercialRole, Scope, ScopeType, ConstructionRole } from '../types';
+import { getAllProfiles, updateUserRoles, createUserProfile } from '../profileService';
 import { useAuth } from '@/contexts/AuthContext';
-import { Users, Search, Edit2, Shield, AlertTriangle, Save, X, Building2, MapPin } from 'lucide-react';
+import { Users, Search, Edit2, Shield, AlertTriangle, Save, X, Building2, MapPin, Plus, HardHat } from 'lucide-react';
 
 const ProfileManager: React.FC = () => {
     const { profile } = useAuth();
@@ -15,6 +15,13 @@ const ProfileManager: React.FC = () => {
 
     const [editingUser, setEditingUser] = useState<UserProfileDoc | null>(null);
     const [saving, setSaving] = useState(false);
+
+    // Manual Add State
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [newUserUid, setNewUserUid] = useState('');
+    const [newUserEmail, setNewUserEmail] = useState('');
+    const [newUserName, setNewUserName] = useState('');
+    const [creatingUser, setCreatingUser] = useState(false);
 
     useEffect(() => {
         loadUsers();
@@ -67,9 +74,15 @@ const ProfileManager: React.FC = () => {
                 scope: editingUser.modules.human_capital.scope
             } : undefined;
 
+            const construction = editingUser.modules.construction ? {
+                enabled: editingUser.modules.construction.enabled,
+                role: editingUser.modules.construction.role
+            } : undefined;
+
             await updateUserRoles(editingUser.uid, {
                 commercial,
-                human_capital: hc
+                human_capital: hc,
+                construction
             });
 
             // Update local state
@@ -84,7 +97,28 @@ const ProfileManager: React.FC = () => {
         }
     };
 
-    if (loading) return <div className="p-10 flex justifying-center"><div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div></div>;
+    const handleCreateUser = async () => {
+        if (!newUserUid || !newUserEmail || !newUserName) {
+            alert("Preencha todos os campos.");
+            return;
+        }
+        setCreatingUser(true);
+        try {
+            await createUserProfile(newUserUid, newUserEmail, newUserName);
+            alert("Usuário criado com sucesso!");
+            setIsAddModalOpen(false);
+            setNewUserUid('');
+            setNewUserEmail('');
+            setNewUserName('');
+            loadUsers(); // Refresh list
+        } catch (error: any) {
+            alert("Erro ao criar usuário: " + error.message);
+        } finally {
+            setCreatingUser(false);
+        }
+    };
+
+    if (loading) return <div className="p-10 flex check-center"><div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div></div>;
 
     // Check access (Extra safety, though parent should handle)
     const canManage = profile?.isSuperAdmin || profile?.modules.human_capital?.role === 'HC_ADMIN';
@@ -99,15 +133,23 @@ const ProfileManager: React.FC = () => {
                     </h2>
                     <p className="text-sm text-gray-500">Gerencie permissões e escopos dos usuários</p>
                 </div>
-                <div className="relative w-full md:w-auto">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                    <input
-                        type="text"
-                        placeholder="Buscar usuário..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10 pr-4 py-2 border rounded-xl w-full md:w-64 focus:ring-2 focus:ring-blue-500 outline-none"
-                    />
+                <div className="flex gap-2 w-full md:w-auto">
+                    <div className="relative flex-1 md:w-auto">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Buscar usuário..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="pl-10 pr-4 py-2 border rounded-xl w-full md:w-64 focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                    </div>
+                    <button
+                        onClick={() => setIsAddModalOpen(true)}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors"
+                    >
+                        <Plus size={16} /> Adicionar
+                    </button>
                 </div>
             </div>
 
@@ -118,6 +160,7 @@ const ProfileManager: React.FC = () => {
                             <th className="px-6 py-4">Usuário</th>
                             <th className="px-6 py-4">Comercial</th>
                             <th className="px-6 py-4">Capital Humano</th>
+                            <th className="px-6 py-4">Obras</th>
                             <th className="px-6 py-4 text-center">Ações</th>
                         </tr>
                     </thead>
@@ -157,6 +200,15 @@ const ProfileManager: React.FC = () => {
                                         <span className="text-gray-400 text-xs italic">Desativado</span>
                                     )}
                                 </td>
+                                <td className="px-6 py-4">
+                                    {user.modules.construction?.enabled ? (
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 text-xs font-bold border border-amber-100">
+                                            <HardHat size={12} /> {user.modules.construction.role.replace('CONSTRUCTION_', '')}
+                                        </span>
+                                    ) : (
+                                        <span className="text-gray-400 text-xs italic">Desativado</span>
+                                    )}
+                                </td>
                                 <td className="px-6 py-4 text-center">
                                     <button onClick={() => handleEdit(user)} className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-blue-600 transition-colors">
                                         <Edit2 size={16} />
@@ -167,6 +219,60 @@ const ProfileManager: React.FC = () => {
                     </tbody>
                 </table>
             </div>
+
+            {/* Manual Add User Modal */}
+            {isAddModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                        <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
+                            <h3 className="font-bold text-lg text-gray-800">Adicionar Usuário Manualmente</h3>
+                            <button onClick={() => setIsAddModalOpen(false)} className="p-2 hover:bg-gray-200 rounded-full"><X size={20} /></button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg text-xs text-blue-700 mb-4">
+                                <p>Use esta função para adicionar usuários que já foram criados no Firebase Authentication mas ainda não fizeram o primeiro login.</p>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-gray-500 mb-1">UID (Firebase Auth)</label>
+                                <input
+                                    type="text"
+                                    value={newUserUid}
+                                    onChange={(e) => setNewUserUid(e.target.value)}
+                                    className="w-full p-2 border rounded-lg text-sm"
+                                    placeholder="Ex: abc123def456..."
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-gray-500 mb-1">E-mail</label>
+                                <input
+                                    type="email"
+                                    value={newUserEmail}
+                                    onChange={(e) => setNewUserEmail(e.target.value)}
+                                    className="w-full p-2 border rounded-lg text-sm"
+                                    placeholder="usuario@grupodr.com.br"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Nome</label>
+                                <input
+                                    type="text"
+                                    value={newUserName}
+                                    onChange={(e) => setNewUserName(e.target.value)}
+                                    className="w-full p-2 border rounded-lg text-sm"
+                                    placeholder="Nome Completo"
+                                />
+                            </div>
+                        </div>
+                        <div className="p-4 bg-gray-100 flex justify-end gap-3">
+                            <button onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 text-sm font-bold text-gray-500 hover:text-gray-700">Cancelar</button>
+                            <button onClick={handleCreateUser} disabled={creatingUser} className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold shadow-lg hover:bg-emerald-700 transition-all flex items-center gap-2">
+                                {creatingUser ? <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : <Plus size={16} />}
+                                Adicionar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Edit Modal */}
             {editingUser && (
@@ -218,6 +324,53 @@ const ProfileManager: React.FC = () => {
                                             <option value="COMMERCIAL_VIEWER">Visualizador</option>
                                             <option value="COMMERCIAL_ADMIN">Administrador Comercial</option>
                                             <option value="IAM_ADMIN">Administrador IAM</option>
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
+
+                            <hr className="border-gray-100" />
+
+                            {/* Construction Module */}
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="font-bold text-gray-700 flex items-center gap-2"><HardHat size={16} /> Módulo de Obras</h4>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={editingUser.modules.construction?.enabled ?? false}
+                                            onChange={(e) => {
+                                                const enabled = e.target.checked;
+                                                setEditingUser({
+                                                    ...editingUser,
+                                                    modules: {
+                                                        ...editingUser.modules,
+                                                        construction: {
+                                                            enabled,
+                                                            role: enabled ? (editingUser.modules.construction?.role || 'CONSTRUCTION_VIEWER') : (editingUser.modules.construction?.role || 'CONSTRUCTION_VIEWER')
+                                                        }
+                                                    }
+                                                });
+                                            }}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                                    </label>
+                                </div>
+                                {editingUser.modules.construction?.enabled && (
+                                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                        <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Função</label>
+                                        <select
+                                            value={editingUser.modules.construction.role}
+                                            onChange={(e) => setEditingUser({
+                                                ...editingUser,
+                                                modules: { ...editingUser.modules, construction: { ...editingUser.modules.construction!, role: e.target.value as ConstructionRole } }
+                                            })}
+                                            className="w-full p-2 border rounded-lg text-sm"
+                                        >
+                                            <option value="CONSTRUCTION_VIEWER">Visualizador (Apenas Leitura)</option>
+                                            <option value="CONSTRUCTION_MANAGER">Gerente (Operacional)</option>
+                                            <option value="CONSTRUCTION_ADMIN">Administrador (Acesso Total)</option>
                                         </select>
                                     </div>
                                 )}

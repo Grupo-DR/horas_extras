@@ -13,6 +13,11 @@ export type HCRole =
     | 'HC_COSTCENTER_PLANNER' // Type 03: CostCenter + Plan
     | 'HC_AUDITOR_VIEWER';    // Type 04: All + Read Only
 
+export type ConstructionRole =
+    | 'CONSTRUCTION_ADMIN'
+    | 'CONSTRUCTION_MANAGER'
+    | 'CONSTRUCTION_VIEWER';
+
 export interface ModuleAccess<R> {
     enabled: boolean;
     role: R;
@@ -38,6 +43,10 @@ export interface UserProfileDoc {
             enabled: boolean;
             role: HCRole;
             scope: Scope;
+        };
+        construction?: {
+            enabled: boolean;
+            role: ConstructionRole;
         };
     };
 
