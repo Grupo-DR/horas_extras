@@ -2,13 +2,13 @@
 import React, { useMemo, useState } from 'react';
 import {
   Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  Line, ComposedChart, Legend, Cell, LabelList, Scatter
+  Line, ComposedChart, Legend, Cell, LabelList, Scatter, ReferenceLine
 } from 'recharts';
 import { ConstructionRecord, ServicePrice, PlanningAssignment } from '../types';
 import {
   Truck, BarChart3, AlertTriangle,
   MapPin, X, ChevronRight, Target, Zap, Activity, Filter,
-  TrendingUp, ArrowDownRight, ClipboardCheck, Calendar
+  TrendingUp, ArrowDownRight, ClipboardCheck, Calendar, DollarSign
 } from 'lucide-react';
 import {
   calculateRecordFinancials, formatCurrency, formatCurrencyWithZero,
@@ -16,6 +16,7 @@ import {
   getPeriodInfo, getProductivityStatus, getUnifiedServiceInfo, getCycleKey, getPeriodFromCycle
 } from '../utils/calculations';
 import { CustomDailyTooltip, CategoryDetailModal, DayDetailModal } from './DashboardComponents';
+import budgetData from '../data/budgets.json';
 
 interface DashboardProps {
   data: ConstructionRecord[];
@@ -131,6 +132,22 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
         equipments: byDateEquipments[d] || [],
         ts: new Date(d.split('/')[2] + '-' + d.split('/')[1] + '-' + d.split('/')[0]).getTime()
       })).sort((a, b) => a.ts - b.ts);
+
+    // Calculate budget for current cycle
+    const cycleEndDate = end;
+    const budgetMonth = cycleEndDate.getMonth() + 2; // +1 for next month, +1 because getMonth() is 0-indexed
+    const budgetYear = budgetMonth > 12 ? cycleEndDate.getFullYear() + 1 : cycleEndDate.getFullYear();
+    const normalizedBudgetMonth = budgetMonth > 12 ? 1 : budgetMonth;
+
+    const monthBudgets = budgetData.budgets.filter(
+      b => b.month === normalizedBudgetMonth && b.year === budgetYear
+    );
+
+    const totalBudget = monthBudgets.reduce((sum, b) => sum + b.value, 0);
+
+    // Calculate daily budget (budget divided by number of days in period)
+    const periodDays = chartData.length;
+    const dailyBudget = periodDays > 0 ? totalBudget / periodDays : 0;
 
     const paretoCategory = Object.entries(byCategoryReal)
       .sort((a, b) => b[1] - a[1])
@@ -283,7 +300,8 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
 
     return {
       realTotal, realProdutivo, realImprodutivo, planejadoTotal, period, chartData,
-      paretoCategory, idleTrechoTable, paretoRevenue, paretoIdle, equipmentComparison, idleComparison
+      paretoCategory, idleTrechoTable, paretoRevenue, paretoIdle, equipmentComparison, idleComparison,
+      totalBudget, dailyBudget
     };
   }, [data, selectedCycle, servicePrices, assignments]);
 
@@ -316,7 +334,17 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        {/* Budget Card - FIRST */}
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-3xl shadow-lg border border-blue-400 text-white">
+          <p className="text-[10px] font-black uppercase tracking-widest opacity-90">Budget do Ciclo</p>
+          <p className="text-2xl font-black mt-1">{formatCurrencyWithZero(stats.totalBudget)}</p>
+          <div className="mt-4">
+            <p className="text-[8px] font-bold uppercase opacity-75">Diário Médio</p>
+            <p className="text-[10px] font-black opacity-90">{formatCurrencyWithZero(stats.dailyBudget)}</p>
+          </div>
+        </div>
+
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Realizado no Ciclo</p>
           <p className="text-2xl font-black text-indigo-600 mt-1">{formatCurrencyWithZero(stats.realTotal)}</p>
@@ -358,6 +386,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
               <Legend />
               <Bar dataKey="plan" name="Planejado" fill="#cbd5e1" radius={[4, 4, 0, 0]} />
               <Line dataKey="real" name="Realizado" stroke="#6366f1" strokeWidth={3} dot={{ r: 4, fill: '#6366f1' }} />
+              <ReferenceLine y={stats.dailyBudget} stroke="#3b82f6" strokeDasharray="5 5" strokeWidth={2} label={{ value: 'Budget Diário', position: 'insideTopRight', fill: '#3b82f6', fontSize: 10, fontWeight: 'bold' }} />
               <Scatter
                 dataKey="real"
                 fill="#6366f1"
