@@ -98,11 +98,23 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
       byDatePlan[formatted] = (byDatePlan[formatted] || 0) + totalA;
     });
 
-    // Preparar dados detalhados por data para tooltip
+    // Preparar dados detalhados por data incluindo registros completos
     const byDateEquipments: Record<string, { frota: string; value: number; planned: number }[]> = {};
+    const byDateRecords: Record<string, any[]> = {}; // Armazena registros completos por data
 
     filteredRecords.forEach((curr) => {
       const financials = calculateRecordFinancials(curr, servicePrices);
+      const geo = getTrechoInfo(curr.trechoFinal);
+
+      // Armazenar registro completo com informações financeiras e geográficas
+      if (!byDateRecords[curr.data]) byDateRecords[curr.data] = [];
+      byDateRecords[curr.data].push({
+        ...curr,
+        financials,
+        geo
+      });
+
+      // Agregação por equipamento (para compatibilidade)
       if (!byDateEquipments[curr.data]) byDateEquipments[curr.data] = [];
       const existing = byDateEquipments[curr.data].find(e => e.frota === curr.frota);
       if (existing) {
@@ -130,6 +142,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
         real: byDateReal[d] || 0,
         plan: byDatePlan[d] || 0,
         equipments: byDateEquipments[d] || [],
+        records: byDateRecords[d] || [], // Adiciona registros completos
         ts: new Date(d.split('/')[2] + '-' + d.split('/')[1] + '-' + d.split('/')[0]).getTime()
       })).sort((a, b) => a.ts - b.ts);
 
