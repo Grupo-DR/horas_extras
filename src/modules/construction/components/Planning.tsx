@@ -161,99 +161,101 @@ const Planning: React.FC<PlanningProps> = ({
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-200px)]">
-      {/* Barra Lateral: Equipamentos Disponíveis */}
-      <div className="w-full lg:w-56 bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-slate-100 bg-slate-50/50">
-          <h3 className="font-black text-slate-800 flex items-center gap-2 uppercase text-xs tracking-widest">
-            <Truck className="w-4 h-4 text-amber-500" /> Equipamentos
-          </h3>
-          <p className="text-[10px] text-slate-400 mt-1 font-bold uppercase">Arraste p/ calendário</p>
+    <div className="flex flex-col gap-4 h-[calc(100vh-120px)]">
+      {/* Cycle Header - Top of Screen */}
+      <div className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+        <div className="flex items-center gap-4">
+          <h2 className="text-lg font-black text-slate-800 uppercase tracking-tighter flex items-center gap-2">
+            <CalendarIcon className="w-5 h-5 text-indigo-500" /> Ciclo Operacional: {monthLabel}
+          </h2>
+          <div className="text-[10px] bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-black uppercase tracking-widest">
+            {period.start.toLocaleDateString('pt-BR')} à {period.end.toLocaleDateString('pt-BR')}
+          </div>
         </div>
-        <div className="flex-1 overflow-y-auto p-3 space-y-2">
-          {availableEquipment.map(equip => (
-            <div
-              key={equip.id}
-              draggable
-              onDragStart={() => onDragStart(equip.id)}
-              className="p-2.5 bg-white border border-slate-100 rounded-xl cursor-grab active:cursor-grabbing hover:border-amber-300 hover:shadow-md transition-all group flex items-center justify-between"
-            >
-              <div className="flex items-center gap-2">
-                <GripVertical className="w-3 h-3 text-slate-300 group-hover:text-amber-400" />
-                <div>
-                  <div className="text-xs font-black text-slate-800">{equip.id}</div>
-                  <div className="text-[9px] text-slate-400 font-bold uppercase">{equip.category}</div>
-                </div>
-              </div>
-            </div>
-          ))}
+        <div className="flex gap-2">
+          <button onClick={handlePrevMonth} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400"><ChevronLeft className="w-5 h-5" /></button>
+          <button onClick={handleNextMonth} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400"><ChevronRight className="w-5 h-5" /></button>
         </div>
       </div>
 
-      {/* Calendário de Período 21 a 20 */}
-      <div className="flex-1 flex flex-col gap-4">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-3 gap-4">
-          {/* Total Planejado */}
-          <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl shadow-sm p-4 text-white">
-            <div className="flex items-center justify-between mb-2">
-              <div className="bg-white/20 p-2 rounded-xl">
-                <TrendingUp className="w-5 h-5" />
-              </div>
-              <span className="text-xs font-black uppercase tracking-wider opacity-90">Total</span>
+      {/* Summary Cards */}
+      <div className="grid grid-cols-3 gap-4">
+        {/* Total Planejado */}
+        <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl shadow-sm p-4 text-white">
+          <div className="flex items-center justify-between mb-2">
+            <div className="bg-white/20 p-2 rounded-xl">
+              <TrendingUp className="w-5 h-5" />
             </div>
-            <div className="text-2xl font-black font-mono">{formatCurrencyWithZero(planningMetrics.totalPlanned)}</div>
-            <div className="text-[10px] font-bold uppercase tracking-widest opacity-75 mt-1">Planejado</div>
+            <span className="text-xs font-black uppercase tracking-wider opacity-90">Total</span>
           </div>
-
-          {/* Produtivo Planejado */}
-          <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl shadow-sm p-4 text-white">
-            <div className="flex items-center justify-between mb-2">
-              <div className="bg-white/20 p-2 rounded-xl">
-                <Activity className="w-5 h-5" />
-              </div>
-              <span className="text-xs font-black uppercase tracking-wider opacity-90">Produtivo</span>
-            </div>
-            <div className="text-2xl font-black font-mono">{formatCurrencyWithZero(planningMetrics.productivePlanned)}</div>
-            <div className="text-[10px] font-bold uppercase tracking-widest opacity-75 mt-1">Planejado</div>
-          </div>
-
-          {/* Improdutivo Planejado */}
-          <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl shadow-sm p-4 text-white">
-            <div className="flex items-center justify-between mb-2">
-              <div className="bg-white/20 p-2 rounded-xl">
-                <AlertCircle className="w-5 h-5" />
-              </div>
-              <span className="text-xs font-black uppercase tracking-wider opacity-90">Improdutivo</span>
-            </div>
-            <div className="text-2xl font-black font-mono">{formatCurrencyWithZero(planningMetrics.unproductivePlanned)}</div>
-            <div className="text-[10px] font-bold uppercase tracking-widest opacity-75 mt-1">Planejado</div>
-          </div>
+          <div className="text-2xl font-black font-mono">{formatCurrencyWithZero(planningMetrics.totalPlanned)}</div>
+          <div className="text-[10px] font-bold uppercase tracking-widest opacity-75 mt-1">Planejado</div>
         </div>
 
-        {/* Calendar Header */}
-        <div className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-          <div className="flex items-center gap-4">
-            <h2 className="text-lg font-black text-slate-800 uppercase tracking-tighter flex items-center gap-2">
-              <CalendarIcon className="w-5 h-5 text-indigo-500" /> Ciclo Operacional: {monthLabel}
-            </h2>
-            <div className="text-[10px] bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-black uppercase tracking-widest">
-              {period.start.toLocaleDateString('pt-BR')} à {period.end.toLocaleDateString('pt-BR')}
+        {/* Produtivo Planejado */}
+        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl shadow-sm p-4 text-white">
+          <div className="flex items-center justify-between mb-2">
+            <div className="bg-white/20 p-2 rounded-xl">
+              <Activity className="w-5 h-5" />
             </div>
+            <span className="text-xs font-black uppercase tracking-wider opacity-90">Produtivo</span>
           </div>
-          <div className="flex gap-2">
-            <button onClick={handlePrevMonth} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400"><ChevronLeft className="w-5 h-5" /></button>
-            <button onClick={handleNextMonth} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400"><ChevronRight className="w-5 h-5" /></button>
-          </div>
+          <div className="text-2xl font-black font-mono">{formatCurrencyWithZero(planningMetrics.productivePlanned)}</div>
+          <div className="text-[10px] font-bold uppercase tracking-widest opacity-75 mt-1">Planejado</div>
         </div>
 
-        <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
-          <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-100">
-            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
-              <div key={d} className="py-3 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">{d}</div>
+        {/* Improdutivo Planejado */}
+        <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl shadow-sm p-4 text-white">
+          <div className="flex items-center justify-between mb-2">
+            <div className="bg-white/20 p-2 rounded-xl">
+              <AlertCircle className="w-5 h-5" />
+            </div>
+            <span className="text-xs font-black uppercase tracking-wider opacity-90">Improdutivo</span>
+          </div>
+          <div className="text-2xl font-black font-mono">{formatCurrencyWithZero(planningMetrics.unproductivePlanned)}</div>
+          <div className="text-[10px] font-bold uppercase tracking-widest opacity-75 mt-1">Planejado</div>
+        </div>
+      </div>
+
+      {/* Main Content: Equipment Sidebar + Calendar */}
+      <div className="flex flex-col lg:flex-row gap-4 flex-1 overflow-hidden">
+        {/* Barra Lateral: Equipamentos Disponíveis */}
+        <div className="w-full lg:w-56 bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden">
+          <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+            <h3 className="font-black text-slate-800 flex items-center gap-2 uppercase text-xs tracking-widest">
+              <Truck className="w-4 h-4 text-amber-500" /> Equipamentos
+            </h3>
+            <p className="text-[10px] text-slate-400 mt-1 font-bold uppercase">Arraste p/ calendário</p>
+          </div>
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            {availableEquipment.map(equip => (
+              <div
+                key={equip.id}
+                draggable
+                onDragStart={() => onDragStart(equip.id)}
+                className="p-2.5 bg-white border border-slate-100 rounded-xl cursor-grab active:cursor-grabbing hover:border-amber-300 hover:shadow-md transition-all group flex items-center justify-between"
+              >
+                <div className="flex items-center gap-2">
+                  <GripVertical className="w-3 h-3 text-slate-300 group-hover:text-amber-400" />
+                  <div>
+                    <div className="text-xs font-black text-slate-800">{equip.id}</div>
+                    <div className="text-[9px] text-slate-400 font-bold uppercase">{equip.category}</div>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
-          <div className="grid grid-cols-7 flex-1">
+        </div>
+
+        {/* Calendário de Período Completo 21 a 20 */}
+        <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+
+          <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-100">
+            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
+              <div key={d} className="py-2 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">{d}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 flex-1 overflow-y-auto">
             {calendarDays.map((day, idx) => {
               if (!day) return <div key={`empty-${idx}`} className="border-b border-r border-slate-50 bg-slate-50/20" />;
 
@@ -267,27 +269,30 @@ const Planning: React.FC<PlanningProps> = ({
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={() => onDrop(day)}
                   onClick={() => setSelectedDay(day)}
-                  className={`border-b border-r border-slate-100 p-2 min-h-[100px] transition-all cursor-pointer relative group
+                  className={`border-b border-r border-slate-100 p-1.5 min-h-[80px] transition-all cursor-pointer relative group
                     ${selectedDay === day ? 'bg-indigo-50/50 ring-2 ring-inset ring-indigo-500/20' : 'hover:bg-slate-50/80'}
                     ${isToday ? 'bg-amber-50/30' : ''}
                   `}
                 >
                   <div className="flex justify-between items-start">
-                    <span className={`text-[11px] font-black ${dayAssignments.length > 0 ? 'text-indigo-600' : 'text-slate-400'}`}>
+                    <span className={`text-[10px] font-black ${dayAssignments.length > 0 ? 'text-indigo-600' : 'text-slate-400'}`}>
                       {parseInt(day.split('-')[2])}/{parseInt(day.split('-')[1])}
                     </span>
                     {dayTotal > 0 && (
-                      <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 px-1 rounded">
+                      <span className="text-[7px] font-black text-emerald-600 bg-emerald-50 px-1 rounded">
                         {formatCurrencyWithZero(dayTotal)}
                       </span>
                     )}
                   </div>
-                  <div className="mt-2 space-y-1">
-                    {dayAssignments.slice(0, 3).map(a => (
-                      <div key={a.id} className="text-[8px] font-black bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded truncate uppercase flex justify-between">
+                  <div className="mt-1 space-y-0.5">
+                    {dayAssignments.slice(0, 2).map(a => (
+                      <div key={a.id} className="text-[7px] font-black bg-indigo-100 text-indigo-700 px-1 py-0.5 rounded truncate uppercase">
                         <span>{a.frota}</span>
                       </div>
                     ))}
+                    {dayAssignments.length > 2 && (
+                      <div className="text-[7px] font-bold text-slate-400 px-1">+{dayAssignments.length - 2}</div>
+                    )}
                   </div>
                 </div>
               );
