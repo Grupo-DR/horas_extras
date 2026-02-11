@@ -26,6 +26,7 @@ import { AccountSettings } from './pages/config/AccountSettings';
 // Note: HumanCapitalDashboard is in src/modules/human-capital because index.tsx is in root
 import HumanCapitalDashboard from './src/modules/human-capital/HumanCapitalDashboard';
 import ConstructionDashboard from './src/modules/construction/ConstructionDashboard';
+import ProfileManager from './src/modules/iam/components/ProfileManager';
 
 const App = () => {
   return (
@@ -43,6 +44,7 @@ const App = () => {
           <Route path="/actions" element={<ActionsView />} />
           <Route path="/config/team" element={<TeamSettings />} />
           <Route path="/config/account" element={<AccountSettings />} />
+          <Route path="/users" element={<ProfileManager />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

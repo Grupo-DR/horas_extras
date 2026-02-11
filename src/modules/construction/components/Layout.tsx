@@ -2,11 +2,13 @@
 import React from 'react';
 import {
   LayoutDashboard, Table, UploadCloud, HardHat,
-  Coins, CalendarRange, Download, Trash2, Cloud, LogOut, History
+  Coins, CalendarRange, Download, Trash2, Cloud, LogOut, History, Users
 } from 'lucide-react';
 import { ViewType } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../contexts/AuthContext';
+import { ModuleSwitcher } from '../../../components/ModuleSwitcher';
+import { canManageProfiles } from '../../iam/types';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -21,7 +23,8 @@ const Layout: React.FC<LayoutProps> = ({
   children, activeView, setView, hasData, onExportBackup, onClearData
 }) => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth(); // Need user to check permissions
+  const [isSwitcherOpen, setIsSwitcherOpen] = React.useState(false);
 
   const handleLogout = () => {
     logout();
@@ -29,6 +32,7 @@ const Layout: React.FC<LayoutProps> = ({
   };
   return (
     <div className="flex h-screen overflow-hidden">
+      <ModuleSwitcher isOpen={isSwitcherOpen} onClose={() => setIsSwitcherOpen(false)} />
       {/* Sidebar */}
       <aside className="w-64 bg-slate-900 text-white flex flex-col shrink-0">
         <div className="p-6 flex items-center gap-3">
@@ -88,33 +92,36 @@ const Layout: React.FC<LayoutProps> = ({
             <UploadCloud className="w-5 h-5" />
             <span>Importar Dados</span>
           </button>
+
+          {user && canManageProfiles(user.role as any) && (
+            <button
+              onClick={() => setView('iam')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeView === 'iam' ? 'bg-amber-500 text-slate-900 font-semibold' : 'hover:bg-slate-800 text-slate-400'
+                }`}
+            >
+              <Users className="w-5 h-5" />
+              <span>Gestão de Usuários</span>
+            </button>
+          )}
+
         </nav>
 
         {/* Persistence Actions */}
-        <div className="p-4 border-t border-slate-800 space-y-2">
-          {/* ... existing buttons ... */}
 
+        <div className="p-4 border-t border-slate-800 space-y-2">
 
           <button
-            onClick={onExportBackup}
+            onClick={() => setIsSwitcherOpen(true)}
             className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors"
           >
-            <Download className="w-3 h-3" /> Backup Local
+            <LogOut className="w-3 h-3" /> Trocar Módulo
           </button>
-          <button
-            onClick={onClearData}
-            className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-red-400 hover:text-red-300 transition-colors"
-          >
-            <Trash2 className="w-3 h-3" /> Limpar Sistema
-          </button>
-
-          <div className="h-px bg-slate-800 my-2" />
 
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-red-500 hover:text-red-300 transition-colors"
           >
-            <LogOut className="w-3 h-3" /> Sair / Trocar Módulo
+            <LogOut className="w-3 h-3" /> Sair
           </button>
         </div>
       </aside>
@@ -126,7 +133,8 @@ const Layout: React.FC<LayoutProps> = ({
             {activeView === 'upload' ? 'Importação de Dados' :
               activeView === 'dashboard' ? 'Painel de Indicadores' :
                 activeView === 'services' ? 'Tabela de Preços SAP' :
-                  activeView === 'planning' ? 'Planejamento de Frota' : 'Tabela de Operações'}
+                  activeView === 'planning' ? 'Planejamento de Frota' :
+                    activeView === 'iam' ? 'Gestão de Usuários' : 'Tabela de Operações'}
           </h1>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full">
@@ -148,7 +156,7 @@ const Layout: React.FC<LayoutProps> = ({
           {children}
         </div>
       </main>
-    </div>
+    </div >
   );
 };
 

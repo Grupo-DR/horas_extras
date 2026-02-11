@@ -11,6 +11,7 @@ import { UploadHistory } from './components/UploadHistory';
 import { DEFAULT_SERVICE_PRICES } from './utils/constants';
 import { constructionService } from './services/firestore';
 import { Loader2 } from 'lucide-react';
+import ProfileManager from '../iam/components/ProfileManager';
 
 const App: React.FC = () => {
   const STORAGE_KEYS = {
@@ -190,6 +191,7 @@ const App: React.FC = () => {
       )}
       {view === 'table' && <DataTable data={data} servicePrices={servicePrices} />}
       {view === 'history' && <UploadHistory workId="OBRA-01" />}
+      {view === 'iam' && <ProfileManager />}
     </Layout>
   );
 };

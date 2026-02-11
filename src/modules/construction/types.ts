@@ -66,6 +66,6 @@ export interface LocationInfo {
   supervisao: string;
 }
 
-export type ViewType = 'dashboard' | 'table' | 'upload' | 'services' | 'planning' | 'history';
+export type ViewType = 'dashboard' | 'table' | 'upload' | 'services' | 'planning' | 'history' | 'iam';
 
 

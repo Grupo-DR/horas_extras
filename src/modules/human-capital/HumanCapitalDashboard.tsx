@@ -262,7 +262,7 @@ const HumanCapitalDashboard: React.FC = () => {
       { key: Tab.DATA, label: "Histórico", icon: Table, onClick: () => setActiveTab(Tab.DATA), isActive: activeTab === Tab.DATA },
     ];
     if (canPlan(effectiveUser.role)) items.push({ key: Tab.PLANNING, label: "Planejamento", icon: CalendarRange, onClick: () => setActiveTab(Tab.PLANNING), isActive: activeTab === Tab.PLANNING });
-    if (canManageProfiles(effectiveUser.role)) items.push({ key: Tab.PROFILES, label: "Gestão de Perfis", icon: UserCog, onClick: () => setActiveTab(Tab.PROFILES), isActive: activeTab === Tab.PROFILES });
+    if (canManageProfiles(effectiveUser.role)) items.push({ key: Tab.PROFILES, label: "Gestão de Usuários", icon: UserCog, onClick: () => setActiveTab(Tab.PROFILES), isActive: activeTab === Tab.PROFILES });
     items.push({ key: Tab.SETTINGS, label: "Configurações", icon: Settings, onClick: () => setActiveTab(Tab.SETTINGS), isActive: activeTab === Tab.SETTINGS });
     return items;
   }, [effectiveUser, activeTab]);
