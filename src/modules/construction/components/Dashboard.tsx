@@ -94,11 +94,22 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
     });
 
     // Filtrar planejamentos do ciclo
-    const filteredAssignments = assignments.filter(a => {
+    let filteredAssignments = assignments.filter(a => {
       const parts = a.date.split('-');
       const formatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
       return getCycleKey(formatted) === selectedCycle;
     });
+
+    // Aplicar filtro de tipo de equipamento aos planejamentos
+    if (selectedEquipmentType) {
+      filteredAssignments = filteredAssignments.filter(a => getEquipmentCategory(a.frota) === selectedEquipmentType);
+    }
+
+    // Aplicar filtro de equipamento específico aos planejamentos
+    if (selectedEquipment) {
+      filteredAssignments = filteredAssignments.filter(a => a.frota === selectedEquipment);
+    }
+
 
     let planejadoTotal = 0;
     const byDatePlan: Record<string, number> = {};
