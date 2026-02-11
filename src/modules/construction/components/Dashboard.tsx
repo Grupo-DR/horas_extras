@@ -36,13 +36,25 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
   const [selectedCategoryDetail, setSelectedCategoryDetail] = useState<any>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [selectedDayDetail, setSelectedDayDetail] = useState<any>(null);
+  const [selectedEquipmentType, setSelectedEquipmentType] = useState<string>('');
+  const [selectedEquipment, setSelectedEquipment] = useState<string>('');
 
 
   const stats = useMemo(() => {
     if (!selectedCycle && availableCycles.length > 0) return null;
 
     // Filtrar dados pelo ciclo selecionado
-    const filteredRecords = data.filter(r => getCycleKey(r.data) === selectedCycle);
+    let filteredRecords = data.filter(r => getCycleKey(r.data) === selectedCycle);
+
+    // Aplicar filtro de tipo de equipamento
+    if (selectedEquipmentType) {
+      filteredRecords = filteredRecords.filter(r => getEquipmentCategory(r.frota) === selectedEquipmentType);
+    }
+
+    // Aplicar filtro de equipamento específico
+    if (selectedEquipment) {
+      filteredRecords = filteredRecords.filter(r => r.frota === selectedEquipment);
+    }
 
     // Obter datas do ciclo (Ex: se ciclo é 05-2024, periodo é 21/04 a 20/05)
     // Usando a função canônica para garantir regra 21-20
@@ -316,7 +328,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
       paretoCategory, idleTrechoTable, paretoRevenue, paretoIdle, equipmentComparison, idleComparison,
       totalBudget, dailyBudget
     };
-  }, [data, selectedCycle, servicePrices, assignments]);
+  }, [data, selectedCycle, servicePrices, assignments, selectedEquipmentType, selectedEquipment]);
 
   if (!stats) return (
     <div className="flex flex-col items-center justify-center py-20 text-slate-400">
@@ -342,6 +354,39 @@ const Dashboard: React.FC<DashboardProps> = ({ data, servicePrices, assignments 
         >
           {availableCycles.map(c => (
             <option key={c} value={c}>Ciclo {c.split('-')[0]}/{c.split('-')[1]}</option>
+          ))}
+        </select>
+
+        {/* Equipment Type Filter */}
+        <select
+          value={selectedEquipmentType}
+          onChange={(e) => {
+            setSelectedEquipmentType(e.target.value);
+            setSelectedEquipment(''); // Reset specific equipment when type changes
+          }}
+          className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-black text-slate-700 outline-none focus:ring-2 focus:ring-amber-500/20"
+        >
+          <option value="">Todos os Tipos</option>
+          {Array.from(new Set(data.filter(r => getCycleKey(r.data) === selectedCycle).map(r => getEquipmentCategory(r.frota)))).sort().map(type => (
+            <option key={type} value={type}>{type}</option>
+          ))}
+        </select>
+
+        {/* Specific Equipment Filter */}
+        <select
+          value={selectedEquipment}
+          onChange={(e) => setSelectedEquipment(e.target.value)}
+          className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-black text-slate-700 outline-none focus:ring-2 focus:ring-amber-500/20"
+          disabled={!selectedEquipmentType && data.filter(r => getCycleKey(r.data) === selectedCycle).length > 50}
+        >
+          <option value="">Todos os Equipamentos</option>
+          {Array.from(new Set(
+            data
+              .filter(r => getCycleKey(r.data) === selectedCycle)
+              .filter(r => !selectedEquipmentType || getEquipmentCategory(r.frota) === selectedEquipmentType)
+              .map(r => r.frota)
+          )).sort().map(frota => (
+            <option key={frota} value={frota}>{frota}</option>
           ))}
         </select>
       </div>
