@@ -16,7 +16,12 @@ const EquipmentManager: React.FC = () => {
         type: '',
         startDate: '',
         endDate: '',
-        active: true
+        active: true,
+        ownership: 'RENTED',
+        rentalValue: 0,
+        depreciationValue: 0,
+        laborValue: 0,
+        fuelCost: 0
     });
 
     const equipmentTypes = Object.values(EQUIPMENT_CATEGORIES);
@@ -40,7 +45,14 @@ const EquipmentManager: React.FC = () => {
     const handleOpenModal = (equipment?: Equipment) => {
         if (equipment) {
             setEditingEquipment(equipment);
-            setFormData(equipment);
+            setFormData({
+                ...equipment,
+                ownership: equipment.ownership || 'RENTED',
+                rentalValue: equipment.rentalValue || 0,
+                depreciationValue: equipment.depreciationValue || 0,
+                laborValue: equipment.laborValue || 0,
+                fuelCost: equipment.fuelCost || 0
+            });
         } else {
             setEditingEquipment(null);
             setFormData({
@@ -48,7 +60,12 @@ const EquipmentManager: React.FC = () => {
                 type: '',
                 startDate: new Date().toISOString().split('T')[0],
                 endDate: '',
-                active: true
+                active: true,
+                ownership: 'RENTED',
+                rentalValue: 0,
+                depreciationValue: 0,
+                laborValue: 0,
+                fuelCost: 0
             });
         }
         setIsModalOpen(true);
@@ -243,6 +260,89 @@ const EquipmentManager: React.FC = () => {
                                         value={formData.endDate}
                                         onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                                     />
+                                </div>
+                            </div>
+
+                            {/* Ownership & Costs */}
+                            <div className="space-y-4 pt-4 border-t border-slate-100">
+                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider">Custos & Propriedade</h4>
+
+                                <div>
+                                    <label className="block text-xs font-black text-slate-500 uppercase mb-2">Propriedade</label>
+                                    <div className="flex bg-slate-100 p-1 rounded-xl">
+                                        <button
+                                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${formData.ownership === 'RENTED' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                            onClick={() => setFormData({ ...formData, ownership: 'RENTED' })}
+                                        >
+                                            Locado
+                                        </button>
+                                        <button
+                                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${formData.ownership === 'OWNED' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                            onClick={() => setFormData({ ...formData, ownership: 'OWNED' })}
+                                        >
+                                            Próprio
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    {formData.ownership === 'RENTED' ? (
+                                        <div>
+                                            <label className="block text-xs font-black text-slate-500 uppercase mb-1">Valor Aluguel (Mensal)</label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">R$</span>
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                                                    value={formData.rentalValue || ''}
+                                                    onChange={(e) => setFormData({ ...formData, rentalValue: parseFloat(e.target.value) || 0 })}
+                                                />
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <label className="block text-xs font-black text-slate-500 uppercase mb-1">Depreciação (Mensal)</label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">R$</span>
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                                                    value={formData.depreciationValue || ''}
+                                                    onChange={(e) => setFormData({ ...formData, depreciationValue: parseFloat(e.target.value) || 0 })}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div>
+                                        <label className="block text-xs font-black text-slate-500 uppercase mb-1">Mão de Obra (Mensal)</label>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">R$</span>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                                                value={formData.laborValue || ''}
+                                                onChange={(e) => setFormData({ ...formData, laborValue: parseFloat(e.target.value) || 0 })}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="col-span-2">
+                                        <label className="block text-xs font-black text-slate-500 uppercase mb-1">Custo Médio Combustível (Mensal)</label>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">R$</span>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                                                value={formData.fuelCost || ''}
+                                                onChange={(e) => setFormData({ ...formData, fuelCost: parseFloat(e.target.value) || 0 })}
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-xl">

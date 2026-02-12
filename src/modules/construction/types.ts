@@ -73,6 +73,12 @@ export interface Equipment {
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
   active: boolean;
+  ownership: 'OWNED' | 'RENTED';
+  rentalValue?: number;
+  depreciationValue?: number;
+  laborValue?: number;
+  fuelCost?: number;
+  // TODO: Add other fields as necessary
 }
 
 export type ViewType = 'dashboard' | 'table' | 'upload' | 'services' | 'planning' | 'history' | 'iam' | 'equipments';
