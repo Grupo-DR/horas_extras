@@ -43,27 +43,23 @@ const Layout: React.FC<LayoutProps> = ({
         </div>
 
         <nav className="flex-1 px-4 py-4 space-y-1">
-          {hasData && (
-            <>
-              <div className="px-4 py-2 text-[10px] font-black text-slate-600 uppercase tracking-widest">Operacional</div>
-              <button
-                onClick={() => setView('dashboard')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeView === 'dashboard' ? 'bg-amber-500 text-slate-900 font-semibold' : 'hover:bg-slate-800 text-slate-400'
-                  }`}
-              >
-                <LayoutDashboard className="w-5 h-5" />
-                <span>Dashboard</span>
-              </button>
-              <button
-                onClick={() => setView('history')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeView === 'history' ? 'bg-amber-500 text-slate-900 font-semibold' : 'hover:bg-slate-800 text-slate-400'
-                  }`}
-              >
-                <History className="w-5 h-5" />
-                <span>Histórico de RDOs</span>
-              </button>
-            </>
-          )}
+          <div className="px-4 py-2 text-[10px] font-black text-slate-600 uppercase tracking-widest">Operacional</div>
+          <button
+            onClick={() => setView('dashboard')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeView === 'dashboard' ? 'bg-amber-500 text-slate-900 font-semibold' : 'hover:bg-slate-800 text-slate-400'
+              }`}
+          >
+            <LayoutDashboard className="w-5 h-5" />
+            <span>Dashboard</span>
+          </button>
+          <button
+            onClick={() => setView('history')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeView === 'history' ? 'bg-amber-500 text-slate-900 font-semibold' : 'hover:bg-slate-800 text-slate-400'
+              }`}
+          >
+            <History className="w-5 h-5" />
+            <span>Histórico de RDOs</span>
+          </button>
 
           <div className="px-4 py-4 text-[10px] font-black text-slate-600 uppercase tracking-widest">Configurações</div>
 
@@ -99,8 +95,6 @@ const Layout: React.FC<LayoutProps> = ({
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeView === 'equipments' ? 'bg-amber-500 text-slate-900 font-semibold' : 'hover:bg-slate-800 text-slate-400'
               }`}
           >
-            <Trash2 className="w-5 h-5" /> {/* Using Trash2/Truck as icon placeholder, maybe Truck is better but already used? Truck is used for Operacional/Dashboard maybe? No, LayoutDashboard is used. */}
-            {/* Wait, the user asked for "Gestão Equipamentos". Icon: Truck. */}
             <Truck className="w-5 h-5" />
             <span>Gestão Equipamentos</span>
           </button>
