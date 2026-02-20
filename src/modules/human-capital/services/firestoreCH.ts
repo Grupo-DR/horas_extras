@@ -204,12 +204,7 @@ export const getTeams = async (scope?: Scope) => {
 
 export const deleteTeam = async (teamId: string) => {
     if (!teamId) return;
-    await setDoc(doc(db, COL_TEAMS, teamId), { deleted: true }, { merge: true });
-    // Ideally we should deleteDoc, but soft delete is safer. 
-    // Actually user wants delete, let's do hard delete for now to keep it clean or soft delete?
-    // Let's do deleteDoc for simplicity as requested "apagar".
-    // Wait, if we use deleteDoc, we need to import it. 
-    // 'deleteDoc' is not imported. Let's use deleteDoc from firebase/firestore.
+    await deleteDoc(doc(db, COL_TEAMS, teamId));
 };
 
 // --- MANUAL EMPLOYEES ---
