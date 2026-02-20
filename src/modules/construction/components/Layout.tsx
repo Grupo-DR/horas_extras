@@ -55,14 +55,6 @@ const Layout: React.FC<LayoutProps> = ({
                 <span>Dashboard</span>
               </button>
               <button
-                onClick={() => setView('planning')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeView === 'planning' ? 'bg-amber-500 text-slate-900 font-semibold' : 'hover:bg-slate-800 text-slate-400'
-                  }`}
-              >
-                <CalendarRange className="w-5 h-5" />
-                <span>Planejamento</span>
-              </button>
-              <button
                 onClick={() => setView('history')}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeView === 'history' ? 'bg-amber-500 text-slate-900 font-semibold' : 'hover:bg-slate-800 text-slate-400'
                   }`}
@@ -74,6 +66,15 @@ const Layout: React.FC<LayoutProps> = ({
           )}
 
           <div className="px-4 py-4 text-[10px] font-black text-slate-600 uppercase tracking-widest">Configurações</div>
+
+          <button
+            onClick={() => setView('planning')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeView === 'planning' ? 'bg-amber-500 text-slate-900 font-semibold' : 'hover:bg-slate-800 text-slate-400'
+              }`}
+          >
+            <CalendarRange className="w-5 h-5" />
+            <span>Planejamento</span>
+          </button>
 
           <button
             onClick={() => setView('services')}
