@@ -70,13 +70,13 @@ const FunctionDetailModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   functionName: string;
-  employees: { name: string; cc: string; chapa: string; he60: number; he100: number; interjornada: number }[];
+  employees: { name: string; cc: string; chapa: string; he60: number; he100: number; interjornada: number; night: number }[];
 }> = ({ isOpen, onClose, functionName, employees }) => {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[85vh]">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[85vh]">
         <div className="bg-blue-600 p-6 flex justify-between items-center text-white shrink-0 relative z-30">
           <div>
             <h3 className="text-xl font-bold">{functionName}</h3>
@@ -91,23 +91,25 @@ const FunctionDetailModal: React.FC<{
           <table className="w-full text-left text-sm text-gray-600 border-collapse">
             <thead className="sticky top-0 z-20 shadow-sm">
               <tr className="bg-gray-100">
-                <th className="px-6 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">CC</th>
-                <th className="px-6 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Chapa</th>
-                <th className="px-6 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Colaborador</th>
-                <th className="px-6 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200 text-right">Horas 60%</th>
-                <th className="px-6 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200 text-right">Horas 100%</th>
-                <th className="px-6 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200 text-right">Interjornada</th>
+                <th className="px-4 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">CC</th>
+                <th className="px-4 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Chapa</th>
+                <th className="px-4 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Colaborador</th>
+                <th className="px-4 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200 text-right">Horas 60%</th>
+                <th className="px-4 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200 text-right">Horas 100%</th>
+                <th className="px-4 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200 text-right">Adic. Noturno</th>
+                <th className="px-4 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200 text-right">Interjornada</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {employees.map((emp, idx) => (
                 <tr key={emp.chapa + idx} className="hover:bg-blue-50/50 transition-colors">
-                  <td className="px-6 py-3 font-mono text-gray-400 text-xs">{emp.cc}</td>
-                  <td className="px-6 py-3 font-mono text-gray-400 text-xs">{emp.chapa}</td>
-                  <td className="px-6 py-3 font-medium text-gray-900">{emp.name}</td>
-                  <td className="px-6 py-3 text-right font-mono text-blue-600">{formatDecimalHours(emp.he60)}</td>
-                  <td className="px-6 py-3 text-right font-mono text-red-600">{formatDecimalHours(emp.he100)}</td>
-                  <td className="px-6 py-3 text-right font-mono text-amber-600">{formatDecimalHours(emp.interjornada)}</td>
+                  <td className="px-4 py-3 font-mono text-gray-400 text-xs">{emp.cc}</td>
+                  <td className="px-4 py-3 font-mono text-gray-400 text-xs">{emp.chapa}</td>
+                  <td className="px-4 py-3 font-medium text-gray-900">{emp.name}</td>
+                  <td className="px-4 py-3 text-right font-mono text-blue-600">{formatDecimalHours(emp.he60)}</td>
+                  <td className="px-4 py-3 text-right font-mono text-red-600">{formatDecimalHours(emp.he100)}</td>
+                  <td className="px-4 py-3 text-right font-mono text-purple-600">{formatDecimalHours(emp.night)}</td>
+                  <td className="px-4 py-3 text-right font-mono text-amber-600">{formatDecimalHours(emp.interjornada)}</td>
                 </tr>
               ))}
             </tbody>
@@ -122,7 +124,7 @@ const FunctionDetailModal: React.FC<{
           <div className="bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
             <span className="text-[10px] font-bold text-gray-400 uppercase">Total Geral:</span>
             <span className="text-lg font-bold text-gray-900 font-mono">
-              {formatDecimalHours(employees.reduce((acc, curr) => acc + curr.he60 + curr.he100 + curr.interjornada, 0))}
+              {formatDecimalHours(employees.reduce((acc, curr) => acc + curr.he60 + curr.he100 + curr.interjornada + curr.night, 0))}
             </span>
           </div>
         </div>
@@ -131,21 +133,19 @@ const FunctionDetailModal: React.FC<{
   );
 };
 
-
-
 const CostCenterDetailModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   ccName: string;
   ccCode: string;
-  data: { name: string; real: number; planned: number; realCost: number; plannedCost: number }[];
+  data: { name: string; real: number; planned: number; realCost: number; plannedCost: number; he60: number; he100: number; interjornada: number; night: number }[];
   viewMode: ViewMode;
 }> = ({ isOpen, onClose, ccName, ccCode, data, viewMode }) => {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[85vh]">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col max-h-[85vh]">
         <div className="bg-indigo-600 p-6 flex justify-between items-center text-white shrink-0 relative z-30">
           <div>
             <div className="flex items-center gap-2">
@@ -163,18 +163,22 @@ const CostCenterDetailModal: React.FC<{
           <table className="w-full text-left text-sm text-gray-600 border-collapse">
             <thead className="sticky top-0 z-20 shadow-sm">
               <tr className="bg-gray-100">
-                <th className="px-6 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Função</th>
+                <th className="px-4 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Função</th>
                 {viewMode === 'hours' ? (
                   <>
-                    <th className="px-6 py-4 text-right text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Plan.</th>
-                    <th className="px-6 py-4 text-right text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Real</th>
-                    <th className="px-6 py-4 text-center text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Plan. x Real</th>
+                    <th className="px-4 py-4 text-right text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Plan.</th>
+                    <th className="px-4 py-4 text-right text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Real (Tot.)</th>
+                    <th className="px-4 py-4 text-right text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">HE 60%</th>
+                    <th className="px-4 py-4 text-right text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">HE 100%</th>
+                    <th className="px-4 py-4 text-right text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Adic. Not.</th>
+                    <th className="px-4 py-4 text-right text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Interjorn.</th>
+                    <th className="px-4 py-4 text-center text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Plan. x Real</th>
                   </>
                 ) : (
                   <>
-                    <th className="px-6 py-4 text-right text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Custo Plan.</th>
-                    <th className="px-6 py-4 text-right text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Custo Real</th>
-                    <th className="px-6 py-4 text-center text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Plan. x Real (R$)</th>
+                    <th className="px-4 py-4 text-right text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Custo Plan.</th>
+                    <th className="px-4 py-4 text-right text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Custo Real</th>
+                    <th className="px-4 py-4 text-center text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Plan. x Real (R$)</th>
                   </>
                 )}
               </tr>
@@ -185,12 +189,16 @@ const CostCenterDetailModal: React.FC<{
                 const diffCost = item.plannedCost - item.realCost;
                 return (
                   <tr key={item.name + idx} className="hover:bg-indigo-50/50 transition-colors">
-                    <td className="px-6 py-3 font-medium text-gray-900">{item.name}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900">{item.name}</td>
                     {viewMode === 'hours' ? (
                       <>
-                        <td className="px-6 py-3 text-right font-mono text-gray-400">{formatDecimalHours(item.planned)}</td>
-                        <td className="px-6 py-3 text-right font-mono font-bold text-gray-800">{formatDecimalHours(item.real)}</td>
-                        <td className="px-6 py-3 text-center">
+                        <td className="px-4 py-3 text-right font-mono text-gray-400">{formatDecimalHours(item.planned)}</td>
+                        <td className="px-4 py-3 text-right font-mono font-bold text-gray-800">{formatDecimalHours(item.real)}</td>
+                        <td className="px-4 py-3 text-right font-mono text-blue-600">{formatDecimalHours(item.he60)}</td>
+                        <td className="px-4 py-3 text-right font-mono text-red-600">{formatDecimalHours(item.he100)}</td>
+                        <td className="px-4 py-3 text-right font-mono text-purple-600">{formatDecimalHours(item.night)}</td>
+                        <td className="px-4 py-3 text-right font-mono text-amber-600">{formatDecimalHours(item.interjornada)}</td>
+                        <td className="px-4 py-3 text-center">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${diffHours < 0 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
                             {diffHours > 0 ? `+${formatDecimalHours(diffHours)}` : formatDecimalHours(diffHours)}
                           </span>
@@ -198,9 +206,9 @@ const CostCenterDetailModal: React.FC<{
                       </>
                     ) : (
                       <>
-                        <td className="px-6 py-3 text-right font-mono text-blue-600">R$ {item.plannedCost.toLocaleString('pt-BR')}</td>
-                        <td className="px-6 py-3 text-right font-mono font-bold text-gray-800">R$ {item.realCost.toLocaleString('pt-BR')}</td>
-                        <td className="px-6 py-3 text-center">
+                        <td className="px-4 py-3 text-right font-mono text-blue-600">R$ {item.plannedCost.toLocaleString('pt-BR')}</td>
+                        <td className="px-4 py-3 text-right font-mono font-bold text-gray-800">R$ {item.realCost.toLocaleString('pt-BR')}</td>
+                        <td className="px-4 py-3 text-center">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${diffCost < 0 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
                             R$ {diffCost.toLocaleString('pt-BR')}
                           </span>
@@ -383,10 +391,10 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
 
   const funcDetailData = useMemo(() => {
     if (!selectedFuncModal) return [];
-    const empMap: Record<string, { name: string; cc: string; he60: number; he100: number; interjornada: number }> = {};
+    const empMap: Record<string, { name: string; cc: string; he60: number; he100: number; interjornada: number; night: number }> = {};
 
     data.filter(r => r.FUNCAO === selectedFuncModal).forEach(r => {
-      if (!empMap[r.CHAPA]) empMap[r.CHAPA] = { name: r.NOME, cc: r.CODCCUSTO || '-', he60: 0, he100: 0, interjornada: 0 };
+      if (!empMap[r.CHAPA]) empMap[r.CHAPA] = { name: r.NOME, cc: r.CODCCUSTO || '-', he60: 0, he100: 0, interjornada: 0, night: 0 };
 
       const hours = (Number(r.HORAS) || 0);
       const evt = (r.EVENTO || '').toUpperCase();
@@ -399,25 +407,38 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
         }
       } else if (evt.includes('INTER')) {
         empMap[r.CHAPA].interjornada += hours;
+      } else if (evt.includes('NOTURNO') || evt.includes('20')) {
+        empMap[r.CHAPA].night += hours;
       }
     });
 
     return Object.entries(empMap).map(([chapa, info]) => ({ chapa, ...info }))
-      .sort((a, b) => (b.he60 + b.he100 + b.interjornada) - (a.he60 + a.he100 + a.interjornada));
+      .sort((a, b) => (b.he60 + b.he100 + b.interjornada + b.night) - (a.he60 + a.he100 + a.interjornada + a.night));
   }, [data, selectedFuncModal]);
 
   const ccDetailData = useMemo(() => {
     if (!selectedCcModal) return [];
-    const map: Record<string, { real: number; planned: number; realCost: number; plannedCost: number }> = {};
+    const map: Record<string, { real: number; planned: number; realCost: number; plannedCost: number; he60: number; he100: number; interjornada: number; night: number }> = {};
     const chapaToFunc: Record<string, string> = {};
 
     // Get real functions for this CC
     data.filter(r => r.CODCCUSTO === selectedCcModal).forEach(r => {
       const f = r.FUNCAO || 'S/ Função';
       chapaToFunc[r.CHAPA] = f;
-      if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0 };
+      if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0, he60: 0, he100: 0, interjornada: 0, night: 0 };
       const hours = (Number(r.HORAS) || 0);
       map[f].real += hours;
+
+      const evt = (r.EVENTO || '').toUpperCase();
+      if (evt.includes('EXTRA')) {
+        if (evt.includes('60')) map[f].he60 += hours;
+        else if (evt.includes('100')) map[f].he100 += hours;
+      } else if (evt.includes('INTER')) {
+        map[f].interjornada += hours;
+      } else if (evt.includes('NOTURNO') || evt.includes('20')) {
+        map[f].night += hours;
+      }
+
       const sal = salariesMap[r.CHAPA] || 0;
       if (sal) {
         const isSunday = new Date(r.DATA).getDay() === 0;
@@ -428,7 +449,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
     // Get planned functions for this CC
     planningRecords.filter(p => p.costCenter === selectedCcModal).forEach(p => {
       const f = chapaToFunc[p.chapa] || 'S/ Função';
-      if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0 };
+      if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0, he60: 0, he100: 0, interjornada: 0, night: 0 };
       map[f].planned += p.plannedHours;
       const sal = salariesMap[p.chapa];
       if (sal && p.plannedHours > 0) {
@@ -567,9 +588,9 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
           icon={<Moon size={20} />}
           color="bg-purple-600"
           subValue={
-            <div className="flex justify-between font-bold text-[10px]">
+            <div className="flex items-center gap-1.5 font-bold text-[10px] text-gray-500">
               <span>HORAS NOTURNAS:</span>
-              <span className="font-mono">{formatDecimalHours(metrics.realAdicNoturnoHours)}</span>
+              <span className="font-mono text-[14px] text-gray-700">{formatDecimalHours(metrics.realAdicNoturnoHours)}</span>
             </div>
           }
         />
