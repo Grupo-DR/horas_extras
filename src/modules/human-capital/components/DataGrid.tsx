@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { OvertimeRecord } from '../types';
-import { ChevronLeft, ChevronRight, ChevronFirst, ChevronLast } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, Search, Filter } from 'lucide-react';
 import { formatDecimalHours } from '../utils/formatters';
 
 interface DataGridProps {
@@ -10,15 +10,34 @@ interface DataGridProps {
 
 const DataGrid: React.FC<DataGridProps> = ({ data }) => {
     const [currentPage, setCurrentPage] = useState(1);
+    const [nameFilter, setNameFilter] = useState('');
+    const [eventFilter, setEventFilter] = useState('');
     const itemsPerPage = 10;
 
-    // Reset pagination when data changes
+    // Computed filtered data
+    const filteredData = useMemo(() => {
+        return data.filter(record => {
+            const matchesName = record.NOME.toLowerCase().includes(nameFilter.toLowerCase()) ||
+                record.CHAPA.includes(nameFilter);
+            const matchesEvent = eventFilter === '' || record.EVENTO === eventFilter;
+            return matchesName && matchesEvent;
+        });
+    }, [data, nameFilter, eventFilter]);
+
+    // Unique event types for the dropdown
+    const uniqueEvents = useMemo(() => {
+        const events = new Set<string>();
+        data.forEach(r => events.add(r.EVENTO));
+        return Array.from(events).sort();
+    }, [data]);
+
+    // Reset pagination when data or filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [data.length]);
+    }, [filteredData.length]);
 
-    const totalPages = Math.ceil(data.length / itemsPerPage);
-    const paginatedData = data.slice(
+    const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage));
+    const paginatedData = filteredData.slice(
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     );
@@ -26,15 +45,44 @@ const DataGrid: React.FC<DataGridProps> = ({ data }) => {
     if (data.length === 0) {
         return (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 flex flex-col items-center justify-center text-center text-gray-400">
-                <p className="font-medium">Nenhum registro encontrado.</p>
-                <p className="text-sm mt-1">Tente ajustar seus filtros de busca.</p>
+                <p className="font-medium">Nenhum registro encontrado no período.</p>
+                <p className="text-sm mt-1">Tente ajustar as datas do filtro principal.</p>
             </div>
         )
     }
 
     return (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col">
+            {/* Filtros Internos do Grid */}
+            <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row gap-4 justify-between items-center rounded-t-2xl">
+                <div className="relative w-full sm:w-72">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                    <input
+                        type="text"
+                        placeholder="Buscar por nome ou chapa..."
+                        className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        value={nameFilter}
+                        onChange={(e) => setNameFilter(e.target.value)}
+                    />
+                </div>
+                <div className="relative w-full sm:w-64">
+                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                    <select
+                        className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white cursor-pointer"
+                        value={eventFilter}
+                        onChange={(e) => setEventFilter(e.target.value)}
+                    >
+                        <option value="">Todos os Eventos</option>
+                        {uniqueEvents.map(evt => (
+                            <option key={evt} value={evt}>{evt}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+
             <div className="overflow-x-auto">
+
+
                 <table className="w-full text-left text-sm text-gray-600">
                     <thead className="bg-gray-50 text-gray-500 font-bold uppercase text-[10px] tracking-wider border-b border-gray-100">
                         <tr>
@@ -73,44 +121,50 @@ const DataGrid: React.FC<DataGridProps> = ({ data }) => {
                 </table>
             </div>
 
-            <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-between items-center">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                    Mostrando {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, data.length)} de {data.length}
-                </span>
-                <div className="flex gap-2">
-                    <button
-                        onClick={() => setCurrentPage(1)}
-                        disabled={currentPage === 1}
-                        className="p-2 hover:bg-white rounded-lg disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                    >
-                        <ChevronFirst size={16} />
-                    </button>
-                    <button
-                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                        className="p-2 hover:bg-white rounded-lg disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                    >
-                        <ChevronLeft size={16} />
-                    </button>
-                    <div className="bg-white border border-gray-200 px-4 py-1 rounded-lg text-xs font-bold flex items-center shadow-sm">
-                        {currentPage} <span className="text-gray-400 mx-1">/</span> {totalPages}
-                    </div>
-                    <button
-                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                        disabled={currentPage === totalPages}
-                        className="p-2 hover:bg-white rounded-lg disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                    >
-                        <ChevronRight size={16} />
-                    </button>
-                    <button
-                        onClick={() => setCurrentPage(totalPages)}
-                        disabled={currentPage === totalPages}
-                        className="p-2 hover:bg-white rounded-lg disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                    >
-                        <ChevronLast size={16} />
-                    </button>
+            {filteredData.length === 0 ? (
+                <div className="p-12 text-center text-gray-400 bg-white">
+                    <p className="font-medium">Nenhum registro encontrado para estes filtros.</p>
                 </div>
-            </div>
+            ) : (
+                <div className="p-4 border-t border-gray-100 bg-gray-50 flex flex-col sm:flex-row gap-4 justify-between items-center rounded-b-2xl">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                        Mostrando {filteredData.length > 0 ? ((currentPage - 1) * itemsPerPage) + 1 : 0} - {Math.min(currentPage * itemsPerPage, filteredData.length)} de {filteredData.length}
+                    </span>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setCurrentPage(1)}
+                            disabled={currentPage === 1}
+                            className="p-2 bg-white hover:bg-gray-100 border border-gray-200 shadow-sm rounded-lg disabled:opacity-30 disabled:hover:bg-white transition-all"
+                        >
+                            <ChevronFirst size={16} />
+                        </button>
+                        <button
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                            className="p-2 bg-white hover:bg-gray-100 border border-gray-200 shadow-sm rounded-lg disabled:opacity-30 disabled:hover:bg-white transition-all"
+                        >
+                            <ChevronLeft size={16} />
+                        </button>
+                        <div className="bg-white border border-gray-200 px-4 py-1 rounded-lg text-xs font-bold flex items-center shadow-sm">
+                            {currentPage} <span className="text-gray-400 mx-1">/</span> {totalPages}
+                        </div>
+                        <button
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            disabled={currentPage === totalPages}
+                            className="p-2 bg-white hover:bg-gray-100 border border-gray-200 shadow-sm rounded-lg disabled:opacity-30 disabled:hover:bg-white transition-all"
+                        >
+                            <ChevronRight size={16} />
+                        </button>
+                        <button
+                            onClick={() => setCurrentPage(totalPages)}
+                            disabled={currentPage === totalPages}
+                            className="p-2 bg-white hover:bg-gray-100 border border-gray-200 shadow-sm rounded-lg disabled:opacity-30 disabled:hover:bg-white transition-all"
+                        >
+                            <ChevronLast size={16} />
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
