@@ -18,15 +18,27 @@ interface PlanningProps {
   assignments: PlanningAssignment[];
   servicePrices: ServicePrice[];
   equipments: Equipment[];
+  selectedCycle: string;
+  onCycleChange: (cycle: string) => void;
   onAddAssignment: (assignment: PlanningAssignment) => void;
   onRemoveAssignment: (id: string) => void;
   onUpdateAssignment: (assignment: PlanningAssignment) => void;
+  onUpdateAllAssignments: (assignments: PlanningAssignment[]) => void;
 }
 
 const Planning: React.FC<PlanningProps> = ({
-  data, assignments, servicePrices, equipments, onAddAssignment, onRemoveAssignment, onUpdateAssignment
+  data, assignments, servicePrices, equipments,
+  selectedCycle, onCycleChange,
+  onAddAssignment, onRemoveAssignment, onUpdateAssignment, onUpdateAllAssignments
 }) => {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const currentDate = useMemo(() => {
+    if (!selectedCycle) return new Date();
+    const [y, m] = selectedCycle.split('-');
+    // Assuming the cycle is named properly YYYY-MM
+    // The calendar period for YYYY-MM runs until the 20th of that month
+    return new Date(parseInt(y), parseInt(m) - 1, 20, 12, 0, 0);
+  }, [selectedCycle]);
+
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [activeAssignmentId, setActiveAssignmentId] = useState<string | null>(null);
   const [draggedFrota, setDraggedFrota] = useState<string | null>(null);
@@ -162,13 +174,13 @@ const Planning: React.FC<PlanningProps> = ({
   const handlePrevMonth = () => {
     const newDate = new Date(currentDate);
     newDate.setMonth(newDate.getMonth() - 1);
-    setCurrentDate(newDate);
+    onCycleChange(getCycleKey(newDate.toISOString().split('T')[0]));
   };
 
   const handleNextMonth = () => {
     const newDate = new Date(currentDate);
     newDate.setMonth(newDate.getMonth() + 1);
-    setCurrentDate(newDate);
+    onCycleChange(getCycleKey(newDate.toISOString().split('T')[0]));
   };
 
   const onDragStart = (frota: string) => setDraggedFrota(frota);
@@ -247,29 +259,9 @@ const Planning: React.FC<PlanningProps> = ({
     }
 
     try {
-      // Create a batch update with the new items appended to the existing assignments array
       const nextAssignments = [...assignments, ...newAssignments];
-      // Since onAddAssignment can only handle one at a time, we might face race conditions in React state if we loop it.
-      // But we can construct the nextArray manually and invoke an aggregate function.
-      // We will perform the API call here and trigger a reload or simulate it.
-
-      // We don't have onBatchAddAssignment in props, so we'll do it via the service directly and update state via a 'hack' or wait for refresh
-      // Best approach: we only have the simple callbacks prop: onAddAssignment etc. 
-      // But we can just update the array and call the service directly as we do inside the handlers.
-      import('../services/firestore').then(({ constructionService }) => {
-        constructionService.updatePlanning(getCycleKey(currentDate.toISOString().split('T')[0]), nextAssignments, 'OBRA-01')
-          .then(() => {
-            // To ensure the UI updates, we could either dispatch multiple onAddAssignment (slow)
-            // or refresh data. 
-            alert(`${newAssignments.length} lançamentos gerados com sucesso! A tela será recarregada.`);
-            window.location.reload();
-          })
-          .catch(err => {
-            console.error(err);
-            alert("Erro ao realizar lançamentos em lote.");
-          });
-      });
-
+      await onUpdateAllAssignments(nextAssignments);
+      alert(`${newAssignments.length} lançamentos gerados com sucesso!`);
     } catch (error) {
       console.error(error);
       alert("Erro inesperado no lote.");

@@ -47,12 +47,12 @@ const App: React.FC = () => {
         constructionService.getEquipments()
       ]);
 
-      const sortedCycles = fetchedCycles.sort(); // YYYY-MM format sorts naturally
+      const sortedCycles = fetchedCycles.sort((a, b) => b.localeCompare(a)); // Descending order YYYY-MM
       setCycles(sortedCycles);
       setEquipments(fetchedEquipments);
 
       if (sortedCycles.length > 0 && !currentCycle) {
-        // getCycles returns desc order, so first item is latest
+        // Now it properly selects the latest cycle
         const latest = sortedCycles[0];
         setCurrentCycle(latest);
       }
@@ -112,7 +112,7 @@ const App: React.FC = () => {
     try {
       setIsLoading(true);
       const fetchedCycles = await constructionService.getCycles();
-      const sortedCycles = fetchedCycles.sort();
+      const sortedCycles = fetchedCycles.sort((a, b) => b.localeCompare(a));
       setCycles(sortedCycles);
 
       // Select latest cycle (first in desc order)
@@ -172,6 +172,17 @@ const App: React.FC = () => {
       {view === 'planning' && (
         <Planning
           data={data} assignments={assignments} servicePrices={servicePrices} equipments={equipments}
+          selectedCycle={currentCycle}
+          onCycleChange={(cycle) => setCurrentCycle(cycle)}
+          onUpdateAllAssignments={async (next) => {
+            try {
+              setAssignments(next);
+              await constructionService.updatePlanning(currentCycle, next, 'OBRA-01');
+            } catch (error) {
+              console.error('Erro ao atualizar lote:', error);
+              alert('Erro ao salvar lote. Tente novamente.');
+            }
+          }}
           onAddAssignment={async (a) => {
             try {
               const next = [...assignments, a];
