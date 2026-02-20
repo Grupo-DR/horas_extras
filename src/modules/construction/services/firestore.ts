@@ -313,5 +313,57 @@ export const constructionService = {
             console.error("Error deleting equipment:", error);
             throw error;
         }
+    },
+
+    async batchSaveEquipments(equipments: Partial<any>[]): Promise<void> {
+        try {
+            // First get all existing equipments to know if we need to insert or update
+            const q = query(collection(db, 'construction_equipments'));
+            const snapshot = await getDocs(q);
+            const existingMap = new Map();
+            snapshot.docs.forEach(doc => {
+                const data = doc.data();
+                if (data.frota) {
+                    existingMap.set(data.frota.toUpperCase(), doc.id);
+                }
+            });
+
+            const MAX_BATCH_SIZE = 400;
+            const batches = [];
+            let currentBatch = writeBatch(db);
+            let operationCount = 0;
+
+            equipments.forEach(eq => {
+                if (!eq.frota) return;
+
+                const frotaKey = eq.frota.toUpperCase();
+                if (existingMap.has(frotaKey)) {
+                    // Update
+                    const docId = existingMap.get(frotaKey);
+                    const docRef = doc(db, 'construction_equipments', docId);
+                    currentBatch.set(docRef, eq, { merge: true });
+                } else {
+                    // Insert
+                    const docRef = doc(collection(db, 'construction_equipments'));
+                    currentBatch.set(docRef, eq);
+                }
+
+                operationCount++;
+                if (operationCount >= MAX_BATCH_SIZE) {
+                    batches.push(currentBatch);
+                    currentBatch = writeBatch(db);
+                    operationCount = 0;
+                }
+            });
+
+            if (operationCount > 0) {
+                batches.push(currentBatch);
+            }
+
+            await Promise.all(batches.map(b => b.commit()));
+        } catch (error) {
+            console.error("Error batch saving equipments:", error);
+            throw error;
+        }
     }
 };

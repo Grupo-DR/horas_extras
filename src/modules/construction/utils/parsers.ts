@@ -1,4 +1,4 @@
-import { ConstructionRecord } from '../types';
+import { ConstructionRecord, Equipment } from '../types';
 import * as XLSX from 'xlsx';
 
 /**
@@ -269,4 +269,83 @@ export const runParserTest = () => {
     console.error("❌ TESTE NUMERO FALHOU");
   }
   console.log("=== FIM DO TESTE ===");
+};
+
+export const parseEquipmentExcel = (buffer: ArrayBuffer): { records: Partial<Equipment>[], errors: string[] } => {
+  const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
+  const result: { records: Partial<Equipment>[], errors: string[] } = { records: [], errors: [] };
+
+  if (workbook.SheetNames.length === 0) {
+    result.errors.push("Arquivo Excel vazio.");
+    return result;
+  }
+
+  const targetSheetName = workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[targetSheetName];
+  const data: any[] = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+  if (data.length === 0) {
+    result.errors.push("Planilha de equipamentos vazia.");
+    return result;
+  }
+
+  data.forEach((row: any, index: number) => {
+    const rawFrota = getValue(row, 'ATIVO') || getValue(row, 'Ativo');
+    if (!rawFrota) return; // Skip rows without ATIVO
+
+    const rawDesc = getValue(row, 'DESCRIÇÃO') || getValue(row, 'Descrição');
+    const rawDepreciation = getValue(row, 'DEPRECIAÇÃO') || getValue(row, 'Depreciação');
+    const rawRental = getValue(row, 'CUSTO LOCAÇÃO') || getValue(row, 'Custo Locação') || getValue(row, 'CUSTO LOCAÇAO');
+    const rawStartDate = getValue(row, 'Data Inicial') || getValue(row, 'DATA INICIAL');
+    const rawEndDate = getValue(row, 'Data Final') || getValue(row, 'DATA FINAL');
+
+    const depreciationValue = parseNumber(rawDepreciation);
+    const rentalValue = parseNumber(rawRental);
+
+    let ownership: 'OWNED' | 'RENTED' = 'RENTED';
+    if (depreciationValue > 0) {
+      ownership = 'OWNED';
+    } else if (rentalValue > 0) {
+      ownership = 'RENTED';
+    }
+
+    // Parse dates to YYYY-MM-DD
+    let startDate = '';
+    if (rawStartDate) {
+      const fmt = formatDateBR(rawStartDate); // DD/MM/YYYY
+      if (fmt && fmt.includes('/')) {
+        const [d, m, y] = fmt.split('/');
+        startDate = `${y}-${m}-${d}`;
+      }
+    }
+
+    let endDate = '';
+    if (rawEndDate) {
+      const fmt = formatDateBR(rawEndDate); // DD/MM/YYYY
+      if (fmt && fmt.includes('/')) {
+        const [d, m, y] = fmt.split('/');
+        endDate = `${y}-${m}-${d}`;
+      }
+    }
+
+    // If no start date could be parsed, fallback
+    if (!startDate) {
+      startDate = new Date().toISOString().split('T')[0];
+    }
+
+    result.records.push({
+      frota: String(rawFrota).trim(),
+      type: String(rawDesc || '').trim(),
+      depreciationValue,
+      rentalValue,
+      ownership,
+      startDate,
+      endDate,
+      active: true,
+      laborValue: 0, // Defaults
+      fuelCost: 0    // Defaults
+    });
+  });
+
+  return result;
 };
