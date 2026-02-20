@@ -36,8 +36,7 @@ const Planning: React.FC<PlanningProps> = ({
 
   // Filter available equipment based on the VALID PERIOD for each equipment vs Current Planning Period
   const availableEquipment = useMemo(() => {
-    // If no equipments are registered or passed, fallback to 'data' extraction (legacy support or ease of use?)
-    // Requirement says: "os equipamentos cadastrados aparecem".
+    // Only use equipments from the Registry
     if (equipments && equipments.length > 0) {
       return equipments.filter(eq => {
         if (!eq.active) return false;
@@ -53,13 +52,8 @@ const Planning: React.FC<PlanningProps> = ({
       })).sort((a, b) => a.id.localeCompare(b.id));
     }
 
-    // Fallback: extract from RDO data if registry is empty
-    const frotas = Array.from(new Set(data.map(r => r.frota))).filter(f => f && f !== 'null') as string[];
-    return frotas.map(f => ({
-      id: f,
-      category: getEquipmentCategory(f)
-    })).sort((a, b) => a.id.localeCompare(b.id));
-  }, [data, equipments, period]);
+    return [];
+  }, [equipments, period]);
 
   const allCatalogItems = useMemo(() => {
     const items = (Array.from(new Set(servicePrices.map(p => p.item))) as string[]).sort((a, b) => a.localeCompare(b));
@@ -208,6 +202,80 @@ const Planning: React.FC<PlanningProps> = ({
     onUpdateAssignment({ ...activeAssignment, services: newServices });
   };
 
+  const handleAutoFillWeekdays = async () => {
+    if (availableEquipment.length === 0) {
+      alert("Não há equipamentos válidos neste período para lançar.");
+      return;
+    }
+
+    if (!confirm(`Deseja lançar todos os ${availableEquipment.length} equipamentos para os dias úteis (Seg-Sex) deste ciclo?`)) {
+      return;
+    }
+
+    // Filtrar apenas dias úteis do período atual (do dia 21 ao 20 do calendário exibido)
+    const validWeekdays = calendarDays.filter(day => {
+      if (!day) return false;
+      // Usar a data local para pegar o dia da semana correto
+      const dateObj = new Date(day + 'T12:00:00');
+      const weekday = dateObj.getDay();
+      // getDay: 0=Domingo, 6=Sábado. Dias úteis: 1 a 5
+      return weekday >= 1 && weekday <= 5;
+    }) as string[];
+
+    const newAssignments: PlanningAssignment[] = [];
+    const existingKeys = new Set(assignments.map(a => `${a.date}-${a.frota}`));
+
+    for (const date of validWeekdays) {
+      for (const eq of availableEquipment) {
+        const key = `${date}-${eq.id}`;
+        if (!existingKeys.has(key)) {
+          newAssignments.push({
+            id: `${key}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            date,
+            frota: eq.id,
+            services: []
+          });
+          // Update the set so we don't duplicate within this batch accidentally
+          existingKeys.add(key);
+        }
+      }
+    }
+
+    if (newAssignments.length === 0) {
+      alert("Todos os lançamentos possíveis já foram feitos para os dias úteis.");
+      return;
+    }
+
+    try {
+      // Create a batch update with the new items appended to the existing assignments array
+      const nextAssignments = [...assignments, ...newAssignments];
+      // Since onAddAssignment can only handle one at a time, we might face race conditions in React state if we loop it.
+      // But we can construct the nextArray manually and invoke an aggregate function.
+      // We will perform the API call here and trigger a reload or simulate it.
+
+      // We don't have onBatchAddAssignment in props, so we'll do it via the service directly and update state via a 'hack' or wait for refresh
+      // Best approach: we only have the simple callbacks prop: onAddAssignment etc. 
+      // But we can just update the array and call the service directly as we do inside the handlers.
+      import('../services/firestore').then(({ constructionService }) => {
+        constructionService.updatePlanning(getCycleKey(currentDate.toISOString().split('T')[0]), nextAssignments, 'OBRA-01')
+          .then(() => {
+            // To ensure the UI updates, we could either dispatch multiple onAddAssignment (slow)
+            // or refresh data. 
+            alert(`${newAssignments.length} lançamentos gerados com sucesso! A tela será recarregada.`);
+            window.location.reload();
+          })
+          .catch(err => {
+            console.error(err);
+            alert("Erro ao realizar lançamentos em lote.");
+          });
+      });
+
+    } catch (error) {
+      console.error(error);
+      alert("Erro inesperado no lote.");
+    }
+  };
+
   return (
     <div className="flex flex-col gap-3 h-[calc(100vh-100px)]">
       {/* Cycle Header - Top of Screen */}
@@ -234,7 +302,14 @@ const Planning: React.FC<PlanningProps> = ({
             <h3 className="font-black text-slate-800 flex items-center gap-2 uppercase text-xs tracking-widest">
               <Truck className="w-4 h-4 text-amber-500" /> Equipamentos
             </h3>
-            <p className="text-[9px] text-slate-400 mt-0.5 font-bold uppercase">Arraste p/ calendário</p>
+            <p className="text-[9px] text-slate-400 mt-0.5 font-bold uppercase mb-2">Arraste p/ calendário</p>
+            <button
+              onClick={handleAutoFillWeekdays}
+              className="w-full bg-slate-900 text-white hover:bg-slate-800 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+            >
+              <CalendarIcon className="w-3 h-3 text-amber-500" />
+              Lançar Seg-Sex
+            </button>
           </div>
           <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5">
             {availableEquipment.map(equip => (
