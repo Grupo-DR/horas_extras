@@ -39,18 +39,6 @@ export const generateMockData = (): OvertimeRecord[] => {
     return parseTotvsResponse(rawMock);
 };
 
-// WHITELIST para Performance:
-// Apenas estes campos serão processados como eventos de hora,
-// evitando iterar sobre todas as chaves do objeto.
-const KNOWN_HOUR_FIELDS = [
-    'HORA_EXTRA_60',
-    'HORA_EXTRA_100',
-    'ADICIONAL_NOTURNO_20',
-    'INTER_JORNADA60',
-    'HORAS_TRABALHADAS_PERIODO_PONTO',
-    'HORA_EXTRA_50',   // Adicionado por precaução
-    'ADICIONAL_NOTURNO' // Variação comum
-];
 
 const convertTotvsHourToDecimal = (value: number): number => {
     const sign = value < 0 ? -1 : 1;
@@ -68,6 +56,13 @@ const parseTotvsResponse = (data: any[]): OvertimeRecord[] => {
     const records: OvertimeRecord[] = [];
     if (!Array.isArray(data)) return [];
 
+    if (data.length > 0) {
+        console.log("================ TOTVS API DEBUG ================");
+        console.log("RAW ITEM KEYS:", Object.keys(data[0]));
+        console.log("FIRST ITEM:", data[0]);
+        console.log("=================================================");
+    }
+
     data.forEach((item) => {
         // Campos Básicos (Extração Direta)
         const baseRecord = {
@@ -79,18 +74,22 @@ const parseTotvsResponse = (data: any[]): OvertimeRecord[] => {
             DATA: String(item.DATA || new Date().toISOString()),
         };
 
-        // OTIMIZAÇÃO: Loop apenas na Whitelist
-        KNOWN_HOUR_FIELDS.forEach((key) => {
-            const value = item[key];
+        // Extração Dinâmica de Eventos de Hora (Evita problemas com hardcoded whitelists)
+        Object.keys(item).forEach((key) => {
+            const upperKey = key.toUpperCase();
+            // Identifica se a chave se trata de um evento de hora extra, adicional ou interjornada
+            if (upperKey.includes('EXTRA') || upperKey.includes('NOTURNO') || upperKey.includes('INTER') || upperKey.includes('HORAS_TRABALHADAS')) {
+                const value = item[key];
 
-            // Verifica se a chave existe e tem valor > 0
-            if (value !== undefined && typeof value === 'number' && value !== 0) {
-                records.push({
-                    ...baseRecord,
-                    EVENTO: key.replace(/_/g, ' '),
-                    HORAS: convertTotvsHourToDecimal(value),
-                    VALOR: 0
-                });
+                // Verifica se a chave existe e tem valor numérico diferente de zero
+                if (value !== undefined && value !== null && typeof value === 'number' && value !== 0) {
+                    records.push({
+                        ...baseRecord,
+                        EVENTO: key.replace(/_/g, ' '),
+                        HORAS: convertTotvsHourToDecimal(value),
+                        VALOR: 0
+                    });
+                }
             }
         });
     });

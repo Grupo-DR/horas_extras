@@ -37,23 +37,17 @@ enum Tab {
   SETTINGS = 'settings'
 }
 
-// Helper para inicializar datas corretamente
 const getInitialFilters = (): FilterState => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
-  const lastDay = new Date(year, month, 0).getDate();
-
   return {
     searchTerm: '',
-    startDate: `${year}-${String(month).padStart(2, '0')}-01`,
-    endDate: `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
+    startDate: '2025-01-01',
+    endDate: '2026-12-31',
     function: '',
     costCenter: '',
     type: '',
-    year: year.toString(),
-    month: month.toString().padStart(2, '0'),
-    dateMode: 'CALENDAR'
+    year: '2026',
+    month: '01',
+    dateMode: 'CUSTOM'
   };
 };
 
