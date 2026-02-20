@@ -331,11 +331,16 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
       const cc = r.CODCCUSTO || 'S/ CC';
       if (!map[cc]) map[cc] = { real: 0, planned: 0, name: r.SECAO || 'Sem Nome', realCost: 0, plannedCost: 0, budget: 0 };
       const hours = (Number(r.HORAS) || 0);
-      map[cc].real += hours;
-      const sal = salariesMap[r.CHAPA] || 0;
-      if (sal) {
-        const isSunday = new Date(r.DATA).getDay() === 0;
-        map[cc].realCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * hours;
+      const evt = (r.EVENTO || '').toUpperCase();
+
+      const isOvertime = evt.includes('EXTRA') || evt.includes('INTER') || evt.includes('NOTURNO') || evt.includes('20');
+      if (isOvertime) {
+        map[cc].real += hours;
+        const sal = salariesMap[r.CHAPA] || 0;
+        if (sal) {
+          const isSunday = new Date(r.DATA).getDay() === 0;
+          map[cc].realCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * hours;
+        }
       }
     });
 
@@ -364,11 +369,16 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
       chapaToFunc[r.CHAPA] = f;
       if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0 };
       const hours = (Number(r.HORAS) || 0);
-      map[f].real += hours;
-      const sal = salariesMap[r.CHAPA] || 0;
-      if (sal) {
-        const isSunday = new Date(r.DATA).getDay() === 0;
-        map[f].realCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * hours;
+      const evt = (r.EVENTO || '').toUpperCase();
+
+      const isOvertime = evt.includes('EXTRA') || evt.includes('INTER') || evt.includes('NOTURNO') || evt.includes('20');
+      if (isOvertime) {
+        map[f].real += hours;
+        const sal = salariesMap[r.CHAPA] || 0;
+        if (sal) {
+          const isSunday = new Date(r.DATA).getDay() === 0;
+          map[f].realCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * hours;
+        }
       }
     });
 
@@ -427,22 +437,29 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
       chapaToFunc[r.CHAPA] = f;
       if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0, he60: 0, he100: 0, interjornada: 0, night: 0 };
       const hours = (Number(r.HORAS) || 0);
-      map[f].real += hours;
 
       const evt = (r.EVENTO || '').toUpperCase();
+      let isOvertime = false;
+
       if (evt.includes('EXTRA')) {
+        isOvertime = true;
         if (evt.includes('60')) map[f].he60 += hours;
         else if (evt.includes('100')) map[f].he100 += hours;
       } else if (evt.includes('INTER')) {
+        isOvertime = true;
         map[f].interjornada += hours;
       } else if (evt.includes('NOTURNO') || evt.includes('20')) {
+        isOvertime = true;
         map[f].night += hours;
       }
 
-      const sal = salariesMap[r.CHAPA] || 0;
-      if (sal) {
-        const isSunday = new Date(r.DATA).getDay() === 0;
-        map[f].realCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * hours;
+      if (isOvertime) {
+        map[f].real += hours;
+        const sal = salariesMap[r.CHAPA] || 0;
+        if (sal) {
+          const isSunday = new Date(r.DATA).getDay() === 0;
+          map[f].realCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * hours;
+        }
       }
     });
 
