@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { OvertimeRecord, UserProfile, PlanningRecord, SalaryAllocation, BudgetRecord, WorkTeam, ManualEmployee } from '../types';
-import { savePlanning, getPlanning, saveSalaries, getSalariesSync, saveBudgets, getBudgetsSync, saveTeams, getTeams, deleteTeam, getTeamsSync } from '../services/planning';
+import { savePlanning, getPlanning, saveSalaries, getSalariesSync, saveBudgets, getBudgetsSync, saveTeams, getTeams, deleteTeam, getTeamsSync, getAllBudgetsAsync, deleteBudgets, deleteAllBudgets } from '../services/planning';
 
-import { Calendar as CalendarIcon, Save, LayoutList, CalendarDays, ChevronLeft, ChevronRight, User, Calculator, Users, X, FileUp, AlertTriangle, TrendingUp, Wallet, ArrowUpRight, ArrowDownRight, Building2, MapPin, CheckCircle2, Plus, Search } from 'lucide-react';
+import { Users, Clock, Wallet, TrendingUp, Calculator, CheckCircle2, AlertTriangle, X, ChevronLeft, ChevronRight, Save, FileUp, Plus, Search, ArrowUpRight, ArrowDownRight, LayoutList, Trash2 } from 'lucide-react';
 import { formatDecimalHours, parseTimeToDecimal } from '../utils/formatters';
 import * as XLSX from 'xlsx';
 import { TeamCard } from './TeamCard';
@@ -282,6 +281,141 @@ const AddMemberModal: React.FC<{
     );
 };
 
+// --- BUDGET MANAGER MODAL ---
+
+const BudgetManagerModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    user: UserProfile;
+    onRefresh: () => void;
+}> = ({ isOpen, onClose, user, onRefresh }) => {
+    const [allBudgets, setAllBudgets] = useState<BudgetRecord[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [deleting, setDeleting] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        setLoading(true);
+        getAllBudgetsAsync().then(b => { setAllBudgets(b); setLoading(false); });
+    }, [isOpen]);
+
+    // Group by monthKey
+    const grouped = useMemo(() => {
+        const map = new Map<string, { total: number; count: number; monthKey: string; month: string }>();
+        allBudgets.forEach(b => {
+            const existing = map.get(b.monthKey) || { total: 0, count: 0, monthKey: b.monthKey, month: b.month };
+            map.set(b.monthKey, { ...existing, total: existing.total + b.value, count: existing.count + 1 });
+        });
+        return Array.from(map.values()).sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+    }, [allBudgets]);
+
+    const handleDelete = async (monthKey: string) => {
+        if (!window.confirm(`Excluir TODOS os registros de budget de ${monthKey}? Esta ação não pode ser desfeita.`)) return;
+        setDeleting(monthKey);
+        try {
+            await deleteBudgets(monthKey, user);
+            setAllBudgets(prev => prev.filter(b => b.monthKey !== monthKey));
+            onRefresh();
+        } catch { alert('Erro ao excluir. Tente novamente.'); }
+        finally { setDeleting(null); }
+    };
+
+    const handleDeleteAll = async () => {
+        if (!window.confirm(`Excluir TODOS os ${grouped.length} períodos de budget? Esta ação não pode ser desfeita.`)) return;
+        setDeleting('__all__');
+        try {
+            await deleteAllBudgets(user);
+            setAllBudgets([]);
+            onRefresh();
+        } catch { alert('Erro ao excluir todos. Tente novamente.'); }
+        finally { setDeleting(null); }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[80vh]">
+                <div className="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white shrink-0">
+                    <div>
+                        <h3 className="text-lg font-bold">Gerenciar Budgets</h3>
+                        <p className="text-indigo-200 text-xs">{grouped.length} períodos importados</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {grouped.length > 0 && (
+                            <button
+                                onClick={handleDeleteAll}
+                                disabled={deleting === '__all__'}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50"
+                            >
+                                {deleting === '__all__'
+                                    ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    : <Trash2 size={13} />}
+                                Apagar Todos
+                            </button>
+                        )}
+                        <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors"><X size={20} /></button>
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto">
+                    {loading ? (
+                        <div className="flex items-center justify-center py-16">
+                            <div className="animate-spin w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full" />
+                        </div>
+                    ) : grouped.length === 0 ? (
+                        <div className="py-16 text-center text-gray-400">
+                            <Wallet size={40} className="mx-auto mb-3 opacity-30" />
+                            <p className="font-bold">Nenhum budget importado</p>
+                        </div>
+                    ) : (
+                        <table className="w-full text-sm">
+                            <thead className="bg-gray-50 border-b border-gray-100 sticky top-0">
+                                <tr>
+                                    <th className="px-5 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">Período</th>
+                                    <th className="px-5 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">Competência</th>
+                                    <th className="px-5 py-3 text-right text-[10px] font-bold text-gray-400 uppercase tracking-wider">Qtd. CCs</th>
+                                    <th className="px-5 py-3 text-right text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Budget</th>
+                                    <th className="px-5 py-3"></th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {grouped.map(g => (
+                                    <tr key={g.monthKey} className="hover:bg-gray-50/80 transition-colors">
+                                        <td className="px-5 py-3 font-mono font-bold text-gray-700">{g.monthKey}</td>
+                                        <td className="px-5 py-3 text-gray-600 capitalize">{g.month}</td>
+                                        <td className="px-5 py-3 text-right text-gray-600">{g.count}</td>
+                                        <td className="px-5 py-3 text-right font-bold font-mono text-indigo-700">
+                                            R$ {g.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                        </td>
+                                        <td className="px-5 py-3 text-right">
+                                            <button
+                                                onClick={() => handleDelete(g.monthKey)}
+                                                disabled={deleting === g.monthKey}
+                                                className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40"
+                                                title="Excluir período"
+                                            >
+                                                {deleting === g.monthKey
+                                                    ? <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                                                    : <Trash2 size={15} />}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+
+                <div className="px-6 py-3 bg-gray-50 border-t border-gray-100 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                    A exclusão remove todos os Centros de Custo do período selecionado do Firestore e do cache local.
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
 const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees }) => {
     const [mode, setMode] = useState<'MONTHLY' | 'DAILY'>('DAILY');
     const [selectedMonth, setSelectedMonth] = useState<string>(() => {
@@ -291,6 +425,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
 
     const [ccFilter, setCcFilter] = useState<string>('');
     const [regionalFilter, setRegionalFilter] = useState<string>('');
+    const [isBudgetManagerOpen, setIsBudgetManagerOpen] = useState(false);
 
     const { periodStart, periodEnd } = useMemo(() => {
         const parts = selectedMonth.split('-');
@@ -609,17 +744,20 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                 const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                 const newBudgets: BudgetRecord[] = [];
                 let count = 0;
-                const currentYear = new Date().getFullYear();
 
                 json.forEach((row: any, index: number) => {
                     if (index === 0 && (String(row[0]).toLowerCase().includes('mês'))) return;
                     const monthName = String(row[0] || '').trim();
-                    const costCenter = String(row[1] || '').trim();
+                    const costCenter = String(row[1] || '').trim().replace(/\./g, ''); // normaliza: remove pontos
                     let budgetVal = row[2];
+                    // Coluna D: ano (opcional, fallback para ano atual)
+                    const yearRaw = row[3];
+                    const year = yearRaw && !isNaN(Number(yearRaw)) ? Number(yearRaw) : new Date().getFullYear();
+
                     if (typeof budgetVal === 'string') budgetVal = parseFloat(budgetVal.replace('R$', '').replace(/\./g, '').replace(',', '.').trim());
                     if (monthName && costCenter && !isNaN(budgetVal)) {
                         const monthIndex = MONTH_NAMES.findIndex(m => m.toLowerCase() === monthName.toLowerCase());
-                        const monthKey = monthIndex >= 0 ? `${currentYear}-${String(monthIndex + 1).padStart(2, '0')}` : selectedMonth;
+                        const monthKey = monthIndex >= 0 ? `${year}-${String(monthIndex + 1).padStart(2, '0')}` : selectedMonth;
                         newBudgets.push({ month: monthName, monthKey, costCenter, value: budgetVal });
                         count++;
                     }
@@ -627,12 +765,17 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
 
                 if (count > 0) {
                     saveBudgets(newBudgets, user);
-                    setBudgets(newBudgets);
-                    setAlert({ type: 'success', message: `${count} budgets importados!` });
+                    setBudgets(prev => {
+                        // Merge: keep existing records for other monthKeys
+                        const existingKeys = new Set(newBudgets.map(b => b.monthKey));
+                        const retained = prev.filter(b => !existingKeys.has(b.monthKey));
+                        return [...retained, ...newBudgets];
+                    });
+                    setAlert({ type: 'success', message: `${count} registros de budget importados!` });
                 } else {
-                    setAlert({ type: 'error', message: "Erro budget." });
+                    setAlert({ type: 'error', message: "Erro budget: nenhuma linha válida encontrada." });
                 }
-            } catch (err) { setAlert({ type: 'error', message: "Falha budget." }); }
+            } catch (err) { setAlert({ type: 'error', message: "Falha ao ler arquivo de budget." }); }
         };
         reader.readAsBinaryString(file);
         if (budgetInputRef.current) budgetInputRef.current.value = '';
@@ -683,6 +826,15 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
 
     return (
         <div className="space-y-6">
+            <BudgetManagerModal
+                isOpen={isBudgetManagerOpen}
+                onClose={() => setIsBudgetManagerOpen(false)}
+                user={user}
+                onRefresh={() => {
+                    const storedBudgets = getBudgetsSync();
+                    setBudgets(storedBudgets);
+                }}
+            />
             <CreateTeamModal
                 isOpen={isCreateTeamOpen}
                 onClose={() => setIsCreateTeamOpen(false)}
@@ -816,7 +968,10 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                                 </button>
                                 <input type="file" ref={budgetInputRef} onChange={handleBudgetImport} accept=".xlsx,.xls" className="hidden" />
                                 <button onClick={() => budgetInputRef.current?.click()} className="bg-white text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-indigo-50 flex items-center gap-2 shadow-sm">
-                                    <FileUp size={16} /> Budget
+                                    <FileUp size={16} /> Importar Budget
+                                </button>
+                                <button onClick={() => setIsBudgetManagerOpen(true)} className="bg-white text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-indigo-50 flex items-center gap-2 shadow-sm">
+                                    <Wallet size={16} /> Gerenciar Budgets
                                 </button>
                             </>
                         )}

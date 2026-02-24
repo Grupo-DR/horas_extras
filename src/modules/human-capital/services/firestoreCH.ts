@@ -55,12 +55,35 @@ export const upsertBudgets = async (budgets: BudgetRecord[], user: UserProfile) 
 };
 
 export const getBudgetsByMonthKey = async (monthKey: string, scope?: Scope) => {
-    // GUARD: Prevent query crash if monthKey is missing
     if (!monthKey) return [];
-
     const q = query(collection(db, COL_BUDGETS), where('monthKey', '==', monthKey));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(d => d.data() as BudgetRecord);
+};
+
+export const getAllBudgets = async (): Promise<BudgetRecord[]> => {
+    const snapshot = await getDocs(collection(db, COL_BUDGETS));
+    return snapshot.docs.map(d => d.data() as BudgetRecord);
+};
+
+export const deleteBudgetsByMonthKey = async (monthKey: string): Promise<void> => {
+    if (!monthKey) return;
+    const q = query(collection(db, COL_BUDGETS), where('monthKey', '==', monthKey));
+    const snapshot = await getDocs(q);
+    const batch = writeBatch(db);
+    snapshot.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+};
+
+export const deleteAllBudgets = async (): Promise<void> => {
+    const snapshot = await getDocs(collection(db, COL_BUDGETS));
+    // Firestore batch limit is 500; chunk if needed
+    const CHUNK = 400;
+    for (let i = 0; i < snapshot.docs.length; i += CHUNK) {
+        const batch = writeBatch(db);
+        snapshot.docs.slice(i, i + CHUNK).forEach(d => batch.delete(d.ref));
+        await batch.commit();
+    }
 };
 
 // --- SALARIES ---

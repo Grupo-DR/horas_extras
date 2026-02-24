@@ -147,9 +147,7 @@ export const saveBudgets = async (budgets: BudgetRecord[], user: UserProfile) =>
 };
 
 export const getBudgets = async (monthKey: string, user?: UserProfile): Promise<BudgetRecord[]> => {
-    // Guard: Require monthKey
     if (!monthKey) return [];
-
     try {
         if (isOnline()) {
             const rows = await FirestoreService.getBudgetsByMonthKey(monthKey, user?.scope);
@@ -165,6 +163,49 @@ export const getBudgets = async (monthKey: string, user?: UserProfile): Promise<
             return all.filter(b => b.monthKey === monthKey);
         }
         return [];
+    }
+};
+
+export const getAllBudgetsAsync = async (): Promise<BudgetRecord[]> => {
+    try {
+        if (isOnline()) {
+            const rows = await FirestoreService.getAllBudgets();
+            localStorage.setItem('department_budgets_v2', JSON.stringify(rows));
+            return rows;
+        }
+        throw new Error('Offline');
+    } catch {
+        const data = localStorage.getItem('department_budgets_v2');
+        return data ? (JSON.parse(data) as BudgetRecord[]) : [];
+    }
+};
+
+export const deleteBudgets = async (monthKey: string, user: UserProfile): Promise<void> => {
+    try {
+        if (isOnline()) {
+            await FirestoreService.deleteBudgetsByMonthKey(monthKey);
+        }
+        // Sync local cache
+        const data = localStorage.getItem('department_budgets_v2');
+        if (data) {
+            const all = JSON.parse(data) as BudgetRecord[];
+            localStorage.setItem('department_budgets_v2', JSON.stringify(all.filter(b => b.monthKey !== monthKey)));
+        }
+    } catch (e) {
+        console.error('Delete Budgets Failed:', e);
+        throw e;
+    }
+};
+
+export const deleteAllBudgets = async (user: UserProfile): Promise<void> => {
+    try {
+        if (isOnline()) {
+            await FirestoreService.deleteAllBudgets();
+        }
+        localStorage.removeItem('department_budgets_v2');
+    } catch (e) {
+        console.error('Delete All Budgets Failed:', e);
+        throw e;
     }
 };
 

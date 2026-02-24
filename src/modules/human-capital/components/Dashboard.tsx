@@ -1,77 +1,31 @@
 
 import React, { useMemo, useState } from 'react';
 import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, SalaryRecord } from '../types';
-import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, AlertTriangle, Moon, Sun, Scale, Percent, ArrowUpRight, ArrowDownRight, X, User, DollarSign, ListFilter } from 'lucide-react';
+import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, AlertTriangle, Moon, Scale, Percent, ArrowUpRight, ArrowDownRight, X, User, DollarSign, ListFilter, ShieldAlert, Zap } from 'lucide-react';
 import { formatDecimalHours } from '../utils/formatters';
 import { getAllPlanningRecords, getBudgetsSync, getSalariesSync } from '../services/planning';
+import { getCCName, getCCRegional, normalizeCC } from '../data/ccMaster';
 
 interface DashboardProps {
-  data: OvertimeRecord[];
+  data: OvertimeRecord[];              // dados filtrados (regional, CC, etc.)
+  allData?: OvertimeRecord[];          // todos os dados do escopo — para resolver nomes de CC via SECAO
+  regional?: string;                   // filtro de regional ativo (é applicado no ccSummary)
+  /** Todos os monthKeys (YYYY-MM) cobertos pelo período filtrado */
+  budgetMonthKeys: string[];
+  /** Callback: clique em colaborador no modal de função → navega para aba Histórico */
+  onNavigateToEmployee?: (name: string, chapa: string) => void;
 }
 
 type ViewMode = 'hours' | 'finance';
 
-const HierarchySection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <div className="space-y-3">
-    <div className="flex items-center gap-2 px-1">
-      <div className="h-4 w-1 bg-blue-600 rounded-full"></div>
-      <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{title}</h4>
-    </div>
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {children}
-    </div>
-  </div>
-);
-
-const StatsCard: React.FC<{
-  title: string;
-  value: string;
-  subValue?: React.ReactNode;
-  icon: React.ReactNode;
-  color: string;
-  comparison?: {
-    label: string;
-    value: string;
-    percent?: number;
-    isOver?: boolean;
-  }
-}> = ({ title, value, subValue, icon, color, comparison }) => (
-  <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between transition-all hover:shadow-md h-full">
-    <div className="flex items-center space-x-4 mb-4">
-      <div className={`p-3 rounded-xl ${color} text-white shadow-lg shrink-0`}>
-        {icon}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider truncate">{title}</p>
-        <h3 className="text-xl font-bold text-gray-800 font-mono truncate">{value}</h3>
-      </div>
-      {comparison && comparison.percent !== undefined && (
-        <div className={`shrink-0 flex items-center gap-0.5 text-xs font-bold px-2 py-1 rounded-lg ${comparison.isOver ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
-          {comparison.isOver ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-          {comparison.percent.toFixed(1)}%
-        </div>
-      )}
-    </div>
-
-    <div className="pt-3 border-t border-gray-50">
-      {subValue ? (
-        <div className="text-xs font-medium text-gray-500 w-full space-y-1">{subValue}</div>
-      ) : comparison ? (
-        <div className="flex flex-col">
-          <p className="text-[9px] text-gray-400 font-bold uppercase">{comparison.label}</p>
-          <p className="text-sm font-bold text-gray-700 font-mono">{comparison.value}</p>
-        </div>
-      ) : <div className="h-5" />}
-    </div>
-  </div>
-);
 
 const FunctionDetailModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   functionName: string;
   employees: { name: string; cc: string; chapa: string; he60: number; he100: number; interjornada: number; night: number }[];
-}> = ({ isOpen, onClose, functionName, employees }) => {
+  onNavigateToEmployee: (name: string, chapa: string) => void;
+}> = ({ isOpen, onClose, functionName, employees, onNavigateToEmployee }) => {
   if (!isOpen) return null;
 
   return (
@@ -106,7 +60,16 @@ const FunctionDetailModal: React.FC<{
                 <tr key={emp.chapa + idx} className="hover:bg-blue-50/50 transition-colors">
                   <td className="px-4 py-3 font-mono text-gray-400 text-xs">{emp.cc}</td>
                   <td className="px-4 py-3 font-mono text-gray-400 text-xs">{emp.chapa}</td>
-                  <td className="px-4 py-3 font-medium text-gray-900">{emp.name}</td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => { onNavigateToEmployee(emp.name, emp.chapa); onClose(); }}
+                      className="font-medium text-blue-700 hover:underline hover:text-blue-900 text-left transition-colors group flex items-center gap-1"
+                      title="Ver histórico deste colaborador"
+                    >
+                      {emp.name}
+                      <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
+                    </button>
+                  </td>
                   <td className="px-4 py-3 text-right font-mono text-blue-600">{formatDecimalHours(emp.he60)}</td>
                   <td className="px-4 py-3 text-right font-mono text-red-600">{formatDecimalHours(emp.he100)}</td>
                   <td className="px-4 py-3 text-right font-mono text-purple-600">{formatDecimalHours(emp.night)}</td>
@@ -235,7 +198,7 @@ const CostCenterDetailModal: React.FC<{
   );
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ data }) => {
+const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMonthKeys, onNavigateToEmployee }) => {
   const [ccSearch, setCcSearch] = useState('');
   const [funcSearch, setFuncSearch] = useState('');
   const [selectedFuncModal, setSelectedFuncModal] = useState<string | null>(null);
@@ -244,7 +207,13 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
   const [funcViewMode, setFuncViewMode] = useState<ViewMode>('hours');
 
   const planningRecords = useMemo(() => getAllPlanningRecords(), []);
-  const budgets = useMemo(() => getBudgetsSync(), []);
+  // Filtra budgets pelos monthKeys cobertos pelo período atual
+  const budgets = useMemo(() => {
+    const all = getBudgetsSync();
+    if (!budgetMonthKeys || budgetMonthKeys.length === 0) return all;
+    const keySet = new Set(budgetMonthKeys);
+    return all.filter(b => keySet.has(b.monthKey));
+  }, [budgetMonthKeys]);
   const salariesMap = useMemo(() => {
     const map: Record<string, number> = {};
     getSalariesSync().forEach(s => map[s.chapa] = s.salary);
@@ -318,23 +287,46 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
     };
   }, [data, planningRecords, budgets, salariesMap]);
 
+  // normalizeCC e getCCName/getCCRegional agora vem do ccMaster centralizado
+
+  // Lookup SECAO do TOTVS como complemento ao ccMaster (preenche nomes ainda não mapeados)
+  const ccSecaoMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    (allData ?? data).forEach(r => {
+      const cc = normalizeCC(r.CODCCUSTO || '');
+      if (cc && r.SECAO && !map[cc]) map[cc] = r.SECAO;
+    });
+    return map;
+  }, [allData, data]);
+
+  /** Nome resolvido: ccMaster > TOTVS SECAO > código bruto */
+  const resolveName = (rawCC: string): string => {
+    const norm = normalizeCC(rawCC);
+    const masterName = getCCName(rawCC);
+    if (masterName !== rawCC) return masterName; // ccMaster tem o nome
+    return ccSecaoMap[norm] || rawCC;             // fallback: SECAO ou o próprio código
+  };
+
+
   const ccSummary = useMemo(() => {
     const map: Record<string, { real: number; planned: number; name: string; realCost: number; plannedCost: number; budget: number }> = {};
 
-    const currentMonth = new Date().toLocaleString('pt-BR', { month: 'long' });
+    // Orçamentos: filtrar por regional se ativo
     budgets.forEach(b => {
-      if (!map[b.costCenter]) map[b.costCenter] = { real: 0, planned: 0, name: 'Sem Nome', realCost: 0, plannedCost: 0, budget: 0 };
-      if (b.month.toLowerCase() === currentMonth.toLowerCase()) {
-        map[b.costCenter].budget += b.value;
-      }
+      const ccRegional = getCCRegional(b.costCenter);
+      if (regional && ccRegional !== regional) return; // filtro regional
+      const cc = normalizeCC(b.costCenter);
+      if (!map[cc]) map[cc] = { real: 0, planned: 0, name: resolveName(b.costCenter), realCost: 0, plannedCost: 0, budget: 0 };
+      map[cc].budget += b.value;
     });
 
+    // Dados TOTVS (já filtrados pelo HumanCapitalDashboard)
     data.forEach(r => {
-      const cc = r.CODCCUSTO || 'S/ CC';
-      if (!map[cc]) map[cc] = { real: 0, planned: 0, name: r.SECAO || 'Sem Nome', realCost: 0, plannedCost: 0, budget: 0 };
+      const cc = normalizeCC(r.CODCCUSTO || 'S/ CC');
+      if (!map[cc]) map[cc] = { real: 0, planned: 0, name: resolveName(r.CODCCUSTO || cc), realCost: 0, plannedCost: 0, budget: 0 };
+      if (map[cc].name === cc || map[cc].name === 'S/ CC') map[cc].name = resolveName(r.CODCCUSTO || cc);
       const hours = (Number(r.HORAS) || 0);
       const evt = (r.EVENTO || '').toUpperCase();
-
       const isOvertime = evt.includes('EXTRA') || evt.includes('INTER') || evt.includes('NOTURNO') || evt.includes('20');
       if (isOvertime) {
         map[cc].real += hours;
@@ -346,9 +338,12 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
       }
     });
 
+    // Planejamento: filtrar por regional se ativo
     planningRecords.forEach(p => {
-      const cc = p.costCenter || 'S/ CC';
-      if (!map[cc]) map[cc] = { real: 0, planned: 0, name: 'Sem Nome', realCost: 0, plannedCost: 0, budget: 0 };
+      const ccRegional = getCCRegional(p.costCenter || '');
+      if (regional && ccRegional !== regional) return; // filtro regional
+      const cc = normalizeCC(p.costCenter || 'S/ CC');
+      if (!map[cc]) map[cc] = { real: 0, planned: 0, name: resolveName(p.costCenter || cc), realCost: 0, plannedCost: 0, budget: 0 };
       map[cc].planned += p.plannedHours;
       const sal = salariesMap[p.chapa];
       if (sal && p.plannedHours > 0) {
@@ -360,7 +355,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
     const list = Object.entries(map).map(([cc, s]) => ({ cc, ...s }))
       .sort((a, b) => b.real - a.real);
     return ccSearch ? list.filter(x => x.cc.includes(ccSearch) || x.name.toLowerCase().includes(ccSearch.toLowerCase())) : list;
-  }, [data, planningRecords, ccSearch, budgets, salariesMap]);
+  }, [data, planningRecords, ccSearch, budgets, salariesMap, regional, ccSecaoMap]);
 
   const funcSummary = useMemo(() => {
     const map: Record<string, { real: number; planned: number; realCost: number; plannedCost: number }> = {};
@@ -499,12 +494,13 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
   );
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-5">
       <FunctionDetailModal
         isOpen={!!selectedFuncModal}
         onClose={() => setSelectedFuncModal(null)}
         functionName={selectedFuncModal || ''}
         employees={funcDetailData}
+        onNavigateToEmployee={onNavigateToEmployee ?? (() => { })}
       />
 
       <CostCenterDetailModal
@@ -516,111 +512,179 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
         viewMode={ccViewMode}
       />
 
-      {/* Nível 01: Financeiro */}
-      <HierarchySection title="Nível 01: Financeiro">
-        <StatsCard
-          title="Budget Total"
-          value={`R$ ${metrics.totalBudget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-          icon={<Wallet size={20} />}
-          color="bg-indigo-600"
-          subValue={
-            <div className="space-y-1">
-              <div className="flex justify-between items-center text-[10px] font-bold">
-                <span className="text-gray-400 uppercase">Custo Planejado:</span>
-                <span className="text-blue-600 font-mono">R$ {metrics.totalPlannedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+      {/* ── 4 MEGA CARDS ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+
+        {/* 1. Orçamento */}
+        {(() => {
+          const budgetM = metrics.totalBudget / 1_000_000;
+          const usedPct = metrics.totalBudget > 0 ? Math.min((metrics.totalRealCost / metrics.totalBudget) * 100, 200) : 0;
+          const devioPct = metrics.totalBudget > 0 ? ((metrics.totalRealCost - metrics.totalBudget) / metrics.totalBudget) * 100 : 0;
+          const isOver = metrics.totalRealCost > metrics.totalBudget;
+          return (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md transition-all">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-indigo-600 text-white shadow"><Wallet size={14} /></div>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Orçamento</span>
+                </div>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${isOver ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                  {isOver ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
+                  {Math.abs(devioPct).toFixed(1)}%
+                </span>
               </div>
-              <div className="flex justify-between items-center text-[10px] font-bold">
-                <span className="text-gray-400 uppercase">Custo Real (Est.):</span>
-                <span className="text-emerald-600 font-mono">R$ {metrics.totalRealCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              <div>
+                <p className="text-[9px] text-gray-400 uppercase font-bold">Budget Total</p>
+                <p className="text-xl font-black text-gray-900 font-mono leading-tight">
+                  R$ {budgetM >= 1 ? `${budgetM.toFixed(2)}M` : metrics.totalBudget.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <div className="flex justify-between text-[9px] font-bold text-gray-400 uppercase">
+                  <span>Custo Real</span>
+                  <span className={isOver ? 'text-red-500' : 'text-emerald-600'}>R$ {metrics.totalRealCost.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                  <div className={`h-1.5 rounded-full transition-all ${isOver ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(usedPct, 100)}%` }} />
+                </div>
+                <div className="flex justify-between text-[9px] text-gray-400">
+                  <span>Plan: R$ {metrics.totalPlannedValue.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
+                  <span>{usedPct.toFixed(0)}% consumido</span>
+                </div>
               </div>
             </div>
-          }
-        />
-        <StatsCard
-          title="Custo Planejado"
-          value={`R$ ${metrics.totalPlannedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-          icon={<TrendingUp size={20} />}
-          color="bg-blue-600"
-          comparison={{
-            label: "Saldo vs Budget",
-            value: `R$ ${(metrics.totalBudget - metrics.totalPlannedValue).toLocaleString('pt-BR')}`,
-            percent: metrics.totalBudget > 0 ? (metrics.totalPlannedValue / metrics.totalBudget) * 100 : 0,
-            isOver: metrics.totalPlannedValue > metrics.totalBudget
-          }}
-        />
-        <StatsCard
-          title="Custo Real (Est.)"
-          value={`R$ ${metrics.totalRealCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-          icon={<Calculator size={20} />}
-          color="bg-emerald-600"
-          comparison={{
-            label: "Saldo Final Budget",
-            value: `R$ ${(metrics.totalBudget - metrics.totalRealCost).toLocaleString('pt-BR')}`,
-            percent: metrics.totalBudget > 0 ? (metrics.totalRealCost / metrics.totalBudget) * 100 : 0,
-            isOver: metrics.totalRealCost > metrics.totalBudget
-          }}
-        />
-      </HierarchySection>
+          );
+        })()}
 
-      {/* Nível 02: Horas Extras */}
-      <HierarchySection title="Nível 02: Horas Extras">
-        <StatsCard
-          title="Soma Total Horas (60+100)"
-          value={formatDecimalHours(metrics.realTotalHE)}
-          icon={<Clock size={20} />}
-          color="bg-slate-700"
-          comparison={{
-            label: "Comparativo Planejado",
-            value: formatDecimalHours(metrics.totalPlannedHours),
-            percent: metrics.totalPlannedHours > 0 ? (metrics.realTotalHE / metrics.totalPlannedHours) * 100 : 0,
-            isOver: metrics.realTotalHE > metrics.totalPlannedHours
-          }}
-        />
-        <StatsCard
-          title="H.E. 60%"
-          value={formatDecimalHours(metrics.realHE60Hours)}
-          icon={<Percent size={20} />}
-          color="bg-blue-500"
-          subValue={`${((metrics.realHE60Hours / (metrics.realTotalHE || 1)) * 100).toFixed(1)}% do real total`}
-        />
-        <StatsCard
-          title="H.E. 100%"
-          value={formatDecimalHours(metrics.realHE100Hours)}
-          icon={<AlertTriangle size={20} />}
-          color="bg-red-500"
-          subValue={`${((metrics.realHE100Hours / (metrics.realTotalHE || 1)) * 100).toFixed(1)}% do real total`}
-        />
-      </HierarchySection>
-
-      {/* Nível 03: Específicos */}
-      <HierarchySection title="Nível 03: Específicos">
-        <StatsCard
-          title="Interjornada"
-          value={formatDecimalHours(metrics.realInterHours)}
-          icon={<Scale size={20} />}
-          color="bg-amber-500"
-          subValue="Horas de descanso não cumpridas"
-        />
-        <StatsCard
-          title="Adicional Noturno"
-          value={`R$ ${metrics.realValueAdicNoturno.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-          icon={<Moon size={20} />}
-          color="bg-purple-600"
-          subValue={
-            <div className="flex items-center gap-1.5 font-bold text-[10px] text-gray-500">
-              <span>HORAS NOTURNAS:</span>
-              <span className="font-mono text-[14px] text-gray-700">{formatDecimalHours(metrics.realAdicNoturnoHours)}</span>
+        {/* 2. Horas Extras */}
+        {(() => {
+          const devioPct = metrics.totalPlannedHours > 0 ? ((metrics.realTotalHE - metrics.totalPlannedHours) / metrics.totalPlannedHours) * 100 : 0;
+          const isOver = metrics.realTotalHE > metrics.totalPlannedHours;
+          const pct60 = metrics.realTotalHE > 0 ? (metrics.realHE60Hours / metrics.realTotalHE) * 100 : 0;
+          const pct100 = metrics.realTotalHE > 0 ? (metrics.realHE100Hours / metrics.realTotalHE) * 100 : 0;
+          return (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md transition-all">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-slate-700 text-white shadow"><Clock size={14} /></div>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Horas Extras</span>
+                </div>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${isOver ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                  {isOver ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
+                  {Math.abs(devioPct).toFixed(1)}%
+                </span>
+              </div>
+              <div>
+                <p className="text-[9px] text-gray-400 uppercase font-bold">Total HE Real</p>
+                <p className="text-xl font-black text-gray-900 font-mono leading-tight">{formatDecimalHours(metrics.realTotalHE)}</p>
+              </div>
+              <div className="space-y-1">
+                <div className="flex gap-1 h-2 rounded-full overflow-hidden bg-gray-100">
+                  <div className="bg-blue-500 h-full transition-all" style={{ width: `${pct60}%` }} title={`HE 60%: ${pct60.toFixed(1)}%`} />
+                  <div className="bg-red-500 h-full transition-all" style={{ width: `${pct100}%` }} title={`HE 100%: ${pct100.toFixed(1)}%`} />
+                </div>
+                <div className="flex justify-between text-[9px] font-bold">
+                  <span className="text-blue-600">60%: {formatDecimalHours(metrics.realHE60Hours)}</span>
+                  <span className="text-red-600">100%: {formatDecimalHours(metrics.realHE100Hours)}</span>
+                </div>
+                <p className="text-[9px] text-gray-400">Plan: {formatDecimalHours(metrics.totalPlannedHours)}</p>
+              </div>
             </div>
-          }
-        />
-        <StatsCard
-          title="DSR (Reflexo HE)"
-          value={`R$ ${metrics.realValueDSR.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-          icon={<Sun size={20} />}
-          color="bg-orange-500"
-          subValue="Base: 1/6 do valor total de HE"
-        />
-      </HierarchySection>
+          );
+        })()}
+
+        {/* 3. Riscos Trabalhistas */}
+        {(() => {
+          const totalRisk = metrics.realInterHours + metrics.realAdicNoturnoHours;
+          return (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md transition-all">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-amber-500 text-white shadow"><ShieldAlert size={14} /></div>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Riscos Trabalhistas</span>
+                </div>
+                {totalRisk > 0 && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700">
+                    {formatDecimalHours(totalRisk)} h
+                  </span>
+                )}
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between py-1.5 border-b border-gray-50">
+                  <div className="flex items-center gap-1.5">
+                    <Scale size={12} className="text-amber-500" />
+                    <span className="text-[10px] font-bold text-gray-500 uppercase">Interjornada</span>
+                  </div>
+                  <span className="text-sm font-black text-gray-800 font-mono">{formatDecimalHours(metrics.realInterHours)}</span>
+                </div>
+                <div className="flex items-center justify-between py-1.5 border-b border-gray-50">
+                  <div className="flex items-center gap-1.5">
+                    <Moon size={12} className="text-purple-500" />
+                    <span className="text-[10px] font-bold text-gray-500 uppercase">Noturno</span>
+                  </div>
+                  <span className="text-sm font-black text-gray-800 font-mono">{formatDecimalHours(metrics.realAdicNoturnoHours)}</span>
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <div className="flex items-center gap-1.5">
+                    <Calculator size={12} className="text-orange-500" />
+                    <span className="text-[10px] font-bold text-gray-500 uppercase">DSR Estimado</span>
+                  </div>
+                  <span className="text-sm font-black text-orange-600 font-mono">R$ {metrics.realValueDSR.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* 4. Eficiência do Planejamento */}
+        {(() => {
+          const eficiencia = metrics.totalPlannedHours > 0
+            ? Math.min((metrics.realTotalHE / metrics.totalPlannedHours) * 100, 200)
+            : 0;
+          const efColor = eficiencia > 110 ? 'text-red-600' : eficiencia > 90 ? 'text-emerald-600' : 'text-amber-500';
+          const barColor = eficiencia > 110 ? 'bg-red-500' : eficiencia > 90 ? 'bg-emerald-500' : 'bg-amber-400';
+          const label = eficiencia > 110 ? 'Acima do Planejado' : eficiencia > 90 ? 'Dentro do Esperado' : 'Abaixo do Planejado';
+          const budgetEfic = metrics.totalBudget > 0
+            ? Math.min((metrics.totalRealCost / metrics.totalBudget) * 100, 200)
+            : 0;
+          return (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md transition-all">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-violet-600 text-white shadow"><Zap size={14} /></div>
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Eficiência</span>
+              </div>
+              <div>
+                <p className="text-[9px] text-gray-400 uppercase font-bold">Eficiência do Planejamento</p>
+                <p className={`text-3xl font-black font-mono leading-tight ${efColor}`}>
+                  {eficiencia.toFixed(1)}%
+                </p>
+                <p className="text-[9px] text-gray-400 mt-0.5">{label}</p>
+              </div>
+              <div className="space-y-2">
+                <div>
+                  <div className="flex justify-between text-[9px] font-bold text-gray-400 mb-0.5">
+                    <span>Horas Real / Planejado</span>
+                    <span>{eficiencia.toFixed(0)}%</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                    <div className={`h-1.5 rounded-full transition-all ${barColor}`} style={{ width: `${Math.min(eficiencia, 100)}%` }} />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-[9px] font-bold text-gray-400 mb-0.5">
+                    <span>Custo Real / Budget</span>
+                    <span>{budgetEfic.toFixed(0)}%</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                    <div className={`h-1.5 rounded-full transition-all ${budgetEfic > 100 ? 'bg-red-500' : 'bg-violet-500'}`} style={{ width: `${Math.min(budgetEfic, 100)}%` }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+      </div>
 
       {/* Main Tables */}
       <div className="space-y-8 pt-4">
