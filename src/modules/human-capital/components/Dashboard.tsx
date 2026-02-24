@@ -98,6 +98,7 @@ const FunctionDetailModal: React.FC<{
                 <th className="px-4 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200 text-right">Horas 100%</th>
                 <th className="px-4 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200 text-right">Adic. Noturno</th>
                 <th className="px-4 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200 text-right">Interjornada</th>
+                <th className="px-4 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200 text-right bg-gray-200/60">Total</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -110,6 +111,7 @@ const FunctionDetailModal: React.FC<{
                   <td className="px-4 py-3 text-right font-mono text-red-600">{formatDecimalHours(emp.he100)}</td>
                   <td className="px-4 py-3 text-right font-mono text-purple-600">{formatDecimalHours(emp.night)}</td>
                   <td className="px-4 py-3 text-right font-mono text-amber-600">{formatDecimalHours(emp.interjornada)}</td>
+                  <td className="px-4 py-3 text-right font-mono font-bold text-gray-800 bg-gray-50">{formatDecimalHours(emp.he60 + emp.he100 + emp.night + emp.interjornada)}</td>
                 </tr>
               ))}
             </tbody>

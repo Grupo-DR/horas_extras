@@ -1,10 +1,39 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { OvertimeRecord, BudgetRecord, SalaryAllocation } from '../types';
+import React, { useMemo, useState } from 'react';
+import { OvertimeRecord } from '../types';
 import { RealOvertimeRecord } from '../data/realOvertime';
-import { formatDecimalHours } from '../utils/formatters';
-import { TrendingUp, AlertTriangle, CalendarDays, DollarSign, Clock, X, CheckCircle2 } from 'lucide-react';
-import { getAllPlanningRecords, getBudgets, getSalaries } from '../services/planning';
+import { AlertTriangle, Building2, Scale, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+
+// Mapeamento CC → Nome do projeto (códigos sem pontos)
+const CC_NAMES: Record<string, string> = {
+    '10101': 'ADMINISTRATIVO FINANCEIRO',
+    '10301': 'COMERCIAL',
+    '10401': 'CAPITAL HUMANO',
+    '10501': 'SSMA',
+    '10601': 'SUPRIMENTOS',
+    '300001': 'GESTAO DE ATIVOS',
+    '301502': 'VLI - ESTRADAS VICINAIS - MAN PREV, COR',
+    '301503': 'SER E LOC DE EQUIP COR. CENTRO-NORTE VL',
+    '301804': 'PATRULHAS FIXAS RUMO',
+    '301805': 'MODERNIZACAO E LIMPEZA DE LASTRO',
+    '301806': 'MANUT. INFRA NORTE ZEV - ZBV',
+    '301903': 'MANUT. INFRA NORTE ZAR \u2013 TMI',
+    '302801': 'INFRA ESTRUTURA - GERDAU S/A',
+    '304301': 'CONSORCIO PERA FERREA',
+    '304401': 'MODERNIZACAO E LIMP LASTRO - ARARAQUARA',
+    '304402': 'INFRANORTE - ARARAQUARA',
+    '304501': 'RUMO PATIO CATANDUVA - CATIGUA',
+    '10104': 'TECNOLOGIA DA INFORMACAO',
+};
+
+// Mapeamento CC → Regional (códigos sem pontos)
+const CC_REGIONAL: Record<string, string> = {
+    '10101': 'Sede', '10104': 'Sede', '10301': 'Sede', '10401': 'Sede',
+    '10501': 'Sede', '10601': 'Sede', '300001': 'Sede',
+    '301502': 'Regional 01', '301503': 'Regional 01',
+    '302801': 'Regional 01', '304301': 'Regional 01', '304501': 'Regional 01',
+    '301804': 'Regional 02', '301805': 'Regional 02', '301806': 'Regional 02',
+    '301903': 'Regional 02', '304401': 'Regional 02', '304402': 'Regional 02',
+};
 
 interface AnalysisPanelProps {
     data: OvertimeRecord[];
@@ -12,439 +41,369 @@ interface AnalysisPanelProps {
     realOvertime: RealOvertimeRecord[];
 }
 
-type ViewMode = 'hours' | 'finance';
+type DayData = { he60: number; he100: number; inter: number; noturno: number };
 
-const formatDateKey = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-};
+// ────────────────────────────────────────────────────────────
+// Componente: Calendário
+// ────────────────────────────────────────────────────────────
+const CalendarView: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
+    const today = new Date();
+    const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
 
-// --- COMPONENTE AUXILIAR (Mantido igual) ---
-const MonthDetailsModal: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    monthKey: string;
-    data: OvertimeRecord[];
-    planningText: string;
-}> = ({ isOpen, onClose, monthKey, data, planningText }) => {
-    if (!isOpen) return null;
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth(); // 0-indexed
 
-    const [year, month] = monthKey.split('-').map(Number);
-    const monthName = new Date(year, month - 1, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+    const prevMonth = () => setViewDate(new Date(year, month - 1, 1));
+    const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
 
-    const daysInMonth = useMemo(() => {
-        const days = [];
-        const date = new Date(year, month - 1, 1);
-        while (date.getMonth() === month - 1) {
-            days.push(new Date(date));
-            date.setDate(date.getDate() + 1);
-        }
-        return days;
-    }, [year, month]);
+    const monthName = viewDate.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
 
-    const dailyData = useMemo(() => {
-        const map = new Map<string, { real: number, events: string[] }>();
-        // Otimização: Filtrar apenas uma vez para o modal
+    // Agrega dados por dia
+    const dayMap = useMemo<Record<string, DayData>>(() => {
+        const map: Record<string, DayData> = {};
         data.forEach(r => {
+            if (!r.DATA) return;
             const d = new Date(r.DATA);
-            if (d.getFullYear() === year && (d.getMonth() + 1) === month) {
-                const key = formatDateKey(d);
-                const existing = map.get(key) || { real: 0, events: [] };
-                existing.real += Number(r.HORAS) || 0;
-                if (r.EVENTO && !existing.events.includes(r.EVENTO)) existing.events.push(r.EVENTO);
-                map.set(key, existing);
-            }
+            if (d.getFullYear() !== year || d.getMonth() !== month) return;
+
+            const key = d.getDate().toString();
+            if (!map[key]) map[key] = { he60: 0, he100: 0, inter: 0, noturno: 0 };
+
+            const evt = (r.EVENTO || '').toUpperCase();
+            if (evt.includes('EXTRA') && (evt.includes('60') || (!evt.includes('100')))) map[key].he60++;
+            else if (evt.includes('EXTRA') && evt.includes('100')) map[key].he100++;
+            else if (evt.includes('INTER')) map[key].inter++;
+            else if (evt.includes('NOTURNO') || evt.includes('NOT')) map[key].noturno++;
         });
         return map;
     }, [data, year, month]);
 
+    // Estrutura do calendário
+    const firstDayOfWeek = new Date(year, month, 1).getDay(); // 0=Dom
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const weeks: (number | null)[][] = [];
+    let day = 1;
+    for (let w = 0; w < 6; w++) {
+        const week: (number | null)[] = [];
+        for (let d = 0; d < 7; d++) {
+            const cellIndex = w * 7 + d;
+            if (cellIndex < firstDayOfWeek || day > daysInMonth) {
+                week.push(null);
+            } else {
+                week.push(day++);
+            }
+        }
+        weeks.push(week);
+        if (day > daysInMonth) break;
+    }
+
+    const todayDate = new Date();
+    const isToday = (d: number) =>
+        d === todayDate.getDate() && month === todayDate.getMonth() && year === todayDate.getFullYear();
+
+    const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 flex justify-between items-center text-white shrink-0">
-                    <div>
-                        <h3 className="text-xl font-bold capitalize">{monthName}</h3>
-                        <p className="text-blue-100 text-sm">Detalhes Diários • {planningText}</p>
-                    </div>
-                    <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors">
-                        <X size={24} />
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            {/* Header do calendário */}
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <Calendar size={16} className="text-blue-500" />
+                    <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide capitalize">
+                        {monthName}
+                    </h3>
+                </div>
+                <div className="flex items-center gap-1">
+                    <button
+                        onClick={prevMonth}
+                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500"
+                    >
+                        <ChevronLeft size={16} />
+                    </button>
+                    <button
+                        onClick={nextMonth}
+                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500"
+                    >
+                        <ChevronRight size={16} />
                     </button>
                 </div>
+            </div>
 
-                <div className="p-6 overflow-y-auto bg-gray-50 flex-1">
-                    <div className="grid grid-cols-7 gap-2 mb-2 text-center">
-                        {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
-                            <div key={d} className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{d}</div>
-                        ))}
-                    </div>
-                    <div className="grid grid-cols-7 gap-2">
-                        {Array.from({ length: daysInMonth[0].getDay() }).map((_, i) => (
-                            <div key={`empty-${i}`} className="h-24 bg-transparent" />
-                        ))}
+            {/* Legenda */}
+            <div className="px-5 py-2 flex items-center gap-4 border-b border-gray-50 bg-gray-50/50 flex-wrap">
+                <span className="flex items-center gap-1.5 text-[10px] font-bold text-blue-600">
+                    <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> HE 60%
+                </span>
+                <span className="flex items-center gap-1.5 text-[10px] font-bold text-red-600">
+                    <span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> HE 100%
+                </span>
+                <span className="flex items-center gap-1.5 text-[10px] font-bold text-amber-600">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" /> Interjornada
+                </span>
+                <span className="flex items-center gap-1.5 text-[10px] font-bold text-purple-600">
+                    <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" /> Noturno
+                </span>
+            </div>
 
-                        {daysInMonth.map(day => {
-                            const dateKey = formatDateKey(day);
-                            const info = dailyData.get(dateKey) || { real: 0, events: [] };
-                            const isWeekend = day.getDay() === 0 || day.getDay() === 6;
-                            const isSunday = day.getDay() === 0;
-
-                            return (
-                                <div
-                                    key={dateKey}
-                                    title={`Eventos: ${info.events.join(', ') || 'Nenhum'}`}
-                                    className={`h-24 border rounded-xl p-3 flex flex-col justify-between transition-all hover:scale-[1.02] ${info.real > 0 ? 'bg-white border-blue-200 shadow-md ring-1 ring-blue-50' : 'bg-white/50 border-gray-100'
-                                        } ${isWeekend ? 'bg-orange-50/30' : ''}`}
-                                >
-                                    <div className="flex justify-between items-start">
-                                        <span className={`text-xs font-bold ${isWeekend ? 'text-orange-500' : 'text-gray-400'}`}>
-                                            {day.getDate()}
-                                        </span>
-                                        {info.real > 0 && (
-                                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${isSunday ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
-                                                {isSunday ? '100%' : '60%'}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="text-right">
-                                        {info.real > 0 ? (
-                                            <div className="flex flex-col">
-                                                <span className="text-xs text-gray-400 font-medium">Real</span>
-                                                <span className="text-base font-bold font-mono text-gray-800">{formatDecimalHours(info.real)}</span>
-                                            </div>
-                                        ) : (
-                                            <span className="text-xs text-gray-200">-</span>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+            {/* Grade */}
+            <div className="p-4">
+                {/* Cabeçalho dos dias da semana */}
+                <div className="grid grid-cols-7 mb-2">
+                    {weekDays.map(wd => (
+                        <div key={wd} className={`text-center text-[10px] font-bold uppercase tracking-widest py-1 ${wd === 'Dom' || wd === 'Sáb' ? 'text-orange-400' : 'text-gray-400'}`}>
+                            {wd}
+                        </div>
+                    ))}
                 </div>
-                <div className="p-4 bg-gray-100 border-t border-gray-200 text-center">
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest flex items-center justify-center gap-2">
-                        <CheckCircle2 size={12} className="text-emerald-500" />
-                        Clique nos dias para mais detalhes (em breve)
-                    </p>
+
+                {/* Semanas */}
+                <div className="space-y-1">
+                    {weeks.map((week, wi) => (
+                        <div key={wi} className="grid grid-cols-7 gap-1">
+                            {week.map((d, di) => {
+                                if (!d) return <div key={di} className="h-[104px]" />;
+
+                                const info = dayMap[d.toString()];
+                                const isWeekend = di === 0 || di === 6;
+                                const total = info ? info.he60 + info.he100 + info.inter + info.noturno : 0;
+                                const hasData = total > 0;
+
+                                return (
+                                    <div
+                                        key={di}
+                                        className={`h-[104px] rounded-xl border p-1.5 flex flex-col transition-all
+                                          ${isToday(d) ? 'border-blue-400 ring-2 ring-blue-100' : 'border-gray-100'}
+                                          ${hasData ? 'bg-white shadow-sm' : isWeekend ? 'bg-orange-50/20' : 'bg-gray-50/30'}
+                                        `}
+                                    >
+                                        {/* Número do dia */}
+                                        <span className={`text-[9px] font-bold leading-none mb-1 ${isToday(d) ? 'text-blue-600' : isWeekend ? 'text-orange-400' : 'text-gray-400'
+                                            }`}>
+                                            {d}/{month + 1}
+                                        </span>
+
+                                        {/* Corpo: total + badges */}
+                                        {hasData && (
+                                            <div className="flex flex-1">
+                                                {/* Total — metade esquerda */}
+                                                <div className="w-1/2 flex items-center justify-center">
+                                                    <span className="text-2xl font-black text-gray-700 leading-none">
+                                                        {total}
+                                                    </span>
+                                                </div>
+
+                                                {/* Badges — metade direita, alinhados à direita */}
+                                                <div className="w-1/2 flex flex-col justify-start gap-[2px]">
+                                                    {info.he60 > 0 && (
+                                                        <div className="px-1 py-0 rounded bg-blue-50 border border-blue-100 text-right">
+                                                            <span className="text-[8px] font-bold text-blue-600 leading-none">60%: {info.he60}</span>
+                                                        </div>
+                                                    )}
+                                                    {info.he100 > 0 && (
+                                                        <div className="px-1 py-0 rounded bg-red-50 border border-red-100 text-right">
+                                                            <span className="text-[8px] font-bold text-red-600 leading-none">100%: {info.he100}</span>
+                                                        </div>
+                                                    )}
+                                                    {info.inter > 0 && (
+                                                        <div className="px-1 py-0 rounded bg-amber-50 border border-amber-100 text-right">
+                                                            <span className="text-[8px] font-bold text-amber-600 leading-none">Inter: {info.inter}</span>
+                                                        </div>
+                                                    )}
+                                                    {info.noturno > 0 && (
+                                                        <div className="px-1 py-0 rounded bg-purple-50 border border-purple-100 text-right">
+                                                            <span className="text-[8px] font-bold text-purple-600 leading-none">Not.: {info.noturno}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ))}
                 </div>
             </div>
         </div>
     );
 };
 
-// --- TOOLTIP (Mantido igual) ---
-const CustomTooltip = ({ active, payload, label, viewMode }: any) => {
-    if (active && payload && payload.length) {
-        const data = payload[0].payload;
-        return (
-            <div className="bg-white p-4 border border-gray-100 shadow-xl rounded-xl min-w-[200px]">
-                <p className="font-bold text-gray-800 mb-3 border-b border-gray-100 pb-2 text-sm uppercase tracking-wide">
-                    {label} {payload[0]?.payload?.isPartial ? <span className="text-xs text-amber-500 font-normal ml-2">(Período em andamento)</span> : ''}
-                </p>
+// ────────────────────────────────────────────────────────────
+// Componente principal
+// ────────────────────────────────────────────────────────────
+const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
 
-                {viewMode === 'finance' ? (
-                    <div className="space-y-2">
-                        <div className="flex justify-between items-center text-xs">
-                            <span className="text-gray-500 font-bold">Budget (Meta)</span>
-                            <span className="font-mono font-bold text-indigo-600">
-                                R$ {data.Budget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </span>
-                        </div>
-                        <div className="flex justify-between items-center text-xs">
-                            <span className="text-gray-500 font-bold">Planejado</span>
-                            <span className="font-mono font-bold text-blue-600">
-                                R$ {data.Planejado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </span>
-                        </div>
-                        <div className="flex justify-between items-center text-xs pt-1 border-t border-gray-50">
-                            <span className="text-gray-500 font-bold">REALIZADO (HE)</span>
-                            <span className="font-mono font-bold text-emerald-600 text-sm">
-                                R$ {data.Real.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </span>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="space-y-3">
-                        <div>
-                            <div className="flex justify-between items-center mb-1">
-                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">REALIZADO TOTAL</span>
-                                <span className="font-mono font-bold text-blue-600 text-sm">{formatDecimalHours(data.Real)}</span>
-                            </div>
-                            <div className="space-y-1 pl-2 border-l-2 border-gray-100">
-                                <div className="flex justify-between items-center text-[10px]">
-                                    <span className="text-gray-500">H.E. 60%</span>
-                                    <span className="font-mono text-gray-700">{formatDecimalHours(data.he60)}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-[10px]">
-                                    <span className="text-gray-500">H.E. 100%</span>
-                                    <span className="font-mono text-gray-700">{formatDecimalHours(data.he100)}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-[10px]">
-                                    <span className="text-gray-500">Adic. Noturno</span>
-                                    <span className="font-mono text-gray-700">{formatDecimalHours(data.night)}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="pt-2 border-t border-gray-50">
-                            <div className="flex justify-between items-center">
-                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">PLANEJADO</span>
-                                <span className="font-mono font-bold text-gray-400 text-sm">{formatDecimalHours(data.Planejado)}</span>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
-    }
-    return null;
-};
+    const ccSummary = useMemo(() => {
+        const map: Record<string, { jornadasLongas: number; interjornadas: number }> = {};
 
-const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, selectedYear, realOvertime }) => {
-    const [viewMode, setViewMode] = useState<ViewMode>('finance');
-    const [monthModalOpen, setMonthModalOpen] = useState(false);
-    const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
-
-    // Estados para dados assíncronos
-    const [budgets, setBudgets] = useState<BudgetRecord[]>([]);
-    const [salariesMap, setSalariesMap] = useState<Record<string, number>>({});
-
-    // Efeito de Carga Inicial
-    useEffect(() => {
-        const fetchFinancialData = async () => {
-            try {
-                // Carrega todos os meses do ano selecionado em paralelo
-                const promises = Array.from({ length: 12 }, (_, i) => {
-                    const mk = `${selectedYear}-${String(i + 1).padStart(2, '0')}`;
-                    return Promise.all([
-                        getBudgets(mk).catch(() => []),
-                        getSalaries(mk).catch(() => [])
-                    ]);
-                });
-
-                const results = await Promise.all(promises);
-                const allBudgets: BudgetRecord[] = [];
-                const allSalaries: Record<string, number> = {};
-
-                results.forEach(([bArr, sArr]) => {
-                    if (bArr) allBudgets.push(...bArr);
-                    if (sArr) {
-                        sArr.forEach(s => { if (s.chapa && s.salary) allSalaries[s.chapa] = s.salary; });
-                    }
-                });
-
-                setBudgets(allBudgets);
-                setSalariesMap(allSalaries);
-            } catch (error) {
-                console.error("Erro ao carregar dados financeiros:", error);
-            }
-        };
-        fetchFinancialData();
-    }, [selectedYear]);
-
-    const planningRecords = useMemo(() => getAllPlanningRecords(), []);
-
-    // --- ALGORITMO OTIMIZADO DE GERAÇÃO DO GRÁFICO ---
-    const chartData = useMemo(() => {
-        // 1. Inicializa Mapa de Agregação (O(12))
-        const aggregationMap = new Map<string, any>();
-        for (let i = 0; i < 12; i++) {
-            const monthKey = `${selectedYear}-${String(i + 1).padStart(2, '0')}`;
-            aggregationMap.set(monthKey, {
-                realHours: 0, he60: 0, he100: 0, night: 0, interjourney: 0,
-                plannedHours: 0, plannedCost: 0, budget: 0,
-                monthIndex: i
-            });
-        }
-
-        // 2. Passagem Única nos Dados Reais (O(N))
         data.forEach(r => {
-            const d = new Date(r.DATA);
-            if (d.getFullYear() !== parseInt(selectedYear)) return;
+            const ccRaw = r.CODCCUSTO || 'S/ CC';
+            const cc = ccRaw.replace(/\./g, '');
 
-            const monthKey = `${selectedYear}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-            const agg = aggregationMap.get(monthKey);
+            if (!map[cc]) map[cc] = { jornadasLongas: 0, interjornadas: 0 };
 
-            if (agg) {
-                const hours = Number(r.HORAS) || 0;
-                agg.realHours += hours;
+            const evt = (r.EVENTO || '').toUpperCase();
+            const hours = Number(r.HORAS) || 0;
 
-                const evt = (r.EVENTO || '').toUpperCase();
-                if (evt.includes('60')) agg.he60 += hours;
-                if (evt.includes('100')) agg.he100 += hours;
-                if (evt.includes('NOTURNO') || evt.includes('20')) agg.night += hours;
-                if (evt.includes('INTER')) agg.interjourney += hours;
+            if ((evt.includes('EXTRA') || evt.includes('60') || evt.includes('100')) && hours > 10) {
+                map[cc].jornadasLongas += 1;
+            }
+            if (evt.includes('INTER')) {
+                map[cc].interjornadas += 1;
             }
         });
 
-        // 3. Passagem Única no Planejamento (O(M))
-        planningRecords.forEach(p => {
-            const d = new Date(p.date);
-            if (d.getFullYear() !== parseInt(selectedYear)) return;
-
-            const monthKey = `${selectedYear}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-            const agg = aggregationMap.get(monthKey);
-
-            if (agg) {
-                agg.plannedHours += p.plannedHours;
-                const sal = salariesMap[p.chapa];
-                if (sal) {
-                    const isSunday = d.getDay() === 0;
-                    agg.plannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
-                }
-            }
-        });
-
-        // 4. Passagem Única no Budget (O(B))
-        budgets.forEach(b => {
-            const agg = aggregationMap.get(b.monthKey);
-            if (agg) {
-                agg.budget += b.value;
-            }
-        });
-
-        // 5. Montagem Final (O(12))
-        return Array.from(aggregationMap.entries()).map(([monthKey, agg]) => {
-            const [y, m] = monthKey.split('-');
-            const monthName = new Date(parseInt(y), parseInt(m) - 1, 1).toLocaleString('pt-BR', { month: 'long' });
-            const displayMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1).substring(0, 2);
-
-            // Override financeiro manual se disponível
-            let realFinancialValue = 0;
-            if (viewMode === 'finance') {
-                // Pequena busca linear aqui é aceitável pois realOvertime é minúsculo (12 registros por ano)
-                const manualData = realOvertime.find(r => r.year === parseInt(selectedYear) && r.month === parseInt(m));
-                realFinancialValue = manualData ? manualData.value : 0;
-            }
-
-            return {
-                name: displayMonth,
-                fullMonth: monthName,
-                monthIndex: agg.monthIndex,
-                year: selectedYear,
-                Real: viewMode === 'finance' ? realFinancialValue : agg.realHours,
-                Planejado: viewMode === 'finance' ? agg.plannedCost : agg.plannedHours,
-                Budget: viewMode === 'finance' ? agg.budget : 0,
-                // Metadados para tooltip
-                he60: agg.he60,
-                he100: agg.he100,
-                night: agg.night,
-                interjourney: agg.interjourney,
-                isPartial: parseInt(selectedYear) === 2026 && agg.monthIndex === 0
-            };
-        });
-
-    }, [data, selectedYear, viewMode, budgets, planningRecords, salariesMap, realOvertime]);
-
-    const complianceData = useMemo(() => {
-        const excessiveHours = data.filter(r => r.HORAS > 10).length;
-        const sundayWork = data.filter(r => new Date(r.DATA).getDay() === 0).length;
-        const interJornadaErrors = data.filter(r => r.EVENTO.includes('INTER')).length;
-
-        return [
-            { label: 'Jornadas Críticas (>10h)', value: excessiveHours, color: 'text-red-600', bg: 'bg-red-50' },
-            { label: 'Trabalho aos Domingos', value: sundayWork, color: 'text-orange-600', bg: 'bg-orange-50' },
-            { label: 'Violações Interjornada', value: interJornadaErrors, color: 'text-purple-600', bg: 'bg-purple-50' },
-        ];
+        return Object.entries(map)
+            .map(([cc, vals]) => ({
+                cc,
+                nome: CC_NAMES[cc] || cc,
+                regional: CC_REGIONAL[cc] || 'Outros',
+                ...vals,
+            }))
+            .filter(item => item.jornadasLongas > 0 || item.interjornadas > 0)
+            .sort((a, b) => (b.jornadasLongas + b.interjornadas) - (a.jornadasLongas + a.interjornadas));
     }, [data]);
 
-    const handleChartClick = (state: any) => {
-        if (state && state.activePayload && state.activePayload.length > 0) {
-            const payload = state.activePayload[0].payload;
-            const year = payload.year;
-            const month = (payload.monthIndex + 1).toString().padStart(2, '0');
-            setSelectedMonthKey(`${year}-${month}`);
-            setMonthModalOpen(true);
-        }
-    };
+    const totais = useMemo(() => ({
+        jornadasLongas: ccSummary.reduce((acc, r) => acc + r.jornadasLongas, 0),
+        interjornadas: ccSummary.reduce((acc, r) => acc + r.interjornadas, 0),
+    }), [ccSummary]);
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {selectedMonthKey && (
-                <MonthDetailsModal
-                    isOpen={monthModalOpen}
-                    onClose={() => setMonthModalOpen(false)}
-                    monthKey={selectedMonthKey}
-                    data={data}
-                    planningText={viewMode === 'finance' ? 'Visualização Financeira' : 'Visualização de Horas'}
-                />
-            )}
+        <div className="space-y-6">
 
-            <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
-                <div className="flex justify-between items-center mb-6">
-                    <div>
-                        <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                            <TrendingUp size={18} className="text-blue-600" />
-                            {viewMode === 'finance' ? 'Evolução Financeira' : 'Evolução de Horas'}
-                        </h3>
-                        <p className="text-xs text-gray-400 mt-1">
-                            {viewMode === 'finance'
-                                ? 'Comparativo entre Budget (Meta), Planejado (Operacional) e Real (Executado)'
-                                : 'Comparativo entre Horas Planejadas (Operacional) e Horas Reais (Executadas)'}
-                        </p>
+            {/* Cards de totais */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
+                    <div className="p-3 rounded-xl bg-red-500 text-white shadow-lg shrink-0">
+                        <AlertTriangle size={22} />
                     </div>
-
-                    <div className="flex bg-gray-100 p-1 rounded-lg">
-                        <button
-                            onClick={() => setViewMode('hours')}
-                            className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase transition-all flex items-center gap-1 ${viewMode === 'hours' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400'}`}
-                        >
-                            <Clock size={12} /> Horas
-                        </button>
-                        <button
-                            onClick={() => setViewMode('finance')}
-                            className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase transition-all flex items-center gap-1 ${viewMode === 'finance' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-400'}`}
-                        >
-                            <DollarSign size={12} /> R$
-                        </button>
+                    <div>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Jornadas &gt; 10h</p>
+                        <h3 className="text-2xl font-bold text-gray-800 font-mono">{totais.jornadasLongas}</h3>
+                        <p className="text-xs text-gray-400 mt-0.5">Ocorrências no período</p>
                     </div>
                 </div>
 
-                <div className="h-[300px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart
-                            data={chartData}
-                            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                            onClick={handleChartClick}
-                            className="cursor-pointer"
-                        >
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }} dy={10} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} tickFormatter={(value) => viewMode === 'finance' ? `R$${(value / 1000).toFixed(0)}k` : value} />
-                            <Tooltip content={<CustomTooltip viewMode={viewMode} />} cursor={{ fill: '#f8fafc' }} />
-                            <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }} />
-                            <Bar dataKey="Planejado" name="Planejado" fill="#cbd5e1" radius={[4, 4, 0, 0]} barSize={20} />
-                            <Bar dataKey="Real" name="Realizado (HE)" fill={viewMode === 'finance' ? '#10b981' : '#3b82f6'} radius={[4, 4, 0, 0]} barSize={20} />
-                            {viewMode === 'finance' && (
-                                <Line type="monotone" dataKey="Budget" name="Budget" stroke="#6366f1" strokeWidth={2} dot={{ r: 4, fill: '#6366f1', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
-                            )}
-                        </ComposedChart>
-                    </ResponsiveContainer>
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
+                    <div className="p-3 rounded-xl bg-amber-500 text-white shadow-lg shrink-0">
+                        <Scale size={22} />
+                    </div>
+                    <div>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Interjornadas</p>
+                        <h3 className="text-2xl font-bold text-gray-800 font-mono">{totais.interjornadas}</h3>
+                        <p className="text-xs text-gray-400 mt-0.5">Ocorrências no período</p>
+                    </div>
                 </div>
             </div>
 
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
-                <h3 className="font-bold text-gray-800 flex items-center gap-2 mb-6">
-                    <AlertTriangle size={18} className="text-orange-500" />
-                    Compliance Trabalhista
-                </h3>
-                <div className="space-y-4 flex-1">
-                    {complianceData.map((item, idx) => (
-                        <div key={idx} className={`p-4 rounded-xl border border-transparent transition-all hover:border-gray-200 ${item.bg}`}>
-                            <div className="flex justify-between items-start mb-2">
-                                <span className={`text-xs font-bold uppercase tracking-wide ${item.color.replace('text-', 'text-opacity-70 ')}`}>{item.label}</span>
-                                <CalendarDays size={14} className={item.color} />
-                            </div>
-                            <div className={`text-2xl font-bold font-mono ${item.color}`}>{item.value}</div>
-                            <p className="text-[10px] text-gray-500 mt-1">Ocorrências no período selecionado</p>
-                        </div>
-                    ))}
+            {/* Calendário */}
+            <CalendarView data={data} />
+
+            {/* Tabela por CC */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">
+                    <Building2 size={16} className="text-blue-500" />
+                    <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">
+                        Análise por Centro de Custo
+                    </h3>
                 </div>
-                <div className="mt-6 pt-6 border-t border-gray-100">
-                    <div className="text-xs text-gray-400 text-center">
-                        <span className="font-bold text-gray-800">Nota:</span> O excesso de horas extras (&gt;2h/dia) e supressão de interjornada geram passivo trabalhista.
+
+                {ccSummary.length === 0 ? (
+                    <div className="p-12 text-center text-gray-400">
+                        <p className="font-medium">Nenhuma ocorrência encontrada no período.</p>
+                        <p className="text-sm mt-1">Ajuste os filtros ou o intervalo de datas.</p>
                     </div>
-                </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm text-gray-600">
+                            <thead className="bg-gray-100 text-gray-700 font-bold uppercase text-[9px] tracking-wider">
+                                <tr>
+                                    <th className="px-6 py-4">Código CC</th>
+                                    <th className="px-6 py-4">Nome / Descrição</th>
+                                    <th className="px-6 py-4">Regional</th>
+                                    <th className="px-6 py-4 text-center">
+                                        <span className="flex items-center justify-center gap-1">
+                                            <AlertTriangle size={10} className="text-red-500" />
+                                            Jornadas &gt; 10h
+                                        </span>
+                                    </th>
+                                    <th className="px-6 py-4 text-center">
+                                        <span className="flex items-center justify-center gap-1">
+                                            <Scale size={10} className="text-amber-500" />
+                                            Interjornadas
+                                        </span>
+                                    </th>
+                                    <th className="px-6 py-4 text-center">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {ccSummary.map((item) => {
+                                    const total = item.jornadasLongas + item.interjornadas;
+                                    return (
+                                        <tr key={item.cc} className="hover:bg-blue-50/40 transition-colors">
+                                            <td className="px-6 py-3 font-mono font-medium text-gray-900 text-xs">{item.cc}</td>
+                                            <td className="px-6 py-3 text-gray-600 text-xs">{item.nome}</td>
+                                            <td className="px-6 py-3">
+                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${item.regional === 'Sede' ? 'bg-blue-50 text-blue-600' :
+                                                    item.regional === 'Regional 01' ? 'bg-emerald-50 text-emerald-700' :
+                                                        item.regional === 'Regional 02' ? 'bg-purple-50 text-purple-700' :
+                                                            'bg-gray-100 text-gray-500'
+                                                    }`}>
+                                                    {item.regional}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-3 text-center">
+                                                {item.jornadasLongas > 0 ? (
+                                                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-red-100 text-red-700 font-bold text-sm">
+                                                        {item.jornadasLongas}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-300 font-mono">&mdash;</span>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-3 text-center">
+                                                {item.interjornadas > 0 ? (
+                                                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 text-amber-700 font-bold text-sm">
+                                                        {item.interjornadas}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-300 font-mono">&mdash;</span>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-3 text-center">
+                                                <span className={`font-bold font-mono text-sm ${total > 5 ? 'text-red-600' : total > 2 ? 'text-amber-600' : 'text-gray-600'
+                                                    }`}>
+                                                    {total}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                            <tfoot className="bg-gray-50 border-t-2 border-gray-200">
+                                <tr>
+                                    <td className="px-6 py-3 font-bold text-gray-700 text-xs uppercase tracking-wide" colSpan={3}>
+                                        TOTAL GERAL
+                                    </td>
+                                    <td className="px-6 py-3 text-center">
+                                        <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-red-100 text-red-700 font-bold text-sm">
+                                            {totais.jornadasLongas}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-3 text-center">
+                                        <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-amber-100 text-amber-700 font-bold text-sm">
+                                            {totais.interjornadas}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-3 text-center font-bold font-mono text-gray-800">
+                                        {totais.jornadasLongas + totais.interjornadas}
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                )}
             </div>
         </div>
     );
