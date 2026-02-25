@@ -364,10 +364,57 @@ const Dashboard: React.FC<DashboardProps> = ({
       }))
       .sort((a, b) => b.idle - a.idle);
 
+    // Tabela Detalhada do Catálogo SAP
+    const sapItemMap: Record<string, {
+      item: string;
+      description: string;
+      planned: number;
+      actual: number;
+    }> = {};
+
+    // Initialize with all items from servicePrices (unified)
+    servicePrices.forEach(sp => {
+      const info = getUnifiedServiceInfo(sp.item, servicePrices);
+      if (!sapItemMap[sp.item]) {
+        sapItemMap[sp.item] = {
+          item: sp.item,
+          description: info.descricao,
+          planned: 0,
+          actual: 0
+        };
+      }
+    });
+
+    // Add Actuals
+    filteredRecords.forEach(r => {
+      const financials = calculateRecordFinancials(r, servicePrices);
+      if (sapItemMap[r.item]) {
+        sapItemMap[r.item].actual += financials.total;
+      }
+    });
+
+    // Add Planned
+    filteredAssignments.forEach(a => {
+      a.services.forEach(s => {
+        const info = getUnifiedServiceInfo(s.item, servicePrices);
+        if (sapItemMap[s.item]) {
+          sapItemMap[s.item].planned += (s.producao * info.precoTotal);
+        }
+      });
+    });
+
+    const sapComparison = Object.values(sapItemMap)
+      .map(item => ({
+        ...item,
+        difference: item.actual - item.planned
+      }))
+      .filter(item => item.planned > 0 || item.actual > 0)
+      .sort((a, b) => b.actual - a.actual);
+
     return {
       realTotal, realProdutivo, realImprodutivo, planejadoTotal, period, chartData,
       paretoCategory, idleTrechoTable, paretoRevenue, paretoIdle, equipmentComparison, idleComparison,
-      totalBudget, dailyBudget
+      totalBudget, dailyBudget, sapComparison
     };
   }, [data, selectedCycle, servicePrices, assignments, selectedEquipmentType, selectedEquipment]);
 
@@ -659,6 +706,51 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </React.Fragment>
                   );
                 })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tabela Detalhada do Catálogo SAP */}
+      {stats.sapComparison.length > 0 && (
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+          <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2">
+            <ClipboardCheck className="w-4 h-4 text-amber-500" /> Indicadores por Item do Catálogo SAP
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-slate-500 uppercase tracking-wider">Item</th>
+                  <th className="text-left py-3 px-4 text-[10px] font-black text-slate-500 uppercase tracking-wider">Descrição do Serviço</th>
+                  <th className="text-right py-3 px-4 text-[10px] font-black text-slate-500 uppercase tracking-wider">Planejado</th>
+                  <th className="text-right py-3 px-4 text-[10px] font-black text-slate-500 uppercase tracking-wider">Realizado</th>
+                  <th className="text-right py-3 px-4 text-[10px] font-black text-slate-500 uppercase tracking-wider">Diferença</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {stats.sapComparison.map((row, i) => (
+                  <tr key={i} className="hover:bg-slate-50 transition-colors">
+                    <td className="py-3 px-4">
+                      <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-1 rounded-lg uppercase">{row.item}</span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="text-sm font-bold text-slate-700">{row.description}</span>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <span className="text-sm font-bold text-slate-600">{formatCurrencyWithZero(row.planned)}</span>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <span className="text-sm font-bold text-indigo-600">{formatCurrencyWithZero(row.actual)}</span>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <span className={`text-sm font-bold ${row.difference >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        {row.difference >= 0 ? '+' : ''}{formatCurrencyWithZero(row.difference)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
