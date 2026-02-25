@@ -127,7 +127,7 @@ export const UploadHistory: React.FC<UploadHistoryProps> = ({ workId = 'OBRA-01'
                             <button
                                 onClick={async (e) => {
                                     e.stopPropagation();
-                                    if (window.confirm(`Tem certeza que deseja apagar TODOS os dados do ciclo ${upload.cycleKey}? Isso não pode ser desfeito.`)) {
+                                    if (window.confirm(`Tem certeza que deseja apagar os dados de RDO do ciclo ${upload.cycleKey}?\n\n⚠️ Os registros e uploads serão removidos.\n✅ O PLANEJAMENTO será preservado.\n\nEssa ação não pode ser desfeita.`)) {
                                         try {
                                             setIsLoading(true);
                                             await constructionService.deleteCycleData(upload.cycleKey, workId);

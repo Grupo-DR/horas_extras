@@ -263,10 +263,9 @@ export const constructionService = {
             const uploadsSnap = await getDocs(uploadsQ);
             await deleteInBatches(uploadsSnap);
 
-            // 3. Delete Planning (Single Doc)
-            const planningId = `${workId}_${cycleKey}`;
-            const planningRef = doc(db, COLLECTIONS.PLANNING, planningId);
-            await deleteDoc(doc(db, COLLECTIONS.PLANNING, planningId)); // Direct delete, no batch needed if single
+            // NOTE: O planejamento (construction_planning) NÃO é apagado junto com os dados de RDO.
+            // Isso é intencional: o planejamento é independente e deve ser preservado
+            // mesmo quando os dados de RDO do ciclo são removidos.
 
         } catch (error) {
             console.error("Error deleting cycle data:", error);

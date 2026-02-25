@@ -213,6 +213,24 @@ const App: React.FC = () => {
               alert('Erro ao atualizar planejamento. Tente novamente.');
             }
           }}
+          onImportPlanning={async (newAssignments, mode) => {
+            try {
+              let nextAssignments: PlanningAssignment[];
+              if (mode === 'replace') {
+                nextAssignments = newAssignments;
+              } else {
+                // Merge: add new ones only if frota+date combo doesn't already exist
+                const existingKeys = new Set(assignments.map(a => `${a.date}-${a.frota}`));
+                const toAdd = newAssignments.filter(a => !existingKeys.has(`${a.date}-${a.frota}`));
+                nextAssignments = [...assignments, ...toAdd];
+              }
+              setAssignments(nextAssignments);
+              await constructionService.updatePlanning(currentCycle, nextAssignments, 'OBRA-01');
+            } catch (error) {
+              console.error('Erro ao importar planejamento:', error);
+              throw error; // Re-throw so modal can show error
+            }
+          }}
         />
       )}
       {view === 'table' && <DataTable data={data} servicePrices={servicePrices} />}

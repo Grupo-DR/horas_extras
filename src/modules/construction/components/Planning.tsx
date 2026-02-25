@@ -4,8 +4,9 @@ import { ConstructionRecord, PlanningAssignment, ServicePrice, PlannedService, E
 import {
   ChevronLeft, ChevronRight, Truck, Calendar as CalendarIcon,
   Plus, X, GripVertical, Trash2, Calculator, Settings2, Edit3,
-  DollarSign, Target, TrendingUp
+  DollarSign, Target, TrendingUp, FileSpreadsheet
 } from 'lucide-react';
+import PlanningImportModal from './PlanningImportModal';
 import {
   getEquipmentCategory, getUnifiedServiceInfo, formatCurrencyWithZero,
   isServiceRelevantForEquipment, calculateAssignmentTotal, getPeriodInfo,
@@ -24,12 +25,14 @@ interface PlanningProps {
   onRemoveAssignment: (id: string) => void;
   onUpdateAssignment: (assignment: PlanningAssignment) => void;
   onUpdateAllAssignments: (assignments: PlanningAssignment[]) => void;
+  onImportPlanning: (newAssignments: PlanningAssignment[], mode: 'replace' | 'merge') => Promise<void>;
 }
 
 const Planning: React.FC<PlanningProps> = ({
   data, assignments, servicePrices, equipments,
   selectedCycle, onCycleChange,
-  onAddAssignment, onRemoveAssignment, onUpdateAssignment, onUpdateAllAssignments
+  onAddAssignment, onRemoveAssignment, onUpdateAssignment, onUpdateAllAssignments,
+  onImportPlanning
 }) => {
   const currentDate = useMemo(() => {
     if (!selectedCycle) return new Date();
@@ -42,6 +45,7 @@ const Planning: React.FC<PlanningProps> = ({
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [activeAssignmentId, setActiveAssignmentId] = useState<string | null>(null);
   const [draggedFrota, setDraggedFrota] = useState<string | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Informações do ciclo baseadas na data atual selecionada (21 a 20)
   const period = useMemo(() => getPeriodInfo(currentDate, data), [currentDate, data]);
@@ -297,10 +301,17 @@ const Planning: React.FC<PlanningProps> = ({
             <p className="text-[9px] text-slate-400 mt-0.5 font-bold uppercase mb-2">Arraste p/ calendário</p>
             <button
               onClick={handleAutoFillWeekdays}
-              className="w-full bg-slate-900 text-white hover:bg-slate-800 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+              className="w-full bg-slate-900 text-white hover:bg-slate-800 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5 shadow-sm mb-1.5"
             >
               <CalendarIcon className="w-3 h-3 text-amber-500" />
               Lançar Seg-Sex
+            </button>
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="w-full bg-indigo-600 text-white hover:bg-indigo-500 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+            >
+              <FileSpreadsheet className="w-3 h-3 text-indigo-200" />
+              Importar Excel
             </button>
           </div>
           <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5">
@@ -522,6 +533,17 @@ const Planning: React.FC<PlanningProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* MODAL: Importar Planejamento via Excel */}
+      {showImportModal && (
+        <PlanningImportModal
+          onClose={() => setShowImportModal(false)}
+          onImport={onImportPlanning}
+          servicePrices={servicePrices}
+          cycleYear={period.end.getFullYear()}
+          cycleName={monthLabel}
+        />
       )}
     </div>
   );
