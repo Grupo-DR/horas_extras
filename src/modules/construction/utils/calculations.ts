@@ -285,7 +285,7 @@ export const isServiceRelevantForEquipment = (frota: string, serviceDescription:
     "PÁ CARREGADEIRA": ["PA CARREGADEIRA", "PÁ CARREGADEIRA"],
     "RETROESCAVADEIRA": ["RETROESCAVADEIRA"],
     "MINIESCAVADEIRA": ["MINIESCAVADEIRA"],
-    "VEÍCULO LEVE": ["VEICULO", "VEÍCULO"],
+    "VEÍCULO LEVE": ["VEICULO", "VEÍCULO", "TRANSPORTE", "CARRO"],
     "CAVALO MECÂNICO": ["CARRETA", "PRANCHA", "CAVALO"]
   };
 
