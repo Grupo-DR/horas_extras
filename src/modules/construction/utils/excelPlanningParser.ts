@@ -11,9 +11,14 @@ export interface PlanningParseResult {
     };
 }
 
-/** Normalize text: remove accents, uppercase, trim, collapse internal spaces */
+// ---------------------------------------------------------------------------
+// Normalization & alias resolution
+// ---------------------------------------------------------------------------
+
+/** Strip accents, uppercase, collapse spaces */
 function normalize(text: string): string {
-    return text
+    if (!text) return '';
+    return String(text)
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .toUpperCase()
@@ -22,165 +27,176 @@ function normalize(text: string): string {
 }
 
 /**
- * Aliases: maps any variant name that might appear in the Excel file
- * (after normalization) to the canonical catalog `tipo_do_equipamento`
- * value (also normalized).
- *
- * Normalizedform → canonical catalog value (normalized)
+ * Maps normalized Excel equipment type names → normalized catalog type names.
+ * Handles "RETRO ESCAVADEIRA" (two words) → "RETROESCAVADEIRA" (one word), etc.
  */
-const EQUIPMENT_ALIASES: Record<string, string> = {
-    // Retroescavadeira variants
+const EQUIP_ALIASES: Record<string, string> = {
     'RETRO ESCAVADEIRA': 'RETROESCAVADEIRA',
     'RETROESCAVADEIRA': 'RETROESCAVADEIRA',
     'RETROESCAVADEIRA LEVE': 'RETROESCAVADEIRA',
     'RETRO': 'RETROESCAVADEIRA',
 
-    // Mini escavadeira variants
     'MINI ESCAVADEIRA': 'MINIESCAVADEIRA',
     'MINIESCAVADEIRA': 'MINIESCAVADEIRA',
     'MINI-ESCAVADEIRA': 'MINIESCAVADEIRA',
 
-    // Escavadeira hidráulica variants
     'ESCAVADEIRA HIDRAULICA': 'ESCAVADEIRA HIDRAULICA',
     'ESCAVADEIRA': 'ESCAVADEIRA HIDRAULICA',
     'EH': 'ESCAVADEIRA HIDRAULICA',
 
-    // Caminhão basculante variants
     'CAMINHAO BASCULANTE': 'CAMINHAO BASCULANTE',
     'CAMINHAO': 'CAMINHAO BASCULANTE',
     'BASCULANTE': 'CAMINHAO BASCULANTE',
 
-    // Pá carregadeira variants
     'PA CARREGADEIRA': 'PA CARREGADEIRA',
     'CARREGADEIRA': 'PA CARREGADEIRA',
 
-    // Motoniveladora variants
     'MOTONIVELADORA': 'MOTONIVELADORA',
     'MOTO NIVELADORA': 'MOTONIVELADORA',
 
-    // Carreta prancha variants
     'CARRETA PRANCHA': 'CARRETA PRANCHA',
     'PRANCHA': 'CARRETA PRANCHA',
 
-    // Trator de esteira variants
     'TRATOR ESTEIRA': 'TRATOR DE ESTEIRA',
     'TRATOR DE ESTEIRA': 'TRATOR DE ESTEIRA',
 
-    // Rolo compactador variants
     'ROLO COMPACTADOR': 'ROLO COMPACTADOR',
     'ROLO': 'ROLO COMPACTADOR',
 
-    // Veículo leve variants
     'VEICULO LEVE': 'VEICULO LEVE',
     'VEICULO': 'VEICULO LEVE',
 
-    // Caminhão pipa variants
     'CAMINHAO PIPA': 'CAMINHAO PIPA',
     'PIPA': 'CAMINHAO PIPA',
 };
 
-/**
- * Resolve the Excel equipment type string to a canonical normalized form,
- * using the alias dictionary when available.
- */
-function resolveEquipType(rawEquipType: string): string {
-    const norm = normalize(rawEquipType);
-    return EQUIPMENT_ALIASES[norm] ?? norm;
+function resolveEquip(raw: string): string {
+    const n = normalize(raw);
+    return EQUIP_ALIASES[n] ?? n;
 }
 
-/**
- * Find a catalog item by tipo_do_equipamento + tipo_do_servico.
- * Applies alias resolution before comparing so Excel variants map correctly.
- */
-function findCatalogItem(
-    servicePrices: ServicePrice[],
-    equipType: string,
-    serviceType: 'Produtivo' | 'Improdutivo' | 'KM'
-): ServicePrice | undefined {
-    const resolvedEquip = resolveEquipType(equipType);
-    const normType = normalize(serviceType);
+// ---------------------------------------------------------------------------
+// Header-based column detection (keywords the parser recognises)
+// ---------------------------------------------------------------------------
 
-    const foundItem = servicePrices.find(sp =>
-        resolveEquipType(sp.tipo_do_equipamento ?? '') === resolvedEquip &&
-        normalize(sp.tipo_do_servico ?? '') === normType
-    );
+/** Keywords that identify each logical column (after normalization) */
+const HEADER_KEYWORDS = {
+    frota: ['FROTA', 'EQUIPAMENTO', 'VEICULO'],
+    equip: ['TIPO', 'TIPO EQUIP', 'TIPO DO EQUIPAMENTO', 'DESCRICAO', 'TIPO EQUIPAMENTO'],
+    km: ['KM', 'KM RODADO', 'QUILOMETRO', 'QUILOMETRAGEM'],
+    hp: ['HP', 'H.P', 'HR PROD', 'HORA PROD', 'HORAS PRODUTIVAS', 'HRS PRODUTIVAS', 'H PROD'],
+    hi: ['HI', 'H.I', 'HR IMPROD', 'HORA IMPROD', 'HORAS IMPRODUTIVAS', 'HRS IMPRODUTIVAS', 'H IMPROD'],
+    date: ['DATA', 'DT', 'DATE'],
+};
 
-    if (!foundItem) {
-        console.debug(`Catalog mismatch: Could not find service for equipType="${equipType}" (resolved to "${resolvedEquip}") and serviceType="${serviceType}" (normalized to "${normType}")`);
-    }
-
-    return foundItem;
+interface ColMap {
+    frota: number;
+    equip: number;
+    km: number;
+    hp: number;
+    hi: number;
+    date: number;
 }
 
-/**
- * Parse a date value from Excel.
- * Handles:
- *  - Excel serial numbers (numeric)
- *  - Strings like "21/01", "21/01/2026", "2026-01-21"
- * Returns ISO string "YYYY-MM-DD" or null if unparseable.
- */
+/** Tries to detect column indices from a header row. Returns null if mandatory cols not found. */
+function detectColumns(headerRow: any[]): ColMap | null {
+    const map: Partial<ColMap> = {};
+
+    headerRow.forEach((cell, idx) => {
+        const n = normalize(String(cell ?? ''));
+        if (n === '') return;
+
+        for (const [key, keywords] of Object.entries(HEADER_KEYWORDS)) {
+            if ((map as any)[key] !== undefined) continue; // already found
+            if (keywords.some(kw => n.includes(kw))) {
+                (map as any)[key] = idx;
+            }
+        }
+    });
+
+    // frota and date are mandatory; equip, km, hp, hi default to fixed positions if not found
+    if (map.frota === undefined || map.date === undefined) return null;
+    return map as ColMap;
+}
+
+/** Fallback fixed column mapping (A=frota, B=equip, C=km, D=hp, E=hi, F=date) */
+const DEFAULT_COLS: ColMap = { frota: 0, equip: 1, km: 2, hp: 3, hi: 4, date: 5 };
+
+// ---------------------------------------------------------------------------
+// Date parsing
+// ---------------------------------------------------------------------------
+
 function parseDate(value: any, cycleYear: number): string | null {
     if (value === null || value === undefined || value === '') return null;
 
-    // Excel serial date number
     if (typeof value === 'number') {
         const date = XLSX.SSF.parse_date_code(value);
         if (date) {
             const y = date.y || cycleYear;
-            const m = String(date.m).padStart(2, '0');
-            const d = String(date.d).padStart(2, '0');
-            return `${y}-${m}-${d}`;
+            return `${y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
         }
         return null;
     }
 
     const str = String(value).trim();
 
-    // Format DD/MM/YYYY
-    const ddmmyyyy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (ddmmyyyy) {
-        const [, d, m, y] = ddmmyyyy;
-        return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-    }
+    // DD/MM/YYYY
+    const m1 = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m1) return `${m1[3]}-${m1[2].padStart(2, '0')}-${m1[1].padStart(2, '0')}`;
 
-    // Format DD/MM (uses cycleYear as reference)
-    const ddmm = str.match(/^(\d{1,2})\/(\d{1,2})$/);
-    if (ddmm) {
-        const [, d, m] = ddmm;
-        return `${cycleYear}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-    }
+    // DD/MM
+    const m2 = str.match(/^(\d{1,2})\/(\d{1,2})$/);
+    if (m2) return `${cycleYear}-${m2[2].padStart(2, '0')}-${m2[1].padStart(2, '0')}`;
 
-    // Format YYYY-MM-DD
-    if (str.match(/^(\d{4})-(\d{2})-(\d{2})$/)) return str;
+    // YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
 
-    // Try native Date parse as last resort
+    // native parse
     const dt = new Date(str);
-    if (!isNaN(dt.getTime())) {
-        return dt.toISOString().split('T')[0];
-    }
+    if (!isNaN(dt.getTime())) return dt.toISOString().split('T')[0];
 
     return null;
 }
 
-/** Parse quantity value, returning 0 if invalid/empty */
 function parseQty(value: any): number {
     if (value === null || value === undefined || value === '') return 0;
     const n = typeof value === 'number' ? value : parseFloat(String(value).replace(',', '.'));
     return isNaN(n) ? 0 : n;
 }
 
+// ---------------------------------------------------------------------------
+// Catalog lookup
+// ---------------------------------------------------------------------------
+
 /**
- * Main parser — Excel structure:
- *   Row 1:  Header (ignored)
- *   Row 2+: Data rows:
- *     Col A (0): Frota name
- *     Col B (1): Equipment type (must match tipo_do_equipamento in catalog)
- *     Col C (2): KM production
- *     Col D (3): Productive hours
- *     Col E (4): Unproductive hours
- *     Col F (5): Date of service
- *     Col G (6): Day of week (optional, ignored)
+ * Build a fast lookup map from the servicePrices array.
+ * Key: "RESOLVED_EQUIP|RESOLVED_SERVICE"
+ * Value: ServicePrice
+ * This is computed ONCE per parse call.
  */
+function buildLookupMap(servicePrices: ServicePrice[]): Map<string, ServicePrice> {
+    const map = new Map<string, ServicePrice>();
+    for (const sp of servicePrices) {
+        if (!sp.tipo_do_equipamento || !sp.tipo_do_servico) continue;
+        const key = `${resolveEquip(sp.tipo_do_equipamento)}|${normalize(sp.tipo_do_servico)}`;
+        if (!map.has(key)) map.set(key, sp); // keep first (RENTAL preferred since it sorts first)
+    }
+    return map;
+}
+
+function lookupItem(
+    lookupMap: Map<string, ServicePrice>,
+    equipType: string,
+    serviceType: string
+): ServicePrice | undefined {
+    const key = `${resolveEquip(equipType)}|${normalize(serviceType)}`;
+    return lookupMap.get(key);
+}
+
+// ---------------------------------------------------------------------------
+// Main export
+// ---------------------------------------------------------------------------
+
 export async function parsePlanningExcel(
     file: File,
     cycleYear: number,
@@ -203,40 +219,62 @@ export async function parsePlanningExcel(
                     raw: true,
                 });
 
-                const warnings: string[] = [];
-                const assignmentsMap = new Map<string, PlanningAssignment>();
+                if (!rows || rows.length < 2) {
+                    resolve({ assignments: [], warnings: ['Arquivo vazio ou sem dados.'], summary: { totalRows: 0, totalAssignments: 0, skippedRows: 0 } });
+                    return;
+                }
 
+                // ── DIAGNOSTIC: catalog size ──────────────────────────────────
+                const warnings: string[] = [];
+                const lookupMap = buildLookupMap(servicePrices);
+                const catalogEquipTypes = [...new Set(
+                    servicePrices
+                        .filter(sp => sp.tipo_do_equipamento)
+                        .map(sp => sp.tipo_do_equipamento!)
+                )].sort();
+
+                warnings.push(
+                    `[DIAGNÓSTICO] Catálogo carregado: ${servicePrices.length} itens, ` +
+                    `${lookupMap.size} combinações equip+serviço. ` +
+                    `Tipos disponíveis: ${catalogEquipTypes.join(' | ')}`
+                );
+
+                // ── Detect columns from header row ────────────────────────────
+                const headerRow = rows[0];
+                const cols = detectColumns(headerRow) ?? DEFAULT_COLS;
+
+                const colUsed = cols === DEFAULT_COLS ? 'POSIÇÃO FIXA (A=Frota,B=Tipo,C=KM,D=HP,E=HI,F=Data)' :
+                    `cols detectadas: frota=${cols.frota} equip=${cols.equip} km=${cols.km} hp=${cols.hp} hi=${cols.hi} data=${cols.date}`;
+                warnings.push(`[DIAGNÓSTICO] ${colUsed}`);
+
+                // ── Parse data rows ───────────────────────────────────────────
+                const assignmentsMap = new Map<string, PlanningAssignment>();
+                const seenEquipTypes = new Set<string>();
                 let totalRows = 0;
                 let skippedRows = 0;
 
-                // Skip header row (index 0)
                 for (let i = 1; i < rows.length; i++) {
                     const row = rows[i];
-
-                    if (!row || row.every(cell => cell === '' || cell === null || cell === undefined)) {
-                        continue;
-                    }
+                    if (!row || row.every(cell => cell === '' || cell === null || cell === undefined)) continue;
 
                     totalRows++;
 
-                    const frota = String(row[0] ?? '').trim().toUpperCase();
-                    const equipType = String(row[1] ?? '').trim();
-                    const qtyKm = parseQty(row[2]);
-                    const qtyProd = parseQty(row[3]);
-                    const qtyImprod = parseQty(row[4]);
-                    const dateRaw = row[5];
+                    const frota = String(row[cols.frota] ?? '').trim().toUpperCase();
+                    const equipType = String(row[cols.equip] ?? '').trim();
+                    const qtyKm = cols.km !== undefined ? parseQty(row[cols.km]) : 0;
+                    const qtyProd = cols.hp !== undefined ? parseQty(row[cols.hp]) : 0;
+                    const qtyImprod = cols.hi !== undefined ? parseQty(row[cols.hi]) : 0;
+                    const dateRaw = cols.date !== undefined ? row[cols.date] : '';
 
-                    if (!frota) {
-                        warnings.push(`Linha ${i + 1}: Frota vazia, linha ignorada.`);
-                        skippedRows++;
-                        continue;
-                    }
+                    if (!frota) { skippedRows++; continue; }
 
                     if (!equipType) {
-                        warnings.push(`Linha ${i + 1} (${frota}): Tipo de equipamento vazio — impossível mapear serviços. Linha ignorada.`);
+                        warnings.push(`Linha ${i + 1} (${frota}): Tipo de equipamento vazio — linha ignorada.`);
                         skippedRows++;
                         continue;
                     }
+
+                    seenEquipTypes.add(equipType);
 
                     const dateStr = parseDate(dateRaw, cycleYear);
                     if (!dateStr) {
@@ -245,55 +283,33 @@ export async function parsePlanningExcel(
                         continue;
                     }
 
-                    // Build services for this row using EXACT lookup by tipo_do_equipamento + tipo_do_servico
                     const services: PlannedService[] = [];
 
                     if (qtyKm > 0) {
-                        const catItem = findCatalogItem(servicePrices, equipType, 'KM');
-                        if (catItem) {
-                            services.push({ item: catItem.item, producao: qtyKm });
-                        } else {
-                            warnings.push(`Linha ${i + 1} (${frota} / ${dateStr}): Sem item KM no catálogo para tipo "${equipType}".`);
-                        }
+                        const sp = lookupItem(lookupMap, equipType, 'KM');
+                        if (sp) services.push({ item: sp.item, producao: qtyKm });
+                        else warnings.push(`Linha ${i + 1} (${frota}/${dateStr}): Sem item KM para tipo "${equipType}" [resolvido: "${resolveEquip(equipType)}"].`);
                     }
-
                     if (qtyProd > 0) {
-                        const catItem = findCatalogItem(servicePrices, equipType, 'Produtivo');
-                        if (catItem) {
-                            services.push({ item: catItem.item, producao: qtyProd });
-                        } else {
-                            warnings.push(`Linha ${i + 1} (${frota} / ${dateStr}): Sem item Hora Produtiva no catálogo para tipo "${equipType}".`);
-                        }
+                        const sp = lookupItem(lookupMap, equipType, 'Produtivo');
+                        if (sp) services.push({ item: sp.item, producao: qtyProd });
+                        else warnings.push(`Linha ${i + 1} (${frota}/${dateStr}): Sem item HP para tipo "${equipType}" [resolvido: "${resolveEquip(equipType)}"].`);
                     }
-
                     if (qtyImprod > 0) {
-                        const catItem = findCatalogItem(servicePrices, equipType, 'Improdutivo');
-                        if (catItem) {
-                            services.push({ item: catItem.item, producao: qtyImprod });
-                        } else {
-                            warnings.push(`Linha ${i + 1} (${frota} / ${dateStr}): Sem item Hora Improdutiva no catálogo para tipo "${equipType}".`);
-                        }
+                        const sp = lookupItem(lookupMap, equipType, 'Improdutivo');
+                        if (sp) services.push({ item: sp.item, producao: qtyImprod });
+                        else warnings.push(`Linha ${i + 1} (${frota}/${dateStr}): Sem item HI para tipo "${equipType}" [resolvido: "${resolveEquip(equipType)}"].`);
                     }
 
-                    if (services.length === 0) {
-                        if (qtyKm > 0 || qtyProd > 0 || qtyImprod > 0) {
-                            warnings.push(`Linha ${i + 1} (${frota} / ${dateStr}): Quantidades presentes mas nenhum serviço mapeado para "${equipType}".`);
-                        }
-                        skippedRows++;
-                        continue;
-                    }
+                    if (services.length === 0) { skippedRows++; continue; }
 
-                    // Group by frota+date (merge if same combo appears multiple times)
                     const key = `${dateStr}-${frota}`;
                     if (assignmentsMap.has(key)) {
                         const existing = assignmentsMap.get(key)!;
-                        services.forEach(newSvc => {
-                            const existingSvc = existing.services.find(s => s.item === newSvc.item);
-                            if (existingSvc) {
-                                existingSvc.producao += newSvc.producao;
-                            } else {
-                                existing.services.push(newSvc);
-                            }
+                        services.forEach(s => {
+                            const ex = existing.services.find(x => x.item === s.item);
+                            if (ex) ex.producao += s.producao;
+                            else existing.services.push(s);
                         });
                     } else {
                         assignmentsMap.set(key, {
@@ -305,17 +321,15 @@ export async function parsePlanningExcel(
                     }
                 }
 
-                const assignments = Array.from(assignmentsMap.values());
+                // ── Post-parse diagnostic ─────────────────────────────────────
+                const seenResolved = [...seenEquipTypes].map(t => `"${t}"→"${resolveEquip(t)}"`);
+                warnings.push(
+                    `[DIAGNÓSTICO] Tipos do Excel encontrados: ${seenResolved.join(' | ')}`
+                );
 
-                resolve({
-                    assignments,
-                    warnings,
-                    summary: {
-                        totalRows,
-                        totalAssignments: assignments.length,
-                        skippedRows,
-                    },
-                });
+                const assignments = Array.from(assignmentsMap.values());
+                resolve({ assignments, warnings, summary: { totalRows, totalAssignments: assignments.length, skippedRows } });
+
             } catch (err) {
                 reject(err);
             }
