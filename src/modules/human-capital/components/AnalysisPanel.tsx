@@ -1,39 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { OvertimeRecord } from '../types';
 import { RealOvertimeRecord } from '../data/realOvertime';
-import { AlertTriangle, Building2, Scale, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
-
-// Mapeamento CC → Nome do projeto (códigos sem pontos)
-const CC_NAMES: Record<string, string> = {
-    '10101': 'ADMINISTRATIVO FINANCEIRO',
-    '10301': 'COMERCIAL',
-    '10401': 'CAPITAL HUMANO',
-    '10501': 'SSMA',
-    '10601': 'SUPRIMENTOS',
-    '300001': 'GESTAO DE ATIVOS',
-    '301502': 'VLI - ESTRADAS VICINAIS - MAN PREV, COR',
-    '301503': 'SER E LOC DE EQUIP COR. CENTRO-NORTE VL',
-    '301804': 'PATRULHAS FIXAS RUMO',
-    '301805': 'MODERNIZACAO E LIMPEZA DE LASTRO',
-    '301806': 'MANUT. INFRA NORTE ZEV - ZBV',
-    '301903': 'MANUT. INFRA NORTE ZAR \u2013 TMI',
-    '302801': 'INFRA ESTRUTURA - GERDAU S/A',
-    '304301': 'CONSORCIO PERA FERREA',
-    '304401': 'MODERNIZACAO E LIMP LASTRO - ARARAQUARA',
-    '304402': 'INFRANORTE - ARARAQUARA',
-    '304501': 'RUMO PATIO CATANDUVA - CATIGUA',
-    '10104': 'TECNOLOGIA DA INFORMACAO',
-};
-
-// Mapeamento CC → Regional (códigos sem pontos)
-const CC_REGIONAL: Record<string, string> = {
-    '10101': 'Sede', '10104': 'Sede', '10301': 'Sede', '10401': 'Sede',
-    '10501': 'Sede', '10601': 'Sede', '300001': 'Sede',
-    '301502': 'Regional 01', '301503': 'Regional 01',
-    '302801': 'Regional 01', '304301': 'Regional 01', '304501': 'Regional 01',
-    '301804': 'Regional 02', '301805': 'Regional 02', '301806': 'Regional 02',
-    '301903': 'Regional 02', '304401': 'Regional 02', '304402': 'Regional 02',
-};
+import { AlertTriangle, Building2, Scale, ChevronLeft, ChevronRight, Calendar, Users, Search } from 'lucide-react';
+import { getCCName, getCCRegional } from '../data/ccMaster';
 
 interface AnalysisPanelProps {
     data: OvertimeRecord[];
@@ -232,6 +201,7 @@ const CalendarView: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
 // Componente principal
 // ────────────────────────────────────────────────────────────
 const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
+    const [empSearch, setEmpSearch] = useState('');
 
     const ccSummary = useMemo(() => {
         const map: Record<string, { jornadasLongas: number; interjornadas: number }> = {};
@@ -256,13 +226,70 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
         return Object.entries(map)
             .map(([cc, vals]) => ({
                 cc,
-                nome: CC_NAMES[cc] || cc,
-                regional: CC_REGIONAL[cc] || 'Outros',
+                nome: getCCName(cc),
+                regional: getCCRegional(cc),
                 ...vals,
             }))
             .filter(item => item.jornadasLongas > 0 || item.interjornadas > 0)
             .sort((a, b) => (b.jornadasLongas + b.interjornadas) - (a.jornadasLongas + a.interjornadas));
     }, [data]);
+
+    const employeeSummary = useMemo(() => {
+        const map: Record<string, {
+            name: string;
+            cc: string;
+            he60: number;
+            he100: number;
+            inter: number;
+            noturnas: number;
+            total: number;
+        }> = {};
+
+        data.forEach(r => {
+            const chapa = r.CHAPA;
+            if (!chapa) return;
+
+            if (!map[chapa]) {
+                map[chapa] = {
+                    name: r.NOME || 'Sem Nome',
+                    cc: r.CODCCUSTO || 'S/ CC',
+                    he60: 0,
+                    he100: 0,
+                    inter: 0,
+                    noturnas: 0,
+                    total: 0
+                };
+            }
+
+            const evt = (r.EVENTO || '').toUpperCase();
+            const hours = Number(r.HORAS) || 0;
+
+            if (evt.includes('EXTRA')) {
+                if (evt.includes('100')) {
+                    map[chapa].he100 += hours;
+                } else {
+                    map[chapa].he60 += hours;
+                }
+            } else if (evt.includes('INTER')) {
+                map[chapa].inter += hours;
+            } else if (evt.includes('NOTURNO') || evt.includes('NOT')) {
+                map[chapa].noturnas += hours;
+            }
+        });
+
+        return Object.values(map)
+            .map(emp => ({
+                ...emp,
+                total: emp.he60 + emp.he100 + emp.inter + emp.noturnas
+            }))
+            .filter(emp => emp.total > 0)
+            .filter(emp => {
+                if (!empSearch) return true;
+                const searchLower = empSearch.toLowerCase();
+                return emp.name.toLowerCase().includes(searchLower) || emp.cc.toLowerCase().includes(searchLower);
+            })
+            .sort((a, b) => b.total - a.total);
+    }, [data, empSearch]);
 
     const totais = useMemo(() => ({
         jornadasLongas: ccSummary.reduce((acc, r) => acc + r.jornadasLongas, 0),
@@ -300,107 +327,73 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
             {/* Calendário */}
             <CalendarView data={data} />
 
-            {/* Tabela por CC */}
+            {/* Tabela por Colaborador */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">
-                    <Building2 size={16} className="text-blue-500" />
-                    <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">
-                        Análise por Centro de Custo
-                    </h3>
+                <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <Users size={16} className="text-indigo-500" />
+                        <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">
+                            Detalhamento por Colaborador
+                        </h3>
+                    </div>
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                        <input
+                            type="text"
+                            placeholder="Buscar colaborador ou CC..."
+                            className="pl-9 pr-4 py-1.5 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all w-full md:w-64"
+                            value={empSearch}
+                            onChange={(e) => setEmpSearch(e.target.value)}
+                        />
+                    </div>
                 </div>
 
-                {ccSummary.length === 0 ? (
+                {employeeSummary.length === 0 ? (
                     <div className="p-12 text-center text-gray-400">
-                        <p className="font-medium">Nenhuma ocorrência encontrada no período.</p>
-                        <p className="text-sm mt-1">Ajuste os filtros ou o intervalo de datas.</p>
+                        <p className="font-medium">Nenhum colaborador encontrado.</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm text-gray-600">
                             <thead className="bg-gray-100 text-gray-700 font-bold uppercase text-[9px] tracking-wider">
                                 <tr>
-                                    <th className="px-6 py-4">Código CC</th>
-                                    <th className="px-6 py-4">Nome / Descrição</th>
-                                    <th className="px-6 py-4">Regional</th>
-                                    <th className="px-6 py-4 text-center">
-                                        <span className="flex items-center justify-center gap-1">
-                                            <AlertTriangle size={10} className="text-red-500" />
-                                            Jornadas &gt; 10h
-                                        </span>
-                                    </th>
-                                    <th className="px-6 py-4 text-center">
-                                        <span className="flex items-center justify-center gap-1">
-                                            <Scale size={10} className="text-amber-500" />
-                                            Interjornadas
-                                        </span>
-                                    </th>
-                                    <th className="px-6 py-4 text-center">Total</th>
+                                    <th className="px-6 py-4">Centro de Custo</th>
+                                    <th className="px-6 py-4">Nome do Colaborador</th>
+                                    <th className="px-6 py-4 text-center">HE 60</th>
+                                    <th className="px-6 py-4 text-center">HE 100</th>
+                                    <th className="px-6 py-4 text-center">Inter.</th>
+                                    <th className="px-6 py-4 text-center">Noturnas</th>
+                                    <th className="px-6 py-4 text-center bg-gray-200/50">Total</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {ccSummary.map((item) => {
-                                    const total = item.jornadasLongas + item.interjornadas;
-                                    return (
-                                        <tr key={item.cc} className="hover:bg-blue-50/40 transition-colors">
-                                            <td className="px-6 py-3 font-mono font-medium text-gray-900 text-xs">{item.cc}</td>
-                                            <td className="px-6 py-3 text-gray-600 text-xs">{item.nome}</td>
-                                            <td className="px-6 py-3">
-                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${item.regional === 'Sede' ? 'bg-blue-50 text-blue-600' :
-                                                    item.regional === 'Regional 01' ? 'bg-emerald-50 text-emerald-700' :
-                                                        item.regional === 'Regional 02' ? 'bg-purple-50 text-purple-700' :
-                                                            'bg-gray-100 text-gray-500'
-                                                    }`}>
-                                                    {item.regional}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-3 text-center">
-                                                {item.jornadasLongas > 0 ? (
-                                                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-red-100 text-red-700 font-bold text-sm">
-                                                        {item.jornadasLongas}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-gray-300 font-mono">&mdash;</span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-3 text-center">
-                                                {item.interjornadas > 0 ? (
-                                                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 text-amber-700 font-bold text-sm">
-                                                        {item.interjornadas}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-gray-300 font-mono">&mdash;</span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-3 text-center">
-                                                <span className={`font-bold font-mono text-sm ${total > 5 ? 'text-red-600' : total > 2 ? 'text-amber-600' : 'text-gray-600'
-                                                    }`}>
-                                                    {total}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
+                                {employeeSummary.map((emp, idx) => (
+                                    <tr key={idx} className="hover:bg-blue-50/40 transition-colors">
+                                        <td className="px-6 py-3">
+                                            <div className="flex flex-col">
+                                                <span className="font-mono text-[10px] text-gray-400">{emp.cc}</span>
+                                                <span className="text-[11px] font-medium text-gray-700 uppercase">{getCCName(emp.cc)}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-3 font-bold text-gray-800 text-xs">{emp.name}</td>
+                                        <td className="px-6 py-3 text-center font-mono text-blue-600 font-bold">
+                                            {emp.he60 > 0 ? emp.he60.toFixed(1) : '—'}
+                                        </td>
+                                        <td className="px-6 py-3 text-center font-mono text-red-600 font-bold">
+                                            {emp.he100 > 0 ? emp.he100.toFixed(1) : '—'}
+                                        </td>
+                                        <td className="px-6 py-3 text-center font-mono text-amber-600 font-bold">
+                                            {emp.inter > 0 ? emp.inter.toFixed(1) : '—'}
+                                        </td>
+                                        <td className="px-6 py-3 text-center font-mono text-purple-600 font-bold">
+                                            {emp.noturnas > 0 ? emp.noturnas.toFixed(1) : '—'}
+                                        </td>
+                                        <td className="px-6 py-3 text-center font-mono font-black text-gray-900 bg-gray-50/50">
+                                            {emp.total.toFixed(1)}
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
-                            <tfoot className="bg-gray-50 border-t-2 border-gray-200">
-                                <tr>
-                                    <td className="px-6 py-3 font-bold text-gray-700 text-xs uppercase tracking-wide" colSpan={3}>
-                                        TOTAL GERAL
-                                    </td>
-                                    <td className="px-6 py-3 text-center">
-                                        <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-red-100 text-red-700 font-bold text-sm">
-                                            {totais.jornadasLongas}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-3 text-center">
-                                        <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-amber-100 text-amber-700 font-bold text-sm">
-                                            {totais.interjornadas}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-3 text-center font-bold font-mono text-gray-800">
-                                        {totais.jornadasLongas + totais.interjornadas}
-                                    </td>
-                                </tr>
-                            </tfoot>
                         </table>
                     </div>
                 )}
