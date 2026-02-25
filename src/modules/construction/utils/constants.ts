@@ -2,16 +2,16 @@
 import { ServicePrice, TrechoMapping, SupervisaoMapping } from '../types';
 
 export const EQUIPMENT_CATEGORIES: Record<string, string> = {
-  "EH": "Escavadeira Hidráulica",
-  "CB": "Caminhão Basculante",
-  "CBL": "Caminhão Basculante",
-  "MN": "Motoniveladora",
-  "PC": "Pá Carregadeira",
-  "RE": "Retroescavadeira",
-  "REL": "Retroescavadeira",
-  "MEL": "Miniescavadeira",
-  "VLL": "Veículo Leve",
-  "CM": "Cavalo Mecânico"
+    "EH": "Escavadeira Hidráulica",
+    "CB": "Caminhão Basculante",
+    "CBL": "Caminhão Basculante",
+    "MN": "Motoniveladora",
+    "PC": "Pá Carregadeira",
+    "RE": "Retroescavadeira",
+    "REL": "Retroescavadeira",
+    "MEL": "Miniescavadeira",
+    "VLL": "Veículo Leve",
+    "CM": "Cavalo Mecânico"
 };
 
 export const TRECHO_MAPPINGS: TrechoMapping[] = [
@@ -135,7 +135,8 @@ const RENTAL_PRICES: ServicePrice[] = [
     { "item": "3.41", "codigo_sap": "S.VP-01471", "descricao": "Mobilização Rolo Compactador C/ Operador", "unidade": "VB", "preco_unitario": 1872.58, "quantidade": 1, "valor_total": 1872.58, "category": "RENTAL" },
     { "item": "3.42", "codigo_sap": "S.VP-01472", "descricao": "Desmobilização Rolo Compactador C/ Operador", "unidade": "VB", "preco_unitario": 1590.13, "quantidade": 1, "valor_total": 1590.13, "category": "RENTAL" },
     { "item": "3.43", "codigo_sap": "S.VP-01473", "descricao": "Hora Produtiva Rolo Compactador C/Operador", "unidade": "H", "preco_unitario": 163.66, "quantidade": 930, "valor_total": 152203.80, "category": "RENTAL" },
-    { "item": "3.44", "codigo_sap": "S.VP-01474", "descricao": "Hora Improdutiva Rolo Compactador C/Operador", "unidade": "H", "preco_unitario": 120.81, "quantidade": 310, "valor_total": 37451.10, "category": "RENTAL" }
+    { "item": "3.44", "codigo_sap": "S.VP-01474", "descricao": "Hora Improdutiva Rolo Compactador C/Operador", "unidade": "H", "preco_unitario": 120.81, "quantidade": 310, "valor_total": 37451.10, "category": "RENTAL" },
+    { "item": "590", "codigo_sap": "S.VP-01475", "descricao": "Transporte Rodoviario Carro 5 Passageiros", "unidade": "Mês", "preco_unitario": 16354.10, "quantidade": 1, "valor_total": 16354.10, "category": "RENTAL" }
 ];
 
 export const DEFAULT_SERVICE_PRICES: ServicePrice[] = [...MOBRA_PRICES, ...RENTAL_PRICES];
