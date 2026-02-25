@@ -163,6 +163,12 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({ day, onClose }) 
     const totalPlan = day.plan || 0;
     const difference = totalReal - totalPlan;
 
+    // Build a lookup map: frota -> planned value (from Dashboard.tsx pre-calculation)
+    const plannedByFrota: Record<string, number> = {};
+    (day.equipments || []).forEach((eq: any) => {
+        plannedByFrota[eq.frota] = (plannedByFrota[eq.frota] || 0) + (eq.planned || 0);
+    });
+
     // Group records by equipment category
     const recordsByCategory: Record<string, any[]> = {};
     const categorySummaries: Record<string, { total: number; planned: number; difference: number }> = {};
@@ -175,7 +181,7 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({ day, onClose }) 
         }
         recordsByCategory[category].push(record);
         categorySummaries[category].total += record.financials?.total || 0;
-        categorySummaries[category].planned += 0;
+        categorySummaries[category].planned += plannedByFrota[record.frota] || 0;
         categorySummaries[category].difference = categorySummaries[category].total - categorySummaries[category].planned;
     });
 
@@ -247,7 +253,7 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({ day, onClose }) 
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
                                                 {categoryRecords.map((record: any, idx: number) => {
-                                                    const plannedValue = 0;
+                                                    const plannedValue = plannedByFrota[record.frota] || 0;
                                                     const recordDifference = (record.financials?.total || 0) - plannedValue;
 
                                                     return (
