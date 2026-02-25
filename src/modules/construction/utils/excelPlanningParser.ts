@@ -35,10 +35,12 @@ const EQUIP_ALIASES: Record<string, string> = {
     'RETROESCAVADEIRA': 'RETROESCAVADEIRA',
     'RETROESCAVADEIRA LEVE': 'RETROESCAVADEIRA',
     'RETRO': 'RETROESCAVADEIRA',
+    'REL': 'RETROESCAVADEIRA',
 
     'MINI ESCAVADEIRA': 'MINIESCAVADEIRA',
     'MINIESCAVADEIRA': 'MINIESCAVADEIRA',
     'MINI-ESCAVADEIRA': 'MINIESCAVADEIRA',
+    'MEL': 'MINIESCAVADEIRA',
 
     'ESCAVADEIRA HIDRAULICA': 'ESCAVADEIRA HIDRAULICA',
     'ESCAVADEIRA': 'ESCAVADEIRA HIDRAULICA',
@@ -47,6 +49,7 @@ const EQUIP_ALIASES: Record<string, string> = {
     'CAMINHAO BASCULANTE': 'CAMINHAO BASCULANTE',
     'CAMINHAO': 'CAMINHAO BASCULANTE',
     'BASCULANTE': 'CAMINHAO BASCULANTE',
+    'CBL': 'CAMINHAO BASCULANTE',
 
     'PA CARREGADEIRA': 'PA CARREGADEIRA',
     'CARREGADEIRA': 'PA CARREGADEIRA',
@@ -65,9 +68,13 @@ const EQUIP_ALIASES: Record<string, string> = {
 
     'VEICULO LEVE': 'VEICULO LEVE',
     'VEICULO': 'VEICULO LEVE',
+    'VLL': 'VEICULO LEVE',
 
     'CAMINHAO PIPA': 'CAMINHAO PIPA',
     'PIPA': 'CAMINHAO PIPA',
+
+    'CAVALO MECANICO': 'CAVALO MECANICO',
+    'CM': 'CAVALO MECANICO',
 };
 
 function resolveEquip(raw: string): string {
@@ -249,8 +256,25 @@ export async function parsePlanningExcel(
                 const lookupMap = buildLookupMap(servicePrices);
                 const warnings: string[] = [];
 
+                // ── DIAGNOSTIC: catalog size ──────────────────────────────────
+                const catalogEquipTypes = [...new Set(
+                    servicePrices
+                        .filter(sp => sp.tipo_do_equipamento)
+                        .map(sp => sp.tipo_do_equipamento!)
+                )].sort();
+
+                warnings.push(
+                    `[DIAGNÓSTICO] Catálogo carregado: ${servicePrices.length} itens, ` +
+                    `${lookupMap.size} combinações equip+serviço. ` +
+                    `Tipos disponíveis: ${catalogEquipTypes.join(' | ')}`
+                );
+
                 const headerRow = rows[0];
                 const cols = detectColumns(headerRow) ?? DEFAULT_COLS;
+
+                const colUsed = cols === DEFAULT_COLS ? 'POSIÇÃO FIXA (A=Frota,B=Tipo,C=KM,D=HP,E=HI,F=Data)' :
+                    `cols detectadas: frota=${cols.frota} equip=${cols.equip} km=${cols.km} hp=${cols.hp} hi=${cols.hi} data=${cols.date}`;
+                warnings.push(`[DIAGNÓSTICO] ${colUsed}`);
 
                 // ── Parse data rows ───────────────────────────────────────────
                 const assignmentsMap = new Map<string, PlanningAssignment>();
@@ -325,6 +349,12 @@ export async function parsePlanningExcel(
                         });
                     }
                 }
+
+                // ── Post-parse diagnostic ─────────────────────────────────────
+                const seenResolved = [...seenEquipTypes].map(t => `"${t}"→"${resolveEquip(t)}"`);
+                warnings.push(
+                    `[DIAGNÓSTICO] Tipos do Excel encontrados: ${seenResolved.join(' | ')}`
+                );
 
                 const assignments = Array.from(assignmentsMap.values());
                 resolve({ assignments, warnings, summary: { totalRows, totalAssignments: assignments.length, skippedRows } });
