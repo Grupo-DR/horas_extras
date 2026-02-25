@@ -1,7 +1,8 @@
 ﻿import React from 'react';
 import { formatCurrencyWithZero, getEquipmentCategory } from '../utils/calculations';
-import { X } from 'lucide-react';
-import { EQUIPMENT_CATEGORIES } from '../utils/constants';
+import { X, MapPin } from 'lucide-react';
+import { EQUIPMENT_CATEGORIES, CITY_COORDINATES } from '../utils/constants';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Custom Tooltip para o gráfico de evolução diária
 export const CustomDailyTooltip = ({ active, payload }: any) => {
@@ -307,6 +308,165 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({ day, onClose }) 
                     )}
                 </div>
 
+            </div>
+        </div>
+    );
+};
+
+// HeatmapChart: Visualização geográfica com pontos de calor
+interface HeatmapChartProps {
+    data: any[]; // Array of { city: string, hp: number, hi: number, km: number }
+    metric: 'hp' | 'hi' | 'km';
+}
+
+export const HeatmapChart: React.FC<HeatmapChartProps> = ({ data, metric }) => {
+    // 1. Definir limites geográficos para a projeção
+    const coords = Object.values(CITY_COORDINATES);
+    const minLat = Math.min(...coords.map(c => c.lat));
+    const maxLat = Math.max(...coords.map(c => c.lat));
+    const minLng = Math.min(...coords.map(c => c.lng));
+    const maxLng = Math.max(...coords.map(c => c.lng));
+
+    // Padding para o mapa não bater nas bordas
+    const latPadding = (maxLat - minLat) * 0.1;
+    const lngPadding = (maxLng - minLng) * 0.1;
+
+    const bounds = {
+        minLat: minLat - latPadding,
+        maxLat: maxLat + latPadding,
+        minLng: minLng - lngPadding,
+        maxLng: maxLng + lngPadding
+    };
+
+    // 2. Função de projeção linear
+    const project = (lat: number, lng: number) => {
+        const x = ((lng - bounds.minLng) / (bounds.maxLng - bounds.minLng)) * 100;
+        const y = 100 - (((lat - bounds.minLat) / (bounds.maxLat - bounds.minLat)) * 100);
+        return { x, y };
+    };
+
+    // 3. Encontrar o valor máximo da métrica para escala de calor
+    const maxValue = Math.max(...data.map(d => d[metric]), 1);
+
+    return (
+        <div className="relative w-full h-[600px] bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 shadow-2xl group">
+            {/* Grid Patterns de Fundo */}
+            <div className="absolute inset-0 opacity-10 pointer-events-none"
+                style={{ backgroundImage: 'radial-gradient(#475569 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
+
+            {/* SVG Content */}
+            <svg viewBox="-5 -5 110 110" className="w-full h-full p-8 preserve-3d">
+                <defs>
+                    <radialGradient id="hpGradient">
+                        <stop offset="0%" stopColor="#10b981" stopOpacity="0.6" />
+                        <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                    </radialGradient>
+                    <radialGradient id="hiGradient">
+                        <stop offset="0%" stopColor="#ef4444" stopOpacity="0.6" />
+                        <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
+                    </radialGradient>
+                    <radialGradient id="kmGradient">
+                        <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.6" />
+                        <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+                    </radialGradient>
+                </defs>
+
+                {/* Linhas de conexão (Track) */}
+                <polyline
+                    points={Object.keys(CITY_COORDINATES).map(city => {
+                        const { x, y } = project(CITY_COORDINATES[city].lat, CITY_COORDINATES[city].lng);
+                        return `${x},${y}`;
+                    }).join(' ')}
+                    fill="none"
+                    stroke="#334155"
+                    strokeWidth="0.5"
+                    strokeDasharray="2 2"
+                    className="opacity-40"
+                />
+
+                <AnimatePresence>
+                    {data.map((d, i) => {
+                        const coords = CITY_COORDINATES[d.city];
+                        if (!coords) return null;
+                        const { x, y } = project(coords.lat, coords.lng);
+                        const intensity = (d[metric] / maxValue);
+                        const radius = 2 + (intensity * 12); // Tamanho baseado na intensidade
+
+                        return (
+                            <motion.g
+                                key={`${d.city}-${metric}`}
+                                initial={{ opacity: 0, scale: 0 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0 }}
+                                transition={{ delay: i * 0.05, type: 'spring' }}
+                            >
+                                {/* Ponto de Calor (Glow) */}
+                                <circle
+                                    cx={x}
+                                    cy={y}
+                                    r={radius * 1.5}
+                                    fill={`url(#${metric}Gradient)`}
+                                    className="animate-pulse"
+                                />
+
+                                {/* Ponto da Cidade */}
+                                <circle
+                                    cx={x}
+                                    cy={y}
+                                    r={0.8}
+                                    fill="white"
+                                    className="filter drop-shadow-sm"
+                                />
+
+                                {/* Label da Cidade */}
+                                <text
+                                    x={x + 2}
+                                    y={y + 0.5}
+                                    fill="#94a3b8"
+                                    fontSize="2"
+                                    fontWeight="bold"
+                                    className="pointer-events-none select-none opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                    {d.city}
+                                </text>
+
+                                <text
+                                    x={x + 2}
+                                    y={y + 3}
+                                    fill="white"
+                                    fontSize="1.5"
+                                    fontWeight="black"
+                                    className="pointer-events-none select-none opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                    {d[metric].toLocaleString()} {metric.toUpperCase()}
+                                </text>
+                            </motion.g>
+                        );
+                    })}
+                </AnimatePresence>
+            </svg>
+
+            {/* Legenda Flutuante */}
+            <div className="absolute top-6 left-6 flex flex-col gap-2">
+                <div className="bg-slate-800/80 backdrop-blur-md border border-slate-700 p-4 rounded-2xl shadow-xl">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Concentração Geográfica</h4>
+                    <div className="flex flex-col gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]" />
+                            <span className="text-[10px] font-bold text-white uppercase">Alta Produtividade</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_10px_#ef4444]" />
+                            <span className="text-[10px] font-bold text-white uppercase">Interrupção Crítica</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Hint Tooltip */}
+            <div className="absolute bottom-6 right-6 flex items-center gap-2 text-slate-400 bg-slate-800/50 px-4 py-2 rounded-full backdrop-blur-sm">
+                <MapPin className="w-3 h-3" />
+                <span className="text-[8px] font-bold uppercase tracking-widest">Passe o mouse para nomes</span>
             </div>
         </div>
     );

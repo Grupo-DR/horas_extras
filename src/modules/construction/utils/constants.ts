@@ -154,3 +154,28 @@ export const DEFAULT_SERVICE_PRICES: ServicePrice[] = SAP_CATALOG.flatMap(entry 
 
     return prices;
 });
+
+export const CITY_COORDINATES: Record<string, { lat: number, lng: number }> = {
+    "Açailândia": { lat: -4.9473, lng: -47.5039 },
+    "S.F. Brejão": { lat: -5.125, lng: -47.39 },
+    "João Lisboa": { lat: -5.4436, lng: -47.4064 },
+    "Imperatriz": { lat: -5.5264, lng: -47.4919 },
+    "Edson Lobão": { lat: -5.698, lng: -47.435 },
+    "Ribamar Fiquene": { lat: -5.933, lng: -47.386 },
+    "Campestre": { lat: -6.171, lng: -47.362 },
+    "Porto Franco": { lat: -6.338, lng: -47.399 },
+    "Estreito": { lat: -6.561, lng: -47.451 },
+    "Aguiarnópolis": { lat: -6.553, lng: -47.477 },
+    "Palmeiras Do": { lat: -7.176, lng: -47.489 },
+    "Darcinópolis": { lat: -6.716, lng: -47.75 },
+    "Babaçulândia": { lat: -7.208, lng: -47.761 },
+    "São Luís": { lat: -2.5307, lng: -44.3068 },
+    "Araguaína": { lat: -7.191, lng: -48.207 },
+    "Palmeirante": { lat: -7.861, lng: -47.924 },
+    "Tupiratins": { lat: -8.391, lng: -48.112 },
+    "Guaraí": { lat: -8.833, lng: -48.511 },
+    "Tupirama": { lat: -8.971, lng: -48.188 },
+    "Rio Dos Bois": { lat: -9.336, lng: -48.534 },
+    "Miracema": { lat: -9.565, lng: -48.392 },
+    "Porto Nacional": { lat: -10.708, lng: -48.417 }
+};
