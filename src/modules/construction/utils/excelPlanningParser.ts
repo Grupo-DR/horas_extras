@@ -246,28 +246,11 @@ export async function parsePlanningExcel(
                     return;
                 }
 
-                // ── DIAGNOSTIC: catalog size ──────────────────────────────────
-                const warnings: string[] = [];
                 const lookupMap = buildLookupMap(servicePrices);
-                const catalogEquipTypes = [...new Set(
-                    servicePrices
-                        .filter(sp => sp.tipo_do_equipamento)
-                        .map(sp => sp.tipo_do_equipamento!)
-                )].sort();
+                const warnings: string[] = [];
 
-                warnings.push(
-                    `[DIAGNÓSTICO] Catálogo carregado: ${servicePrices.length} itens, ` +
-                    `${lookupMap.size} combinações equip+serviço. ` +
-                    `Tipos disponíveis: ${catalogEquipTypes.join(' | ')}`
-                );
-
-                // ── Detect columns from header row ────────────────────────────
                 const headerRow = rows[0];
                 const cols = detectColumns(headerRow) ?? DEFAULT_COLS;
-
-                const colUsed = cols === DEFAULT_COLS ? 'POSIÇÃO FIXA (A=Frota,B=Tipo,C=KM,D=HP,E=HI,F=Data)' :
-                    `cols detectadas: frota=${cols.frota} equip=${cols.equip} km=${cols.km} hp=${cols.hp} hi=${cols.hi} data=${cols.date}`;
-                warnings.push(`[DIAGNÓSTICO] ${colUsed}`);
 
                 // ── Parse data rows ───────────────────────────────────────────
                 const assignmentsMap = new Map<string, PlanningAssignment>();
@@ -342,12 +325,6 @@ export async function parsePlanningExcel(
                         });
                     }
                 }
-
-                // ── Post-parse diagnostic ─────────────────────────────────────
-                const seenResolved = [...seenEquipTypes].map(t => `"${t}"→"${resolveEquip(t)}"`);
-                warnings.push(
-                    `[DIAGNÓSTICO] Tipos do Excel encontrados: ${seenResolved.join(' | ')}`
-                );
 
                 const assignments = Array.from(assignmentsMap.values());
                 resolve({ assignments, warnings, summary: { totalRows, totalAssignments: assignments.length, skippedRows } });
