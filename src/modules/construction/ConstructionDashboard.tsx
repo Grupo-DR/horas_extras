@@ -16,8 +16,8 @@ import EquipmentManager from './components/EquipmentManager';
 
 const App: React.FC = () => {
   const STORAGE_KEYS = {
-    // v3: bumped from v2 to invalidate stale cache (added tipo_do_equipamento/tipo_do_servico)
-    PRICES: 'rdo_analytics_prices_v3',
+    // v4: bumped from v3 to include VLL service mapping (tipo_do_servico: "Produtivo")
+    PRICES: 'rdo_analytics_prices_v4',
   };
 
   const [data, setData] = useState<ConstructionRecord[]>([]);
