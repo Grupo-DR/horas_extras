@@ -1,15 +1,6 @@
 import * as XLSX from 'xlsx';
 import { PlanningAssignment, PlannedService, ServicePrice } from '../types';
 
-/**
- * Mapping from equipment type keyword → service item codes by unit role.
- * This allows finding the correct catalog item for each equipment+unit combination.
- *
- * Strategy: search servicePrices for items that:
- *   - Match the equipment type keyword in their description
- *   - Have a specific unit (KM, H) and contain PRODUTIVA / IMPRODUTIVA in description
- */
-
 export interface PlanningParseResult {
     assignments: PlanningAssignment[];
     warnings: string[];
@@ -20,28 +11,7 @@ export interface PlanningParseResult {
     };
 }
 
-/**
- * Maps an equipment type keyword (from col B) to keywords used in service descriptions.
- * This lets us search the catalog by equipment type.
- */
-const EQUIP_TYPE_KEYWORDS: Record<string, string[]> = {
-    'RETROESCAVADEIRA': ['RETROESCAVADEIRA'],
-    'RETROESCAVADEIRA LEVE': ['RETROESCAVADEIRA'],
-    'PA CARREGADEIRA': ['PA CARREGADEIRA', 'PA CARREGAD'],
-    'CAMINHÃO BASCULANTE': ['CAMINHÃO BASCULANTE', 'CAMINHAO BASCULANTE'],
-    'CAMINHAO BASCULANTE': ['CAMINHÃO BASCULANTE', 'CAMINHAO BASCULANTE'],
-    'CAMINHÃO PIPA': ['CAMINHÃO PIPA', 'CAMINHAO PIPA'],
-    'CAMINHAO PIPA': ['CAMINHÃO PIPA', 'CAMINHAO PIPA'],
-    'MOTONIVELADORA': ['MOTONIVELADORA'],
-    'TRATOR ESTEIRA': ['TRATOR ESTEIRA'],
-    'CARRETA PRANCHA': ['CARRETA PRANCHA'],
-    'MINIESCAVADEIRA': ['MINIESCAVADEIRA'],
-    'ESCAVADEIRA HIDRAULICA': ['ESCAVADEIRA HIDRAULICA'],
-    'ESCAVADEIRA HIDRÁULICA': ['ESCAVADEIRA HIDRAULICA'],
-    'ROLO COMPACTADOR': ['ROLO COMPACTADOR'],
-};
-
-/** Normalize text: remove accents, uppercase, trim */
+/** Normalize text: remove accents, uppercase, trim for comparison */
 function normalize(text: string): string {
     return text
         .normalize('NFD')
@@ -50,36 +20,22 @@ function normalize(text: string): string {
         .trim();
 }
 
-/** Find catalog items matching an equipment type and unit role */
+/**
+ * Find a catalog item by exact tipo_do_equipamento + tipo_do_servico match.
+ * Falls back to normalized comparison to handle accent variants.
+ */
 function findCatalogItem(
     servicePrices: ServicePrice[],
-    equipTypeRaw: string,
-    role: 'KM' | 'PRODUTIVA' | 'IMPRODUTIVA'
+    equipType: string,
+    serviceType: 'Produtivo' | 'Improdutivo' | 'KM'
 ): ServicePrice | undefined {
-    const equipNorm = normalize(equipTypeRaw);
+    const normEquip = normalize(equipType);
+    const normType = normalize(serviceType);
 
-    // Find matching keyword list
-    const keywordList = EQUIP_TYPE_KEYWORDS[equipNorm] ?? [equipNorm];
-
-    return servicePrices.find(sp => {
-        const descNorm = normalize(sp.descricao);
-        const unidadeNorm = normalize(sp.unidade);
-
-        // Equipment type must match
-        const typeMatches = keywordList.some(kw => descNorm.includes(normalize(kw)));
-        if (!typeMatches) return false;
-
-        if (role === 'KM') {
-            return unidadeNorm === 'KM';
-        }
-        if (role === 'PRODUTIVA') {
-            return unidadeNorm === 'H' && descNorm.includes('PRODUTIVA') && !descNorm.includes('IMPRODUTIVA');
-        }
-        if (role === 'IMPRODUTIVA') {
-            return unidadeNorm === 'H' && descNorm.includes('IMPRODUTIVA');
-        }
-        return false;
-    });
+    return servicePrices.find(sp =>
+        normalize(sp.tipo_do_equipamento ?? '') === normEquip &&
+        normalize(sp.tipo_do_servico ?? '') === normType
+    );
 }
 
 /**
@@ -121,8 +77,7 @@ function parseDate(value: any, cycleYear: number): string | null {
     }
 
     // Format YYYY-MM-DD
-    const iso = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (iso) return str;
+    if (str.match(/^(\d{4})-(\d{2})-(\d{2})$/)) return str;
 
     // Try native Date parse as last resort
     const dt = new Date(str);
@@ -141,22 +96,16 @@ function parseQty(value: any): number {
 }
 
 /**
- * Main parser.
- *
- * Excel structure expected:
- *   Row 1: Header (ignored or used for validation)
- *   Row 2+: Data rows with:
+ * Main parser — Excel structure:
+ *   Row 1:  Header (ignored)
+ *   Row 2+: Data rows:
  *     Col A (0): Frota name
- *     Col B (1): Equipment type
+ *     Col B (1): Equipment type (must match tipo_do_equipamento in catalog)
  *     Col C (2): KM production
  *     Col D (3): Productive hours
  *     Col E (4): Unproductive hours
  *     Col F (5): Date of service
  *     Col G (6): Day of week (optional, ignored)
- *
- * @param file       - The uploaded File object
- * @param cycleYear  - Year to use when dates have no year (e.g., "21/02")
- * @param servicePrices - Catalog of service prices to match items
  */
 export async function parsePlanningExcel(
     file: File,
@@ -171,11 +120,9 @@ export async function parsePlanningExcel(
                 const data = new Uint8Array(e.target!.result as ArrayBuffer);
                 const workbook = XLSX.read(data, { type: 'array', cellDates: false });
 
-                // Use first sheet
                 const sheetName = workbook.SheetNames[0];
                 const sheet = workbook.Sheets[sheetName];
 
-                // Convert to array of arrays
                 const rows: any[][] = XLSX.utils.sheet_to_json(sheet, {
                     header: 1,
                     defval: '',
@@ -192,7 +139,6 @@ export async function parsePlanningExcel(
                 for (let i = 1; i < rows.length; i++) {
                     const row = rows[i];
 
-                    // Skip completely empty rows
                     if (!row || row.every(cell => cell === '' || cell === null || cell === undefined)) {
                         continue;
                     }
@@ -212,6 +158,12 @@ export async function parsePlanningExcel(
                         continue;
                     }
 
+                    if (!equipType) {
+                        warnings.push(`Linha ${i + 1} (${frota}): Tipo de equipamento vazio — impossível mapear serviços. Linha ignorada.`);
+                        skippedRows++;
+                        continue;
+                    }
+
                     const dateStr = parseDate(dateRaw, cycleYear);
                     if (!dateStr) {
                         warnings.push(`Linha ${i + 1}: Data inválida para frota "${frota}" (valor: "${dateRaw}"). Linha ignorada.`);
@@ -219,7 +171,7 @@ export async function parsePlanningExcel(
                         continue;
                     }
 
-                    // Build services for this row
+                    // Build services for this row using EXACT lookup by tipo_do_equipamento + tipo_do_servico
                     const services: PlannedService[] = [];
 
                     if (qtyKm > 0) {
@@ -227,43 +179,40 @@ export async function parsePlanningExcel(
                         if (catItem) {
                             services.push({ item: catItem.item, producao: qtyKm });
                         } else {
-                            warnings.push(`Linha ${i + 1} (${frota} / ${dateStr}): Nenhum item KM encontrado no catálogo para tipo "${equipType}".`);
+                            warnings.push(`Linha ${i + 1} (${frota} / ${dateStr}): Sem item KM no catálogo para tipo "${equipType}".`);
                         }
                     }
 
                     if (qtyProd > 0) {
-                        const catItem = findCatalogItem(servicePrices, equipType, 'PRODUTIVA');
+                        const catItem = findCatalogItem(servicePrices, equipType, 'Produtivo');
                         if (catItem) {
                             services.push({ item: catItem.item, producao: qtyProd });
                         } else {
-                            warnings.push(`Linha ${i + 1} (${frota} / ${dateStr}): Nenhum item de Hora Produtiva encontrado para tipo "${equipType}".`);
+                            warnings.push(`Linha ${i + 1} (${frota} / ${dateStr}): Sem item Hora Produtiva no catálogo para tipo "${equipType}".`);
                         }
                     }
 
                     if (qtyImprod > 0) {
-                        const catItem = findCatalogItem(servicePrices, equipType, 'IMPRODUTIVA');
+                        const catItem = findCatalogItem(servicePrices, equipType, 'Improdutivo');
                         if (catItem) {
                             services.push({ item: catItem.item, producao: qtyImprod });
                         } else {
-                            warnings.push(`Linha ${i + 1} (${frota} / ${dateStr}): Nenhum item de Hora Improdutiva encontrado para tipo "${equipType}".`);
+                            warnings.push(`Linha ${i + 1} (${frota} / ${dateStr}): Sem item Hora Improdutiva no catálogo para tipo "${equipType}".`);
                         }
                     }
 
-                    // Skip rows where nothing was produced
                     if (services.length === 0) {
-                        // Only warn if there was some quantity in the row
                         if (qtyKm > 0 || qtyProd > 0 || qtyImprod > 0) {
-                            warnings.push(`Linha ${i + 1} (${frota} / ${dateStr}): Quantidades presentes mas nenhum serviço foi mapeado. Verifique o tipo "${equipType}".`);
+                            warnings.push(`Linha ${i + 1} (${frota} / ${dateStr}): Quantidades presentes mas nenhum serviço mapeado para "${equipType}".`);
                         }
                         skippedRows++;
                         continue;
                     }
 
-                    // Group by frota+date (merge services if same frota+date appears in multiple rows)
+                    // Group by frota+date (merge if same combo appears multiple times)
                     const key = `${dateStr}-${frota}`;
                     if (assignmentsMap.has(key)) {
                         const existing = assignmentsMap.get(key)!;
-                        // Merge services: accumulate production for same item
                         services.forEach(newSvc => {
                             const existingSvc = existing.services.find(s => s.item === newSvc.item);
                             if (existingSvc) {

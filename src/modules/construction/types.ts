@@ -21,6 +21,9 @@ export interface ServicePrice {
   quantidade: number;
   valor_total: number | null;
   category: 'RENTAL' | 'MOBRA';
+  // Campos de linkagem com o catálogo SAP
+  tipo_do_equipamento?: string; // Ex: "Retroescavadeira", "Caminhão Basculante"
+  tipo_do_servico?: string;     // Ex: "Produtivo", "Improdutivo", "KM", "Mobilização"
 }
 
 export interface PlannedService {
