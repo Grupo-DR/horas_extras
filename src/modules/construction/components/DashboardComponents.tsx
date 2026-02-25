@@ -320,16 +320,24 @@ interface HeatmapChartProps {
 }
 
 export const HeatmapChart: React.FC<HeatmapChartProps> = ({ data, metric }) => {
-    // 1. Definir limites geográficos para a projeção
-    const coords = Object.values(CITY_COORDINATES);
-    const minLat = Math.min(...coords.map(c => c.lat));
-    const maxLat = Math.max(...coords.map(c => c.lat));
-    const minLng = Math.min(...coords.map(c => c.lng));
-    const maxLng = Math.max(...coords.map(c => c.lng));
+    // 1. Filtrar cidades para projeção (ignorar outliers sem dados para focar no corredor)
+    const citiesWithData = data.filter(d => d[metric] > 0).map(d => d.city);
 
-    // Padding para o mapa não bater nas bordas
-    const latPadding = (maxLat - minLat) * 0.1;
-    const lngPadding = (maxLng - minLng) * 0.1;
+    // Lista de cidades para focar a câmera (Corredor Principal MA/TO)
+    // Se São Luís tiver dados, ele entra. Se não, mantemos o foco no corredor principal.
+    const corridorCities = Object.keys(CITY_COORDINATES).filter(c =>
+        (c !== "São Luís" && c !== "Araguaína") || citiesWithData.includes(c)
+    );
+
+    const coordsToBound = corridorCities.map(c => CITY_COORDINATES[c]);
+    const minLat = Math.min(...coordsToBound.map(c => c.lat));
+    const maxLat = Math.max(...coordsToBound.map(c => c.lat));
+    const minLng = Math.min(...coordsToBound.map(c => c.lng));
+    const maxLng = Math.max(...coordsToBound.map(c => c.lng));
+
+    // Padding para o mapa não bater nas bordas (mais generoso no topo/base)
+    const latPadding = (maxLat - minLat) * 0.15;
+    const lngPadding = (maxLng - minLng) * 0.2;
 
     const bounds = {
         minLat: minLat - latPadding,
@@ -351,7 +359,7 @@ export const HeatmapChart: React.FC<HeatmapChartProps> = ({ data, metric }) => {
     return (
         <div className="relative w-full h-[600px] bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 shadow-2xl group">
             {/* Grid Patterns de Fundo */}
-            <div className="absolute inset-0 opacity-10 pointer-events-none"
+            <div className="absolute inset-0 opacity-20 pointer-events-none"
                 style={{ backgroundImage: 'radial-gradient(#475569 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
 
             {/* SVG Content */}
@@ -371,17 +379,25 @@ export const HeatmapChart: React.FC<HeatmapChartProps> = ({ data, metric }) => {
                     </radialGradient>
                 </defs>
 
-                {/* Linhas de conexão (Track) */}
+                {/* Marcadores de Estado (Contexto Geográfico) */}
+                <text x="5" y="10" fill="#475569" fontSize="6" fontWeight="black" className="opacity-20 uppercase tracking-tighter pointer-events-none">Maranhão</text>
+                <text x="5" y="85" fill="#475569" fontSize="6" fontWeight="black" className="opacity-20 uppercase tracking-tighter pointer-events-none">Tocantins</text>
+
+                {/* Linhas de conexão (Track) - Mais visível */}
                 <polyline
-                    points={Object.keys(CITY_COORDINATES).map(city => {
-                        const { x, y } = project(CITY_COORDINATES[city].lat, CITY_COORDINATES[city].lng);
-                        return `${x},${y}`;
-                    }).join(' ')}
+                    points={Object.keys(CITY_COORDINATES)
+                        .filter(c => c !== "São Luís") // Não ligar a capital à trilha principal
+                        .sort((a, b) => CITY_COORDINATES[b].lat - CITY_COORDINATES[a].lat) // Norte para Sul
+                        .map(city => {
+                            const { x, y } = project(CITY_COORDINATES[city].lat, CITY_COORDINATES[city].lng);
+                            return `${x},${y}`;
+                        }).join(' ')}
                     fill="none"
-                    stroke="#334155"
-                    strokeWidth="0.5"
-                    strokeDasharray="2 2"
+                    stroke="#475569"
+                    strokeWidth="0.8"
+                    strokeDasharray="1 1"
                     className="opacity-40"
+                    style={{ filter: 'drop-shadow(0 0 1px rgba(255,255,255,0.1))' }}
                 />
 
                 <AnimatePresence>
@@ -390,7 +406,8 @@ export const HeatmapChart: React.FC<HeatmapChartProps> = ({ data, metric }) => {
                         if (!coords) return null;
                         const { x, y } = project(coords.lat, coords.lng);
                         const intensity = (d[metric] / maxValue);
-                        const radius = 2 + (intensity * 12); // Tamanho baseado na intensidade
+                        const hasData = d[metric] > 0;
+                        const radius = 3 + (intensity * 18); // Aumentado para melhor visibilidade
 
                         return (
                             <motion.g
@@ -401,45 +418,49 @@ export const HeatmapChart: React.FC<HeatmapChartProps> = ({ data, metric }) => {
                                 transition={{ delay: i * 0.05, type: 'spring' }}
                             >
                                 {/* Ponto de Calor (Glow) */}
+                                {hasData && (
+                                    <circle
+                                        cx={x}
+                                        cy={y}
+                                        r={radius * 1.8}
+                                        fill={`url(#${metric}Gradient)`}
+                                        className="animate-pulse"
+                                    />
+                                )}
+
+                                {/* Ponto da Cidade - Maior se tiver dado */}
                                 <circle
                                     cx={x}
                                     cy={y}
-                                    r={radius * 1.5}
-                                    fill={`url(#${metric}Gradient)`}
-                                    className="animate-pulse"
+                                    r={hasData ? 1.2 : 0.6}
+                                    fill={hasData ? 'white' : '#1e293b'}
+                                    className="filter drop-shadow-sm transition-all"
                                 />
 
-                                {/* Ponto da Cidade */}
-                                <circle
-                                    cx={x}
-                                    cy={y}
-                                    r={0.8}
-                                    fill="white"
-                                    className="filter drop-shadow-sm"
-                                />
-
-                                {/* Label da Cidade */}
+                                {/* Label da Cidade - Sempre visível se tiver dados relevantes */}
                                 <text
                                     x={x + 2}
                                     y={y + 0.5}
-                                    fill="#94a3b8"
-                                    fontSize="2"
-                                    fontWeight="bold"
-                                    className="pointer-events-none select-none opacity-0 group-hover:opacity-100 transition-opacity"
+                                    fill={hasData ? 'white' : '#475569'}
+                                    fontSize={hasData ? "2.5" : "1.8"}
+                                    fontWeight={hasData ? "black" : "bold"}
+                                    className={`pointer-events-none select-none transition-all ${hasData ? 'opacity-100' : 'opacity-40'}`}
                                 >
                                     {d.city}
                                 </text>
 
-                                <text
-                                    x={x + 2}
-                                    y={y + 3}
-                                    fill="white"
-                                    fontSize="1.5"
-                                    fontWeight="black"
-                                    className="pointer-events-none select-none opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                    {d[metric].toLocaleString()} {metric.toUpperCase()}
-                                </text>
+                                {hasData && (
+                                    <text
+                                        x={x + 2}
+                                        y={y + 3.5}
+                                        fill="rgba(255,255,255,0.7)"
+                                        fontSize="1.5"
+                                        fontWeight="black"
+                                        className="pointer-events-none select-none"
+                                    >
+                                        {d[metric].toLocaleString()} {metric.toUpperCase()}
+                                    </text>
+                                )}
                             </motion.g>
                         );
                     })}
