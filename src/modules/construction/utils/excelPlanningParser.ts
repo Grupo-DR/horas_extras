@@ -81,12 +81,22 @@ function resolveEquip(raw: string): string {
 
 /** Keywords that identify each logical column (after normalization) */
 const HEADER_KEYWORDS = {
-    frota: ['FROTA', 'EQUIPAMENTO', 'VEICULO'],
-    equip: ['TIPO', 'TIPO EQUIP', 'TIPO DO EQUIPAMENTO', 'DESCRICAO', 'TIPO EQUIPAMENTO'],
-    km: ['KM', 'KM RODADO', 'QUILOMETRO', 'QUILOMETRAGEM'],
-    hp: ['HP', 'H.P', 'HR PROD', 'HORA PROD', 'HORAS PRODUTIVAS', 'HRS PRODUTIVAS', 'H PROD'],
-    hi: ['HI', 'H.I', 'HR IMPROD', 'HORA IMPROD', 'HORAS IMPRODUTIVAS', 'HRS IMPRODUTIVAS', 'H IMPROD'],
-    date: ['DATA', 'DT', 'DATE'],
+    frota: ['FROTA', 'EQUIPAMENTO', 'VEICULO', 'PLACA'],
+    equip: ['TIPO', 'TIPO EQUIP', 'TIPO DO EQUIPAMENTO', 'DESCRICAO', 'TIPO EQUIPAMENTO', 'MODELO'],
+    km: ['KM', 'KM RODADO', 'QUILOMETRO', 'QUILOMETRAGEM', 'DISTANCIA'],
+    hp: [
+        'HP', 'H.P', 'H.P.', 'HP.',
+        'HR PROD', 'HRS PROD', 'H PROD',
+        'HORA PROD', 'HORAS PROD', 'HORA PRODUTIVA', 'HORAS PRODUTIVAS', 'HRS PRODUTIVAS',
+        'PROD', 'PRODUTIVA', 'PRODUTIVO',
+    ],
+    hi: [
+        'HI', 'H.I', 'H.I.', 'HI.',
+        'HR IMPROD', 'HRS IMPROD', 'H IMPROD',
+        'HORA IMPROD', 'HORAS IMPROD', 'HORA IMPRODUTIVA', 'HORAS IMPRODUTIVAS', 'HRS IMPRODUTIVAS',
+        'IMPROD', 'IMPRODUTIVA', 'IMPRODUTIVO',
+    ],
+    date: ['DATA', 'DT', 'DATE', 'DIA'],
 };
 
 interface ColMap {
@@ -98,7 +108,11 @@ interface ColMap {
     date: number;
 }
 
-/** Tries to detect column indices from a header row. Returns null if mandatory cols not found. */
+/**
+ * Tries to detect column indices from a header row.
+ * Returns null if mandatory columns (frota + date) are not found.
+ * Any optional column not found in headers falls back to its DEFAULT_COLS position.
+ */
 function detectColumns(headerRow: any[]): ColMap | null {
     const map: Partial<ColMap> = {};
 
@@ -114,9 +128,17 @@ function detectColumns(headerRow: any[]): ColMap | null {
         }
     });
 
-    // frota and date are mandatory; equip, km, hp, hi default to fixed positions if not found
+    // frota and date must be found; everything else falls back to default position
     if (map.frota === undefined || map.date === undefined) return null;
-    return map as ColMap;
+
+    return {
+        frota: map.frota ?? DEFAULT_COLS.frota,
+        equip: map.equip ?? DEFAULT_COLS.equip,
+        km: map.km ?? DEFAULT_COLS.km,
+        hp: map.hp ?? DEFAULT_COLS.hp,
+        hi: map.hi ?? DEFAULT_COLS.hi,
+        date: map.date ?? DEFAULT_COLS.date,
+    };
 }
 
 /** Fallback fixed column mapping (A=frota, B=equip, C=km, D=hp, E=hi, F=date) */
