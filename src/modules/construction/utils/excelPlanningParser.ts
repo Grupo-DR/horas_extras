@@ -11,31 +11,105 @@ export interface PlanningParseResult {
     };
 }
 
-/** Normalize text: remove accents, uppercase, trim for comparison */
+/** Normalize text: remove accents, uppercase, trim, collapse internal spaces */
 function normalize(text: string): string {
     return text
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .toUpperCase()
+        .replace(/\s+/g, ' ')
         .trim();
 }
 
 /**
- * Find a catalog item by exact tipo_do_equipamento + tipo_do_servico match.
- * Falls back to normalized comparison to handle accent variants.
+ * Aliases: maps any variant name that might appear in the Excel file
+ * (after normalization) to the canonical catalog `tipo_do_equipamento`
+ * value (also normalized).
+ *
+ * Normalizedform → canonical catalog value (normalized)
+ */
+const EQUIPMENT_ALIASES: Record<string, string> = {
+    // Retroescavadeira variants
+    'RETRO ESCAVADEIRA': 'RETROESCAVADEIRA',
+    'RETROESCAVADEIRA': 'RETROESCAVADEIRA',
+    'RETROESCAVADEIRA LEVE': 'RETROESCAVADEIRA',
+    'RETRO': 'RETROESCAVADEIRA',
+
+    // Mini escavadeira variants
+    'MINI ESCAVADEIRA': 'MINIESCAVADEIRA',
+    'MINIESCAVADEIRA': 'MINIESCAVADEIRA',
+    'MINI-ESCAVADEIRA': 'MINIESCAVADEIRA',
+
+    // Escavadeira hidráulica variants
+    'ESCAVADEIRA HIDRAULICA': 'ESCAVADEIRA HIDRAULICA',
+    'ESCAVADEIRA': 'ESCAVADEIRA HIDRAULICA',
+    'EH': 'ESCAVADEIRA HIDRAULICA',
+
+    // Caminhão basculante variants
+    'CAMINHAO BASCULANTE': 'CAMINHAO BASCULANTE',
+    'CAMINHAO': 'CAMINHAO BASCULANTE',
+    'BASCULANTE': 'CAMINHAO BASCULANTE',
+
+    // Pá carregadeira variants
+    'PA CARREGADEIRA': 'PA CARREGADEIRA',
+    'CARREGADEIRA': 'PA CARREGADEIRA',
+
+    // Motoniveladora variants
+    'MOTONIVELADORA': 'MOTONIVELADORA',
+    'MOTO NIVELADORA': 'MOTONIVELADORA',
+
+    // Carreta prancha variants
+    'CARRETA PRANCHA': 'CARRETA PRANCHA',
+    'PRANCHA': 'CARRETA PRANCHA',
+
+    // Trator de esteira variants
+    'TRATOR ESTEIRA': 'TRATOR DE ESTEIRA',
+    'TRATOR DE ESTEIRA': 'TRATOR DE ESTEIRA',
+
+    // Rolo compactador variants
+    'ROLO COMPACTADOR': 'ROLO COMPACTADOR',
+    'ROLO': 'ROLO COMPACTADOR',
+
+    // Veículo leve variants
+    'VEICULO LEVE': 'VEICULO LEVE',
+    'VEICULO': 'VEICULO LEVE',
+
+    // Caminhão pipa variants
+    'CAMINHAO PIPA': 'CAMINHAO PIPA',
+    'PIPA': 'CAMINHAO PIPA',
+};
+
+/**
+ * Resolve the Excel equipment type string to a canonical normalized form,
+ * using the alias dictionary when available.
+ */
+function resolveEquipType(rawEquipType: string): string {
+    const norm = normalize(rawEquipType);
+    return EQUIPMENT_ALIASES[norm] ?? norm;
+}
+
+/**
+ * Find a catalog item by tipo_do_equipamento + tipo_do_servico.
+ * Applies alias resolution before comparing so Excel variants map correctly.
  */
 function findCatalogItem(
     servicePrices: ServicePrice[],
     equipType: string,
     serviceType: 'Produtivo' | 'Improdutivo' | 'KM'
 ): ServicePrice | undefined {
-    const normEquip = normalize(equipType);
+    const resolvedEquip = resolveEquipType(equipType);
     const normType = normalize(serviceType);
 
-    return servicePrices.find(sp =>
-        normalize(sp.tipo_do_equipamento ?? '') === normEquip &&
+    const foundItem = servicePrices.find(sp =>
+        resolveEquipType(sp.tipo_do_equipamento ?? '') === resolvedEquip &&
         normalize(sp.tipo_do_servico ?? '') === normType
     );
+
+    if (!foundItem) {
+        console.debug(`Catalog mismatch: Could not find service for equipType="${equipType}" (resolved to "${resolvedEquip}") and serviceType="${serviceType}" (normalized to "${normType}")`);
+    }
+
+    return foundItem;
 }
 
 /**
