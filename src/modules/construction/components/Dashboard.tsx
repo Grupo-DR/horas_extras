@@ -15,7 +15,7 @@ import {
   getTrechoInfo, getEquipmentCategory, calculateAssignmentTotal,
   getPeriodInfo, getProductivityStatus, getUnifiedServiceInfo, getCycleKey, getPeriodFromCycle
 } from '../utils/calculations';
-import { CategoryDetailModal, DayDetailModal, HeatmapChart } from './DashboardComponents';
+import { CategoryDetailModal, DayDetailModal } from './DashboardComponents';
 import budgetData from '../data/budgets.json';
 
 interface DashboardProps {
@@ -68,7 +68,6 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [selectedDayDetail, setSelectedDayDetail] = useState<any>(null);
   const [selectedEquipmentType, setSelectedEquipmentType] = useState<string>('');
   const [selectedEquipment, setSelectedEquipment] = useState<string>('');
-  const [heatmapMetric, setHeatmapMetric] = useState<'hp' | 'hi' | 'km'>('hp');
 
 
   const stats = useMemo(() => {
@@ -415,23 +414,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     return {
       realTotal, realProdutivo, realImprodutivo, planejadoTotal, period, chartData,
       paretoCategory, idleTrechoTable, paretoRevenue, paretoIdle, equipmentComparison, idleComparison,
-      totalBudget, dailyBudget, sapComparison,
-
-      // Heatmap Data
-      heatmapData: Object.entries(filteredRecords.reduce((acc, r) => {
-        const geo = getTrechoInfo(r.trechoFinal);
-        const city = geo.cidade;
-        if (!city) return acc;
-        if (!acc[city]) acc[city] = { hp: 0, hi: 0, km: 0 };
-        const financials = calculateRecordFinancials(r, servicePrices);
-        if (financials.status === 'PRODUTIVA') acc[city].hp += r.producao;
-        if (financials.status === 'IMPRODUTIVA') acc[city].hi += r.producao;
-        if (financials.unidade === 'KM' || financials.descricao.toUpperCase().includes('KM RODADO')) acc[city].km += r.producao;
-        return acc;
-      }, {} as Record<string, { hp: number; hi: number; km: number }>)).map(([city, values]) => ({
-        city,
-        ...values
-      }))
+      totalBudget, dailyBudget, sapComparison
     };
   }, [data, selectedCycle, servicePrices, assignments, selectedEquipmentType, selectedEquipment]);
 
@@ -566,34 +549,6 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* Mapa de Calor Geográfico */}
-      <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 mt-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-          <div>
-            <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-              <Activity className="w-4 h-4 text-amber-500" /> Mapa de Calor Geográfico
-            </h3>
-            <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Concentração de atividades por cidade</p>
-          </div>
-
-          <div className="flex bg-slate-100 p-1 rounded-xl">
-            {(['hp', 'hi', 'km'] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => setHeatmapMetric(m)}
-                className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${heatmapMetric === m
-                    ? 'bg-white text-slate-900 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
-                  }`}
-              >
-                {m === 'hp' ? 'Hora Produtiva' : m === 'hi' ? 'Hora Improdutiva' : 'Kilometragem'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <HeatmapChart data={stats.heatmapData} metric={heatmapMetric} />
-      </div>
 
       {/* Pareto de Faturamento por Tipo de Equipamento */}
       {stats.paretoRevenue.length > 0 && (
