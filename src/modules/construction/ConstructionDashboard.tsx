@@ -16,7 +16,8 @@ import EquipmentManager from './components/EquipmentManager';
 
 const App: React.FC = () => {
   const STORAGE_KEYS = {
-    PRICES: 'rdo_analytics_prices_v2',
+    // v3: bumped from v2 to invalidate stale cache (added tipo_do_equipamento/tipo_do_servico)
+    PRICES: 'rdo_analytics_prices_v3',
   };
 
   const [data, setData] = useState<ConstructionRecord[]>([]);
@@ -26,8 +27,18 @@ const App: React.FC = () => {
   const [equipments, setEquipments] = useState<Equipment[]>([]);
 
   const [servicePrices, setServicePrices] = useState<ServicePrice[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.PRICES);
-    return saved ? JSON.parse(saved) : DEFAULT_SERVICE_PRICES;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.PRICES);
+      if (saved) {
+        const parsed: ServicePrice[] = JSON.parse(saved);
+        // Validate that cached data has new fields; if not, fall back to defaults
+        const hasNewFields = parsed.some(p => p.tipo_do_equipamento != null);
+        if (hasNewFields) return parsed;
+      }
+    } catch {
+      // ignore parse errors
+    }
+    return DEFAULT_SERVICE_PRICES;
   });
 
   const [assignments, setAssignments] = useState<PlanningAssignment[]>([]);
