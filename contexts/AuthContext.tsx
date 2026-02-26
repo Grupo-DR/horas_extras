@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 
 // IAM Imports
 import { UserProfileDoc, CommercialRole, Scope, canPlan, canManageProfiles, canReadAll } from '../src/modules/iam/types';
-import { getOrCreateUserProfile, updateUserProfile } from '../src/modules/iam/profileService';
+import { getOrCreateUserProfile, updateUserProfile, getAllProfiles } from '../src/modules/iam/profileService';
 
 interface AuthContextData {
     user: User | null; // Legacy User Object (Mapped)
@@ -34,6 +34,8 @@ interface AuthContextData {
     hasModuleAccess: (module: 'commercial' | 'human_capital') => boolean;
     isProfileLoading: boolean;
 
+    // Legacy Support for CRM Dropdowns
+    users: User[];
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -41,6 +43,7 @@ const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [profile, setProfile] = useState<UserProfileDoc | null>(null);
+    const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [isProfileLoading, setIsProfileLoading] = useState(true);
 
@@ -98,6 +101,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     const userProfile = await getOrCreateUserProfile(firebaseUser);
                     setProfile(userProfile);
                     setUser(mapProfileToLegacyUser(userProfile));
+
+                    // Load all users for CRM / Pipeline (Legacy Support)
+                    try {
+                        const profiles = await getAllProfiles();
+                        const activeUsers = profiles
+                            .filter(p => p.status !== 'disabled')
+                            .map(p => mapProfileToLegacyUser(p));
+                        setUsers(activeUsers);
+                    } catch (err) {
+                        console.warn('Could not load directory users', err);
+                    }
+
                 } catch (error) {
                     console.error("Failed to load user profile", error);
                     toast.error("Erro ao carregar perfil de usuário.");
@@ -107,6 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             } else {
                 setProfile(null);
                 setUser(null);
+                setUsers([]);
             }
 
             setLoading(false);
@@ -150,6 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         <AuthContext.Provider value={{
             user,
             profile,
+            users,
             isAuthenticated: !!user,
             loading,
             isProfileLoading,

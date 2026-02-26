@@ -28,8 +28,8 @@ service cloud.firestore {
     // --- User Profiles ---
     
     match /user_profiles/{userId} {
-      // Read: Own profile OR Admin
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isIAMAdmin());
+      // Read: Any authenticated user can read the company directory
+      allow read: if isAuthenticated();
       
       // Write: Admin Only
       allow write: if isAuthenticated() && isIAMAdmin();
