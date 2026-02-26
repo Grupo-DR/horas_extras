@@ -5,9 +5,10 @@ import { toast } from 'sonner';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, getAuth } from 'firebase/auth';
 import { auth } from '../../services/firebaseConfig';
 import { useNavigate } from 'react-router-dom';
+import { updateUserProfile } from '../../src/modules/iam/profileService';
 
 export const AccountSettings: React.FC = () => {
-    const { user, updateUser, logout } = useAuth();
+    const { user, logout } = useAuth();
     const navigate = useNavigate();
 
     const [currentPassword, setCurrentPassword] = useState('');
@@ -47,7 +48,7 @@ export const AccountSettings: React.FC = () => {
             const downloadURL = await getDownloadURL(snapshot.ref);
 
             // 4. Update Profile
-            await updateUser(user!.id, { avatarUrl: downloadURL });
+            await updateUserProfile(user!.id, { avatarUrl: downloadURL });
             toast.success('Foto de perfil atualizada!');
 
         } catch (error: any) {
@@ -84,9 +85,9 @@ export const AccountSettings: React.FC = () => {
             // Update Password
             await updatePassword(currentUser, newPassword);
 
-            // Update Firestore Profile (remove mustChangePassword flag)
+            // Update Firestore Profile (remove mustChangePassword flag / set active)
             if (user.mustChangePassword) {
-                await updateUser(user.id, { mustChangePassword: false });
+                await updateUserProfile(user.id, { status: 'active' });
             }
 
             toast.success('Senha alterada com sucesso!');

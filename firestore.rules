@@ -8,19 +8,21 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isSuperAdmin() {
-      return request.auth.token.email == 'antonio.silva@grupodr.com.br';
-    }
-
     // Fetch the user's profile
     function getUserProfile() {
       return get(/databases/$(database)/documents/user_profiles/$(request.auth.uid)).data;
     }
 
+    function isSuperAdmin() {
+      let profile = getUserProfile();
+      return profile != null && profile.isSuperAdmin == true;
+    }
+
     // Check if user is IAM Admin (or Super Admin)
     function isIAMAdmin() {
        let profile = getUserProfile();
-       return isSuperAdmin() || (profile != null && profile.modules.commercial.role == 'IAM_ADMIN'); 
+       return (profile != null && profile.isSuperAdmin == true) || 
+              (profile != null && profile.modules.commercial.role == 'IAM_ADMIN'); 
     }
 
     // --- User Profiles ---
@@ -31,15 +33,21 @@ service cloud.firestore {
       
       // Write: Admin Only
       allow write: if isAuthenticated() && isIAMAdmin();
-      
-      // Validation could be added here (schema checks), but keeping simple for now as requested.
+    }
+
+    // --- Audit Logs ---
+    match /audit_logs/{logId} {
+      // Only IAM Admins can read or write audit logs directly from client
+      // Note: Cloud Functions bypass these rules entirely.
+      allow read, write: if isAuthenticated() && isIAMAdmin();
     }
 
     // --- Legacy / Other Collections ---
 
     // Existing 'users' collection used by AuthContext legacy logic
     match /users/{userId} {
-      allow read, write: if isAuthenticated();
+      // Restrict so users can only touch their own legacy record, or Admin can touch everything
+      allow read, write: if isAuthenticated() && (request.auth.uid == userId || isIAMAdmin());
     }
     
     // Placeholder for future HC collections if migrated to Firestore

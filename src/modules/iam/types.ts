@@ -31,8 +31,11 @@ export interface UserProfileDoc {
 
     jobTitle?: string;
     department?: string;
+    avatarUrl?: string;
 
     isSuperAdmin?: boolean; // Developer/Backup
+
+    status?: 'invited' | 'active' | 'disabled';
 
     modules: {
         commercial?: {
@@ -54,6 +57,10 @@ export interface UserProfileDoc {
     createdBy: string;
     updatedAt: string;
     updatedBy: string;
+
+    disabledAt?: string;
+    disabledBy?: string;
+    disableReason?: string;
 }
 
 // Helpers

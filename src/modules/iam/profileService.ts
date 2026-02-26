@@ -1,6 +1,6 @@
-import { db } from '@/services/firebaseConfig';
+import { auth, db } from '@/services/firebaseConfig';
 import { doc, getDoc, setDoc, updateDoc, Timestamp, collection, getDocs } from 'firebase/firestore';
-import { User as FirebaseUser } from 'firebase/auth';
+import { User as FirebaseUser, signOut } from 'firebase/auth';
 import { UserProfileDoc } from './types';
 
 const COLLECTION = 'user_profiles';
@@ -25,7 +25,13 @@ export const getOrCreateUserProfile = async (authUser: FirebaseUser): Promise<Us
     if (!authUser) throw new Error("No authenticated user");
 
     const existing = await getUserProfile(authUser.uid);
-    if (existing) return existing;
+    if (existing) {
+        if (existing.status === 'disabled') {
+            await signOut(auth);
+            throw new Error('Conta desativada pelo administrador.');
+        }
+        return existing;
+    }
 
     // Create Initial Profile
     const isSuperAdmin = SUPER_ADMINS.includes(authUser.email || '');
@@ -35,6 +41,7 @@ export const getOrCreateUserProfile = async (authUser: FirebaseUser): Promise<Us
         email: authUser.email || '',
         displayName: authUser.displayName || authUser.email?.split('@')[0] || 'User',
         isSuperAdmin,
+        status: isSuperAdmin ? 'active' : 'invited',
         modules: {
             commercial: {
                 enabled: isSuperAdmin, // Default disabled unless super admin
@@ -82,6 +89,7 @@ export const createUserProfile = async (uid: string, email: string, displayName:
             email,
             displayName,
             isSuperAdmin: false,
+            status: 'invited',
             modules: {
                 commercial: { enabled: false, role: 'COMMERCIAL_VIEWER' },
                 human_capital: { enabled: false, role: 'HC_AUDITOR_VIEWER', scope: { type: 'ALL' } },

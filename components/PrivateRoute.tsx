@@ -23,9 +23,9 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
         return <Navigate to="/login" replace />;
     }
 
-    // Force Password Change
-    if (user?.mustChangePassword && location.pathname !== '/config/conta') {
-        return <Navigate to="/config/conta" replace />;
+    // Force Password Change / Account Activation
+    if (user?.mustChangePassword && location.pathname !== '/config/account') {
+        return <Navigate to="/config/account" replace />;
     }
 
     // Render children if provided, otherwise render Outlet

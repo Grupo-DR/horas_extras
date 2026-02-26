@@ -34,11 +34,6 @@ interface AuthContextData {
     hasModuleAccess: (module: 'commercial' | 'human_capital') => boolean;
     isProfileLoading: boolean;
 
-    // Legacy User Management (Kept for compatibility, but might need refactor)
-    users: User[];
-    addUser: (userData: Omit<User, 'id'>, initialPassword?: string) => Promise<void>;
-    updateUser: (id: string, data: Partial<User>) => Promise<void>;
-    removeUser: (id: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -48,7 +43,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [profile, setProfile] = useState<UserProfileDoc | null>(null);
     const [loading, setLoading] = useState(true);
     const [isProfileLoading, setIsProfileLoading] = useState(true);
-    const [users, setUsers] = useState<User[]>([]);
 
     // Adapter: Convert IAM Profile to Legacy User
     const mapProfileToLegacyUser = (p: UserProfileDoc): User => {
@@ -86,7 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             role: p.jobTitle || 'Colaborador',
             systemRole,
             permissions,
-            mustChangePassword: false,
+            mustChangePassword: p.status === 'invited',
             createdAt: p.createdAt,
             lastLoginAt: new Date().toISOString()
         };
@@ -152,74 +146,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         toast.info('Sessão encerrada');
     };
 
-    // Legacy Add User (Modified to create Profile in user_profiles as well?)
-    // For now, keeping legacy behavior but noting it might need update.
-    // Use the ProfileManager for real IAM management.
-    const addUser = async (userData: Omit<User, 'id'>, initialPassword?: string) => {
-        if (!initialPassword) throw new Error('Senha inicial obrigatória');
-        const secondaryApp = initializeApp(firebaseConfig, "Secondary");
-        const secondaryAuth = getAuth(secondaryApp);
-
-        try {
-            const userCredential = await createUserWithEmailAndPassword(secondaryAuth, userData.email, initialPassword);
-            const uid = userCredential.user.uid;
-
-            // Create Legacy User Doc (users) - Keeping for compatibility if needed
-            // await setDoc(doc(db, 'users', uid), { ...userData, id: uid });
-
-            // Create IAM Profile (user_profiles)
-            // We can't use getOrCreateUserProfile because we aren't logged in as them.
-            // Manually create:
-            const newProfile: UserProfileDoc = {
-                uid,
-                email: userData.email,
-                displayName: userData.name,
-                modules: {
-                    commercial: {
-                        enabled: true, // Legacy default behavior
-                        role: 'COMMERCIAL_VIEWER'
-                    },
-                    human_capital: {
-                        enabled: false,
-                        role: 'HC_AUDITOR_VIEWER',
-                        scope: { type: 'ALL' }
-                    }
-                },
-                createdAt: new Date().toISOString(),
-                createdBy: user?.id || 'system',
-                updatedAt: new Date().toISOString(),
-                updatedBy: user?.id || 'system'
-            };
-
-            await setDoc(doc(db, 'user_profiles', uid), newProfile);
-
-            await signOut(secondaryAuth);
-            toast.success('Usuário criado com sucesso!');
-        } catch (error: any) {
-            console.error('Erro ao criar usuário:', error);
-            throw new Error('Erro: ' + error.message);
-        }
-    };
-
-    // Stubbed legacy updates
-    const updateUser = async (id: string, data: Partial<User>) => {
-        // This updates 'users' collection. 
-        // Ideally should update 'user_profiles'.
-        // For now, no-op or log warning.
-        console.warn("Legacy updateUser called. Use ProfileManager.");
-    };
-
-    const removeUser = async (id: string) => {
-        try {
-            await deleteDoc(doc(db, 'user_profiles', id));
-            // await deleteDoc(doc(db, 'users', id));
-            toast.success('Perfil removido.');
-        } catch (error) {
-            console.error(error);
-            throw new Error('Erro ao remover usuário');
-        }
-    };
-
     return (
         <AuthContext.Provider value={{
             user,
@@ -229,11 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             isProfileLoading,
             login,
             logout,
-            hasModuleAccess,
-            users,
-            addUser,
-            updateUser,
-            removeUser
+            hasModuleAccess
         }}>
             {children}
         </AuthContext.Provider>

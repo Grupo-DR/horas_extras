@@ -3,7 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { UserProfileDoc, HCRole, CommercialRole, Scope, ScopeType, ConstructionRole, canManageProfiles } from '../types';
 import { getAllProfiles, updateUserRoles, createUserProfile } from '../profileService';
 import { useAuth } from '@/contexts/AuthContext';
-import { Users, Search, Edit2, Shield, AlertTriangle, Save, X, Building2, MapPin, Plus, HardHat } from 'lucide-react';
+import { Users, Search, Edit2, Shield, AlertTriangle, Save, X, Building2, MapPin, Plus, HardHat, KeyRound, Ban, CheckCircle2, Trash2 } from 'lucide-react';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app } from '@/services/firebaseConfig';
 
 const ProfileManager: React.FC = () => {
     const { profile } = useAuth();
@@ -98,14 +100,18 @@ const ProfileManager: React.FC = () => {
     };
 
     const handleCreateUser = async () => {
-        if (!newUserUid || !newUserEmail || !newUserName) {
-            alert("Preencha todos os campos.");
+        if (!newUserEmail || !newUserName) {
+            alert("Preencha E-mail e Nome.");
             return;
         }
         setCreatingUser(true);
         try {
-            await createUserProfile(newUserUid, newUserEmail, newUserName);
-            alert("Usuário criado com sucesso!");
+            const functions = getFunctions(app);
+            const inviteUser = httpsCallable(functions, 'adminCreateUserInvite');
+            const result = await inviteUser({ email: newUserEmail, displayName: newUserName });
+            const link = (result.data as any).link;
+
+            alert(`Usuário convidado com sucesso!\n\nLink de ativação/senha gerado:\n${link}\n\nCopie este link e envie ao usuário.`);
             setIsAddModalOpen(false);
             setNewUserUid('');
             setNewUserEmail('');
@@ -115,6 +121,38 @@ const ProfileManager: React.FC = () => {
             alert("Erro ao criar usuário: " + error.message);
         } finally {
             setCreatingUser(false);
+        }
+    };
+
+    const handleAdminAction = async (action: 'disable' | 'enable' | 'delete' | 'reset-password', userDoc: UserProfileDoc) => {
+        const functions = getFunctions(app);
+        try {
+            if (action === 'disable') {
+                if (!window.confirm(`Desativar o acesso de ${userDoc.displayName}? O usuário será desconectado imediatamente.`)) return;
+                const disableUser = httpsCallable(functions, 'adminDisableUser');
+                await disableUser({ uid: userDoc.uid, reason: 'Desativado pelo admin via painel' });
+                alert('Usuário desativado com sucesso.');
+            } else if (action === 'enable') {
+                if (!window.confirm(`Reativar o acesso de ${userDoc.displayName}?`)) return;
+                const enableUser = httpsCallable(functions, 'adminEnableUser');
+                await enableUser({ uid: userDoc.uid });
+                alert('Usuário reativado com sucesso.');
+            } else if (action === 'delete') {
+                if (!window.confirm(`ATENÇÃO: Excluir PERMANENTEMENTE o usuário ${userDoc.displayName}?\n\nEsta ação apagará a conta do Firebase Auth e o perfil de acessos irreparavelmente.`)) return;
+                const deleteUser = httpsCallable(functions, 'adminDeleteUser');
+                await deleteUser({ uid: userDoc.uid });
+                alert('Usuário excluído permanentemente.');
+            } else if (action === 'reset-password') {
+                if (!window.confirm(`Gerar link de redefinição de senha para ${userDoc.displayName}?`)) return;
+                const resetPassword = httpsCallable(functions, 'adminGeneratePasswordResetLink');
+                const result = await resetPassword({ email: userDoc.email });
+                const link = (result.data as any).link;
+                alert(`Link de redefinição gerado com sucesso:\n\n${link}\n\nCopie este link e envie ao usuário de forma segura.`);
+            }
+            loadUsers();
+        } catch (error: any) {
+            console.error(error);
+            alert(`Erro ao executar a ação: ${error.message}`);
         }
     };
 
@@ -144,6 +182,29 @@ const ProfileManager: React.FC = () => {
                             className="pl-10 pr-4 py-2 border rounded-xl w-full md:w-64 focus:ring-2 focus:ring-blue-500 outline-none"
                         />
                     </div>
+
+                    {profile?.isSuperAdmin && (
+                        <button
+                            onClick={async () => {
+                                if (window.confirm('Executar backfill de usuários legados?\n\nIsso definirá status "active" e removerá "mustChangePassword" de todos que já existiam, além de garantir privilégios de Super Admin para seu e-mail.\n\nRode apenas 1x após implantar o novo IAM.')) {
+                                    try {
+                                        const functions = getFunctions(app);
+                                        const backfill = httpsCallable(functions, 'adminBackfillUserProfiles');
+                                        const res = await backfill();
+                                        alert('Script de backfill concluído com sucesso:\n\n' + (res.data as any).message);
+                                        loadUsers();
+                                    } catch (e: any) {
+                                        alert('Erro no script de backfill: ' + e.message);
+                                    }
+                                }
+                            }}
+                            title="Recurso temporário para transição do banco"
+                            className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors"
+                        >
+                            <AlertTriangle size={16} /> Backfill
+                        </button>
+                    )}
+
                     <button
                         onClick={() => setIsAddModalOpen(true)}
                         className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors"
@@ -161,6 +222,7 @@ const ProfileManager: React.FC = () => {
                             <th className="px-6 py-4">Comercial</th>
                             <th className="px-6 py-4">Capital Humano</th>
                             <th className="px-6 py-4">Obras</th>
+                            <th className="px-6 py-4">Status</th>
                             <th className="px-6 py-4 text-center">Ações</th>
                         </tr>
                     </thead>
@@ -209,10 +271,34 @@ const ProfileManager: React.FC = () => {
                                         <span className="text-gray-400 text-xs italic">Desativado</span>
                                     )}
                                 </td>
-                                <td className="px-6 py-4 text-center">
-                                    <button onClick={() => handleEdit(user)} className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-blue-600 transition-colors">
-                                        <Edit2 size={16} />
-                                    </button>
+                                <td className="px-6 py-4">
+                                    {user.status === 'active' && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-xs font-bold"><CheckCircle2 size={12} /> Ativo</span>}
+                                    {user.status === 'invited' && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 text-xs font-bold"><KeyRound size={12} /> Pendente</span>}
+                                    {user.status === 'disabled' && <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-100 text-red-800 text-xs font-bold"><Ban size={12} /> Desativado</span>}
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div className="flex items-center justify-center gap-2">
+                                        <button onClick={() => handleEdit(user)} title="Editar Acessos" className="p-2 hover:bg-gray-200 rounded-lg text-gray-500 hover:text-blue-600 transition-colors">
+                                            <Edit2 size={16} />
+                                        </button>
+                                        <button onClick={() => handleAdminAction('reset-password', user)} title="Resetar Senha" className="p-2 hover:bg-gray-200 rounded-lg text-gray-500 hover:text-amber-600 transition-colors">
+                                            <KeyRound size={16} />
+                                        </button>
+                                        {user.status === 'disabled' ? (
+                                            <button onClick={() => handleAdminAction('enable', user)} title="Reativar Acesso" className="p-2 hover:bg-gray-200 rounded-lg text-gray-500 hover:text-emerald-600 transition-colors">
+                                                <CheckCircle2 size={16} />
+                                            </button>
+                                        ) : (
+                                            <button onClick={() => handleAdminAction('disable', user)} title="Desativar Acesso" className="p-2 hover:bg-gray-200 rounded-lg text-gray-500 hover:text-red-500 transition-colors">
+                                                <Ban size={16} />
+                                            </button>
+                                        )}
+                                        {profile?.uid !== user.uid && (
+                                            <button onClick={() => handleAdminAction('delete', user)} title="Excluir Definitivamente" className="p-2 hover:bg-red-100 rounded-lg text-gray-500 hover:text-red-700 transition-colors">
+                                                <Trash2 size={16} />
+                                            </button>
+                                        )}
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -230,20 +316,10 @@ const ProfileManager: React.FC = () => {
                         </div>
                         <div className="p-6 space-y-4">
                             <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg text-xs text-blue-700 mb-4">
-                                <p>Use esta função para adicionar usuários que já foram criados no Firebase Authentication mas ainda não fizeram o primeiro login.</p>
+                                <p>Cria um convite seguro. O usuário receberá um perfil e você receberá um link temporário para que ele cadastre a senha inicial.</p>
                             </div>
                             <div>
-                                <label className="block text-xs font-bold uppercase text-gray-500 mb-1">UID (Firebase Auth)</label>
-                                <input
-                                    type="text"
-                                    value={newUserUid}
-                                    onChange={(e) => setNewUserUid(e.target.value)}
-                                    className="w-full p-2 border rounded-lg text-sm"
-                                    placeholder="Ex: abc123def456..."
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold uppercase text-gray-500 mb-1">E-mail</label>
+                                <label className="block text-xs font-bold uppercase text-gray-500 mb-1">E-mail Corporativo</label>
                                 <input
                                     type="email"
                                     value={newUserEmail}
