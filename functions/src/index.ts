@@ -217,7 +217,6 @@ export const adminRevokeSessions = functions.https.onCall(async (data, context) 
 export const adminBackfillUserProfiles = functions.https.onCall(async (data, context) => {
     const adminUser = await verifyAdmin(context);
 
-    // Safety check just in case, only original superadmin can run this
     if (adminUser.email !== 'antonio.silva@grupodr.com.br') {
         throw new functions.https.HttpsError("permission-denied", "Operação restrita.");
     }
@@ -258,6 +257,108 @@ export const adminBackfillUserProfiles = functions.https.onCall(async (data, con
         await logAudit("MIGRATION", adminUser.uid, adminUser.email, "system", "all", { type: "backfill_status", count: migratedCount });
 
         return { success: true, migratedCount };
+    } catch (error: any) {
+        throw new functions.https.HttpsError("internal", error.message);
+    }
+});
+
+/**
+ * Triggers when a user_profile is created, updated, or deleted.
+ * Keeps the user_directory collection in sync with safe, display-only data.
+ */
+export const syncUserDirectory = functions.firestore
+    .document('user_profiles/{uid}')
+    .onWrite(async (change, context) => {
+        const uid = context.params.uid;
+        const directoryRef = db.collection('user_directory').doc(uid);
+
+        // If deleted, remove from directory
+        if (!change.after.exists) {
+            await directoryRef.delete();
+            return null;
+        }
+
+        const profile = change.after.data() as any;
+
+        // Ensure we have minimal valid data to sync
+        if (!profile || !profile.email) {
+            console.warn(`Profile ${uid} is malformed. Skipping directory sync.`);
+            return null;
+        }
+
+        // Extract minimal safe fields
+        const directoryData = {
+            uid: uid,
+            email: profile.email,
+            displayName: profile.displayName || profile.email.split('@')[0] || "Usuário",
+            jobTitle: profile.jobTitle || null,
+            avatarUrl: profile.avatarUrl || null,
+            status: profile.status || "active", // fallback for legacy
+            modules: {
+                commercial: {
+                    enabled: profile.modules?.commercial?.enabled || false
+                }
+            },
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        };
+
+        // Upsert into directory without deleting unrecognized fields, but we overwrite what matters
+        await directoryRef.set(directoryData, { merge: true });
+
+        return null;
+    });
+
+/**
+ * Callable function to manually backfill the new user_directory collection
+ * reading from all existing user_profiles. One-time use mostly.
+ */
+export const adminBackfillUserDirectory = functions.https.onCall(async (data, context) => {
+    const adminUser = await verifyAdmin(context);
+
+    try {
+        const snapshot = await db.collection("user_profiles").get();
+        let migratedCount = 0;
+        let batch = db.batch();
+        let batchCount = 0;
+
+        for (const docSnap of snapshot.docs) {
+            const profile = docSnap.data() as any;
+            const directoryRef = db.collection("user_directory").doc(docSnap.id);
+
+            const directoryData = {
+                uid: docSnap.id,
+                email: profile.email,
+                displayName: profile.displayName || profile.email.split('@')[0] || "Usuário",
+                jobTitle: profile.jobTitle || null,
+                avatarUrl: profile.avatarUrl || null,
+                status: profile.status || "active",
+                modules: {
+                    commercial: {
+                        enabled: profile.modules?.commercial?.enabled || false
+                    }
+                },
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            };
+
+            batch.set(directoryRef, directoryData, { merge: true });
+            migratedCount++;
+            batchCount++;
+
+            // Firestore batches are limited to 500 operations
+            if (batchCount === 450) {
+                await batch.commit();
+                batch = db.batch();
+                batchCount = 0;
+            }
+        }
+
+        if (batchCount > 0) {
+            await batch.commit();
+        }
+
+        await logAudit("MIGRATION_USER_DIRECTORY", adminUser.uid, adminUser.email, "system", "all", { count: migratedCount });
+
+        return { success: true, count: migratedCount, message: `O diretório foi sincronizado com sucesso (${migratedCount} perfis).` };
     } catch (error: any) {
         throw new functions.https.HttpsError("internal", error.message);
     }

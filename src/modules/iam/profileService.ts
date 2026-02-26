@@ -126,6 +126,16 @@ export const getAllProfiles = async (): Promise<UserProfileDoc[]> => {
     }
 };
 
+export const getUsersDirectory = async (): Promise<any[]> => {
+    try {
+        const snapshot = await getDocs(collection(db, 'user_directory'));
+        return snapshot.docs.map(d => d.data());
+    } catch (error) {
+        console.error("Error fetching user directory:", error);
+        throw error;
+    }
+};
+
 export const updateUserRoles = async (uid: string, iamUpdates: {
     commercial?: { enabled: boolean; role: 'COMMERCIAL_ADMIN' | 'COMMERCIAL_VIEWER' | 'IAM_ADMIN' };
     human_capital?: { enabled: boolean; role: 'HC_ADMIN' | 'HC_MANAGER' | 'HC_COSTCENTER_PLANNER' | 'HC_AUDITOR_VIEWER'; scope: any };

@@ -28,11 +28,19 @@ service cloud.firestore {
     // --- User Profiles ---
     
     match /user_profiles/{userId} {
-      // Read: Any authenticated user can read the company directory
-      allow read: if isAuthenticated();
+      // Read: Own profile OR Admin
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isIAMAdmin());
       
       // Write: Admin Only
       allow write: if isAuthenticated() && isIAMAdmin();
+    }
+
+    // --- User Directory (Public Catalog for CRM) ---
+    match /user_directory/{userId} {
+      // Read: Any authenticated user can read the company directory
+      allow read: if isAuthenticated();
+      // Write: Only Cloud Functions (Admin SDK) can write here
+      allow write: if false;
     }
 
     // --- Audit Logs ---
