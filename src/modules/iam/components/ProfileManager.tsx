@@ -5,6 +5,7 @@ import { getAllProfiles, updateUserRoles, createUserProfile } from '../profileSe
 import { useAuth } from '@/contexts/AuthContext';
 import { Users, Search, Edit2, Shield, AlertTriangle, Save, X, Building2, MapPin, Plus, HardHat, KeyRound, Ban, CheckCircle2, Trash2 } from 'lucide-react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { getAuth, sendPasswordResetEmail } from 'firebase/auth';
 import { app } from '@/services/firebaseConfig';
 
 const ProfileManager: React.FC = () => {
@@ -109,9 +110,21 @@ const ProfileManager: React.FC = () => {
             const functions = getFunctions(app, 'us-central1');
             const inviteUser = httpsCallable(functions, 'adminCreateUserInvite');
             const result = await inviteUser({ email: newUserEmail, displayName: newUserName });
-            const link = (result.data as any).link;
+            const link = (result.data as any).link; // Manual link fallback
 
-            alert(`Usuário convidado com sucesso!\n\nLink de ativação/senha gerado:\n${link}\n\nCopie este link e envie ao usuário.`);
+            // Attempt to send email automatically via Firebase Auth
+            try {
+                const authInstance = getAuth();
+                await sendPasswordResetEmail(authInstance, newUserEmail, {
+                    url: "https://gdr-nexus.netlify.app/config/account",
+                    handleCodeInApp: false,
+                });
+                alert(`Usuário convidado com sucesso!\n\nUm e-mail de definição de senha foi enviado automaticamente para: ${newUserEmail}`);
+            } catch (emailError: any) {
+                console.error("Failed to send reset email natively", emailError);
+                alert(`Usuário criado, mas falha ao enviar e-mail automático.\n\nLink de ativação/senha gerado (copie e envie ao usuário):\n${link}`);
+            }
+
             setIsAddModalOpen(false);
             setNewUserUid('');
             setNewUserEmail('');
