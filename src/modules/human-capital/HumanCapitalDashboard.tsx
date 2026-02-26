@@ -12,7 +12,7 @@ import { canManageProfiles, canPlan } from '../iam/types';
 import { formatDateForApi } from '@/src/modules/human-capital/utils/formatters';
 import { LayoutDashboard, Table, Settings, CheckCircle2, AlertTriangle, Sparkles, CalendarRange, UserCog, Lock, BarChart3 } from 'lucide-react';
 import { ApiConfig, OvertimeRecord, FetchStatus, UserProfile, ManualEmployee } from '@/src/modules/human-capital/types';
-import { SidebarBase, SidebarItem } from '../../../layout/SidebarBase';
+import { CorporateSidebar, SidebarItem } from '../../components/navigation/CorporateSidebar';
 import { useNavigate } from 'react-router-dom';
 import { realOvertimeData, RealOvertimeRecord } from '@/src/modules/human-capital/data/realOvertime';
 import { getManualEmployees, upsertManualEmployee } from '@/src/modules/human-capital/services/firestoreCH';
@@ -262,14 +262,15 @@ const HumanCapitalDashboard: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
-      <SidebarBase
+      <CorporateSidebar
         brand={{ topLogoSrc: "/assets/dr-logo.png", title: "Capital Humano", subtitle: "TOTVS Analytics" }}
         items={sidebarItems}
         userDisplay={{ name: effectiveUser.name || 'Usuário', role: effectiveUser.role || 'Membro', avatarUrl: effectiveUser.avatar === '👤' ? undefined : effectiveUser.avatar }}
         onLogout={handleLogout}
+        storageKey="drnexus.sidebar.collapsed.human-capital"
       />
 
-      <main className="flex-1 flex flex-col overflow-hidden relative bg-gray-50/30 ml-20 transition-all duration-300">
+      <main className="flex-1 flex flex-col overflow-hidden relative bg-gray-50/30 transition-all duration-300">
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-8 shrink-0 shadow-sm z-20">
           <div className="flex items-center gap-4">
             <h2 className="text-xl font-bold text-gray-800 tracking-tight">

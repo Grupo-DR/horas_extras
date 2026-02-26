@@ -4,7 +4,7 @@ import { LayoutDashboard, FileText, CheckSquare, Users, Target, Settings } from 
 import { AppModule } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { ModuleKey } from '../types/auth';
-import { SidebarBase, SidebarItem } from './SidebarBase';
+import { CorporateSidebar, SidebarItem } from '../src/components/navigation/CorporateSidebar';
 import { canManageProfiles } from '../src/modules/iam/types';
 
 export const Sidebar: React.FC = () => {
@@ -96,10 +96,11 @@ export const Sidebar: React.FC = () => {
     };
 
     return (
-        <SidebarBase
+        <CorporateSidebar
             brand={{
                 topLogoSrc: "/assets/dr-logo.png",
-                secondLogoSrc: "/assets/nexus.png"
+                title: "Comercial",
+                subtitle: "CRM & Pipeline"
             }}
             items={sidebarItems}
             userDisplay={{
@@ -109,6 +110,7 @@ export const Sidebar: React.FC = () => {
             }}
             onLogout={handleLogout}
             accountLinkTo="/config/account"
+            storageKey="drnexus.sidebar.collapsed.commercial"
         />
     );
 };
