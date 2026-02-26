@@ -106,7 +106,7 @@ const ProfileManager: React.FC = () => {
         }
         setCreatingUser(true);
         try {
-            const functions = getFunctions(app);
+            const functions = getFunctions(app, 'us-central1');
             const inviteUser = httpsCallable(functions, 'adminCreateUserInvite');
             const result = await inviteUser({ email: newUserEmail, displayName: newUserName });
             const link = (result.data as any).link;
@@ -125,7 +125,7 @@ const ProfileManager: React.FC = () => {
     };
 
     const handleAdminAction = async (action: 'disable' | 'enable' | 'delete' | 'reset-password', userDoc: UserProfileDoc) => {
-        const functions = getFunctions(app);
+        const functions = getFunctions(app, 'us-central1');
         try {
             if (action === 'disable') {
                 if (!window.confirm(`Desativar o acesso de ${userDoc.displayName}? O usuário será desconectado imediatamente.`)) return;
@@ -188,7 +188,7 @@ const ProfileManager: React.FC = () => {
                             onClick={async () => {
                                 if (window.confirm('Executar backfill de usuários legados?\n\nIsso definirá status "active" e removerá "mustChangePassword" de todos que já existiam, além de garantir privilégios de Super Admin para seu e-mail.\n\nRode apenas 1x após implantar o novo IAM.')) {
                                     try {
-                                        const functions = getFunctions(app);
+                                        const functions = getFunctions(app, 'us-central1');
                                         const backfill = httpsCallable(functions, 'adminBackfillUserProfiles');
                                         const res = await backfill();
                                         alert('Script de backfill concluído com sucesso:\n\n' + (res.data as any).message);
