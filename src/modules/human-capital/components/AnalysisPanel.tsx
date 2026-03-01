@@ -123,7 +123,7 @@ const TrendHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                         <div>
                             <strong className="text-slate-800 block mb-1">Como a Anomalia (Outlier) é calculada?</strong>
                             <p>
-                                Utilizamos um método estatístico robusto chamado Intervalo Interquartil (IQR). O sistema analisa todo o período, ignora dias extremos para entender o que é o "comportamento saudável e normal" da sua equipa e cria um <strong className="text-slate-700">Limite de Risco Dinâmico</strong>. Qualquer dia que ultrapasse esse limite calculado (e possua um volume mínimo de 8 horas) é classificado matematicamente como uma anomalia que exige a atenção do gestor.
+                                Utilizamos um modelo estatístico chamado <strong>Modelo Hurdle (IQR Condicional)</strong>. O sistema analisa o período filtrando apenas os dias com ocorrência de horas extras, ignorando os dias "zerados" para entender o verdadeiro comportamento de dias trabalhados. Isso evita distorções e cria um <strong className="text-slate-700">Limite de Risco Dinâmico</strong> altamente preciso para equipas pequenas. Qualquer dia que ultrapasse esse limite calculado (e possua um volume mínimo de 8 horas) é classificado matematicamente como uma anomalia que exige a atenção do gestor.
                             </p>
                         </div>
                     </div>
@@ -166,14 +166,18 @@ const TrendAnalysis: React.FC<{ data: OvertimeRecord[]; onDayClick?: (date: stri
 
         const sorted = Object.values(map).sort((a, b) => a.date.localeCompare(b.date));
 
-        // Cálculo Estatístico do IQR para Limite de Outliers
-        const sortedTotals = sorted.map(item => item.total).sort((a, b) => a - b);
-        const q1Index = Math.floor(sortedTotals.length * 0.25);
-        const q3Index = Math.floor(sortedTotals.length * 0.75);
-        const q1 = sortedTotals[q1Index] || 0;
-        const q3 = sortedTotals[q3Index] || 0;
-        const iqr = q3 - q1;
-        const outlierThreshold = q3 + (1.5 * iqr);
+        // Cálculo Estatístico do IQR Condicional (Modelo Hurdle) para Limite de Outliers
+        const nonZeroTotals = sorted.map(item => item.total).filter(t => t > 0).sort((a, b) => a - b);
+        let outlierThreshold = Infinity;
+
+        if (nonZeroTotals.length > 0) {
+            const q1Index = Math.floor(nonZeroTotals.length * 0.25);
+            const q3Index = Math.floor(nonZeroTotals.length * 0.75);
+            const q1 = nonZeroTotals[q1Index];
+            const q3 = nonZeroTotals[q3Index];
+            const iqr = q3 - q1;
+            outlierThreshold = q3 + (1.5 * iqr);
+        }
 
         // Média Móvel (7 dias) e Inteligência Diagnóstica
         return sorted.map((item, index, arr) => {
