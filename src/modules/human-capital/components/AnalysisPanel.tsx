@@ -4,7 +4,7 @@ import { RealOvertimeRecord } from '../data/realOvertime';
 import {
     AlertTriangle, Building2, Scale, Users, CheckCircle2,
     Search, TrendingUp, BarChart3, PieChart, Activity, Layers, Moon, Zap, ArrowUpRight,
-    MapPin, Briefcase, ShieldAlert, X, ChevronDown
+    MapPin, Briefcase, ShieldAlert, X, ChevronDown, Info
 } from 'lucide-react';
 import { getCCName, getCCRegional } from '../data/ccMaster';
 import {
@@ -78,9 +78,67 @@ const CustomOutlierLabel = (props: any) => {
 };
 
 // ────────────────────────────────────────────────────────────
+// Sub-componente: Modal de Ajuda da Tendência
+// ────────────────────────────────────────────────────────────
+const TrendHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
+                    <h3 className="text-lg font-semibold text-slate-800">Entendendo o Gráfico de Tendência</h3>
+                    <button
+                        onClick={onClose}
+                        className="text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 p-2 rounded-full transition-colors"
+                    >
+                        <X size={20} />
+                    </button>
+                </div>
+                <div className="p-6 overflow-y-auto space-y-5 text-sm text-slate-600">
+                    <div className="flex items-start gap-3">
+                        <div className="text-xl mt-0.5">🟦</div>
+                        <div>
+                            <strong className="text-slate-800">Barras Azuis (Dias Úteis):</strong> Representam o volume de horas extras realizadas de segunda a sexta-feira.
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <div className="text-xl mt-0.5">🟧</div>
+                        <div>
+                            <strong className="text-slate-800">Barras Laranjas (Finais de Semana):</strong> Destacam horas extras realizadas aos sábados e domingos. Serve como alerta visual de exaustão da equipa e custos adicionais (HE 100%).
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <div className="text-xl mt-0.5">📈</div>
+                        <div>
+                            <strong className="text-slate-800">Linha Tracejada (Média Móvel):</strong> É a média de horas dos últimos 7 dias. Ela suaviza os picos diários e mostra a "verdadeira tendência" de crescimento ou queda da operação.
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <div className="text-xl mt-0.5">🚨</div>
+                        <div>
+                            <strong className="text-slate-800">Barras Vermelhas (Outliers/Anomalias):</strong> São picos críticos de horas extras que fogem completamente do comportamento normal da operação.
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <div className="text-xl mt-0.5">🧮</div>
+                        <div>
+                            <strong className="text-slate-800 block mb-1">Como a Anomalia (Outlier) é calculada?</strong>
+                            <p>
+                                Utilizamos um método estatístico robusto chamado Intervalo Interquartil (IQR). O sistema analisa todo o período, ignora dias extremos para entender o que é o "comportamento saudável e normal" da sua equipa e cria um <strong className="text-slate-700">Limite de Risco Dinâmico</strong>. Qualquer dia que ultrapasse esse limite calculado (e possua um volume mínimo de 8 horas) é classificado matematicamente como uma anomalia que exige a atenção do gestor.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ────────────────────────────────────────────────────────────
 // Sub-componente: Gráfico de Tendência (Trend Analysis)
 // ────────────────────────────────────────────────────────────
 const TrendAnalysis: React.FC<{ data: OvertimeRecord[]; onDayClick?: (date: string) => void }> = ({ data, onDayClick }) => {
+    const [showHelp, setShowHelp] = useState(false);
+
     const chartData = useMemo(() => {
         const map: Record<string, { date: string; he: number; inter: number; noturno: number; total: number }> = {};
 
@@ -142,68 +200,80 @@ const TrendAnalysis: React.FC<{ data: OvertimeRecord[]; onDayClick?: (date: stri
     if (chartData.length === 0) return null;
 
     return (
-        <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-md shadow-slate-200/50">
-            <div className="flex items-center gap-2 mb-6">
-                <TrendingUp size={18} className="text-blue-500" />
-                <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Análise de Tendência Temporal</h3>
-            </div>
-            <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                        <XAxis
-                            dataKey="displayDate"
-                            tick={{ fontSize: 11, fill: '#94a3b8' }}
-                            axisLine={false}
-                            tickLine={false}
-                        />
-                        <YAxis
-                            tickFormatter={formatDecimalToTime}
-                            tick={{ fontSize: 11, fill: '#94a3b8' }}
-                            axisLine={false}
-                            tickLine={false}
-                            label={{ value: 'Horas', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: '#94a3b8' } }}
-                        />
-                        <Tooltip
-                            formatter={(value: any, name: any) => [typeof value === 'number' ? formatDecimalToTime(value) : value, name]}
-                            contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(8px)', border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                        />
-                        <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', color: '#64748b', paddingTop: '10px' }} />
+        <>
+            <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-md shadow-slate-200/50">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-2">
+                        <TrendingUp size={18} className="text-blue-500" />
+                        <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Análise de Tendência Temporal</h3>
+                    </div>
+                    <button
+                        onClick={() => setShowHelp(true)}
+                        className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+                        title="Como ler este gráfico?"
+                    >
+                        <Info size={18} />
+                    </button>
+                </div>
+                <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={chartData}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                            <XAxis
+                                dataKey="displayDate"
+                                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                                axisLine={false}
+                                tickLine={false}
+                            />
+                            <YAxis
+                                tickFormatter={formatDecimalToTime}
+                                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                                axisLine={false}
+                                tickLine={false}
+                                label={{ value: 'Horas', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: '#94a3b8' } }}
+                            />
+                            <Tooltip
+                                formatter={(value: any, name: any) => [typeof value === 'number' ? formatDecimalToTime(value) : value, name]}
+                                contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(8px)', border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                            />
+                            <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', color: '#64748b', paddingTop: '10px' }} />
 
-                        <Bar
-                            dataKey="he"
-                            name="H. Extras"
-                            radius={[4, 4, 0, 0]}
-                            opacity={0.8}
-                            cursor={onDayClick ? "pointer" : "default"}
-                            onClick={(entry: any) => {
-                                if (onDayClick && entry && entry.date) {
-                                    onDayClick(entry.date);
-                                }
-                            }}
-                        >
-                            {chartData.map((entry, index) => (
-                                <Cell
-                                    key={`cell-${index}`}
-                                    fill={entry.isOutlier ? '#e11d48' : entry.isWeekend ? '#f59e0b' : '#6366f1'}
-                                />
-                            ))}
-                            <LabelList dataKey="he" content={<CustomOutlierLabel chartData={chartData} />} />
-                        </Bar>
+                            <Bar
+                                dataKey="he"
+                                name="H. Extras"
+                                radius={[4, 4, 0, 0]}
+                                opacity={0.8}
+                                cursor={onDayClick ? "pointer" : "default"}
+                                onClick={(entry: any) => {
+                                    if (onDayClick && entry && entry.date) {
+                                        onDayClick(entry.date);
+                                    }
+                                }}
+                            >
+                                {chartData.map((entry, index) => (
+                                    <Cell
+                                        key={`cell-${index}`}
+                                        fill={entry.isOutlier ? '#e11d48' : entry.isWeekend ? '#f59e0b' : '#6366f1'}
+                                    />
+                                ))}
+                                <LabelList dataKey="he" content={<CustomOutlierLabel chartData={chartData} />} />
+                            </Bar>
 
-                        <Line
-                            type="monotone"
-                            dataKey="movingAvg"
-                            name="Média Móvel (7 dias)"
-                            stroke="#475569"
-                            strokeWidth={2}
-                            strokeDasharray="5 5"
-                            dot={false}
-                        />
-                    </ComposedChart>
-                </ResponsiveContainer>
+                            <Line
+                                type="monotone"
+                                dataKey="movingAvg"
+                                name="Média Móvel (7 dias)"
+                                stroke="#475569"
+                                strokeWidth={2}
+                                strokeDasharray="5 5"
+                                dot={false}
+                            />
+                        </ComposedChart>
+                    </ResponsiveContainer>
+                </div>
             </div>
-        </div>
+            {showHelp && <TrendHelpModal onClose={() => setShowHelp(false)} />}
+        </>
     );
 };
 
