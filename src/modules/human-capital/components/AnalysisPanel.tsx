@@ -279,7 +279,10 @@ const DistributionHistogram: React.FC<{ data: OvertimeRecord[] }> = ({ data }) =
         const empHours: Record<string, number> = {};
         data.forEach(r => {
             if (!r.CHAPA) return;
-            empHours[r.CHAPA] = (empHours[r.CHAPA] || 0) + (Number(r.HORAS) || 0);
+            const evt = (r.EVENTO || '').toUpperCase();
+            if (evt.includes('EXTRA') || evt.includes('60') || evt.includes('100') || evt.includes('INTER') || evt.includes('NOTURNO') || evt.includes('NOT')) {
+                empHours[r.CHAPA] = (empHours[r.CHAPA] || 0) + (Number(r.HORAS) || 0);
+            }
         });
 
         const groups = [
