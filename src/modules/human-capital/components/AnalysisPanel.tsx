@@ -458,6 +458,60 @@ const ConcentrationPareto: React.FC<{ data: OvertimeRecord[], onBarClick?: (titl
 };
 
 // ────────────────────────────────────────────────────────────
+// Sub-componente: Modal de Ajuda do Histograma de Distribuição
+// ────────────────────────────────────────────────────────────
+const HistogramHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
+                    <h3 className="text-lg font-semibold text-slate-800">Entendendo a Distribuição de Horas</h3>
+                    <button
+                        onClick={onClose}
+                        className="text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 p-2 rounded-full transition-colors"
+                    >
+                        <X size={20} />
+                    </button>
+                </div>
+                <div className="p-6 overflow-y-auto space-y-5 text-sm text-slate-600">
+                    <div className="flex items-start gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <div className="text-xl mt-0.5">📊</div>
+                        <div>
+                            <strong className="text-slate-800 block mb-1">O que este gráfico mostra?</strong>
+                            <p>Ele funciona como um "Raio-X" da sua equipa. Em vez de mostrar o total de horas, ele mostra o <em>volume de pessoas</em> agrupadas pelo nível de exaustão. Ajuda a responder se o problema é sistémico (muita gente a fazer poucas horas extras) ou localizado (pouca gente a fazer muitas horas extras).</p>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <div className="text-xl mt-0.5">🟢</div>
+                        <div>
+                            <strong className="text-emerald-700 block">Seguro (0-10h):</strong> Colaboradores com um volume aceitável e esporádico. Risco financeiro e trabalhista muito baixo.
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <div className="text-xl mt-0.5">🔵</div>
+                        <div>
+                            <strong className="text-blue-700 block">Atenção (10-20h):</strong> Zona de alerta inicial. O colaborador já está a acumular uma carga que afeta o custo da obra.
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <div className="text-xl mt-0.5">🟠</div>
+                        <div>
+                            <strong className="text-amber-700 block">Crítico (20-40h):</strong> Risco moderado a alto de passivo trabalhista e fadiga física.
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <div className="text-xl mt-0.5">🚨</div>
+                        <div>
+                            <strong className="text-rose-700 block">Risco Alto (40h+):</strong> Colaboradores que provavelmente ultrapassaram o limite legal da CLT. Exigem investigação imediata pelo RH ou Gestor da Obra.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ────────────────────────────────────────────────────────────
 // Sub-componente: Distribuição de Horas (Histograma)
 // ────────────────────────────────────────────────────────────
 const CustomTooltip = ({ active, payload }: any) => {
@@ -483,6 +537,8 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 const DistributionHistogram: React.FC<{ data: OvertimeRecord[]; onBucketClick?: (title: string, chapas: string[]) => void }> = ({ data, onBucketClick }) => {
+    const [showHelp, setShowHelp] = useState(false);
+
     const buckets = useMemo(() => {
         const empHours: Record<string, number> = {};
         data.forEach(r => {
@@ -512,9 +568,18 @@ const DistributionHistogram: React.FC<{ data: OvertimeRecord[]; onBucketClick?: 
 
     return (
         <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-md shadow-slate-200/50 h-full flex flex-col">
-            <div className="flex items-center gap-2 mb-6 shrink-0">
-                <PieChart size={18} className="text-emerald-500" />
-                <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Distribuição de Horas por Colaborador</h3>
+            <div className="flex items-center justify-between mb-6 shrink-0">
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                    <PieChart size={18} className="text-emerald-500" />
+                    Distribuição por Colaborador
+                </h3>
+                <button
+                    onClick={() => setShowHelp(true)}
+                    className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+                    title="Como ler este gráfico?"
+                >
+                    <Info size={18} />
+                </button>
             </div>
             <div className="flex-1 w-full min-h-[200px]">
                 <ResponsiveContainer width="100%" height="100%">
@@ -537,6 +602,7 @@ const DistributionHistogram: React.FC<{ data: OvertimeRecord[]; onBucketClick?: 
                     </BarChart>
                 </ResponsiveContainer>
             </div>
+            {showHelp && <HistogramHelpModal onClose={() => setShowHelp(false)} />}
         </div>
     );
 };
