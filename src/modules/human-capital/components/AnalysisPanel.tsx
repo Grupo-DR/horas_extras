@@ -587,8 +587,8 @@ const DistributionHistogram: React.FC<{ data: OvertimeRecord[]; onBucketClick?: 
                         <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
                         <XAxis type="number" hide />
                         <YAxis dataKey="range" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: '600', fill: '#94a3b8' }} width={110} />
-                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(2f, 3f, 4f, 0.04)' }} />
-                        <Bar dataKey="count" name="Colaboradores" radius={[0, 4, 4, 0]}>
+                        <Tooltip content={<CustomTooltip />} cursor={false} />
+                        <Bar dataKey="count" name="Colaboradores" radius={[0, 4, 4, 0]} activeBar={false}>
                             {buckets.map((entry, index) => (
                                 <Cell
                                     key={`cell-${index}`}
