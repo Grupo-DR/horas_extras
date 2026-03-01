@@ -4,7 +4,7 @@ import { RealOvertimeRecord } from '../data/realOvertime';
 import {
     AlertTriangle, Building2, Scale, Users, CheckCircle2,
     Search, TrendingUp, BarChart3, PieChart, Activity, Layers, Moon, Zap, ArrowUpRight,
-    MapPin, Briefcase, ShieldAlert
+    MapPin, Briefcase, ShieldAlert, X
 } from 'lucide-react';
 import { getCCName, getCCRegional } from '../data/ccMaster';
 import {
@@ -57,7 +57,7 @@ export const getPayrollMonthKey = (dateString: string): string => {
 // ────────────────────────────────────────────────────────────
 // Sub-componente: Gráfico de Tendência (Trend Analysis)
 // ────────────────────────────────────────────────────────────
-const TrendAnalysis: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
+const TrendAnalysis: React.FC<{ data: OvertimeRecord[]; onDayClick?: (date: string) => void }> = ({ data, onDayClick }) => {
     const chartData = useMemo(() => {
         const map: Record<string, { date: string; he: number; inter: number; noturno: number; total: number }> = {};
 
@@ -129,7 +129,19 @@ const TrendAnalysis: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
                         />
                         <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
 
-                        <Bar dataKey="he" name="H. Extras" fill="#3b82f6" radius={[4, 4, 0, 0]} opacity={0.7} />
+                        <Bar
+                            dataKey="he"
+                            name="H. Extras"
+                            fill="#3b82f6"
+                            radius={[4, 4, 0, 0]}
+                            opacity={0.7}
+                            cursor={onDayClick ? "pointer" : "default"}
+                            onClick={(entry: any) => {
+                                if (onDayClick && entry && entry.date) {
+                                    onDayClick(entry.date);
+                                }
+                            }}
+                        />
 
                         <Line
                             type="monotone"
@@ -701,9 +713,119 @@ const ComplianceTable: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
 };
 
 // ────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────
+// Sub-componente: Modal de Detalhamento Diário (Drill-down)
+// ────────────────────────────────────────────────────────────
+const DailyDrilldownModal: React.FC<{ date: string | null; data: OvertimeRecord[]; onClose: () => void }> = ({ date, data, onClose }) => {
+    const dailyData = useMemo(() => {
+        if (!date) return [];
+
+        const map: Record<string, {
+            name: string;
+            cc: string;
+            he60: number;
+            he100: number;
+            inter: number;
+            noturnas: number;
+            total: number;
+        }> = {};
+
+        data.forEach(r => {
+            if (!r.DATA || !r.DATA.startsWith(date)) return;
+
+            const chapa = r.CHAPA;
+            if (!chapa) return;
+
+            if (!map[chapa]) {
+                map[chapa] = {
+                    name: r.NOME || 'Sem Nome',
+                    cc: r.CODCCUSTO || 'S/ CC',
+                    he60: 0,
+                    he100: 0,
+                    inter: 0,
+                    noturnas: 0,
+                    total: 0
+                };
+            }
+
+            const evt = (r.EVENTO || '').toUpperCase();
+            const hours = Number(r.HORAS) || 0;
+
+            if (evt.includes('EXTRA')) {
+                if (evt.includes('100')) map[chapa].he100 += hours;
+                else map[chapa].he60 += hours;
+            } else if (evt.includes('INTER')) {
+                map[chapa].inter += hours;
+            } else if (evt.includes('NOTURNO') || evt.includes('NOT')) {
+                map[chapa].noturnas += hours;
+            }
+        });
+
+        return Object.values(map)
+            .map(emp => ({ ...emp, total: emp.he60 + emp.he100 + emp.inter + emp.noturnas }))
+            .filter(emp => emp.total > 0)
+            .sort((a, b) => b.total - a.total);
+    }, [data, date]);
+
+    if (!date) return null;
+
+    const formattedDate = new Date(date + 'T12:00:00').toLocaleDateString('pt-BR');
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col">
+                <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                    <h3 className="text-lg font-bold text-gray-800">Detalhamento do Dia: {formattedDate}</h3>
+                    <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                        <X size={20} className="text-gray-500" />
+                    </button>
+                </div>
+                <div className="overflow-y-auto max-h-[60vh]">
+                    <table className="w-full text-left text-sm text-gray-600">
+                        <thead className="bg-gray-100/80 sticky top-0 text-gray-700 font-bold uppercase text-[9px] tracking-wider z-10 box-decoration-clone">
+                            <tr>
+                                <th className="px-6 py-4">Nome</th>
+                                <th className="px-6 py-4">CC</th>
+                                <th className="px-6 py-4 text-center">HE 60</th>
+                                <th className="px-6 py-4 text-center">HE 100</th>
+                                <th className="px-6 py-4 text-center">Inter.</th>
+                                <th className="px-6 py-4 text-center">Not.</th>
+                                <th className="px-6 py-4 text-center bg-gray-200/50">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {dailyData.map((emp, idx) => (
+                                <tr key={idx} className="hover:bg-blue-50/40 transition-colors">
+                                    <td className="px-6 py-3 font-bold text-gray-800 text-xs">{emp.name}</td>
+                                    <td className="px-6 py-3">
+                                        <span className="font-mono text-[10px] text-gray-400">{emp.cc}</span>
+                                    </td>
+                                    <td className="px-6 py-3 text-center font-mono text-blue-600 font-bold">{formatDecimalToTime(emp.he60)}</td>
+                                    <td className="px-6 py-3 text-center font-mono text-red-600 font-bold">{formatDecimalToTime(emp.he100)}</td>
+                                    <td className="px-6 py-3 text-center font-mono text-amber-600 font-bold">{formatDecimalToTime(emp.inter)}</td>
+                                    <td className="px-6 py-3 text-center font-mono text-purple-600 font-bold">{formatDecimalToTime(emp.noturnas)}</td>
+                                    <td className="px-6 py-3 text-center font-mono font-black text-gray-900 bg-gray-50/50">{formatDecimalToTime(emp.total)}</td>
+                                </tr>
+                            ))}
+                            {dailyData.length === 0 && (
+                                <tr>
+                                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500">Nenhum registro encontrado para este dia.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ────────────────────────────────────────────────────────────
 // Componente principal
 // ────────────────────────────────────────────────────────────
 const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
+    const [drilldownDate, setDrilldownDate] = useState<string | null>(null);
+
     // Calculando métricas gerais para os top cards de anomalia e interjornada
     const metrics = useMemo(() => {
         let jornadasLongas = 0;
@@ -753,7 +875,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
             </div>
 
             {/* Gráficos Full Width */}
-            <TrendAnalysis data={data} />
+            <TrendAnalysis data={data} onDayClick={setDrilldownDate} />
             <ConcentrationPareto data={data} />
 
             {/* Grid 50/50: Histograma e Compliance */}
@@ -767,6 +889,9 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
 
             {/* Tabela de Colaboradores */}
             <EmployeeTable data={data} />
+
+            {/* Modal de Drill-down Diário */}
+            <DailyDrilldownModal date={drilldownDate} data={data} onClose={() => setDrilldownDate(null)} />
         </div>
     );
 };
