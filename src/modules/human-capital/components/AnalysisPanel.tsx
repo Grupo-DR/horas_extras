@@ -9,7 +9,7 @@ import {
 import { getCCName, getCCRegional } from '../data/ccMaster';
 import {
     ResponsiveContainer, ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid,
-    Tooltip, Legend, Cell, LabelList, BarChart
+    Tooltip, Legend, Cell, LabelList, BarChart, ReferenceLine
 } from 'recharts';
 
 interface AnalysisPanelProps {
@@ -282,13 +282,61 @@ const TrendAnalysis: React.FC<{ data: OvertimeRecord[]; onDayClick?: (date: stri
 };
 
 // ────────────────────────────────────────────────────────────
+// Sub-componente: Modal de Ajuda de Pareto
+// ────────────────────────────────────────────────────────────
+const ParetoHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
+                    <h3 className="text-lg font-semibold text-slate-800">Entendendo o Gráfico de Pareto</h3>
+                    <button
+                        onClick={onClose}
+                        className="text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 p-2 rounded-full transition-colors"
+                    >
+                        <X size={20} />
+                    </button>
+                </div>
+                <div className="p-6 overflow-y-auto space-y-5 text-sm text-slate-600">
+                    <div className="flex items-start gap-3">
+                        <div className="text-xl mt-0.5">🧠</div>
+                        <div>
+                            <strong className="text-slate-800 block">O Princípio de Pareto (Regra 80/20):</strong> Este gráfico baseia-se na premissa de que cerca de 80% dos problemas (neste caso, horas extras) são causados por apenas 20% das causas (centros de custo, funções, etc.).
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <div className="text-xl mt-0.5">📊</div>
+                        <div>
+                            <strong className="text-slate-800 block">Barras Destacadas (Os "Poucos Vitais"):</strong> As barras com cor forte à esquerda representam os maiores ofensores. Eles, somados, são responsáveis por até 80% de todo o passivo trabalhista gerado. Foque as suas ações de gestão exclusivamente nestes grupos!
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <div className="text-xl mt-0.5">🌫️</div>
+                        <div>
+                            <strong className="text-slate-800 block">Barras Cinzentas (A "Cauda Longa"):</strong> Representam grupos com baixo volume de horas. O impacto de tentar reduzir horas nestes grupos é mínimo.
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <div className="text-xl mt-0.5">📈</div>
+                        <div>
+                            <strong className="text-slate-800 block">Linha Crescente:</strong> Mostra a percentagem acumulada. Quando esta linha cruza a linha tracejada dos 80%, o sistema corta o destaque visual das barras.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ────────────────────────────────────────────────────────────
 // Sub-componente: Análise de Concentração (Pareto)
 // ────────────────────────────────────────────────────────────
-const ConcentrationPareto: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
+const ConcentrationPareto: React.FC<{ data: OvertimeRecord[], onBarClick?: (title: string, chapas: string[]) => void }> = ({ data, onBarClick }) => {
     const [view, setView] = useState<'cc' | 'funcao' | 'colaborador' | 'regional'>('cc');
+    const [showHelp, setShowHelp] = useState(false);
 
     const chartData = useMemo(() => {
-        const counts: Record<string, number> = {};
+        const counts: Record<string, { value: number; chapas: Set<string> }> = {};
         data.forEach(r => {
             let key = '';
             if (view === 'cc') key = r.CODCCUSTO || 'S/ CC';
@@ -296,13 +344,16 @@ const ConcentrationPareto: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => 
             else if (view === 'colaborador') key = r.NOME || 'S/ Nome';
             else if (view === 'regional') key = getCCRegional(r.CODCCUSTO || '');
 
-            counts[key] = (counts[key] || 0) + (Number(r.HORAS) || 0);
+            if (!counts[key]) counts[key] = { value: 0, chapas: new Set() };
+            counts[key].value += (Number(r.HORAS) || 0);
+            if (r.CHAPA) counts[key].chapas.add(r.CHAPA);
         });
 
         const sorted = Object.entries(counts)
-            .map(([name, value]) => ({
+            .map(([name, groupData]) => ({
                 name: view === 'cc' ? `${name} - ${getCCName(name)}` : name,
-                value: Number(value.toFixed(1))
+                value: Number(groupData.value.toFixed(1)),
+                chapas: Array.from(groupData.chapas)
             }))
             .sort((a, b) => b.value - a.value);
 
@@ -311,69 +362,98 @@ const ConcentrationPareto: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => 
 
         return sorted.map(item => {
             accumulated += item.value;
+            const percent = Number(((accumulated / total) * 100).toFixed(1));
+            const itemPercent = Number(((item.value / total) * 100).toFixed(1));
+            const isVitalFew = (percent - itemPercent) < 80;
             return {
                 ...item,
-                percent: Number(((accumulated / total) * 100).toFixed(1))
+                percent,
+                isVitalFew
             };
         }).slice(0, 15);
     }, [data, view]);
 
     return (
-        <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-md shadow-slate-200/50">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                <div className="flex items-center gap-2">
-                    <BarChart3 size={18} className="text-indigo-500" />
-                    <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Análise de Concentração (Pareto)</h3>
-                </div>
-                <div className="flex bg-slate-100 p-1 rounded-xl self-start">
-                    {(['cc', 'funcao', 'colaborador', 'regional'] as const).map(v => (
+        <>
+            <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-md shadow-slate-200/50">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <div className="flex items-center gap-2">
+                        <BarChart3 size={18} className="text-indigo-500" />
+                        <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Análise de Concentração (Pareto)</h3>
                         <button
-                            key={v}
-                            onClick={() => setView(v)}
-                            className={`px-3 py-1 rounded-lg text-[10px] font-semibold uppercase transition-all ${view === v ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                            onClick={() => setShowHelp(true)}
+                            className="text-slate-400 hover:text-slate-600 transition-colors p-1 ml-2"
+                            title="Entendendo o Gráfico de Pareto"
                         >
-                            {v === 'cc' ? 'CC' : v === 'funcao' ? 'Função' : v === 'colaborador' ? 'Colab.' : 'Regional'}
+                            <Info size={18} />
                         </button>
-                    ))}
+                    </div>
+                    <div className="flex bg-slate-100 p-1 rounded-xl self-start">
+                        {(['cc', 'funcao', 'colaborador', 'regional'] as const).map(v => (
+                            <button
+                                key={v}
+                                onClick={() => setView(v)}
+                                className={`px-3 py-1 rounded-lg text-[10px] font-semibold uppercase transition-all ${view === v ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                            >
+                                {v === 'cc' ? 'CC' : v === 'funcao' ? 'Função' : v === 'colaborador' ? 'Colab.' : 'Regional'}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={chartData}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                            <XAxis
+                                dataKey="name"
+                                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                                axisLine={false}
+                                tickLine={false}
+                                hide={chartData.length > 8}
+                            />
+                            <YAxis
+                                yAxisId="left"
+                                tickFormatter={formatDecimalToTime}
+                                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                                axisLine={false}
+                                tickLine={false}
+                            />
+                            <YAxis
+                                yAxisId="right"
+                                orientation="right"
+                                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                                axisLine={false}
+                                tickLine={false}
+                                unit="%"
+                            />
+                            <Tooltip
+                                formatter={(value: any, name: any) => [name === 'Horas' && typeof value === 'number' ? formatDecimalToTime(value) : value, name]}
+                                contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(8px)', border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                            />
+                            <ReferenceLine y={80} yAxisId="right" stroke="#94a3b8" strokeDasharray="3 3" />
+                            <Bar
+                                yAxisId="left"
+                                dataKey="value"
+                                name="Horas"
+                                radius={[4, 4, 0, 0]}
+                            >
+                                {chartData.map((entry, index) => (
+                                    <Cell
+                                        key={`cell-${index}`}
+                                        fill={entry.isVitalFew ? '#6366f1' : '#cbd5e1'}
+                                        cursor={onBarClick ? 'pointer' : 'default'}
+                                        onClick={() => onBarClick && onBarClick(`Detalhamento: ${entry.name}`, entry.chapas)}
+                                    />
+                                ))}
+                            </Bar>
+                            <Line yAxisId="right" type="monotone" dataKey="percent" name="% Acumulada" stroke="#e11d48" strokeWidth={3} dot={{ r: 4, fill: '#e11d48' }} />
+                        </ComposedChart>
+                    </ResponsiveContainer>
                 </div>
             </div>
-
-            <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                        <XAxis
-                            dataKey="name"
-                            tick={{ fontSize: 11, fill: '#94a3b8' }}
-                            axisLine={false}
-                            tickLine={false}
-                            hide={chartData.length > 8}
-                        />
-                        <YAxis
-                            yAxisId="left"
-                            tickFormatter={formatDecimalToTime}
-                            tick={{ fontSize: 11, fill: '#94a3b8' }}
-                            axisLine={false}
-                            tickLine={false}
-                        />
-                        <YAxis
-                            yAxisId="right"
-                            orientation="right"
-                            tick={{ fontSize: 11, fill: '#94a3b8' }}
-                            axisLine={false}
-                            tickLine={false}
-                            unit="%"
-                        />
-                        <Tooltip
-                            formatter={(value: any, name: any) => [name === 'Horas' && typeof value === 'number' ? formatDecimalToTime(value) : value, name]}
-                            contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(8px)', border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                        />
-                        <Bar yAxisId="left" dataKey="value" name="Horas" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                        <Line yAxisId="right" type="monotone" dataKey="percent" name="% Acumulada" stroke="#e11d48" strokeWidth={3} dot={{ r: 4, fill: '#e11d48' }} />
-                    </ComposedChart>
-                </ResponsiveContainer>
-            </div>
-        </div>
+            {showHelp && <ParetoHelpModal onClose={() => setShowHelp(false)} />}
+        </>
     );
 };
 
@@ -1384,7 +1464,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
 
             {/* Gráficos Full Width */}
             <TrendAnalysis data={data} onDayClick={setDrilldownDate} />
-            <ConcentrationPareto data={data} />
+            <ConcentrationPareto data={data} onBarClick={(title, chapas) => setListDrilldown({ title, chapas })} />
 
             {/* Grid 50/50: Histograma e Compliance */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
