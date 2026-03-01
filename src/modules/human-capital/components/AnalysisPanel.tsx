@@ -728,8 +728,8 @@ const ComplianceTable: React.FC<{ data: OvertimeRecord[]; onRowClick?: (title: s
 // Sub-componente: Modal de Detalhamento Diário (Drill-down)
 // ────────────────────────────────────────────────────────────
 const DailyDrilldownModal: React.FC<{ date: string | null; data: OvertimeRecord[]; onClose: () => void }> = ({ date, data, onClose }) => {
-    const dailyData = useMemo(() => {
-        if (!date) return [];
+    const { listData, totals } = useMemo(() => {
+        if (!date) return { listData: [], totals: { he60: 0, he100: 0, inter: 0, noturnas: 0, total: 0 } };
 
         const map: Record<string, {
             name: string;
@@ -772,10 +772,20 @@ const DailyDrilldownModal: React.FC<{ date: string | null; data: OvertimeRecord[
             }
         });
 
-        return Object.values(map)
+        const list = Object.values(map)
             .map(emp => ({ ...emp, total: emp.he60 + emp.he100 + emp.inter + emp.noturnas }))
             .filter(emp => emp.total > 0)
             .sort((a, b) => b.total - a.total);
+
+        const calcTotals = list.reduce((acc, curr) => ({
+            he60: acc.he60 + curr.he60,
+            he100: acc.he100 + curr.he100,
+            inter: acc.inter + curr.inter,
+            noturnas: acc.noturnas + curr.noturnas,
+            total: acc.total + curr.total
+        }), { he60: 0, he100: 0, inter: 0, noturnas: 0, total: 0 });
+
+        return { listData: list, totals: calcTotals };
     }, [data, date]);
 
     if (!date) return null;
@@ -785,11 +795,28 @@ const DailyDrilldownModal: React.FC<{ date: string | null; data: OvertimeRecord[
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col">
-                <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                    <h3 className="text-lg font-bold text-gray-800">Detalhamento do Dia: {formattedDate}</h3>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
-                        <X size={20} className="text-gray-500" />
+                <div className="p-5 border-b border-gray-100 flex flex-col gap-3 relative bg-gray-50/50">
+                    <button onClick={onClose} className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition-colors">
+                        <X size={20} />
                     </button>
+                    <h3 className="text-lg font-bold text-gray-800 pr-8">Detalhamento do Dia: {formattedDate}</h3>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-[10px] font-bold font-mono">
+                            HE 60: {formatDecimalToTime(totals.he60)}
+                        </span>
+                        <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-[10px] font-bold font-mono">
+                            HE 100: {formatDecimalToTime(totals.he100)}
+                        </span>
+                        <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded text-[10px] font-bold font-mono">
+                            Inter: {formatDecimalToTime(totals.inter)}
+                        </span>
+                        <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-[10px] font-bold font-mono">
+                            Noturno: {formatDecimalToTime(totals.noturnas)}
+                        </span>
+                        <span className="bg-gray-800 text-white px-2 py-1 rounded text-[10px] font-black font-mono shadow-sm">
+                            Total: {formatDecimalToTime(totals.total)}
+                        </span>
+                    </div>
                 </div>
                 <div className="overflow-y-auto max-h-[60vh]">
                     <table className="w-full text-left text-sm text-gray-600">
@@ -805,7 +832,7 @@ const DailyDrilldownModal: React.FC<{ date: string | null; data: OvertimeRecord[
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {dailyData.map((emp, idx) => (
+                            {listData.map((emp, idx) => (
                                 <tr key={idx} className="hover:bg-blue-50/40 transition-colors">
                                     <td className="px-6 py-3 font-bold text-gray-800 text-xs">{emp.name}</td>
                                     <td className="px-6 py-3">
@@ -818,7 +845,7 @@ const DailyDrilldownModal: React.FC<{ date: string | null; data: OvertimeRecord[
                                     <td className="px-6 py-3 text-center font-mono font-black text-gray-900 bg-gray-50/50">{formatDecimalToTime(emp.total)}</td>
                                 </tr>
                             ))}
-                            {dailyData.length === 0 && (
+                            {listData.length === 0 && (
                                 <tr>
                                     <td colSpan={7} className="px-6 py-8 text-center text-gray-500">Nenhum registro encontrado para este dia.</td>
                                 </tr>
@@ -835,8 +862,8 @@ const DailyDrilldownModal: React.FC<{ date: string | null; data: OvertimeRecord[
 // Sub-componente: Modal Genérico de Colaboradores (Drill-down)
 // ────────────────────────────────────────────────────────────
 const EmployeeListDrilldownModal: React.FC<{ title: string; chapas: string[]; data: OvertimeRecord[]; onClose: () => void }> = ({ title, chapas, data, onClose }) => {
-    const listData = useMemo(() => {
-        if (!chapas || chapas.length === 0) return [];
+    const { listData, totals } = useMemo(() => {
+        if (!chapas || chapas.length === 0) return { listData: [], totals: { he60: 0, he100: 0, inter: 0, noturnas: 0, total: 0 } };
 
         const map: Record<string, {
             name: string;
@@ -877,10 +904,20 @@ const EmployeeListDrilldownModal: React.FC<{ title: string; chapas: string[]; da
             }
         });
 
-        return Object.values(map)
+        const list = Object.values(map)
             .map(emp => ({ ...emp, total: emp.he60 + emp.he100 + emp.inter + emp.noturnas }))
             .filter(emp => emp.total > 0)
             .sort((a, b) => b.total - a.total);
+
+        const calcTotals = list.reduce((acc, curr) => ({
+            he60: acc.he60 + curr.he60,
+            he100: acc.he100 + curr.he100,
+            inter: acc.inter + curr.inter,
+            noturnas: acc.noturnas + curr.noturnas,
+            total: acc.total + curr.total
+        }), { he60: 0, he100: 0, inter: 0, noturnas: 0, total: 0 });
+
+        return { listData: list, totals: calcTotals };
     }, [data, chapas]);
 
     if (!chapas || chapas.length === 0) return null;
@@ -888,11 +925,28 @@ const EmployeeListDrilldownModal: React.FC<{ title: string; chapas: string[]; da
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col">
-                <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                    <h3 className="text-lg font-bold text-gray-800">{title}</h3>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
-                        <X size={20} className="text-gray-500" />
+                <div className="p-5 border-b border-gray-100 flex flex-col gap-3 relative bg-gray-50/50">
+                    <button onClick={onClose} className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition-colors">
+                        <X size={20} />
                     </button>
+                    <h3 className="text-lg font-bold text-gray-800 pr-8">{title}</h3>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-[10px] font-bold font-mono">
+                            HE 60: {formatDecimalToTime(totals.he60)}
+                        </span>
+                        <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-[10px] font-bold font-mono">
+                            HE 100: {formatDecimalToTime(totals.he100)}
+                        </span>
+                        <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded text-[10px] font-bold font-mono">
+                            Inter: {formatDecimalToTime(totals.inter)}
+                        </span>
+                        <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-[10px] font-bold font-mono">
+                            Noturno: {formatDecimalToTime(totals.noturnas)}
+                        </span>
+                        <span className="bg-gray-800 text-white px-2 py-1 rounded text-[10px] font-black font-mono shadow-sm">
+                            Total: {formatDecimalToTime(totals.total)}
+                        </span>
+                    </div>
                 </div>
                 <div className="overflow-y-auto max-h-[60vh]">
                     <table className="w-full text-left text-sm text-gray-600">
