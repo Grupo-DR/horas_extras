@@ -2,9 +2,9 @@ import React, { useMemo, useState } from 'react';
 import { OvertimeRecord } from '../types';
 import { RealOvertimeRecord } from '../data/realOvertime';
 import {
-    AlertTriangle, Building2, Scale, Users,
+    AlertTriangle, Building2, Scale, Users, CheckCircle2,
     Search, TrendingUp, BarChart3, PieChart, Activity, Layers, Moon, Zap, ArrowUpRight,
-    MapPin, Briefcase
+    MapPin, Briefcase, ShieldAlert
 } from 'lucide-react';
 import { getCCName, getCCRegional } from '../data/ccMaster';
 import {
@@ -28,6 +28,30 @@ export const formatDecimalToTime = (decimalHours: number): string => {
     const finalM = m % 60;
     const sign = isNegative ? "-" : "";
     return `${sign}${String(finalH).padStart(2, '0')}:${String(finalM).padStart(2, '0')}`;
+};
+
+export const getPayrollMonthKey = (dateString: string): string => {
+    if (!dateString) return '';
+    const dateObj = new Date(dateString);
+    if (isNaN(dateObj.getTime())) return '';
+
+    const year = dateObj.getFullYear();
+    const month = dateObj.getMonth(); // 0 to 11
+    const day = dateObj.getDate();
+
+    let payrollYear = year;
+    let payrollMonth = month;
+
+    if (day >= 21) {
+        payrollMonth += 1;
+        if (payrollMonth > 11) {
+            payrollMonth = 0;
+            payrollYear += 1;
+        }
+    }
+
+    // Retorna YYYY-MM numerado de 01 a 12
+    return `${payrollYear}-${String(payrollMonth + 1).padStart(2, '0')}-Payroll`;
 };
 
 // ────────────────────────────────────────────────────────────
@@ -496,9 +520,166 @@ const PressureMap: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
 };
 
 // ────────────────────────────────────────────────────────────
+// Sub-componente: Tabela de Compliance Trabalhista
+// ────────────────────────────────────────────────────────────
+const ComplianceTable: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
+    const complianceData = useMemo(() => {
+        // Mapeamentos para agregação de horas por CHAPA
+        // dailyHours: "CHAPA|YYYY-MM-DD" -> horas
+        const dailyHours: Record<string, number> = {};
+        // monthlyHours: "CHAPA|YYYY-MM-Payroll" -> horas
+        const monthlyHours: Record<string, number> = {};
+
+        // Mapeamento primário para CC: CHAPA -> CODCCUSTO
+        const empToCC: Record<string, string> = {};
+
+        // Loop principal único nos dados
+        data.forEach(r => {
+            const chapa = r.CHAPA;
+            if (!chapa) return;
+
+            const cc = r.CODCCUSTO || 'S/ CC';
+            empToCC[chapa] = cc; // Assume último CC lido ou mapeia todos do colaborador
+
+            const evt = (r.EVENTO || '').toUpperCase();
+            if (evt.includes('EXTRA') || evt.includes('60') || evt.includes('100')) {
+                const hours = Number(r.HORAS) || 0;
+
+                if (r.DATA) {
+                    const dateObj = new Date(r.DATA);
+                    if (!isNaN(dateObj.getTime())) {
+                        const dayKey = dateObj.toISOString().split('T')[0];
+                        const payrollKey = getPayrollMonthKey(r.DATA);
+
+                        const dKey = `${chapa}|${dayKey}`;
+                        const mKey = `${chapa}|${payrollKey}`;
+
+                        dailyHours[dKey] = (dailyHours[dKey] || 0) + hours;
+                        monthlyHours[mKey] = (monthlyHours[mKey] || 0) + hours;
+                    }
+                }
+            }
+        });
+
+        // Contagem de violações e agregação por CC
+        interface CCData {
+            cc: string;
+            ccName: string;
+            employeesInRisk: Set<string>;
+            dailyViolations: number;
+            monthlyViolations: number;
+        }
+
+        const ccMap: Record<string, CCData> = {};
+
+        // Avaliar violações Diárias (> 2h)
+        Object.entries(dailyHours).forEach(([key, hours]) => {
+            if (hours > 2) {
+                const [chapa] = key.split('|');
+                const cc = empToCC[chapa];
+                if (cc) {
+                    if (!ccMap[cc]) {
+                        ccMap[cc] = { cc, ccName: getCCName(cc), employeesInRisk: new Set(), dailyViolations: 0, monthlyViolations: 0 };
+                    }
+                    ccMap[cc].dailyViolations += 1;
+                    ccMap[cc].employeesInRisk.add(chapa);
+                }
+            }
+        });
+
+        // Avaliar violações Mensais (> 44h na competência)
+        Object.entries(monthlyHours).forEach(([key, hours]) => {
+            if (hours > 44) {
+                const [chapa] = key.split('|');
+                const cc = empToCC[chapa];
+                if (cc) {
+                    if (!ccMap[cc]) {
+                        ccMap[cc] = { cc, ccName: getCCName(cc), employeesInRisk: new Set(), dailyViolations: 0, monthlyViolations: 0 };
+                    }
+                    ccMap[cc].monthlyViolations += 1;
+                    ccMap[cc].employeesInRisk.add(chapa);
+                }
+            }
+        });
+
+        return Object.values(ccMap)
+            .map(c => ({
+                cc: c.cc,
+                ccName: c.ccName,
+                employeesInRisk: c.employeesInRisk.size,
+                dailyViolations: c.dailyViolations,
+                monthlyViolations: c.monthlyViolations,
+                totalViolations: c.dailyViolations + c.monthlyViolations
+            }))
+            .filter(c => c.totalViolations > 0)
+            .sort((a, b) => b.totalViolations - a.totalViolations);
+    }, [data]);
+
+    return (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <ShieldAlert size={16} className="text-red-500" />
+                    <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Compliance Trabalhista (Viol. Limites de Jornada)</h3>
+                </div>
+            </div>
+
+            {complianceData.length === 0 ? (
+                <div className="p-12 flex flex-col items-center justify-center text-center">
+                    <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mb-4">
+                        <CheckCircle2 size={32} className="text-green-500" />
+                    </div>
+                    <h4 className="text-gray-800 font-bold text-lg">Operação 100% em Compliance</h4>
+                    <p className="text-gray-500 text-sm mt-1 max-w-sm">
+                        Nenhum centro de custo detectou violação de horas extras acima de 2h diárias ou de 44h na competência mensal para este período.
+                    </p>
+                </div>
+            ) : (
+                <div className="overflow-x-auto max-h-[400px]">
+                    <table className="w-full text-left text-sm text-gray-600">
+                        <thead className="bg-gray-100/80 sticky top-0 text-gray-700 font-bold uppercase text-[9px] tracking-wider z-10 box-decoration-clone">
+                            <tr>
+                                <th className="px-6 py-4">Centro de Custo</th>
+                                <th className="px-6 py-4 text-center">Colab. em Risco</th>
+                                <th className="px-6 py-4 text-center">Violações (&gt;2h/dia)</th>
+                                <th className="px-6 py-4 text-center">Violações (&gt;44h/mês)</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {complianceData.map((item, idx) => (
+                                <tr key={idx} className="hover:bg-red-50/40 transition-colors">
+                                    <td className="px-6 py-3 font-semibold text-gray-700">
+                                        <div className="flex flex-col">
+                                            <span className="text-gray-400 font-mono text-[10px]">{item.cc}</span>
+                                            <span className="truncate max-w-[250px] font-bold text-xs text-gray-800">{item.ccName}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-3 text-center">
+                                        <span className="inline-flex py-1 px-3 rounded-full bg-amber-100 text-amber-700 font-bold text-xs">
+                                            {item.employeesInRisk}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-3 text-center font-mono font-bold text-red-600">
+                                        {item.dailyViolations}
+                                    </td>
+                                    <td className="px-6 py-3 text-center font-mono font-bold text-indigo-600">
+                                        {item.monthlyViolations}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ────────────────────────────────────────────────────────────
 // Componente principal
 // ────────────────────────────────────────────────────────────
 const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
+    // Calculando métricas gerais para os top cards de anomalia e interjornada
     const metrics = useMemo(() => {
         let jornadasLongas = 0;
         let interjornadas = 0;
@@ -510,55 +691,8 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
             if (evt.includes('INTER')) interjornadas++;
         });
 
-        return { jornadasLongas, interjornadas, totalRegistros: data.length };
+        return { jornadasLongas, interjornadas };
     }, [data]);
-
-    const operationInsights = useMemo(() => {
-        const insights: Array<{ id: string; type: 'danger' | 'warning' | 'success'; message: string }> = [];
-
-        if (metrics.interjornadas > 0) {
-            insights.push({
-                id: 'inter-risk',
-                type: 'danger',
-                message: `⚠️ Foram identificadas ${metrics.interjornadas} violações de interjornada. Risco grave de passivo trabalhista.`
-            });
-        }
-
-        const longJornadaPercentage = metrics.totalRegistros > 0
-            ? (metrics.jornadasLongas / metrics.totalRegistros) * 100
-            : 0;
-
-        if (longJornadaPercentage > 10) {
-            insights.push({
-                id: 'long-jornada-crit',
-                type: 'danger',
-                message: `⚠️ Crítico: ${longJornadaPercentage.toFixed(1)}% dos registros são de jornadas estendidas (>10h). Sugere subdimensionamento contínuo.`
-            });
-        } else if (longJornadaPercentage > 5) {
-            insights.push({
-                id: 'long-jornada-warn',
-                type: 'warning',
-                message: `⚠️ Atenção: ${longJornadaPercentage.toFixed(1)}% das jornadas estão estendidas. Monitore os limites operacionais.`
-            });
-        }
-
-        if (insights.length === 0) {
-            insights.push({
-                id: 'success-status',
-                type: 'success',
-                message: "✅ Operação saudável: jornadas e escalas estão dentro dos limites recomendados na maioria dos centros."
-            });
-        }
-
-        return insights;
-    }, [metrics]);
-
-    const scrollToEmployeeTable = () => {
-        const el = document.getElementById('employee-table');
-        if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-    };
 
     return (
         <div className="space-y-6">
@@ -601,27 +735,11 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
                 </div>
                 <div className="space-y-6">
                     <DistributionHistogram data={data} />
-                    <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-6 rounded-2xl shadow-xl text-white relative overflow-hidden">
-                        <div className="relative z-10">
-                            <h4 className="text-xs font-bold uppercase tracking-widest opacity-80 mb-4">Insights da Operação</h4>
-                            <div className="space-y-3">
-                                {operationInsights.map((insight) => (
-                                    <div key={insight.id} className="text-sm font-medium leading-relaxed bg-white/10 p-3 rounded-lg border border-white/20">
-                                        {insight.message}
-                                    </div>
-                                ))}
-                            </div>
-                            <button
-                                onClick={scrollToEmployeeTable}
-                                className="mt-6 flex items-center gap-2 text-xs font-black uppercase tracking-tighter bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-all"
-                            >
-                                Ver detalhamento completo <ArrowUpRight size={14} />
-                            </button>
-                        </div>
-                        <Activity size={120} className="absolute -bottom-10 -right-10 text-white/5" />
-                    </div>
                 </div>
             </div>
+
+            {/* Tabela de Compliance Trabalhista */}
+            <ComplianceTable data={data} />
 
             {/* Mapa de Pressão */}
             <PressureMap data={data} />
