@@ -727,19 +727,15 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
                 </div>
             </div>
 
-            {/* Grid de Dashboards */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
-                    <TrendAnalysis data={data} />
-                    <ConcentrationPareto data={data} />
-                </div>
-                <div className="space-y-6">
-                    <DistributionHistogram data={data} />
-                </div>
-            </div>
+            {/* Gráficos Full Width */}
+            <TrendAnalysis data={data} />
+            <ConcentrationPareto data={data} />
 
-            {/* Tabela de Compliance Trabalhista */}
-            <ComplianceTable data={data} />
+            {/* Grid 50/50: Histograma e Compliance */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <DistributionHistogram data={data} />
+                <ComplianceTable data={data} />
+            </div>
 
             {/* Mapa de Pressão */}
             <PressureMap data={data} />
