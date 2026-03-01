@@ -9,7 +9,7 @@ import {
 import { getCCName, getCCRegional } from '../data/ccMaster';
 import {
     ResponsiveContainer, ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid,
-    Tooltip, Legend, ReferenceLine, Cell
+    Tooltip, Legend, ReferenceLine, Cell, BarChart
 } from 'recharts';
 
 interface AnalysisPanelProps {
@@ -17,6 +17,18 @@ interface AnalysisPanelProps {
     selectedYear: string;
     realOvertime: RealOvertimeRecord[];
 }
+
+export const formatDecimalToTime = (decimalHours: number): string => {
+    if (isNaN(decimalHours) || decimalHours === null) return "00:00";
+    const isNegative = decimalHours < 0;
+    const absHours = Math.abs(decimalHours);
+    const h = Math.floor(absHours);
+    const m = Math.round((absHours - h) * 60);
+    const finalH = h + Math.floor(m / 60);
+    const finalM = m % 60;
+    const sign = isNegative ? "-" : "";
+    return `${sign}${String(finalH).padStart(2, '0')}:${String(finalM).padStart(2, '0')}`;
+};
 
 // ────────────────────────────────────────────────────────────
 // Sub-componente: Gráfico de Tendência (Trend Analysis)
@@ -81,19 +93,19 @@ const TrendAnalysis: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
                             tickLine={false}
                         />
                         <YAxis
+                            tickFormatter={formatDecimalToTime}
                             tick={{ fontSize: 10, fill: '#9ca3af' }}
                             axisLine={false}
                             tickLine={false}
                             label={{ value: 'Horas', angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: '#9ca3af' } }}
                         />
                         <Tooltip
+                            formatter={(value: any, name: any) => [typeof value === 'number' ? formatDecimalToTime(value) : value, name]}
                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                         />
                         <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
 
                         <Bar dataKey="he" name="H. Extras" fill="#3b82f6" radius={[4, 4, 0, 0]} opacity={0.7} />
-                        <Bar dataKey="inter" name="Interjornada" fill="#f59e0b" radius={[4, 4, 0, 0]} opacity={0.7} />
-                        <Bar dataKey="noturno" name="Noturno" fill="#8b5cf6" radius={[4, 4, 0, 0]} opacity={0.7} />
 
                         <Line
                             type="monotone"
@@ -187,6 +199,7 @@ const ConcentrationPareto: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => 
                         />
                         <YAxis
                             yAxisId="left"
+                            tickFormatter={formatDecimalToTime}
                             tick={{ fontSize: 10, fill: '#9ca3af' }}
                             axisLine={false}
                             tickLine={false}
@@ -200,6 +213,7 @@ const ConcentrationPareto: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => 
                             unit="%"
                         />
                         <Tooltip
+                            formatter={(value: any, name: any) => [name === 'Horas' && typeof value === 'number' ? formatDecimalToTime(value) : value, name]}
                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                         />
                         <Bar yAxisId="left" dataKey="value" name="Horas" fill="#6366f1" radius={[4, 4, 0, 0]} />
@@ -247,7 +261,7 @@ const DistributionHistogram: React.FC<{ data: OvertimeRecord[] }> = ({ data }) =
             </div>
             <div className="h-[200px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart3 data={buckets} layout="vertical">
+                    <BarChart data={buckets} layout="vertical">
                         <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
                         <XAxis type="number" hide />
                         <YAxis dataKey="range" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 'bold', fill: '#374151' }} width={60} />
@@ -257,7 +271,7 @@ const DistributionHistogram: React.FC<{ data: OvertimeRecord[] }> = ({ data }) =
                                 <Cell key={`cell-${index}`} fill={entry.color} />
                             ))}
                         </Bar>
-                    </BarChart3>
+                    </BarChart>
                 </ResponsiveContainer>
             </div>
         </div>
@@ -362,11 +376,11 @@ const EmployeeTable: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
                                 <td className="px-6 py-3">
                                     <span className="font-mono text-[10px] text-gray-400">{emp.cc}</span>
                                 </td>
-                                <td className="px-6 py-3 text-center font-mono text-blue-600 font-bold">{emp.he60.toFixed(1)}</td>
-                                <td className="px-6 py-3 text-center font-mono text-red-600 font-bold">{emp.he100.toFixed(1)}</td>
-                                <td className="px-6 py-3 text-center font-mono text-amber-600 font-bold">{emp.inter.toFixed(1)}</td>
-                                <td className="px-6 py-3 text-center font-mono text-purple-600 font-bold">{emp.noturnas.toFixed(1)}</td>
-                                <td className="px-6 py-3 text-center font-mono font-black text-gray-900 bg-gray-50/50">{emp.total.toFixed(1)}</td>
+                                <td className="px-6 py-3 text-center font-mono text-blue-600 font-bold">{formatDecimalToTime(emp.he60)}</td>
+                                <td className="px-6 py-3 text-center font-mono text-red-600 font-bold">{formatDecimalToTime(emp.he100)}</td>
+                                <td className="px-6 py-3 text-center font-mono text-amber-600 font-bold">{formatDecimalToTime(emp.inter)}</td>
+                                <td className="px-6 py-3 text-center font-mono text-purple-600 font-bold">{formatDecimalToTime(emp.noturnas)}</td>
+                                <td className="px-6 py-3 text-center font-mono font-black text-gray-900 bg-gray-50/50">{formatDecimalToTime(emp.total)}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -450,16 +464,16 @@ const PressureMap: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
                                 </td>
                                 <td className="px-6 py-3 text-center font-bold text-gray-500">{item.headcount}</td>
                                 <td className="px-6 py-3 text-center font-mono font-bold" style={{ backgroundColor: getHeatColor(item.he60 / item.headcount, 10, 'info') }}>
-                                    {item.he60.toFixed(1)}
+                                    {formatDecimalToTime(item.he60)}
                                 </td>
                                 <td className="px-6 py-3 text-center font-mono font-bold" style={{ backgroundColor: getHeatColor(item.he100 / item.headcount, 5, 'danger') }}>
-                                    {item.he100.toFixed(1)}
+                                    {formatDecimalToTime(item.he100)}
                                 </td>
                                 <td className="px-6 py-3 text-center font-mono font-bold" style={{ backgroundColor: getHeatColor(item.inter / item.headcount, 2, 'warning') }}>
-                                    {item.inter.toFixed(1)}
+                                    {formatDecimalToTime(item.inter)}
                                 </td>
                                 <td className="px-6 py-3 text-center font-mono font-bold" style={{ backgroundColor: getHeatColor(item.noturno / item.headcount, 10, 'info') }}>
-                                    {item.noturno.toFixed(1)}
+                                    {formatDecimalToTime(item.noturno)}
                                 </td>
                                 <td className="px-6 py-3 text-center bg-gray-50/50">
                                     <div className="flex items-center justify-center gap-2">
