@@ -339,7 +339,7 @@ const EmployeeTable: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
     }, [data, search]);
 
     return (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div id="employee-table" className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                     <Users size={16} className="text-indigo-500" />
@@ -510,8 +510,55 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
             if (evt.includes('INTER')) interjornadas++;
         });
 
-        return { jornadasLongas, interjornadas };
+        return { jornadasLongas, interjornadas, totalRegistros: data.length };
     }, [data]);
+
+    const operationInsights = useMemo(() => {
+        const insights: Array<{ id: string; type: 'danger' | 'warning' | 'success'; message: string }> = [];
+
+        if (metrics.interjornadas > 0) {
+            insights.push({
+                id: 'inter-risk',
+                type: 'danger',
+                message: `⚠️ Foram identificadas ${metrics.interjornadas} violações de interjornada. Risco grave de passivo trabalhista.`
+            });
+        }
+
+        const longJornadaPercentage = metrics.totalRegistros > 0
+            ? (metrics.jornadasLongas / metrics.totalRegistros) * 100
+            : 0;
+
+        if (longJornadaPercentage > 10) {
+            insights.push({
+                id: 'long-jornada-crit',
+                type: 'danger',
+                message: `⚠️ Crítico: ${longJornadaPercentage.toFixed(1)}% dos registros são de jornadas estendidas (>10h). Sugere subdimensionamento contínuo.`
+            });
+        } else if (longJornadaPercentage > 5) {
+            insights.push({
+                id: 'long-jornada-warn',
+                type: 'warning',
+                message: `⚠️ Atenção: ${longJornadaPercentage.toFixed(1)}% das jornadas estão estendidas. Monitore os limites operacionais.`
+            });
+        }
+
+        if (insights.length === 0) {
+            insights.push({
+                id: 'success-status',
+                type: 'success',
+                message: "✅ Operação saudável: jornadas e escalas estão dentro dos limites recomendados na maioria dos centros."
+            });
+        }
+
+        return insights;
+    }, [metrics]);
+
+    const scrollToEmployeeTable = () => {
+        const el = document.getElementById('employee-table');
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -557,13 +604,18 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
                     <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-6 rounded-2xl shadow-xl text-white relative overflow-hidden">
                         <div className="relative z-10">
                             <h4 className="text-xs font-bold uppercase tracking-widest opacity-80 mb-4">Insights da Operação</h4>
-                            <p className="text-sm font-medium leading-relaxed">
-                                {metrics.jornadasLongas > 10
-                                    ? "⚠️ Notamos uma alta concentração de jornadas estendidas. Isso pode indicar subdimensionamento de equipes em centros críticos."
-                                    : "✅ As jornadas estão dentro dos limites operacionais na maioria dos centros."}
-                            </p>
-                            <button className="mt-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-tighter bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-all">
-                                Ver detalhamento completo <ArrowUpRight size={12} />
+                            <div className="space-y-3">
+                                {operationInsights.map((insight) => (
+                                    <div key={insight.id} className="text-sm font-medium leading-relaxed bg-white/10 p-3 rounded-lg border border-white/20">
+                                        {insight.message}
+                                    </div>
+                                ))}
+                            </div>
+                            <button
+                                onClick={scrollToEmployeeTable}
+                                className="mt-6 flex items-center gap-2 text-xs font-black uppercase tracking-tighter bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-all"
+                            >
+                                Ver detalhamento completo <ArrowUpRight size={14} />
                             </button>
                         </div>
                         <Activity size={120} className="absolute -bottom-10 -right-10 text-white/5" />
