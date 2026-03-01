@@ -286,7 +286,7 @@ const CustomTooltip = ({ active, payload }: any) => {
     return null;
 };
 
-const DistributionHistogram: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
+const DistributionHistogram: React.FC<{ data: OvertimeRecord[]; onBucketClick?: (title: string, chapas: string[]) => void }> = ({ data, onBucketClick }) => {
     const buckets = useMemo(() => {
         const empHours: Record<string, number> = {};
         data.forEach(r => {
@@ -298,17 +298,17 @@ const DistributionHistogram: React.FC<{ data: OvertimeRecord[] }> = ({ data }) =
         });
 
         const groups = [
-            { range: 'Seguro (0-10h)', count: 0, totalHours: 0, color: '#10b981' },
-            { range: 'Atenção (10-20h)', count: 0, totalHours: 0, color: '#3b82f6' },
-            { range: 'Crítico (20-40h)', count: 0, totalHours: 0, color: '#f59e0b' },
-            { range: 'Risco Alto (40h+)', count: 0, totalHours: 0, color: '#ef4444' }
+            { range: 'Seguro (0-10h)', count: 0, totalHours: 0, color: '#10b981', chapas: [] as string[] },
+            { range: 'Atenção (10-20h)', count: 0, totalHours: 0, color: '#3b82f6', chapas: [] as string[] },
+            { range: 'Crítico (20-40h)', count: 0, totalHours: 0, color: '#f59e0b', chapas: [] as string[] },
+            { range: 'Risco Alto (40h+)', count: 0, totalHours: 0, color: '#ef4444', chapas: [] as string[] }
         ];
 
-        Object.values(empHours).forEach(h => {
-            if (h <= 10) { groups[0].count++; groups[0].totalHours += h; }
-            else if (h <= 20) { groups[1].count++; groups[1].totalHours += h; }
-            else if (h <= 40) { groups[2].count++; groups[2].totalHours += h; }
-            else { groups[3].count++; groups[3].totalHours += h; }
+        Object.entries(empHours).forEach(([chapa, h]) => {
+            if (h <= 10) { groups[0].count++; groups[0].totalHours += h; groups[0].chapas.push(chapa); }
+            else if (h <= 20) { groups[1].count++; groups[1].totalHours += h; groups[1].chapas.push(chapa); }
+            else if (h <= 40) { groups[2].count++; groups[2].totalHours += h; groups[2].chapas.push(chapa); }
+            else { groups[3].count++; groups[3].totalHours += h; groups[3].chapas.push(chapa); }
         });
 
         return groups;
@@ -329,7 +329,13 @@ const DistributionHistogram: React.FC<{ data: OvertimeRecord[] }> = ({ data }) =
                         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(243, 244, 246, 0.4)' }} />
                         <Bar dataKey="count" name="Colaboradores" radius={[0, 4, 4, 0]}>
                             {buckets.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} cursor="pointer" className="hover:opacity-80 transition-opacity" />
+                                <Cell
+                                    key={`cell-${index}`}
+                                    fill={entry.color}
+                                    cursor={onBucketClick ? "pointer" : "default"}
+                                    onClick={() => onBucketClick && onBucketClick(`Faixa: ${entry.range}`, entry.chapas)}
+                                    className="hover:opacity-80 transition-opacity"
+                                />
                             ))}
                         </Bar>
                     </BarChart>
@@ -559,7 +565,7 @@ const PressureMap: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
 // ────────────────────────────────────────────────────────────
 // Sub-componente: Tabela de Compliance Trabalhista
 // ────────────────────────────────────────────────────────────
-const ComplianceTable: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
+const ComplianceTable: React.FC<{ data: OvertimeRecord[]; onRowClick?: (title: string, chapas: string[]) => void }> = ({ data, onRowClick }) => {
     const complianceData = useMemo(() => {
         // Mapeamentos para agregação de horas por CHAPA
         // dailyHours: "CHAPA|YYYY-MM-DD" -> horas
@@ -644,6 +650,7 @@ const ComplianceTable: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
                 cc: c.cc,
                 ccName: c.ccName,
                 employeesInRisk: c.employeesInRisk.size,
+                violatingChapas: Array.from(c.employeesInRisk),
                 dailyViolations: c.dailyViolations,
                 monthlyViolations: c.monthlyViolations,
                 totalViolations: c.dailyViolations + c.monthlyViolations
@@ -684,7 +691,11 @@ const ComplianceTable: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {complianceData.map((item, idx) => (
-                                <tr key={idx} className="hover:bg-red-50/40 transition-colors">
+                                <tr
+                                    key={idx}
+                                    className={`transition-colors ${onRowClick ? 'cursor-pointer hover:bg-red-50/50' : 'hover:bg-red-50/40'}`}
+                                    onClick={() => onRowClick && onRowClick(`Infratores CC: ${item.ccName}`, item.violatingChapas)}
+                                >
                                     <td className="px-6 py-3 font-semibold text-gray-700">
                                         <div className="flex flex-col">
                                             <span className="text-gray-400 font-mono text-[10px]">{item.cc}</span>
@@ -821,10 +832,114 @@ const DailyDrilldownModal: React.FC<{ date: string | null; data: OvertimeRecord[
 };
 
 // ────────────────────────────────────────────────────────────
+// Sub-componente: Modal Genérico de Colaboradores (Drill-down)
+// ────────────────────────────────────────────────────────────
+const EmployeeListDrilldownModal: React.FC<{ title: string; chapas: string[]; data: OvertimeRecord[]; onClose: () => void }> = ({ title, chapas, data, onClose }) => {
+    const listData = useMemo(() => {
+        if (!chapas || chapas.length === 0) return [];
+
+        const map: Record<string, {
+            name: string;
+            cc: string;
+            he60: number;
+            he100: number;
+            inter: number;
+            noturnas: number;
+            total: number;
+        }> = {};
+
+        data.forEach(r => {
+            const chapa = r.CHAPA;
+            if (!chapa || !chapas.includes(chapa)) return;
+
+            if (!map[chapa]) {
+                map[chapa] = {
+                    name: r.NOME || 'Sem Nome',
+                    cc: r.CODCCUSTO || 'S/ CC',
+                    he60: 0,
+                    he100: 0,
+                    inter: 0,
+                    noturnas: 0,
+                    total: 0
+                };
+            }
+
+            const evt = (r.EVENTO || '').toUpperCase();
+            const hours = Number(r.HORAS) || 0;
+
+            if (evt.includes('EXTRA')) {
+                if (evt.includes('100')) map[chapa].he100 += hours;
+                else map[chapa].he60 += hours;
+            } else if (evt.includes('INTER')) {
+                map[chapa].inter += hours;
+            } else if (evt.includes('NOTURNO') || evt.includes('NOT')) {
+                map[chapa].noturnas += hours;
+            }
+        });
+
+        return Object.values(map)
+            .map(emp => ({ ...emp, total: emp.he60 + emp.he100 + emp.inter + emp.noturnas }))
+            .filter(emp => emp.total > 0)
+            .sort((a, b) => b.total - a.total);
+    }, [data, chapas]);
+
+    if (!chapas || chapas.length === 0) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col">
+                <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                    <h3 className="text-lg font-bold text-gray-800">{title}</h3>
+                    <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                        <X size={20} className="text-gray-500" />
+                    </button>
+                </div>
+                <div className="overflow-y-auto max-h-[60vh]">
+                    <table className="w-full text-left text-sm text-gray-600">
+                        <thead className="bg-gray-100/80 sticky top-0 text-gray-700 font-bold uppercase text-[9px] tracking-wider z-10 box-decoration-clone">
+                            <tr>
+                                <th className="px-6 py-4">Nome</th>
+                                <th className="px-6 py-4">CC</th>
+                                <th className="px-6 py-4 text-center">HE 60</th>
+                                <th className="px-6 py-4 text-center">HE 100</th>
+                                <th className="px-6 py-4 text-center">Inter.</th>
+                                <th className="px-6 py-4 text-center">Not.</th>
+                                <th className="px-6 py-4 text-center bg-gray-200/50">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {listData.map((emp, idx) => (
+                                <tr key={idx} className="hover:bg-blue-50/40 transition-colors">
+                                    <td className="px-6 py-3 font-bold text-gray-800 text-xs">{emp.name}</td>
+                                    <td className="px-6 py-3">
+                                        <span className="font-mono text-[10px] text-gray-400">{emp.cc}</span>
+                                    </td>
+                                    <td className="px-6 py-3 text-center font-mono text-blue-600 font-bold">{formatDecimalToTime(emp.he60)}</td>
+                                    <td className="px-6 py-3 text-center font-mono text-red-600 font-bold">{formatDecimalToTime(emp.he100)}</td>
+                                    <td className="px-6 py-3 text-center font-mono text-amber-600 font-bold">{formatDecimalToTime(emp.inter)}</td>
+                                    <td className="px-6 py-3 text-center font-mono text-purple-600 font-bold">{formatDecimalToTime(emp.noturnas)}</td>
+                                    <td className="px-6 py-3 text-center font-mono font-black text-gray-900 bg-gray-50/50">{formatDecimalToTime(emp.total)}</td>
+                                </tr>
+                            ))}
+                            {listData.length === 0 && (
+                                <tr>
+                                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500">Nenhum registro encontrado.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ────────────────────────────────────────────────────────────
 // Componente principal
 // ────────────────────────────────────────────────────────────
 const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
     const [drilldownDate, setDrilldownDate] = useState<string | null>(null);
+    const [listDrilldown, setListDrilldown] = useState<{ title: string; chapas: string[] } | null>(null);
 
     // Calculando métricas gerais para os top cards de anomalia e interjornada
     const metrics = useMemo(() => {
@@ -880,8 +995,8 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
 
             {/* Grid 50/50: Histograma e Compliance */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <DistributionHistogram data={data} />
-                <ComplianceTable data={data} />
+                <DistributionHistogram data={data} onBucketClick={(title, chapas) => setListDrilldown({ title, chapas })} />
+                <ComplianceTable data={data} onRowClick={(title, chapas) => setListDrilldown({ title, chapas })} />
             </div>
 
             {/* Mapa de Pressão */}
@@ -892,6 +1007,16 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
 
             {/* Modal de Drill-down Diário */}
             <DailyDrilldownModal date={drilldownDate} data={data} onClose={() => setDrilldownDate(null)} />
+
+            {/* Modal Genérico de Drill-down */}
+            {listDrilldown && (
+                <EmployeeListDrilldownModal
+                    title={listDrilldown.title}
+                    chapas={listDrilldown.chapas}
+                    data={data}
+                    onClose={() => setListDrilldown(null)}
+                />
+            )}
         </div>
     );
 };
