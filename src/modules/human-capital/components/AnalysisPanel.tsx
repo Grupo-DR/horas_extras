@@ -9,7 +9,7 @@ import {
 import { getCCName, getCCRegional } from '../data/ccMaster';
 import {
     ResponsiveContainer, ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid,
-    Tooltip, Legend, Cell, LabelList
+    Tooltip, Legend, Cell, LabelList, BarChart
 } from 'recharts';
 
 interface AnalysisPanelProps {
