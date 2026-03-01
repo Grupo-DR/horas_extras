@@ -4,7 +4,7 @@ import { RealOvertimeRecord } from '../data/realOvertime';
 import {
     AlertTriangle, Building2, Scale, Users, CheckCircle2,
     Search, TrendingUp, BarChart3, PieChart, Activity, Layers, Moon, Zap, ArrowUpRight,
-    MapPin, Briefcase, ShieldAlert, X
+    MapPin, Briefcase, ShieldAlert, X, ChevronDown
 } from 'lucide-react';
 import { getCCName, getCCRegional } from '../data/ccMaster';
 import {
@@ -565,7 +565,7 @@ const PressureMap: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
 // ────────────────────────────────────────────────────────────
 // Sub-componente: Tabela de Compliance Trabalhista
 // ────────────────────────────────────────────────────────────
-const ComplianceTable: React.FC<{ data: OvertimeRecord[]; onRowClick?: (title: string, chapas: string[]) => void }> = ({ data, onRowClick }) => {
+const ComplianceTable: React.FC<{ data: OvertimeRecord[]; onRowClick?: (cc: string, ccName: string) => void }> = ({ data, onRowClick }) => {
     const complianceData = useMemo(() => {
         // Mapeamentos para agregação de horas por CHAPA
         // dailyHours: "CHAPA|YYYY-MM-DD" -> horas
@@ -694,7 +694,7 @@ const ComplianceTable: React.FC<{ data: OvertimeRecord[]; onRowClick?: (title: s
                                 <tr
                                     key={idx}
                                     className={`transition-colors ${onRowClick ? 'cursor-pointer hover:bg-red-50/50' : 'hover:bg-red-50/40'}`}
-                                    onClick={() => onRowClick && onRowClick(`Infratores CC: ${item.ccName}`, item.violatingChapas)}
+                                    onClick={() => onRowClick && onRowClick(item.cc, item.ccName)}
                                 >
                                     <td className="px-6 py-3 font-semibold text-gray-700">
                                         <div className="flex flex-col">
@@ -989,11 +989,234 @@ const EmployeeListDrilldownModal: React.FC<{ title: string; chapas: string[]; da
 };
 
 // ────────────────────────────────────────────────────────────
+// Sub-componente: Modal Master-Detail de Compliance Trabalhista
+// ────────────────────────────────────────────────────────────
+const ComplianceDrilldownModal: React.FC<{ cc: string; ccName: string; data: OvertimeRecord[]; onClose: () => void }> = ({ cc, ccName, data, onClose }) => {
+    const [expandedChapa, setExpandedChapa] = useState<string | null>(null);
+
+    const { offenders, totals } = useMemo(() => {
+        if (!cc) return { offenders: [], totals: { he60: 0, he100: 0, inter: 0, noturnas: 0, total: 0 } };
+
+        const map: Record<string, {
+            chapa: string;
+            name: string;
+            he60: number;
+            he100: number;
+            inter: number;
+            noturnas: number;
+            total: number;
+            dailyHours: Record<string, number>;
+            monthlyHours: Record<string, number>;
+            dailyViolations: { date: string; hours: number }[];
+            monthlyViolations: { month: string; hours: number }[];
+        }> = {};
+
+        data.forEach(r => {
+            const rowCC = r.CODCCUSTO || 'S/ CC';
+            if (rowCC !== cc) return;
+
+            const chapa = r.CHAPA;
+            if (!chapa) return;
+
+            if (!map[chapa]) {
+                map[chapa] = {
+                    chapa,
+                    name: r.NOME || 'Sem Nome',
+                    he60: 0,
+                    he100: 0,
+                    inter: 0,
+                    noturnas: 0,
+                    total: 0,
+                    dailyHours: {},
+                    monthlyHours: {},
+                    dailyViolations: [],
+                    monthlyViolations: []
+                };
+            }
+
+            const evt = (r.EVENTO || '').toUpperCase();
+            const hours = Number(r.HORAS) || 0;
+
+            if (evt.includes('EXTRA') || evt.includes('60') || evt.includes('100')) {
+                if (evt.includes('100')) map[chapa].he100 += hours;
+                else map[chapa].he60 += hours;
+
+                if (r.DATA) {
+                    const dateObj = new Date(r.DATA);
+                    if (!isNaN(dateObj.getTime())) {
+                        const dayKey = dateObj.toISOString().split('T')[0];
+                        const payrollKey = getPayrollMonthKey(r.DATA);
+
+                        map[chapa].dailyHours[dayKey] = (map[chapa].dailyHours[dayKey] || 0) + hours;
+                        map[chapa].monthlyHours[payrollKey] = (map[chapa].monthlyHours[payrollKey] || 0) + hours;
+                    }
+                }
+            } else if (evt.includes('INTER')) {
+                map[chapa].inter += hours;
+            } else if (evt.includes('NOTURNO') || evt.includes('NOT')) {
+                map[chapa].noturnas += hours;
+            }
+        });
+
+        // Apuração das violações e cálculo de totais
+        const filteredOffenders = Object.values(map)
+            .map(emp => {
+                emp.total = emp.he60 + emp.he100 + emp.inter + emp.noturnas;
+
+                Object.entries(emp.dailyHours).forEach(([date, hours]) => {
+                    if (hours > 2) emp.dailyViolations.push({ date, hours });
+                });
+
+                Object.entries(emp.monthlyHours).forEach(([month, hours]) => {
+                    if (hours > 44) emp.monthlyViolations.push({ month, hours });
+                });
+
+                // Ordenar violações por horas caindo
+                emp.dailyViolations.sort((a, b) => b.hours - a.hours);
+                emp.monthlyViolations.sort((a, b) => b.hours - a.hours);
+
+                return emp;
+            })
+            .filter(emp => emp.dailyViolations.length > 0 || emp.monthlyViolations.length > 0)
+            .sort((a, b) => (b.dailyViolations.length + b.monthlyViolations.length) - (a.dailyViolations.length + a.monthlyViolations.length));
+
+        const calcTotals = filteredOffenders.reduce((acc, curr) => ({
+            he60: acc.he60 + curr.he60,
+            he100: acc.he100 + curr.he100,
+            inter: acc.inter + curr.inter,
+            noturnas: acc.noturnas + curr.noturnas,
+            total: acc.total + curr.total
+        }), { he60: 0, he100: 0, inter: 0, noturnas: 0, total: 0 });
+
+        return { offenders: filteredOffenders, totals: calcTotals };
+    }, [data, cc]);
+
+    if (!cc) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl w-full max-w-5xl shadow-2xl overflow-hidden flex flex-col">
+                <div className="p-5 border-b border-gray-100 flex flex-col gap-3 relative bg-gray-50/50">
+                    <button onClick={onClose} className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition-colors">
+                        <X size={20} />
+                    </button>
+                    <h3 className="text-lg font-bold text-gray-800 pr-8">Auditoria de Compliance: {ccName}</h3>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-[10px] font-bold font-mono">
+                            HE 60: {formatDecimalToTime(totals.he60)}
+                        </span>
+                        <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-[10px] font-bold font-mono">
+                            HE 100: {formatDecimalToTime(totals.he100)}
+                        </span>
+                        <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded text-[10px] font-bold font-mono">
+                            Inter: {formatDecimalToTime(totals.inter)}
+                        </span>
+                        <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-[10px] font-bold font-mono">
+                            Noturno: {formatDecimalToTime(totals.noturnas)}
+                        </span>
+                        <span className="bg-gray-800 text-white px-2 py-1 rounded text-[10px] font-black font-mono shadow-sm">
+                            Total: {formatDecimalToTime(totals.total)}
+                        </span>
+                    </div>
+                </div>
+                <div className="overflow-y-auto max-h-[70vh]">
+                    <table className="w-full text-left text-sm text-gray-600">
+                        <thead className="bg-gray-100/80 sticky top-0 text-gray-700 font-bold uppercase text-[9px] tracking-wider z-10 box-decoration-clone">
+                            <tr>
+                                <th className="px-6 py-4">Nome do Colaborador</th>
+                                <th className="px-6 py-4 text-center">HE Total</th>
+                                <th className="px-6 py-4 text-center">Infrações Diárias (&gt;2h)</th>
+                                <th className="px-6 py-4 text-center">Infrações Mensais (&gt;44h)</th>
+                                <th className="px-6 py-4 w-12 text-center"></th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {offenders.map((emp, idx) => (
+                                <React.Fragment key={idx}>
+                                    <tr
+                                        className={`transition-colors cursor-pointer ${expandedChapa === emp.chapa ? 'bg-indigo-50/50' : 'hover:bg-gray-50'}`}
+                                        onClick={() => setExpandedChapa(expandedChapa === emp.chapa ? null : emp.chapa)}
+                                    >
+                                        <td className="px-6 py-4 font-bold text-gray-800 text-xs">{emp.name}</td>
+                                        <td className="px-6 py-4 text-center font-mono font-bold text-gray-900">{formatDecimalToTime(emp.total)}</td>
+                                        <td className="px-6 py-4 text-center">
+                                            {emp.dailyViolations.length > 0 ? (
+                                                <span className="text-red-600 font-bold bg-red-50 px-2 py-1 rounded-full text-xs">{emp.dailyViolations.length} ocorrências</span>
+                                            ) : (
+                                                <span className="text-gray-300">-</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            {emp.monthlyViolations.length > 0 ? (
+                                                <span className="text-indigo-600 font-bold bg-indigo-50 px-2 py-1 rounded-full text-xs">{emp.monthlyViolations.length} ocorrências</span>
+                                            ) : (
+                                                <span className="text-gray-300">-</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 text-center text-gray-400">
+                                            <ChevronDown size={18} className={`transform transition-transform ${expandedChapa === emp.chapa ? 'rotate-180 text-indigo-500' : ''}`} />
+                                        </td>
+                                    </tr>
+                                    {expandedChapa === emp.chapa && (
+                                        <tr>
+                                            <td colSpan={5} className="p-0">
+                                                <div className="bg-gray-50 p-6 border-l-4 border-red-500 shadow-inner flex flex-col md:flex-row gap-8">
+                                                    {emp.dailyViolations.length > 0 && (
+                                                        <div className="flex-1">
+                                                            <h4 className="text-xs font-bold text-red-700 uppercase tracking-wider mb-3">Excesso Diário (&gt;2h)</h4>
+                                                            <ul className="space-y-2">
+                                                                {emp.dailyViolations.map((v, i) => {
+                                                                    const d = new Date(v.date + 'T12:00:00');
+                                                                    const dateStr = !isNaN(d.getTime()) ? d.toLocaleDateString('pt-BR') : v.date;
+                                                                    return (
+                                                                        <li key={i} className="flex justify-between items-center bg-white p-2 rounded border border-red-100">
+                                                                            <span className="text-sm text-gray-600">{dateStr}</span>
+                                                                            <span className="font-mono font-bold text-red-600">{formatDecimalToTime(v.hours)}</span>
+                                                                        </li>
+                                                                    );
+                                                                })}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+                                                    {emp.monthlyViolations.length > 0 && (
+                                                        <div className="flex-1">
+                                                            <h4 className="text-xs font-bold text-indigo-700 uppercase tracking-wider mb-3">Excesso Mensal (&gt;44h)</h4>
+                                                            <ul className="space-y-2">
+                                                                {emp.monthlyViolations.map((v, i) => (
+                                                                    <li key={i} className="flex justify-between items-center bg-white p-2 rounded border border-indigo-100">
+                                                                        <span className="text-sm text-gray-600">{v.month.replace('-Payroll', '')}</span>
+                                                                        <span className="font-mono font-bold text-indigo-600">{formatDecimalToTime(v.hours)}</span>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </React.Fragment>
+                            ))}
+                            {offenders.length === 0 && (
+                                <tr>
+                                    <td colSpan={5} className="px-6 py-8 text-center text-gray-500">Nenhum registro encontrado.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ────────────────────────────────────────────────────────────
 // Componente principal
 // ────────────────────────────────────────────────────────────
 const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
     const [drilldownDate, setDrilldownDate] = useState<string | null>(null);
     const [listDrilldown, setListDrilldown] = useState<{ title: string; chapas: string[] } | null>(null);
+    const [complianceDrilldown, setComplianceDrilldown] = useState<{ cc: string; ccName: string } | null>(null);
 
     // Calculando métricas gerais para os top cards de anomalia e interjornada
     const metrics = useMemo(() => {
@@ -1050,7 +1273,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
             {/* Grid 50/50: Histograma e Compliance */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <DistributionHistogram data={data} onBucketClick={(title, chapas) => setListDrilldown({ title, chapas })} />
-                <ComplianceTable data={data} onRowClick={(title, chapas) => setListDrilldown({ title, chapas })} />
+                <ComplianceTable data={data} onRowClick={(cc, ccName) => setComplianceDrilldown({ cc, ccName })} />
             </div>
 
             {/* Mapa de Pressão */}
@@ -1069,6 +1292,16 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
                     chapas={listDrilldown.chapas}
                     data={data}
                     onClose={() => setListDrilldown(null)}
+                />
+            )}
+
+            {/* Modal de Compliance Trabalhista */}
+            {complianceDrilldown && (
+                <ComplianceDrilldownModal
+                    cc={complianceDrilldown.cc}
+                    ccName={complianceDrilldown.ccName}
+                    data={data}
+                    onClose={() => setComplianceDrilldown(null)}
                 />
             )}
         </div>
