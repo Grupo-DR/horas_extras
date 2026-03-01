@@ -252,6 +252,28 @@ const ConcentrationPareto: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => 
 // ────────────────────────────────────────────────────────────
 // Sub-componente: Distribuição de Horas (Histograma)
 // ────────────────────────────────────────────────────────────
+const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+        const data = payload[0].payload;
+        return (
+            <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-100 flex flex-col gap-2 min-w-[180px]">
+                <p className="font-bold text-gray-800 border-b border-gray-100 pb-2 mb-1">{data.range}</p>
+                <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-500 font-medium">Colaboradores:</span>
+                    <span className="font-bold text-gray-900">{data.count}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm mt-1">
+                    <span className="text-gray-500 font-medium">Total de Horas:</span>
+                    <span className="font-bold text-indigo-600 font-mono bg-indigo-50 px-2 py-0.5 rounded-md">
+                        {formatDecimalToTime(data.totalHours)}
+                    </span>
+                </div>
+            </div>
+        );
+    }
+    return null;
+};
+
 const DistributionHistogram: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
     const buckets = useMemo(() => {
         const empHours: Record<string, number> = {};
@@ -261,38 +283,38 @@ const DistributionHistogram: React.FC<{ data: OvertimeRecord[] }> = ({ data }) =
         });
 
         const groups = [
-            { range: '0-10h', count: 0, color: '#10b981' },
-            { range: '10-20h', count: 0, color: '#3b82f6' },
-            { range: '20-40h', count: 0, color: '#f59e0b' },
-            { range: '40h+', count: 0, color: '#ef4444' }
+            { range: 'Seguro (0-10h)', count: 0, totalHours: 0, color: '#10b981' },
+            { range: 'Atenção (10-20h)', count: 0, totalHours: 0, color: '#3b82f6' },
+            { range: 'Crítico (20-40h)', count: 0, totalHours: 0, color: '#f59e0b' },
+            { range: 'Risco Alto (40h+)', count: 0, totalHours: 0, color: '#ef4444' }
         ];
 
         Object.values(empHours).forEach(h => {
-            if (h <= 10) groups[0].count++;
-            else if (h <= 20) groups[1].count++;
-            else if (h <= 40) groups[2].count++;
-            else groups[3].count++;
+            if (h <= 10) { groups[0].count++; groups[0].totalHours += h; }
+            else if (h <= 20) { groups[1].count++; groups[1].totalHours += h; }
+            else if (h <= 40) { groups[2].count++; groups[2].totalHours += h; }
+            else { groups[3].count++; groups[3].totalHours += h; }
         });
 
         return groups;
     }, [data]);
 
     return (
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <div className="flex items-center gap-2 mb-6">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full flex flex-col">
+            <div className="flex items-center gap-2 mb-6 shrink-0">
                 <PieChart size={18} className="text-emerald-500" />
                 <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider">Distribuição de Horas por Colaborador</h3>
             </div>
-            <div className="h-[200px] w-full">
+            <div className="flex-1 w-full min-h-[200px]">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={buckets} layout="vertical">
+                    <BarChart data={buckets} layout="vertical" margin={{ left: 40 }}>
                         <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
                         <XAxis type="number" hide />
-                        <YAxis dataKey="range" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 'bold', fill: '#374151' }} width={60} />
-                        <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '12px', border: 'none' }} />
+                        <YAxis dataKey="range" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 'bold', fill: '#6b7280' }} width={110} />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(243, 244, 246, 0.4)' }} />
                         <Bar dataKey="count" name="Colaboradores" radius={[0, 4, 4, 0]}>
                             {buckets.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                <Cell key={`cell-${index}`} fill={entry.color} cursor="pointer" className="hover:opacity-80 transition-opacity" />
                             ))}
                         </Bar>
                     </BarChart>
