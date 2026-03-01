@@ -9,7 +9,7 @@ import {
 import { getCCName, getCCRegional } from '../data/ccMaster';
 import {
     ResponsiveContainer, ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid,
-    Tooltip, Legend, ReferenceLine, Cell, BarChart
+    Tooltip, Legend, Cell, LabelList
 } from 'recharts';
 
 interface AnalysisPanelProps {
@@ -55,6 +55,29 @@ export const getPayrollMonthKey = (dateString: string): string => {
 };
 
 // ────────────────────────────────────────────────────────────
+// Sub-componente: Custom Outlier Label
+// ────────────────────────────────────────────────────────────
+const CustomOutlierLabel = (props: any) => {
+    const { x, y, width, value, index, chartData } = props;
+    const entry = chartData[index];
+
+    if (!entry || !entry.isOutlier) return null;
+
+    return (
+        <text
+            x={Number(x) + Number(width) / 2}
+            y={Number(y) - 5}
+            fill="#e11d48"
+            fontSize={10}
+            textAnchor="middle"
+            fontWeight="bold"
+        >
+            🚨 {formatDecimalToTime(Number(value))}
+        </text>
+    );
+};
+
+// ────────────────────────────────────────────────────────────
 // Sub-componente: Gráfico de Tendência (Trend Analysis)
 // ────────────────────────────────────────────────────────────
 const TrendAnalysis: React.FC<{ data: OvertimeRecord[]; onDayClick?: (date: string) => void }> = ({ data, onDayClick }) => {
@@ -85,15 +108,24 @@ const TrendAnalysis: React.FC<{ data: OvertimeRecord[]; onDayClick?: (date: stri
 
         const sorted = Object.values(map).sort((a, b) => a.date.localeCompare(b.date));
 
-        // Média Móvel (7 dias)
+        // Média Móvel (7 dias) e Inteligência Diagnóstica
         return sorted.map((item, index, arr) => {
             const start = Math.max(0, index - 6);
             const subset = arr.slice(start, index + 1);
             const avg = subset.reduce((acc, curr) => acc + curr.total, 0) / subset.length;
+
+            const dateObj = new Date(item.date + 'T00:00:00');
+            const dayOfWeek = dateObj.getDay();
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+            const isOutlier = item.total > (avg * 2) && item.total > 8;
+
             return {
                 ...item,
-                displayDate: new Date(item.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-                movingAvg: Number(avg.toFixed(1))
+                displayDate: dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+                movingAvg: Number(avg.toFixed(1)),
+                isWeekend,
+                isOutlier
             };
         });
     }, [data]);
@@ -132,7 +164,6 @@ const TrendAnalysis: React.FC<{ data: OvertimeRecord[]; onDayClick?: (date: stri
                         <Bar
                             dataKey="he"
                             name="H. Extras"
-                            fill="#3b82f6"
                             radius={[4, 4, 0, 0]}
                             opacity={0.8}
                             cursor={onDayClick ? "pointer" : "default"}
@@ -141,22 +172,24 @@ const TrendAnalysis: React.FC<{ data: OvertimeRecord[]; onDayClick?: (date: stri
                                     onDayClick(entry.date);
                                 }
                             }}
-                        />
+                        >
+                            {chartData.map((entry, index) => (
+                                <Cell
+                                    key={`cell-${index}`}
+                                    fill={entry.isOutlier ? '#e11d48' : entry.isWeekend ? '#f59e0b' : '#6366f1'}
+                                />
+                            ))}
+                            <LabelList dataKey="he" content={<CustomOutlierLabel chartData={chartData} />} />
+                        </Bar>
 
                         <Line
                             type="monotone"
                             dataKey="movingAvg"
-                            name="Média Móvel (7d)"
-                            stroke="#e11d48"
+                            name="Média Móvel (7 dias)"
+                            stroke="#475569"
                             strokeWidth={2}
-                            dot={false}
-                        />
-
-                        <ReferenceLine
-                            y={50}
-                            stroke="#10b981"
                             strokeDasharray="5 5"
-                            label={{ value: 'Limite Saudável', position: 'right', fill: '#10b981', fontSize: 11 }}
+                            dot={false}
                         />
                     </ComposedChart>
                 </ResponsiveContainer>
