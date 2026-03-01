@@ -108,6 +108,15 @@ const TrendAnalysis: React.FC<{ data: OvertimeRecord[]; onDayClick?: (date: stri
 
         const sorted = Object.values(map).sort((a, b) => a.date.localeCompare(b.date));
 
+        // Cálculo Estatístico do IQR para Limite de Outliers
+        const sortedTotals = sorted.map(item => item.total).sort((a, b) => a - b);
+        const q1Index = Math.floor(sortedTotals.length * 0.25);
+        const q3Index = Math.floor(sortedTotals.length * 0.75);
+        const q1 = sortedTotals[q1Index] || 0;
+        const q3 = sortedTotals[q3Index] || 0;
+        const iqr = q3 - q1;
+        const outlierThreshold = q3 + (1.5 * iqr);
+
         // Média Móvel (7 dias) e Inteligência Diagnóstica
         return sorted.map((item, index, arr) => {
             const start = Math.max(0, index - 6);
@@ -118,7 +127,7 @@ const TrendAnalysis: React.FC<{ data: OvertimeRecord[]; onDayClick?: (date: stri
             const dayOfWeek = dateObj.getDay();
             const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
-            const isOutlier = item.total > (avg * 2) && item.total > 8;
+            const isOutlier = item.total > outlierThreshold && item.total > 8;
 
             return {
                 ...item,
