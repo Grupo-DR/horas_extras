@@ -663,7 +663,6 @@ const PressureHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 // ────────────────────────────────────────────────────────────
 const EmployeeTable: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
     const [search, setSearch] = useState('');
-    const [showHelp, setShowHelp] = useState(false);
 
     const employeeSummary = useMemo(() => {
         const map: Record<string, {
@@ -775,6 +774,8 @@ const EmployeeTable: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
 // Sub-componente: Mapa de Pressão por CC (Heat Table)
 // ────────────────────────────────────────────────────────────
 const PressureMap: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
+    const [showHelp, setShowHelp] = useState(false);
+
     const tableData = useMemo(() => {
         const map: Record<string, { cc: string; he60: number; he100: number; inter: number; noturno: number; uniqueEmps: Set<string> }> = {};
 
