@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, SalaryRecord } from '../types';
-import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, AlertTriangle, Moon, Scale, Percent, ArrowUpRight, ArrowDownRight, X, User, DollarSign, ListFilter, ShieldAlert, Zap, ChevronDown, ChevronRight, Info } from 'lucide-react';
+import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, AlertTriangle, Moon, Scale, Percent, ArrowUpRight, ArrowDownRight, X, User, Users, DollarSign, ListFilter, ShieldAlert, Zap, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { formatDecimalHours } from '../utils/formatters';
 import { getAllPlanningRecords, getBudgetsSync, getSalariesSync } from '../services/planning';
 import { getCCName, getCCRegional, normalizeCC } from '../data/ccMaster';
@@ -31,7 +31,7 @@ interface DashboardMetrics {
 interface TreeNode {
   id: string;
   name: string;
-  type: 'GLOBAL' | 'REGIONAL' | 'CC';
+  type: 'GLOBAL' | 'REGIONAL' | 'CC' | 'TEAM';
   metrics: DashboardMetrics;
   children: TreeNode[];
 }
@@ -265,10 +265,16 @@ const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHour
   const [isExpanded, setIsExpanded] = React.useState(level === 0);
   const hasChildren = node.children && node.children.length > 0;
 
+  const isGlobal = level === 0;
+  const isRegional = level === 1;
+  const isCC = level === 2;
+  const isTeam = level === 3;
+
   const getIcon = () => {
-    if (node.type === 'GLOBAL') return <Building2 size={16} className="text-indigo-600" />;
-    if (node.type === 'REGIONAL') return <Briefcase size={16} className="text-blue-600" />;
-    return <Clock size={16} className="text-slate-400" />;
+    if (isGlobal) return <Building2 size={16} className="text-indigo-600" />;
+    if (isRegional) return <Briefcase size={16} className="text-blue-600" />;
+    if (isCC) return <Building2 size={16} className="text-slate-500" />;
+    return <Users size={16} className="text-emerald-500" />;
   };
 
   const diffHours = node.metrics.total - node.metrics.plannedHours;
@@ -283,11 +289,13 @@ const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHour
   };
 
   // Cores dinâmicas por nível para facilitar o entendimento da hierarquia
-  const rowBgClass = level === 0
+  const rowBgClass = isGlobal
     ? 'bg-slate-200/80 hover:bg-slate-300/80 border-slate-300'
-    : level === 1
+    : isRegional
       ? 'bg-slate-100/50 hover:bg-slate-200/50 border-slate-200'
-      : 'bg-white hover:bg-slate-50 border-slate-100';
+      : isCC
+        ? 'bg-white hover:bg-slate-50 border-slate-100'
+        : 'bg-slate-50/50 hover:bg-slate-100/50 border-slate-50 border-l-2 border-l-emerald-500';
 
   return (
     <React.Fragment>
@@ -311,7 +319,7 @@ const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHour
         <div className="flex items-center gap-4 justify-end shrink-0">
           <div className="w-16 flex justify-center">
             {level > 0 ? (
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${level === 1 ? 'text-indigo-800 bg-indigo-100 border-indigo-200' : 'text-indigo-700 bg-indigo-50 border-indigo-100'}`} title={`Representa ${impactPct}% do agrupamento pai`}>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${isRegional ? 'text-indigo-800 bg-indigo-100 border-indigo-200' : isCC ? 'text-indigo-700 bg-indigo-50 border-indigo-100' : 'text-emerald-700 bg-emerald-50 border-emerald-100'}`} title={`Representa ${impactPct}% ${isRegional ? 'da DR' : isCC ? 'da Regional' : 'da Obra'}`}>
                 {impactPct}%
               </span>
             ) : <span className="text-[10px] text-slate-400">-</span>}
@@ -649,7 +657,13 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
   const hierarchicalData = useMemo(() => {
     const globalMetrics = { headcount: new Set<string>(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0, totalCost: 0, plannedHours: 0, budgetCost: 0 };
-    const regionalMap = new Map<string, { metrics: any, ccs: Map<string, any> }>();
+    const regionalMap = new Map<string, { metrics: any, ccs: Map<string, { name: string, metrics: any, teams: Map<string, any> }> }>();
+
+    // Mapeamento extra para descobrir a função da chapa nos registros de planejamento
+    const chapaToFunc: Record<string, string> = {};
+    data.forEach(r => {
+      if (r.FUNCAO) chapaToFunc[r.CHAPA] = r.FUNCAO;
+    });
 
     const getRegData = (reg: string) => {
       if (!regionalMap.has(reg)) {
@@ -660,17 +674,25 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
     const getCcData = (regData: any, cc: string, ccName: string) => {
       if (!regData.ccs.has(cc)) {
-        regData.ccs.set(cc, { name: ccName, metrics: { headcount: new Set(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0, totalCost: 0, plannedHours: 0, budgetCost: 0 } });
+        regData.ccs.set(cc, { name: ccName, metrics: { headcount: new Set(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0, totalCost: 0, plannedHours: 0, budgetCost: 0 }, teams: new Map() });
       }
       return regData.ccs.get(cc)!;
+    };
+
+    const getTeamData = (ccData: any, teamName: string) => {
+      if (!ccData.teams.has(teamName)) {
+        ccData.teams.set(teamName, { metrics: { headcount: new Set(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0, totalCost: 0, plannedHours: 0, budgetCost: 0 } });
+      }
+      return ccData.teams.get(teamName)!;
     };
 
     // 1. DADOS REAIS
     data.forEach(r => {
       const rawCC = r.CODCCUSTO || 'S/ CC';
       const cc = normalizeCC(rawCC);
-      const ccName = resolveName(rawCC);
+      const ccName = getCCName(rawCC) || 'S/ CC';
       const reg = getCCRegional(rawCC) || 'Sem Regional';
+      const funcName = r.FUNCAO || 'S/ Função';
       const hours = Number(r.HORAS) || 0;
       const evt = (r.EVENTO || '').toUpperCase();
       const isHE60 = evt.includes('EXTRA') && evt.includes('60');
@@ -690,8 +712,9 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
       const regData = getRegData(reg);
       const ccData = getCcData(regData, cc, ccName);
+      const teamData = getTeamData(ccData, funcName);
 
-      [globalMetrics, regData.metrics, ccData.metrics].forEach(m => {
+      [globalMetrics, regData.metrics, ccData.metrics, teamData.metrics].forEach(m => {
         m.headcount.add(r.CHAPA);
         if (isHE60) m.he60 += hours;
         if (isHE100) m.he100 += hours;
@@ -706,22 +729,24 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     planningRecords.forEach(p => {
       const rawCC = p.costCenter || 'S/ CC';
       const cc = normalizeCC(rawCC);
-      const ccName = resolveName(rawCC);
+      const ccName = getCCName(rawCC) || 'S/ CC';
       const reg = getCCRegional(rawCC) || 'Sem Regional';
+      const funcName = chapaToFunc[p.chapa] || 'S/ Função';
 
       const regData = getRegData(reg);
       const ccData = getCcData(regData, cc, ccName);
+      const teamData = getTeamData(ccData, funcName);
 
-      [globalMetrics, regData.metrics, ccData.metrics].forEach(m => {
+      [globalMetrics, regData.metrics, ccData.metrics, teamData.metrics].forEach(m => {
         m.plannedHours += p.plannedHours;
       });
     });
 
-    // 3. DADOS DE ORÇAMENTO (BUDGET)
+    // 3. DADOS DE ORÇAMENTO (BUDGET) - Não desce para Equipe (fica 0)
     budgets.forEach(b => {
       const rawCC = b.costCenter || 'S/ CC';
       const cc = normalizeCC(rawCC);
-      const ccName = resolveName(rawCC);
+      const ccName = getCCName(rawCC) || 'S/ CC';
       const reg = getCCRegional(rawCC) || 'Sem Regional';
 
       const regData = getRegData(reg);
@@ -743,7 +768,12 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
         children: Array.from(regData.ccs.entries()).map(([ccCode, ccData]) => ({
           id: ccCode, name: `${ccCode} - ${ccData.name}`, type: 'CC' as const,
           metrics: { ...ccData.metrics, headcount: ccData.metrics.headcount.size, riskIndex: calcRisk(ccData.metrics) },
-          children: []
+          // A MÁGICA: O 4º Nível das Equipes
+          children: Array.from(ccData.teams.entries()).map(([teamName, teamData]) => ({
+            id: `${ccCode}-${teamName}`, name: teamName, type: 'TEAM' as const,
+            metrics: { ...teamData.metrics, headcount: teamData.metrics.headcount.size, riskIndex: calcRisk(teamData.metrics) },
+            children: []
+          })).sort((a, b) => b.metrics.riskIndex - a.metrics.riskIndex) // Ordena as equipes mais críticas primeiro
         })).sort((a, b) => b.metrics.riskIndex - a.metrics.riskIndex)
       })).sort((a, b) => b.metrics.riskIndex - a.metrics.riskIndex)
     };
