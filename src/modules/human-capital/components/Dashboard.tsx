@@ -231,6 +231,7 @@ const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHour
 
   const diffHours = node.metrics.total - node.metrics.plannedHours;
   const diffCost = node.metrics.totalCost - node.metrics.budgetCost;
+  const impactPct = parentTotalHours && parentTotalHours > 0 ? ((node.metrics.total / parentTotalHours) * 100).toFixed(1) : '100';
 
   const formatCost = (v: number) => {
     const abs = Math.abs(v);
@@ -242,60 +243,72 @@ const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHour
   return (
     <React.Fragment>
       <div
-        className={`flex items-center justify-between py-2.5 pr-4 border-b border-slate-100 hover:bg-slate-50 transition-colors ${hasChildren ? 'cursor-pointer' : ''}`}
+        className={`flex items-center justify-between py-3 pr-4 border-b border-slate-100 hover:bg-slate-50 transition-colors ${hasChildren ? 'cursor-pointer' : ''}`}
         style={{ paddingLeft: `${(level * 1.5) + 1}rem` }}
         onClick={() => hasChildren && setIsExpanded(!isExpanded)}
       >
         {/* Esquerda: Identificação */}
-        <div className="flex items-center gap-2 flex-1 min-w-[250px]">
-          <div className="w-4 flex justify-center">
+        <div className="flex items-center gap-2 flex-1 min-w-[250px] mr-4">
+          <div className="w-4 flex justify-center shrink-0">
             {hasChildren ? (
               <span className="text-slate-400 font-bold text-xs">{isExpanded ? '▼' : '▶'}</span>
             ) : <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>}
           </div>
-          {getIcon()}
+          <div className="shrink-0">{getIcon()}</div>
           <span className={`text-sm truncate ${level === 0 ? 'font-black text-slate-800' : level === 1 ? 'font-bold text-slate-700' : 'font-medium text-slate-600'}`} title={node.name}>
             {node.name}
           </span>
         </div>
 
-        {/* Direita: Métricas (Tabela Analítica) */}
-        <div className="flex items-center gap-6 justify-end shrink-0">
-          {/* Efetivo */}
-          <div className="w-16 text-right">
-            <span className="text-xs font-mono font-medium text-slate-700" title="Efetivo Total">{node.metrics.headcount}</span>
+        {/* Direita: Métricas (Tabela Analítica em Blocos) */}
+        <div className="flex items-center gap-4 justify-end shrink-0">
+
+          {/* Impacto % */}
+          <div className="w-16 flex justify-center">
+            {level > 0 ? (
+              <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100" title={`Representa ${impactPct}% do agrupamento pai`}>
+                {impactPct}%
+              </span>
+            ) : (
+              <span className="text-[10px] text-slate-400">-</span>
+            )}
           </div>
 
-          {/* Horas (Plan | Real | Dif) */}
-          <div className="w-48 flex items-center justify-end gap-2 text-xs font-mono">
+          {/* Efetivo */}
+          <div className="w-16 text-center">
+            <span className="text-xs font-mono font-bold text-slate-700" title="Efetivo Total">{node.metrics.headcount}</span>
+          </div>
+
+          {/* BLOCO ISOLADO: Horas (Plan | Real | Dif) */}
+          <div className="w-[240px] flex items-center justify-between bg-slate-50 border border-slate-200 rounded-md px-3 py-1.5 text-xs font-mono shadow-sm">
             <span className="text-slate-400 w-12 text-right" title="Planejado">{formatDecimalHours(node.metrics.plannedHours)}</span>
-            <span className="text-slate-300">|</span>
-            <span className="font-bold text-slate-700 w-12 text-right" title="Real">{formatDecimalHours(node.metrics.total)}</span>
-            <span className={`w-14 text-right font-bold ${diffHours > 0 ? 'text-rose-500' : 'text-emerald-500'}`} title="Diferença">
+            <span className="text-slate-200">|</span>
+            <span className="font-bold text-slate-800 w-12 text-right" title="Real">{formatDecimalHours(node.metrics.total)}</span>
+            <span className={`w-14 text-right font-black ${diffHours > 0 ? 'text-rose-500' : 'text-emerald-500'}`} title="Diferença">
               {diffHours > 0 ? '+' : ''}{formatDecimalHours(diffHours)}
             </span>
           </div>
 
-          {/* Financeiro (Budget | Real | Dif) */}
-          <div className="w-56 flex items-center justify-end gap-2 text-xs font-mono">
-            <span className="text-slate-400 w-16 text-right" title="Budget">R$ {formatCost(node.metrics.budgetCost)}</span>
-            <span className="text-slate-300">|</span>
-            <span className="font-bold text-slate-700 w-16 text-right" title="Custo Real">R$ {formatCost(node.metrics.totalCost)}</span>
-            <span className={`w-16 text-right font-bold ${diffCost > 0 ? 'text-rose-500' : 'text-emerald-500'}`} title="Estouro/Economia">
+          {/* BLOCO ISOLADO: Financeiro (Budget | Real | Dif) */}
+          <div className="w-[280px] flex items-center justify-between bg-emerald-50/50 border border-emerald-100 rounded-md px-3 py-1.5 text-xs font-mono shadow-sm">
+            <span className="text-slate-500 w-16 text-right" title="Budget">R$ {formatCost(node.metrics.budgetCost)}</span>
+            <span className="text-emerald-200">|</span>
+            <span className="font-bold text-emerald-900 w-16 text-right" title="Custo Real">R$ {formatCost(node.metrics.totalCost)}</span>
+            <span className={`w-16 text-right font-black ${diffCost > 0 ? 'text-rose-500' : 'text-emerald-600'}`} title="Estouro/Economia">
               {diffCost > 0 ? '+' : ''}{formatCost(diffCost)}
             </span>
           </div>
 
           {/* Risco */}
           <div className="w-20 flex justify-end">
-            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${node.metrics.riskIndex > 10 ? 'bg-rose-100 text-rose-700' : node.metrics.riskIndex > 5 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${node.metrics.riskIndex > 10 ? 'bg-rose-100 text-rose-700 border border-rose-200' : node.metrics.riskIndex > 5 ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-emerald-100 text-emerald-700 border border-emerald-200'}`}>
               Risco: {node.metrics.riskIndex.toFixed(1)}
             </span>
           </div>
+
         </div>
       </div>
 
-      {/* Renderização Recursiva para Filhos */}
       {isExpanded && hasChildren && (
         <div className="flex flex-col w-full">
           {node.children.map(child => <HierarchicalRow key={child.id} node={child} level={level + 1} parentTotalHours={node.metrics.total} />)}
@@ -908,18 +921,19 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
         <div className="w-full bg-white flex flex-col overflow-x-auto">
           {/* Cabeçalho da Tabela */}
-          <div className="flex items-center justify-between py-2.5 pr-4 pl-4 bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider min-w-[900px]">
+          <div className="flex items-center justify-between py-3 pr-4 pl-4 bg-slate-100 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider min-w-[1100px]">
             <span className="flex-1">Estrutura Organizacional</span>
-            <div className="flex items-center gap-6 justify-end shrink-0">
-              <span className="w-16 text-right" title="Número de Pessoas">Efetivo</span>
-              <span className="w-48 text-center bg-slate-200/50 py-1 rounded">Horas (Plan | Real | Dif)</span>
-              <span className="w-56 text-center bg-slate-200/50 py-1 rounded">Custo (Budget | Real | Dif)</span>
+            <div className="flex items-center gap-4 justify-end shrink-0">
+              <span className="w-16 text-center" title="Impacto percentual no pai">Impacto</span>
+              <span className="w-16 text-center" title="Número de Pessoas">Efetivo</span>
+              <span className="w-[240px] text-center text-slate-600 bg-slate-200/50 py-1.5 rounded-md border border-slate-200/50">Volume de Horas (Plan | Real | Dif)</span>
+              <span className="w-[280px] text-center text-emerald-700 bg-emerald-100/50 py-1.5 rounded-md border border-emerald-200/50">Custo Financeiro (Budget | Real | Dif)</span>
               <span className="w-20 text-right">Risco</span>
             </div>
           </div>
 
           {/* Corpo da Tabela (Árvore) */}
-          <div className="min-w-[900px] pb-4">
+          <div className="min-w-[1100px] pb-4">
             {hierarchicalData.map(node => <HierarchicalRow key={node.id} node={node} level={0} />)}
           </div>
         </div>
