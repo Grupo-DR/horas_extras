@@ -230,7 +230,6 @@ const HierarchicalCard: React.FC<{ node: TreeNode; level: number }> = ({ node, l
     return <Building2 size={16} className="text-slate-400" />;
   };
 
-  // Define larguras específicas para formar a pirâmide sem esticar na tela inteira
   const cardWidth = isGlobal ? 'w-full max-w-lg' : isRegional ? 'w-[340px]' : 'w-[300px]';
   const levelClass = isGlobal
     ? "bg-slate-800 text-white border-slate-700 shadow-xl"
@@ -239,7 +238,7 @@ const HierarchicalCard: React.FC<{ node: TreeNode; level: number }> = ({ node, l
       : "bg-slate-50 text-slate-700 border-slate-200 shadow-sm";
 
   return (
-    <div className="flex flex-col items-center w-full animate-fade-in">
+    <div className={`flex flex-col items-center animate-fade-in ${isGlobal ? 'w-full' : 'w-auto'}`}>
       {/* O CARTÃO (NÓ DA PIRÂMIDE) */}
       <div
         className={`rounded-2xl border transition-all duration-300 relative overflow-hidden ${cardWidth} ${levelClass} p-5 ${hasChildren ? 'cursor-pointer hover:shadow-2xl hover:-translate-y-1' : ''}`}
@@ -301,7 +300,7 @@ const HierarchicalCard: React.FC<{ node: TreeNode; level: number }> = ({ node, l
           <div className="w-px h-6 bg-slate-300" />
 
           {/* Contêiner de Filhos: Regionais lado a lado (Row), CCs empilhados (Col) */}
-          <div className={`flex ${isGlobal ? 'flex-row flex-wrap justify-center gap-6' : 'flex-col gap-4'}`}>
+          <div className={`flex ${isGlobal ? 'flex-row flex-wrap justify-center items-start gap-8 w-full' : 'flex-col gap-4'}`}>
             {node.children.map(child => (
               <HierarchicalCard key={child.id} node={child} level={level + 1} />
             ))}
