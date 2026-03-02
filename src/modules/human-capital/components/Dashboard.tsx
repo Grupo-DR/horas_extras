@@ -220,7 +220,6 @@ const HierarchicalCard: React.FC<{ node: TreeNode; level: number }> = ({ node, l
   const [isExpanded, setIsExpanded] = React.useState(level === 0);
   const hasChildren = node.children && node.children.length > 0;
 
-  // Estilização baseada no nível hierárquico
   const isGlobal = level === 0;
   const isRegional = level === 1;
   const isCC = level === 2;
@@ -231,21 +230,21 @@ const HierarchicalCard: React.FC<{ node: TreeNode; level: number }> = ({ node, l
     return <Building2 size={16} className="text-slate-400" />;
   };
 
-  const cardBaseClass = `rounded-2xl border transition-all duration-300 ${hasChildren ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5' : ''}`;
+  // Define larguras específicas para formar a pirâmide sem esticar na tela inteira
+  const cardWidth = isGlobal ? 'w-full max-w-lg' : isRegional ? 'w-[340px]' : 'w-[300px]';
   const levelClass = isGlobal
     ? "bg-slate-800 text-white border-slate-700 shadow-xl"
     : isRegional
-      ? "bg-white text-slate-800 border-slate-200 shadow-sm"
+      ? "bg-white text-slate-800 border-slate-200 shadow-md"
       : "bg-slate-50 text-slate-700 border-slate-200 shadow-sm";
 
   return (
-    <div className="flex flex-col w-full animate-fade-in">
-      {/* O CARTÃO */}
+    <div className="flex flex-col items-center w-full animate-fade-in">
+      {/* O CARTÃO (NÓ DA PIRÂMIDE) */}
       <div
-        className={`${cardBaseClass} ${levelClass} p-5 relative overflow-hidden`}
+        className={`rounded-2xl border transition-all duration-300 relative overflow-hidden ${cardWidth} ${levelClass} p-5 ${hasChildren ? 'cursor-pointer hover:shadow-2xl hover:-translate-y-1' : ''}`}
         onClick={() => hasChildren && setIsExpanded(!isExpanded)}
       >
-        {/* Efeito visual Premium para o Global */}
         {isGlobal && <div className="absolute top-0 right-0 -mr-8 -mt-8 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />}
 
         <div className="flex justify-between items-start gap-4 relative z-10">
@@ -254,53 +253,55 @@ const HierarchicalCard: React.FC<{ node: TreeNode; level: number }> = ({ node, l
               {getIcon()}
             </div>
             <div>
-              <h4 className={`font-bold ${isGlobal ? 'text-2xl' : isRegional ? 'text-lg' : 'text-sm'}`}>
+              <h4 className={`font-bold ${isGlobal ? 'text-xl' : isRegional ? 'text-base' : 'text-sm'}`}>
                 {node.name}
               </h4>
-              <p className={`text-xs mt-0.5 font-medium ${isGlobal ? 'text-slate-400' : 'text-slate-500'}`}>
-                {node.type === 'GLOBAL' ? 'Visão Corporativa (Total)' : node.type === 'REGIONAL' ? 'Agrupamento Regional' : 'Centro de Custo (Operação)'}
+              <p className={`text-[10px] mt-0.5 font-bold uppercase tracking-wider ${isGlobal ? 'text-slate-400' : 'text-slate-500'}`}>
+                {node.type === 'GLOBAL' ? 'Visão Corporativa' : node.type === 'REGIONAL' ? 'Agrupamento Regional' : 'Centro de Custo'}
               </p>
             </div>
           </div>
 
           {hasChildren && (
             <div className={`p-1.5 rounded-full transition-transform ${isExpanded ? 'rotate-180' : ''} ${isGlobal ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
-              <ChevronDown size={18} />
+              <ChevronDown size={16} />
             </div>
           )}
         </div>
 
-        {/* KPIs do Cartão */}
-        <div className={`grid grid-cols-3 gap-4 mt-6 pt-4 border-t ${isGlobal ? 'border-slate-700/50' : 'border-slate-200/60'}`}>
-          <div className="flex flex-col gap-1.5">
-            <span className={`text-[10px] uppercase font-bold tracking-wider ${isGlobal ? 'text-slate-400' : 'text-slate-500'} flex items-center gap-1.5`}>
-              <User size={14} /> Efetivo Alocado
+        {/* KPIs Centralizados */}
+        <div className={`grid grid-cols-3 gap-2 mt-5 pt-4 border-t ${isGlobal ? 'border-slate-700/50' : 'border-slate-200/60'}`}>
+          <div className="flex flex-col items-center text-center gap-1">
+            <span className={`text-[9px] uppercase font-bold tracking-wider ${isGlobal ? 'text-slate-400' : 'text-slate-500'} flex items-center gap-1`}>
+              <User size={12} /> Efetivo
             </span>
-            <span className={`font-mono font-black ${isGlobal ? 'text-2xl' : 'text-xl'}`}>{node.metrics.headcount}</span>
+            <span className={`font-mono font-black ${isGlobal ? 'text-xl' : 'text-lg'}`}>{node.metrics.headcount}</span>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <span className={`text-[10px] uppercase font-bold tracking-wider ${isGlobal ? 'text-slate-400' : 'text-slate-500'} flex items-center gap-1.5`}>
-              <Clock size={14} /> Horas Extras Totais
+          <div className="flex flex-col items-center text-center gap-1">
+            <span className={`text-[9px] uppercase font-bold tracking-wider ${isGlobal ? 'text-slate-400' : 'text-slate-500'} flex items-center gap-1`}>
+              <Clock size={12} /> Horas
             </span>
-            <span className={`font-mono font-black ${isGlobal ? 'text-2xl' : 'text-xl'}`}>{formatDecimalHours(node.metrics.total)}</span>
+            <span className={`font-mono font-black ${isGlobal ? 'text-xl' : 'text-lg'}`}>{formatDecimalHours(node.metrics.total)}</span>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <span className={`text-[10px] uppercase font-bold tracking-wider ${isGlobal ? 'text-slate-400' : 'text-slate-500'} flex items-center gap-1.5`}>
-              <AlertTriangle size={14} /> Nível de Risco
+          <div className="flex flex-col items-center text-center gap-1">
+            <span className={`text-[9px] uppercase font-bold tracking-wider ${isGlobal ? 'text-slate-400' : 'text-slate-500'} flex items-center gap-1`}>
+              <AlertTriangle size={12} /> Risco
             </span>
-            <div className="flex items-center h-full">
-              <span className={`px-2.5 py-1 rounded-md text-sm font-black ${node.metrics.riskIndex > 10 ? 'bg-rose-100 text-rose-700 border border-rose-200' : node.metrics.riskIndex > 5 ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-emerald-100 text-emerald-700 border border-emerald-200'}`}>
-                {node.metrics.riskIndex.toFixed(1)}
-              </span>
-            </div>
+            <span className={`px-2 py-0.5 rounded text-xs font-black ${node.metrics.riskIndex > 10 ? 'bg-rose-100 text-rose-700' : node.metrics.riskIndex > 5 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+              {node.metrics.riskIndex.toFixed(1)}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* ÁREA EXPANDIDA (FILHOS) */}
+      {/* ÁREA EXPANDIDA (OS DEGRAUS DA PIRÂMIDE) */}
       {isExpanded && hasChildren && (
-        <div className={`mt-4 mb-2 ml-4 pl-6 border-l-2 ${isGlobal ? 'border-indigo-500/30' : 'border-slate-200'}`}>
-          <div className={`grid grid-cols-1 ${isGlobal ? 'xl:grid-cols-2' : ''} gap-5`}>
+        <div className="flex flex-col items-center w-full mt-2">
+          {/* Linha vertical conectando o pai aos filhos */}
+          <div className="w-px h-6 bg-slate-300" />
+
+          {/* Contêiner de Filhos: Regionais lado a lado (Row), CCs empilhados (Col) */}
+          <div className={`flex ${isGlobal ? 'flex-row flex-wrap justify-center gap-6' : 'flex-col gap-4'}`}>
             {node.children.map(child => (
               <HierarchicalCard key={child.id} node={child} level={level + 1} />
             ))}
