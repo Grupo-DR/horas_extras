@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, SalaryRecord } from '../types';
-import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, AlertTriangle, Moon, Scale, Percent, ArrowUpRight, ArrowDownRight, X, User, DollarSign, ListFilter, ShieldAlert, Zap } from 'lucide-react';
+import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, AlertTriangle, Moon, Scale, Percent, ArrowUpRight, ArrowDownRight, X, User, DollarSign, ListFilter, ShieldAlert, Zap, ChevronDown, ChevronRight } from 'lucide-react';
 import { formatDecimalHours } from '../utils/formatters';
 import { getAllPlanningRecords, getBudgetsSync, getSalariesSync } from '../services/planning';
 import { getCCName, getCCRegional, normalizeCC } from '../data/ccMaster';
@@ -216,57 +216,98 @@ const CostCenterDetailModal: React.FC<{
   );
 };
 
-const HierarchicalRow: React.FC<{ node: TreeNode; level: number }> = ({ node, level }) => {
+const HierarchicalCard: React.FC<{ node: TreeNode; level: number }> = ({ node, level }) => {
   const [isExpanded, setIsExpanded] = React.useState(level === 0);
   const hasChildren = node.children && node.children.length > 0;
 
+  // Estilização baseada no nível hierárquico
+  const isGlobal = level === 0;
+  const isRegional = level === 1;
+  const isCC = level === 2;
+
   const getIcon = () => {
-    if (node.type === 'GLOBAL') return <Building2 size={16} className="text-indigo-600" />;
-    if (node.type === 'REGIONAL') return <Briefcase size={16} className="text-blue-500" />;
-    return <Clock size={16} className="text-slate-400" />;
+    if (isGlobal) return <Building2 size={24} className="text-indigo-400" />;
+    if (isRegional) return <Briefcase size={20} className="text-blue-500" />;
+    return <Building2 size={16} className="text-slate-400" />;
   };
 
+  const cardBaseClass = `rounded-2xl border transition-all duration-300 ${hasChildren ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5' : ''}`;
+  const levelClass = isGlobal
+    ? "bg-slate-800 text-white border-slate-700 shadow-xl"
+    : isRegional
+      ? "bg-white text-slate-800 border-slate-200 shadow-sm"
+      : "bg-slate-50 text-slate-700 border-slate-200 shadow-sm";
+
   return (
-    <React.Fragment>
+    <div className="flex flex-col w-full animate-fade-in">
+      {/* O CARTÃO */}
       <div
-        className={`flex items-center justify-between py-3 pr-4 border-b border-slate-100 hover:bg-slate-50 transition-colors ${hasChildren ? 'cursor-pointer' : ''}`}
-        style={{ paddingLeft: `${(level * 1.5) + 1}rem` }}
+        className={`${cardBaseClass} ${levelClass} p-5 relative overflow-hidden`}
         onClick={() => hasChildren && setIsExpanded(!isExpanded)}
       >
-        <div className="flex items-center gap-2 flex-1">
-          <div className="w-4 flex justify-center">
-            {hasChildren ? (
-              <span className="text-slate-400 font-bold text-xs">{isExpanded ? '▼' : '▶'}</span>
-            ) : <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>}
+        {/* Efeito visual Premium para o Global */}
+        {isGlobal && <div className="absolute top-0 right-0 -mr-8 -mt-8 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />}
+
+        <div className="flex justify-between items-start gap-4 relative z-10">
+          <div className="flex items-center gap-3">
+            <div className={`p-2.5 rounded-xl ${isGlobal ? 'bg-slate-700/80 shadow-inner' : isRegional ? 'bg-blue-50' : 'bg-white shadow-sm'}`}>
+              {getIcon()}
+            </div>
+            <div>
+              <h4 className={`font-bold ${isGlobal ? 'text-2xl' : isRegional ? 'text-lg' : 'text-sm'}`}>
+                {node.name}
+              </h4>
+              <p className={`text-xs mt-0.5 font-medium ${isGlobal ? 'text-slate-400' : 'text-slate-500'}`}>
+                {node.type === 'GLOBAL' ? 'Visão Corporativa (Total)' : node.type === 'REGIONAL' ? 'Agrupamento Regional' : 'Centro de Custo (Operação)'}
+              </p>
+            </div>
           </div>
-          {getIcon()}
-          <span className={`text-sm ${level === 0 ? 'font-black text-slate-800' : level === 1 ? 'font-bold text-slate-700' : 'font-medium text-slate-600'}`}>
-            {node.name}
-          </span>
+
+          {hasChildren && (
+            <div className={`p-1.5 rounded-full transition-transform ${isExpanded ? 'rotate-180' : ''} ${isGlobal ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
+              <ChevronDown size={18} />
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-8 w-[400px] justify-end shrink-0">
-          <div className="flex items-center gap-1.5 w-20 justify-end" title="Efetivo (Pessoas)">
-            <User size={12} className="text-slate-400" />
-            <span className="text-xs font-mono font-medium text-slate-700">{node.metrics.headcount}</span>
-          </div>
-          <div className="flex items-center gap-1.5 w-24 justify-end" title="Total de Horas Extras">
-            <Clock size={12} className="text-slate-400" />
-            <span className="text-xs font-mono font-bold text-slate-700">{formatDecimalHours(node.metrics.total)}</span>
-          </div>
-          <div className="w-24 flex justify-end">
-            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${node.metrics.riskIndex > 10 ? 'bg-rose-100 text-rose-700' : node.metrics.riskIndex > 5 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
-              Risco: {node.metrics.riskIndex.toFixed(1)}
+        {/* KPIs do Cartão */}
+        <div className={`grid grid-cols-3 gap-4 mt-6 pt-4 border-t ${isGlobal ? 'border-slate-700/50' : 'border-slate-200/60'}`}>
+          <div className="flex flex-col gap-1.5">
+            <span className={`text-[10px] uppercase font-bold tracking-wider ${isGlobal ? 'text-slate-400' : 'text-slate-500'} flex items-center gap-1.5`}>
+              <User size={14} /> Efetivo Alocado
             </span>
+            <span className={`font-mono font-black ${isGlobal ? 'text-2xl' : 'text-xl'}`}>{node.metrics.headcount}</span>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <span className={`text-[10px] uppercase font-bold tracking-wider ${isGlobal ? 'text-slate-400' : 'text-slate-500'} flex items-center gap-1.5`}>
+              <Clock size={14} /> Horas Extras Totais
+            </span>
+            <span className={`font-mono font-black ${isGlobal ? 'text-2xl' : 'text-xl'}`}>{formatDecimalHours(node.metrics.total)}</span>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <span className={`text-[10px] uppercase font-bold tracking-wider ${isGlobal ? 'text-slate-400' : 'text-slate-500'} flex items-center gap-1.5`}>
+              <AlertTriangle size={14} /> Nível de Risco
+            </span>
+            <div className="flex items-center h-full">
+              <span className={`px-2.5 py-1 rounded-md text-sm font-black ${node.metrics.riskIndex > 10 ? 'bg-rose-100 text-rose-700 border border-rose-200' : node.metrics.riskIndex > 5 ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-emerald-100 text-emerald-700 border border-emerald-200'}`}>
+                {node.metrics.riskIndex.toFixed(1)}
+              </span>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* ÁREA EXPANDIDA (FILHOS) */}
       {isExpanded && hasChildren && (
-        <div className="flex flex-col w-full">
-          {node.children.map(child => <HierarchicalRow key={child.id} node={child} level={level + 1} />)}
+        <div className={`mt-4 mb-2 ml-4 pl-6 border-l-2 ${isGlobal ? 'border-indigo-500/30' : 'border-slate-200'}`}>
+          <div className={`grid grid-cols-1 ${isGlobal ? 'xl:grid-cols-2' : ''} gap-5`}>
+            {node.children.map(child => (
+              <HierarchicalCard key={child.id} node={child} level={level + 1} />
+            ))}
+          </div>
         </div>
       )}
-    </React.Fragment>
+    </div>
   );
 };
 
@@ -819,23 +860,19 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       </div>
 
       {/* Main Hierarchical View */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col mt-8">
-        <div className="p-5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Building2 size={18} className="text-indigo-600" />
-            <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Visão Executiva (Hierarquia de Operações)</h3>
+      <div className="mt-8">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 bg-indigo-100 text-indigo-700 rounded-lg">
+            <Building2 size={20} />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-slate-800">Visão Executiva (Hierarquia de Operações)</h3>
+            <p className="text-sm text-slate-500">Navegue pelos cartões para explorar o detalhamento de horas.</p>
           </div>
         </div>
-        <div className="w-full bg-white flex flex-col">
-          <div className="flex items-center justify-between py-2 pr-4 pl-4 bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-            <span>Estrutura Organizacional</span>
-            <div className="flex items-center gap-8 w-[400px] justify-end shrink-0">
-              <span className="w-20 text-right">Efetivo</span>
-              <span className="w-24 text-right">Horas Extras</span>
-              <span className="w-24 text-right">Índice Risco</span>
-            </div>
-          </div>
-          {hierarchicalData.map(node => <HierarchicalRow key={node.id} node={node} level={0} />)}
+
+        <div className="w-full">
+          {hierarchicalData.map(node => <HierarchicalCard key={node.id} node={node} level={0} />)}
         </div>
       </div>
     </div>
