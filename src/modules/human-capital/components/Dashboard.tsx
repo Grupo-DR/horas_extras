@@ -16,6 +16,24 @@ interface DashboardProps {
   onNavigateToEmployee?: (name: string, chapa: string) => void;
 }
 
+interface DashboardMetrics {
+  headcount: number;
+  he60: number;
+  he100: number;
+  inter: number;
+  noturno: number;
+  total: number;
+  riskIndex: number;
+}
+
+interface TreeNode {
+  id: string;
+  name: string;
+  type: 'GLOBAL' | 'REGIONAL' | 'CC';
+  metrics: DashboardMetrics;
+  children: TreeNode[];
+}
+
 type ViewMode = 'hours' | 'finance';
 
 
