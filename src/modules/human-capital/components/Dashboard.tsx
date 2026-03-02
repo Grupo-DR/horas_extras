@@ -23,6 +23,7 @@ interface DashboardMetrics {
   inter: number;
   noturno: number;
   total: number;
+  totalCost: number;
   riskIndex: number;
 }
 
@@ -268,8 +269,8 @@ const HierarchicalCard: React.FC<{ node: TreeNode; level: number }> = ({ node, l
           )}
         </div>
 
-        {/* KPIs Centralizados */}
-        <div className={`grid grid-cols-3 gap-2 mt-5 pt-4 border-t ${isGlobal ? 'border-slate-700/50' : 'border-slate-200/60'}`}>
+        {/* KPIs Centralizados (4 Colunas) */}
+        <div className={`grid grid-cols-4 gap-2 mt-5 pt-4 border-t ${isGlobal ? 'border-slate-700/50' : 'border-slate-200/60'}`}>
           <div className="flex flex-col items-center text-center gap-1">
             <span className={`text-[9px] uppercase font-bold tracking-wider ${isGlobal ? 'text-slate-400' : 'text-slate-500'} flex items-center gap-1`}>
               <User size={12} /> Efetivo
@@ -289,6 +290,30 @@ const HierarchicalCard: React.FC<{ node: TreeNode; level: number }> = ({ node, l
             <span className={`px-2 py-0.5 rounded text-xs font-black ${node.metrics.riskIndex > 10 ? 'bg-rose-100 text-rose-700' : node.metrics.riskIndex > 5 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
               {node.metrics.riskIndex.toFixed(1)}
             </span>
+          </div>
+          <div className="flex flex-col items-center text-center gap-1">
+            <span className={`text-[9px] uppercase font-bold tracking-wider ${isGlobal ? 'text-slate-400' : 'text-slate-500'} flex items-center gap-1`}>
+              <DollarSign size={12} /> Custo (R$)
+            </span>
+            <span className={`font-mono font-black ${isGlobal ? 'text-xl text-emerald-400' : 'text-lg text-emerald-600'}`}>
+              {node.metrics.totalCost > 1000000 ? `${(node.metrics.totalCost / 1000000).toFixed(2)}M` : node.metrics.totalCost > 1000 ? `${(node.metrics.totalCost / 1000).toFixed(1)}k` : node.metrics.totalCost.toFixed(0)}
+            </span>
+          </div>
+        </div>
+
+        {/* Raio-X das Horas (Breakdown) */}
+        <div className={`mt-4 flex items-center justify-between gap-1 text-[9px] font-mono font-bold rounded-lg p-2 ${isGlobal ? 'bg-slate-900/40 text-slate-300' : 'bg-slate-100/80 text-slate-600'}`}>
+          <div className="flex items-center gap-1" title="Horas Extras 60%">
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-500" /> 60%: {formatDecimalHours(node.metrics.he60)}
+          </div>
+          <div className="flex items-center gap-1" title="Horas Extras 100%">
+            <div className="w-1.5 h-1.5 rounded-full bg-red-500" /> 100%: {formatDecimalHours(node.metrics.he100)}
+          </div>
+          <div className="flex items-center gap-1" title="Interjornada">
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-500" /> INT: {formatDecimalHours(node.metrics.inter)}
+          </div>
+          <div className="flex items-center gap-1" title="Adicional Noturno">
+            <div className="w-1.5 h-1.5 rounded-full bg-purple-500" /> NOT: {formatDecimalHours(node.metrics.noturno)}
           </div>
         </div>
       </div>
@@ -590,7 +615,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
   }, [data, planningRecords, selectedCcModal, salariesMap]);
 
   const hierarchicalData = useMemo(() => {
-    const globalMetrics = { headcount: new Set<string>(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0 };
+    const globalMetrics = { headcount: new Set<string>(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0, totalCost: 0 };
     const regionalMap = new Map<string, { metrics: any, ccs: Map<string, any> }>();
 
     data.forEach(r => {
@@ -607,19 +632,25 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
       if (!isHE60 && !isHE100 && !isInter && !isNoturno) return;
 
-      // Inicializa Regional
+      // Cálculo de Custo Financeiro
+      const sal = salariesMap[r.CHAPA] || 0;
+      const baseHour = sal / 220;
+      let cost = 0;
+      if (isHE60) cost = baseHour * 1.6 * hours;
+      if (isHE100) cost = baseHour * 2.0 * hours;
+      if (isNoturno) cost = baseHour * 0.2 * hours;
+      if (isHE60 || isHE100) cost += cost / 6; // DSR Estimado sobre HE
+
       if (!regionalMap.has(reg)) {
-        regionalMap.set(reg, { metrics: { headcount: new Set(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0 }, ccs: new Map() });
+        regionalMap.set(reg, { metrics: { headcount: new Set(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0, totalCost: 0 }, ccs: new Map() });
       }
       const regData = regionalMap.get(reg)!;
 
-      // Inicializa CC
       if (!regData.ccs.has(cc)) {
-        regData.ccs.set(cc, { name: ccName, metrics: { headcount: new Set(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0 } });
+        regData.ccs.set(cc, { name: ccName, metrics: { headcount: new Set(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0, totalCost: 0 } });
       }
       const ccData = regData.ccs.get(cc)!;
 
-      // Acumula
       [globalMetrics, regData.metrics, ccData.metrics].forEach(m => {
         m.headcount.add(r.CHAPA);
         if (isHE60) m.he60 += hours;
@@ -627,6 +658,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
         if (isInter) m.inter += hours;
         if (isNoturno) m.noturno += hours;
         m.total += hours;
+        m.totalCost += cost;
       });
     });
 
@@ -647,7 +679,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     };
 
     return [root];
-  }, [data]);
+  }, [data, salariesMap]);
 
   const ToggleButtons = ({ mode, setMode }: { mode: ViewMode, setMode: (m: ViewMode) => void }) => (
     <div className="flex bg-gray-200 p-1 rounded-xl h-9">
