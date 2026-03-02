@@ -216,6 +216,60 @@ const CostCenterDetailModal: React.FC<{
   );
 };
 
+const HierarchicalRow: React.FC<{ node: TreeNode; level: number }> = ({ node, level }) => {
+  const [isExpanded, setIsExpanded] = React.useState(level === 0);
+  const hasChildren = node.children && node.children.length > 0;
+
+  const getIcon = () => {
+    if (node.type === 'GLOBAL') return <Building2 size={16} className="text-indigo-600" />;
+    if (node.type === 'REGIONAL') return <Briefcase size={16} className="text-blue-500" />;
+    return <Clock size={16} className="text-slate-400" />;
+  };
+
+  return (
+    <React.Fragment>
+      <div
+        className={`flex items-center justify-between py-3 pr-4 border-b border-slate-100 hover:bg-slate-50 transition-colors ${hasChildren ? 'cursor-pointer' : ''}`}
+        style={{ paddingLeft: `${(level * 1.5) + 1}rem` }}
+        onClick={() => hasChildren && setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center gap-2 flex-1">
+          <div className="w-4 flex justify-center">
+            {hasChildren ? (
+              <span className="text-slate-400 font-bold text-xs">{isExpanded ? '▼' : '▶'}</span>
+            ) : <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>}
+          </div>
+          {getIcon()}
+          <span className={`text-sm ${level === 0 ? 'font-black text-slate-800' : level === 1 ? 'font-bold text-slate-700' : 'font-medium text-slate-600'}`}>
+            {node.name}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-8 w-[400px] justify-end shrink-0">
+          <div className="flex items-center gap-1.5 w-20 justify-end" title="Efetivo (Pessoas)">
+            <User size={12} className="text-slate-400" />
+            <span className="text-xs font-mono font-medium text-slate-700">{node.metrics.headcount}</span>
+          </div>
+          <div className="flex items-center gap-1.5 w-24 justify-end" title="Total de Horas Extras">
+            <Clock size={12} className="text-slate-400" />
+            <span className="text-xs font-mono font-bold text-slate-700">{formatDecimalHours(node.metrics.total)}</span>
+          </div>
+          <div className="w-24 flex justify-end">
+            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${node.metrics.riskIndex > 10 ? 'bg-rose-100 text-rose-700' : node.metrics.riskIndex > 5 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+              Risco: {node.metrics.riskIndex.toFixed(1)}
+            </span>
+          </div>
+        </div>
+      </div>
+      {isExpanded && hasChildren && (
+        <div className="flex flex-col w-full">
+          {node.children.map(child => <HierarchicalRow key={child.id} node={child} level={level + 1} />)}
+        </div>
+      )}
+    </React.Fragment>
+  );
+};
+
 const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMonthKeys, onNavigateToEmployee }) => {
   const [ccSearch, setCcSearch] = useState('');
   const [funcSearch, setFuncSearch] = useState('');
@@ -494,6 +548,66 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       .sort((a, b) => b.real - a.real);
   }, [data, planningRecords, selectedCcModal, salariesMap]);
 
+  const hierarchicalData = useMemo(() => {
+    const globalMetrics = { headcount: new Set<string>(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0 };
+    const regionalMap = new Map<string, { metrics: any, ccs: Map<string, any> }>();
+
+    data.forEach(r => {
+      const rawCC = r.CODCCUSTO || 'S/ CC';
+      const cc = normalizeCC(rawCC);
+      const ccName = resolveName(rawCC);
+      const reg = getCCRegional(rawCC) || 'Sem Regional';
+      const hours = Number(r.HORAS) || 0;
+      const evt = (r.EVENTO || '').toUpperCase();
+      const isHE60 = evt.includes('EXTRA') && evt.includes('60');
+      const isHE100 = evt.includes('EXTRA') && evt.includes('100');
+      const isInter = evt.includes('INTER');
+      const isNoturno = evt.includes('NOTURNO') || evt.includes('20');
+
+      if (!isHE60 && !isHE100 && !isInter && !isNoturno) return;
+
+      // Inicializa Regional
+      if (!regionalMap.has(reg)) {
+        regionalMap.set(reg, { metrics: { headcount: new Set(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0 }, ccs: new Map() });
+      }
+      const regData = regionalMap.get(reg)!;
+
+      // Inicializa CC
+      if (!regData.ccs.has(cc)) {
+        regData.ccs.set(cc, { name: ccName, metrics: { headcount: new Set(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0 } });
+      }
+      const ccData = regData.ccs.get(cc)!;
+
+      // Acumula
+      [globalMetrics, regData.metrics, ccData.metrics].forEach(m => {
+        m.headcount.add(r.CHAPA);
+        if (isHE60) m.he60 += hours;
+        if (isHE100) m.he100 += hours;
+        if (isInter) m.inter += hours;
+        if (isNoturno) m.noturno += hours;
+        m.total += hours;
+      });
+    });
+
+    const calcRisk = (m: any) => ((m.he100 * 2.5) + (m.he60 * 1.0) + (m.inter * 5.0) + (m.noturno * 0.5)) / (m.headcount.size || 1);
+
+    const root: TreeNode = {
+      id: 'global', name: 'DR Construtora (Global)', type: 'GLOBAL',
+      metrics: { ...globalMetrics, headcount: globalMetrics.headcount.size, riskIndex: calcRisk(globalMetrics) },
+      children: Array.from(regionalMap.entries()).map(([regName, regData]) => ({
+        id: regName, name: regName, type: 'REGIONAL' as const,
+        metrics: { ...regData.metrics, headcount: regData.metrics.headcount.size, riskIndex: calcRisk(regData.metrics) },
+        children: Array.from(regData.ccs.entries()).map(([ccCode, ccData]) => ({
+          id: ccCode, name: `${ccCode} - ${ccData.name}`, type: 'CC' as const,
+          metrics: { ...ccData.metrics, headcount: ccData.metrics.headcount.size, riskIndex: calcRisk(ccData.metrics) },
+          children: []
+        })).sort((a, b) => b.metrics.riskIndex - a.metrics.riskIndex)
+      })).sort((a, b) => b.metrics.riskIndex - a.metrics.riskIndex)
+    };
+
+    return [root];
+  }, [data]);
+
   const ToggleButtons = ({ mode, setMode }: { mode: ViewMode, setMode: (m: ViewMode) => void }) => (
     <div className="flex bg-gray-200 p-1 rounded-xl h-9">
       <button
@@ -704,205 +818,24 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
       </div>
 
-      {/* Main Tables */}
-      <div className="space-y-8 pt-4">
-        {/* Cost Center Table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col transition-all">
-          <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex flex-wrap justify-between items-center gap-4">
-            <div className="flex items-center gap-4">
-              <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-                <Building2 size={16} className="text-blue-500" />
-                RESUMO POR CENTRO DE CUSTO (CC)
-              </h3>
-              <ToggleButtons mode={ccViewMode} setMode={setCcViewMode} />
-            </div>
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={12} />
-              <input
-                type="text"
-                placeholder="Filtrar CC ou Descrição..."
-                className="pl-7 pr-2 py-1 text-[10px] border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                value={ccSearch}
-                onChange={(e) => setCcSearch(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="w-full">
-            <table className="w-full text-left text-xs text-gray-600">
-              <thead className="bg-gray-100 text-gray-700 font-bold uppercase text-[9px] sticky top-0 z-10">
-                {ccViewMode === 'hours' ? (
-                  <tr>
-                    <th className="px-6 py-4">Código CC</th>
-                    <th className="px-6 py-4">Nome / Descrição</th>
-                    <th className="px-6 py-4 text-right">Horas Plan.</th>
-                    <th className="px-6 py-4 text-right">Horas Real</th>
-                    <th className="px-6 py-4 text-center">Plan. x Real</th>
-                  </tr>
-                ) : (
-                  <tr>
-                    <th className="px-6 py-4">Código CC</th>
-                    <th className="px-6 py-4">Nome / Descrição</th>
-                    <th className="px-6 py-4 text-right">Budget</th>
-                    <th className="px-6 py-4 text-right">Planejado (R$)</th>
-                    <th className="px-6 py-4 text-right">Real (R$)</th>
-                    <th className="px-6 py-4 text-center">Plan. x Real (R$)</th>
-                  </tr>
-                )}
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {ccSummary.map((item) => {
-                  const diffHours = item.planned - item.real;
-                  const diffCost = item.plannedCost - item.realCost;
-
-                  return (
-                    <tr
-                      key={item.cc}
-                      className="hover:bg-blue-50 cursor-pointer transition-colors group"
-                      onClick={() => setSelectedCcModal(item.cc)}
-                    >
-                      <td className="px-6 py-3 font-mono font-medium text-gray-900 group-hover:text-blue-600">{item.cc}</td>
-                      <td className="px-6 py-3 font-medium text-gray-500 group-hover:text-blue-600 flex items-center gap-2">
-                        <span>{item.name}</span>
-                        <ListFilter size={12} className="opacity-0 group-hover:opacity-100 text-blue-400 transition-opacity shrink-0" />
-                      </td>
-
-                      {ccViewMode === 'hours' ? (
-                        <>
-                          <td className="px-6 py-3 text-right font-mono text-gray-400">{formatDecimalHours(item.planned)}</td>
-                          <td className="px-6 py-3 text-right font-mono font-bold text-gray-800">{formatDecimalHours(item.real)}</td>
-                          <td className="px-6 py-3 text-center">
-                            <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${diffHours < 0 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                              {diffHours > 0 ? `+${formatDecimalHours(diffHours)}` : formatDecimalHours(diffHours)}
-                            </span>
-                          </td>
-                        </>
-                      ) : (
-                        <>
-                          <td className="px-6 py-3 text-right font-mono text-gray-400">R$ {item.budget.toLocaleString('pt-BR')}</td>
-                          <td className="px-6 py-3 text-right font-mono text-blue-600">R$ {item.plannedCost.toLocaleString('pt-BR')}</td>
-                          <td className="px-6 py-3 text-right font-mono font-bold text-gray-800">R$ {item.realCost.toLocaleString('pt-BR')}</td>
-                          <td className="px-6 py-3 text-center">
-                            <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${diffCost < 0 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                              R$ {diffCost.toLocaleString('pt-BR')}
-                            </span>
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-          <div className="p-4 bg-gray-50 border-t border-gray-100">
-            <p className="text-[10px] text-gray-400 font-bold uppercase text-center flex items-center justify-center gap-2">
-              <ListFilter size={14} className="text-blue-400" />
-              Clique no nome de um CC para ver o detalhamento por função
-            </p>
+      {/* Main Hierarchical View */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col mt-8">
+        <div className="p-5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Building2 size={18} className="text-indigo-600" />
+            <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Visão Executiva (Hierarquia de Operações)</h3>
           </div>
         </div>
-
-        {/* Function Table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col transition-all">
-          <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex flex-wrap justify-between items-center gap-4">
-            <div className="flex items-center gap-4">
-              <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-                <Briefcase size={16} className="text-indigo-500" />
-                RESUMO POR FUNÇÃO
-              </h3>
-              <ToggleButtons mode={funcViewMode} setMode={setFuncViewMode} />
-            </div>
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={12} />
-              <input
-                type="text"
-                placeholder="Filtrar Função..."
-                className="pl-7 pr-2 py-1 text-[10px] border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                value={funcSearch}
-                onChange={(e) => setFuncSearch(e.target.value)}
-              />
+        <div className="w-full bg-white flex flex-col">
+          <div className="flex items-center justify-between py-2 pr-4 pl-4 bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            <span>Estrutura Organizacional</span>
+            <div className="flex items-center gap-8 w-[400px] justify-end shrink-0">
+              <span className="w-20 text-right">Efetivo</span>
+              <span className="w-24 text-right">Horas Extras</span>
+              <span className="w-24 text-right">Índice Risco</span>
             </div>
           </div>
-          <div className="w-full">
-            <table className="w-full text-left text-xs text-gray-600">
-              <thead className="bg-gray-100 text-gray-700 font-bold uppercase text-[9px] sticky top-0 z-10">
-                {funcViewMode === 'hours' ? (
-                  <tr>
-                    <th className="px-6 py-4">Função</th>
-                    <th className="px-6 py-4 text-right">Plan.</th>
-                    <th className="px-6 py-4 text-right">Real</th>
-                    <th className="px-6 py-4 text-center">Plan. x Real</th>
-                    <th className="px-6 py-4 text-right">% Impacto</th>
-                  </tr>
-                ) : (
-                  <tr>
-                    <th className="px-6 py-4">Função</th>
-                    <th className="px-6 py-4 text-right">Custo Plan.</th>
-                    <th className="px-6 py-4 text-right">Custo Real</th>
-                    <th className="px-6 py-4 text-center">Plan. x Real (R$)</th>
-                    <th className="px-6 py-4 text-right">% Impacto (R$)</th>
-                  </tr>
-                )}
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {funcSummary.map((item) => {
-                  const diffHours = item.planned - item.real;
-                  const diffCost = item.plannedCost - item.realCost;
-
-                  return (
-                    <tr
-                      key={item.name}
-                      className="hover:bg-indigo-50 cursor-pointer transition-colors group"
-                      onClick={() => setSelectedFuncModal(item.name)}
-                    >
-                      <td className="px-6 py-4 font-medium text-gray-900 group-hover:text-indigo-600 flex items-center gap-2">
-                        <span>{item.name}</span>
-                        <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 text-indigo-400 transition-opacity shrink-0" />
-                      </td>
-
-                      {funcViewMode === 'hours' ? (
-                        <>
-                          <td className="px-6 py-4 text-right font-mono text-gray-400">{formatDecimalHours(item.planned)}</td>
-                          <td className="px-6 py-4 text-right font-mono font-bold text-gray-800">{formatDecimalHours(item.real)}</td>
-                          <td className="px-6 py-4 text-center">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${diffHours < 0 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                              {diffHours > 0 ? `+${formatDecimalHours(diffHours)}` : formatDecimalHours(diffHours)}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <span className="text-[10px] text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded-full">
-                              {(item.real / (metrics.realTotalHE || 1) * 100).toFixed(1)}%
-                            </span>
-                          </td>
-                        </>
-                      ) : (
-                        <>
-                          <td className="px-6 py-4 text-right font-mono text-blue-600">R$ {item.plannedCost.toLocaleString('pt-BR')}</td>
-                          <td className="px-6 py-4 text-right font-mono font-bold text-gray-800">R$ {item.realCost.toLocaleString('pt-BR')}</td>
-                          <td className="px-6 py-4 text-center">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${diffCost < 0 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                              R$ {diffCost.toLocaleString('pt-BR')}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full">
-                              {(item.realCost / (metrics.totalRealCost || 1) * 100).toFixed(1)}%
-                            </span>
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-          <div className="p-4 bg-gray-50 border-t border-gray-100">
-            <p className="text-[10px] text-gray-400 font-bold uppercase text-center flex items-center justify-center gap-2">
-              <ArrowUpRight size={14} className="text-indigo-400" />
-              Clique em uma função para ver o detalhamento por colaborador
-            </p>
-          </div>
+          {hierarchicalData.map(node => <HierarchicalRow key={node.id} node={node} level={0} />)}
         </div>
       </div>
     </div>
