@@ -608,10 +608,62 @@ const DistributionHistogram: React.FC<{ data: OvertimeRecord[]; onBucketClick?: 
 };
 
 // ────────────────────────────────────────────────────────────
+// Sub-componente: Modal de Ajuda do Mapa de Pressão
+// ────────────────────────────────────────────────────────────
+const PressureHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
+                    <h3 className="text-lg font-semibold text-slate-800">Entendendo o Mapa de Pressão</h3>
+                    <button
+                        onClick={onClose}
+                        className="text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 p-2 rounded-full transition-colors"
+                    >
+                        <X size={20} />
+                    </button>
+                </div>
+                <div className="p-6 overflow-y-auto space-y-5 text-sm text-slate-600">
+                    <div className="flex items-start gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <div className="text-xl mt-0.5">🌡️</div>
+                        <div>
+                            <strong className="text-slate-800 block mb-1">O que é o Mapa de Pressão?</strong>
+                            <p>É um <em>Heatmap</em> (Mapa de Calor) que identifica quais Centros de Custo estão a sofrer o maior desgaste operacional e a gerar o maior passivo trabalhista.</p>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <div className="text-xl mt-0.5">🧮</div>
+                        <div>
+                            <strong className="text-slate-700 block text-base mb-1">O Índice de Risco:</strong>
+                            Não olhamos apenas para o volume de horas, mas para a <em>gravidade</em> delas. O sistema calcula um índice ponderado onde: HE 60% tem peso normal (x1), HE 100% tem peso alto (x2.5) e Violação de Interjornada tem peso crítico (x5). Esse total é então dividido pelo número de pessoas (Headcount) da equipa.
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <div className="text-xl mt-0.5">🎨</div>
+                        <div>
+                            <strong className="text-slate-700 block text-base mb-1">Cores (Cápsulas):</strong>
+                            Quanto mais forte for a cor da cápsula (Vermelho para HE 100%, Laranja para Interjornada, Azul para as restantes), maior é o volume médio de horas por pessoa naquele Centro de Custo.
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3 border-t border-slate-100 pt-4 mt-2">
+                        <div className="text-xl mt-0.5">🎯</div>
+                        <div>
+                            <strong className="text-rose-700 block text-base mb-1">Ação:</strong>
+                            Foque as suas auditorias nas equipas que estão no topo da tabela com a barra de Risco vermelha quase cheia.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ────────────────────────────────────────────────────────────
 // Sub-componente: Tabela Detalhada por Colaborador
 // ────────────────────────────────────────────────────────────
 const EmployeeTable: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
     const [search, setSearch] = useState('');
+    const [showHelp, setShowHelp] = useState(false);
 
     const employeeSummary = useMemo(() => {
         const map: Record<string, {
@@ -762,12 +814,19 @@ const PressureMap: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
     const maxRisk = Math.max(...tableData.map(d => d.riskIndex), 1);
 
     return (
-        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-md shadow-slate-200/50 overflow-hidden">
-            <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-md shadow-slate-200/50 overflow-hidden relative">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                 <div className="flex items-center gap-2">
                     <Activity size={18} className="text-rose-500" />
                     <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Mapa de Pressão por Centro de Custo</h3>
                 </div>
+                <button
+                    onClick={() => setShowHelp(true)}
+                    className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+                    title="Como ler este mapa?"
+                >
+                    <Info size={18} />
+                </button>
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-slate-600 border-collapse">
@@ -820,6 +879,7 @@ const PressureMap: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
                     </tbody>
                 </table>
             </div>
+            {showHelp && <PressureHelpModal onClose={() => setShowHelp(false)} />}
         </div>
     );
 };
