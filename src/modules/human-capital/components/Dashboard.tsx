@@ -1,7 +1,6 @@
-
 import React, { useMemo, useState } from 'react';
 import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, SalaryRecord } from '../types';
-import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, AlertTriangle, Moon, Scale, Percent, ArrowUpRight, ArrowDownRight, X, User, DollarSign, ListFilter, ShieldAlert, Zap, ChevronDown, ChevronRight } from 'lucide-react';
+import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, AlertTriangle, Moon, Scale, Percent, ArrowUpRight, ArrowDownRight, X, User, DollarSign, ListFilter, ShieldAlert, Zap, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { formatDecimalHours } from '../utils/formatters';
 import { getAllPlanningRecords, getBudgetsSync, getSalariesSync } from '../services/planning';
 import { getCCName, getCCRegional, normalizeCC } from '../data/ccMaster';
@@ -38,6 +37,49 @@ interface TreeNode {
 }
 
 type ViewMode = 'hours' | 'finance';
+
+const TreeGridHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden relative z-10 animate-scale-in">
+      <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+            <Building2 size={20} />
+          </div>
+          <h3 className="text-lg font-bold text-slate-800">Entendendo a Visão Analítica Executiva</h3>
+        </div>
+        <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+          <X size={20} />
+        </button>
+      </div>
+      <div className="p-6 space-y-5 text-sm text-slate-600 max-h-[70vh] overflow-y-auto">
+        <p>Esta tabela (Tree Grid) permite uma auditoria Top-Down (de cima para baixo) dos seus passivos trabalhistas.</p>
+
+        <div className="space-y-3">
+          <div className="flex gap-3"><div className="mt-1"><Zap size={18} className="text-indigo-500" /></div><div><strong className="text-slate-800">Visão Operacional:</strong> Focada em descobrir a CAUSA do problema. Mostra as horas planejadas vs reais e o raio-x exato de onde essas horas vieram (60%, 100%, Interjornada ou Noturno).</div></div>
+
+          <div className="flex gap-3"><div className="mt-1"><Wallet size={18} className="text-emerald-500" /></div><div><strong className="text-slate-800">Visão Financeira:</strong> Focada na dor no bolso. Oculta o volume de horas e foca exclusivamente no Custo Estimado e no Budget (Orçamento) disponível.</div></div>
+
+          <div className="flex gap-3"><div className="mt-1"><AlertTriangle size={18} className="text-amber-500" /></div><div>
+            <strong className="text-slate-800">Como o Risco é Calculado?</strong> Não é apenas uma soma. É um algoritmo ponderado pela gravidade da infração dividido pelo tamanho da equipa:<br />
+            <ul className="list-disc pl-5 mt-2 space-y-1 text-slate-500">
+              <li><strong className="text-slate-700">HE 60%:</strong> Peso 1.0 (Risco Padrão)</li>
+              <li><strong className="text-slate-700">HE 100%:</strong> Peso 2.5 (Risco Alto)</li>
+              <li><strong className="text-slate-700">Noturno:</strong> Peso 0.5 (Risco Baixo)</li>
+              <li><strong className="text-slate-700">Interjornada:</strong> Peso 5.0 (Risco Crítico CLT)</li>
+            </ul>
+          </div></div>
+
+          <div className="flex gap-3"><div className="mt-1"><span className="px-1.5 py-0.5 rounded font-bold text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-100">%</span></div><div><strong className="text-slate-800">Impacto %:</strong> Mostra a representatividade daquela linha em relação ao nível superior. Ex: Quantos % da dor de cabeça da Regional Leste vêm da obra X.</div></div>
+        </div>
+      </div>
+      <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+        <button onClick={onClose} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 font-bold rounded-lg hover:bg-slate-50 shadow-sm transition-colors">Entendi</button>
+      </div>
+    </div>
+  </div>
+);
 
 
 const FunctionDetailModal: React.FC<{
@@ -219,18 +261,13 @@ const CostCenterDetailModal: React.FC<{
   );
 };
 
-const HierarchicalRow: React.FC<{
-  node: TreeNode;
-  level: number;
-  parentTotalHours?: number;
-  viewMode: 'financial' | 'operational';
-}> = ({ node, level, parentTotalHours, viewMode }) => {
+const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHours?: number; viewMode: 'financial' | 'operational' }> = ({ node, level, parentTotalHours, viewMode }) => {
   const [isExpanded, setIsExpanded] = React.useState(level === 0);
   const hasChildren = node.children && node.children.length > 0;
 
   const getIcon = () => {
     if (node.type === 'GLOBAL') return <Building2 size={16} className="text-indigo-600" />;
-    if (node.type === 'REGIONAL') return <Briefcase size={16} className="text-blue-500" />;
+    if (node.type === 'REGIONAL') return <Briefcase size={16} className="text-blue-600" />;
     return <Clock size={16} className="text-slate-400" />;
   };
 
@@ -245,58 +282,59 @@ const HierarchicalRow: React.FC<{
     return v.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
   };
 
+  // Cores dinâmicas por nível para facilitar o entendimento da hierarquia
+  const rowBgClass = level === 0
+    ? 'bg-slate-200/80 hover:bg-slate-300/80 border-slate-300'
+    : level === 1
+      ? 'bg-slate-100/50 hover:bg-slate-200/50 border-slate-200'
+      : 'bg-white hover:bg-slate-50 border-slate-100';
+
   return (
     <React.Fragment>
       <div
-        className={`flex items-center justify-between py-3 pr-4 border-b border-slate-100 hover:bg-slate-50 transition-colors ${hasChildren ? 'cursor-pointer' : ''}`}
+        className={`flex items-center justify-between py-3 pr-4 border-b transition-colors ${rowBgClass} ${hasChildren ? 'cursor-pointer' : ''}`}
         style={{ paddingLeft: `${(level * 1.5) + 1}rem` }}
         onClick={() => hasChildren && setIsExpanded(!isExpanded)}
       >
-        {/* Esquerda: Identificação */}
         <div className="flex items-center gap-2 flex-1 min-w-[250px] mr-4">
           <div className="w-4 flex justify-center shrink-0">
             {hasChildren ? (
-              <span className="text-slate-400 font-bold text-xs">{isExpanded ? '▼' : '▶'}</span>
+              <span className={`font-bold text-xs ${level === 0 ? 'text-slate-600' : 'text-slate-400'}`}>{isExpanded ? '▼' : '▶'}</span>
             ) : <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>}
           </div>
-          <div className="shrink-0">{getIcon()}</div>
-          <span className={`text-sm truncate ${level === 0 ? 'font-black text-slate-800' : level === 1 ? 'font-bold text-slate-700' : 'font-medium text-slate-600'}`} title={node.name}>
+          <div className={`shrink-0 p-1 rounded ${level === 0 ? 'bg-white shadow-sm' : ''}`}>{getIcon()}</div>
+          <span className={`text-sm truncate ${level === 0 ? 'font-black text-slate-800' : level === 1 ? 'font-bold text-slate-800' : 'font-medium text-slate-600'}`} title={node.name}>
             {node.name}
           </span>
         </div>
 
-        {/* Direita: Métricas (Tabela Analítica em Blocos) */}
         <div className="flex items-center gap-4 justify-end shrink-0">
-
-          {/* Impacto % */}
           <div className="w-16 flex justify-center">
             {level > 0 ? (
-              <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100" title={`Representa ${impactPct}% do agrupamento pai`}>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${level === 1 ? 'text-indigo-800 bg-indigo-100 border-indigo-200' : 'text-indigo-700 bg-indigo-50 border-indigo-100'}`} title={`Representa ${impactPct}% do agrupamento pai`}>
                 {impactPct}%
               </span>
-            ) : (
-              <span className="text-[10px] text-slate-400">-</span>
-            )}
+            ) : <span className="text-[10px] text-slate-400">-</span>}
           </div>
 
-          {/* Efetivo */}
           <div className="w-16 text-center">
             <span className="text-xs font-mono font-bold text-slate-700" title="Efetivo Total">{node.metrics.headcount}</span>
           </div>
 
-          {/* BLOCO ISOLADO: Horas (Plan | Real | Dif) */}
-          <div className="w-[240px] flex items-center justify-between bg-slate-50 border border-slate-200 rounded-md px-3 py-1.5 text-xs font-mono shadow-sm">
-            <span className="text-slate-400 w-12 text-right" title="Planejado">{formatDecimalHours(node.metrics.plannedHours)}</span>
-            <span className="text-slate-200">|</span>
-            <span className="font-bold text-slate-800 w-12 text-right" title="Real">{formatDecimalHours(node.metrics.total)}</span>
-            <span className={`w-14 text-right font-black ${diffHours > 0 ? 'text-rose-500' : 'text-emerald-500'}`} title="Diferença">
-              {diffHours > 0 ? '+' : ''}{formatDecimalHours(diffHours)}
-            </span>
-          </div>
+          {/* Oculta Volume de Horas no modo Financeiro */}
+          {viewMode === 'operational' && (
+            <div className={`w-[240px] flex items-center justify-between border rounded-md px-3 py-1.5 text-xs font-mono shadow-sm ${level === 0 ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-200'}`}>
+              <span className="text-slate-400 w-12 text-right" title="Planejado">{formatDecimalHours(node.metrics.plannedHours)}</span>
+              <span className="text-slate-200">|</span>
+              <span className="font-bold text-slate-800 w-12 text-right" title="Real">{formatDecimalHours(node.metrics.total)}</span>
+              <span className={`w-14 text-right font-black ${diffHours > 0 ? 'text-rose-500' : 'text-emerald-500'}`} title="Diferença">
+                {diffHours > 0 ? '+' : ''}{formatDecimalHours(diffHours)}
+              </span>
+            </div>
+          )}
 
-          {/* RENDERIZAÇÃO CONDICIONAL: Financeiro vs Operacional */}
           {viewMode === 'financial' ? (
-            <div className="w-[280px] flex items-center justify-between bg-emerald-50/50 border border-emerald-100 rounded-md px-3 py-1.5 text-xs font-mono shadow-sm">
+            <div className={`w-[280px] flex items-center justify-between border rounded-md px-3 py-1.5 text-xs font-mono shadow-sm ${level === 0 ? 'bg-emerald-100/50 border-emerald-200' : 'bg-emerald-50/50 border-emerald-100'}`}>
               <span className="text-slate-500 w-16 text-right" title="Budget">R$ {formatCost(node.metrics.budgetCost)}</span>
               <span className="text-emerald-200">|</span>
               <span className="font-bold text-emerald-900 w-16 text-right" title="Custo Real">R$ {formatCost(node.metrics.totalCost)}</span>
@@ -305,36 +343,21 @@ const HierarchicalRow: React.FC<{
               </span>
             </div>
           ) : (
-            <div className="w-[280px] flex items-center justify-between bg-indigo-50/40 border border-indigo-100 rounded-md px-2 py-1.5 text-[10px] font-mono shadow-sm">
-              <div className="flex flex-col items-center w-1/4 border-r border-indigo-100/50" title="Horas Extras 60%">
-                <span className="text-indigo-400 font-bold mb-0.5 uppercase text-[8px]">60%</span>
-                <span className="font-black text-slate-700">{formatDecimalHours(node.metrics.he60)}</span>
-              </div>
-              <div className="flex flex-col items-center w-1/4 border-r border-indigo-100/50" title="Horas Extras 100%">
-                <span className="text-rose-400 font-bold mb-0.5 uppercase text-[8px]">100%</span>
-                <span className="font-black text-slate-700">{formatDecimalHours(node.metrics.he100)}</span>
-              </div>
-              <div className="flex flex-col items-center w-1/4 border-r border-indigo-100/50" title="Interjornada">
-                <span className="text-amber-500 font-bold mb-0.5 uppercase text-[8px]">Inter</span>
-                <span className="font-black text-slate-700">{formatDecimalHours(node.metrics.inter)}</span>
-              </div>
-              <div className="flex flex-col items-center w-1/4" title="Adicional Noturno">
-                <span className="text-purple-400 font-bold mb-0.5 uppercase text-[8px]">Noturno</span>
-                <span className="font-black text-slate-700">{formatDecimalHours(node.metrics.noturno)}</span>
-              </div>
+            <div className={`w-[280px] flex items-center justify-between border rounded-md px-2 py-1.5 text-[10px] font-mono shadow-sm ${level === 0 ? 'bg-indigo-100/40 border-indigo-200' : 'bg-indigo-50/40 border-indigo-100'}`}>
+              <div className="flex flex-col items-center w-1/4 border-r border-indigo-100/50"><span className="text-indigo-500 font-bold mb-0.5 uppercase text-[8px]">60%</span><span className="font-black text-slate-700">{formatDecimalHours(node.metrics.he60)}</span></div>
+              <div className="flex flex-col items-center w-1/4 border-r border-indigo-100/50"><span className="text-rose-400 font-bold mb-0.5 uppercase text-[8px]">100%</span><span className="font-black text-slate-700">{formatDecimalHours(node.metrics.he100)}</span></div>
+              <div className="flex flex-col items-center w-1/4 border-r border-indigo-100/50"><span className="text-amber-500 font-bold mb-0.5 uppercase text-[8px]">Inter</span><span className="font-black text-slate-700">{formatDecimalHours(node.metrics.inter)}</span></div>
+              <div className="flex flex-col items-center w-1/4"><span className="text-purple-400 font-bold mb-0.5 uppercase text-[8px]">Noturno</span><span className="font-black text-slate-700">{formatDecimalHours(node.metrics.noturno)}</span></div>
             </div>
           )}
 
-          {/* Risco */}
           <div className="w-20 flex justify-end">
             <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${node.metrics.riskIndex > 10 ? 'bg-rose-100 text-rose-700 border border-rose-200' : node.metrics.riskIndex > 5 ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-emerald-100 text-emerald-700 border border-emerald-200'}`}>
               Risco: {node.metrics.riskIndex.toFixed(1)}
             </span>
           </div>
-
         </div>
       </div>
-
       {isExpanded && hasChildren && (
         <div className="flex flex-col w-full">
           {node.children.map(child => <HierarchicalRow key={child.id} node={child} level={level + 1} parentTotalHours={node.metrics.total} viewMode={viewMode} />)}
@@ -352,6 +375,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
   const [ccViewMode, setCcViewMode] = useState<ViewMode>('hours');
   const [funcViewMode, setFuncViewMode] = useState<ViewMode>('hours');
   const [treeViewMode, setTreeViewMode] = React.useState<'financial' | 'operational'>('financial');
+  const [showTreeHelp, setShowTreeHelp] = React.useState(false);
 
   const planningRecords = useMemo(() => getAllPlanningRecords(), []);
   // Filtra budgets pelos monthKeys cobertos pelo período atual
@@ -938,54 +962,46 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       </div>
 
       {/* Visão Analítica Hierárquica (Tree Grid) */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col mt-8 animate-fade-in">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col mt-8 animate-fade-in relative">
+        {showTreeHelp && <TreeGridHelpModal onClose={() => setShowTreeHelp(false)} />}
 
-        {/* Header com Toggle */}
         <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Building2 size={18} className="text-indigo-600" />
             <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Visão Analítica Executiva (Plan vs Real)</h3>
+            <button onClick={() => setShowTreeHelp(true)} className="ml-2 text-slate-400 hover:text-indigo-500 transition-colors p-1" title="Como ler esta tabela?">
+              <Info size={16} />
+            </button>
           </div>
 
-          {/* O Toggle de Visão */}
           <div className="flex bg-slate-200/60 p-1 rounded-lg">
-            <button
-              onClick={() => setTreeViewMode('financial')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${treeViewMode === 'financial' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              <Wallet size={14} /> Financeiro
-            </button>
-            <button
-              onClick={() => setTreeViewMode('operational')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${treeViewMode === 'operational' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              <Zap size={14} /> Operacional
-            </button>
+            <button onClick={() => setTreeViewMode('financial')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${treeViewMode === 'financial' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}><Wallet size={14} /> Financeiro</button>
+            <button onClick={() => setTreeViewMode('operational')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${treeViewMode === 'operational' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}><Zap size={14} /> Operacional</button>
           </div>
         </div>
 
         <div className="w-full bg-white flex flex-col overflow-x-auto">
-          {/* Cabeçalho das Colunas */}
-          <div className="flex items-center justify-between py-3 pr-4 pl-4 bg-slate-100 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider min-w-[1100px]">
+          <div className="flex items-center justify-between py-3 pr-4 pl-4 bg-slate-100 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider min-w-[900px]">
             <span className="flex-1">Estrutura Organizacional</span>
             <div className="flex items-center gap-4 justify-end shrink-0">
               <span className="w-16 text-center" title="Impacto percentual no pai">Impacto</span>
               <span className="w-16 text-center" title="Número de Pessoas">Efetivo</span>
-              <span className="w-[240px] text-center text-slate-600 bg-slate-200/50 py-1.5 rounded-md border border-slate-200/50">Volume de Horas (Plan | Real | Dif)</span>
 
-              {/* Título Condicional da 4ª Coluna */}
+              {treeViewMode === 'operational' && (
+                <span className="w-[240px] text-center text-slate-600 bg-slate-200/50 py-1.5 rounded-md border border-slate-200/50 transition-all">Volume de Horas (Plan | Real | Dif)</span>
+              )}
+
               {treeViewMode === 'financial' ? (
-                <span className="w-[280px] text-center text-emerald-700 bg-emerald-100/50 py-1.5 rounded-md border border-emerald-200/50 transition-colors">Custo Financeiro (Budget | Real | Dif)</span>
+                <span className="w-[280px] text-center text-emerald-700 bg-emerald-100/50 py-1.5 rounded-md border border-emerald-200/50 transition-all">Custo Financeiro (Budget | Real | Dif)</span>
               ) : (
-                <span className="w-[280px] text-center text-indigo-700 bg-indigo-100/50 py-1.5 rounded-md border border-indigo-200/50 transition-colors">Breakdown de Horas (Origem do Passivo)</span>
+                <span className="w-[280px] text-center text-indigo-700 bg-indigo-100/50 py-1.5 rounded-md border border-indigo-200/50 transition-all">Breakdown de Horas (Origem do Passivo)</span>
               )}
 
               <span className="w-20 text-right">Risco</span>
             </div>
           </div>
 
-          {/* Corpo da Tabela (Árvore) */}
-          <div className="min-w-[1100px] pb-4">
+          <div className="min-w-[900px] pb-4">
             {hierarchicalData.map(node => <HierarchicalRow key={node.id} node={node} level={0} viewMode={treeViewMode} />)}
           </div>
         </div>
