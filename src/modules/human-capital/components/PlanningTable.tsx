@@ -126,9 +126,8 @@ export const PlanningTable: React.FC<PlanningTableProps> = ({ records, onEdit, o
             const hours = Number(r.plannedHours) || 0;
             const hc = Number(r.headcount) || 0;
 
-            // Custo Estimado Básico (Pode ser refinado depois conectando ao salariesMap)
-            // Assumindo R$ 25/h como custo médio de hora extra planeada para efeito de dashboard
-            const estCost = hours * 25;
+            // Utiliza o custo real calculado no Planning.tsx, ou o básico de R$ 25/h se não existir
+            const estCost = r.customEstCost !== undefined ? r.customEstCost : (hours * 25);
 
             if (!regionalMap.has(reg)) {
                 regionalMap.set(reg, { metrics: { totalHours: 0, totalHeadcount: 0, estimatedCost: 0 }, ccs: new Map() });

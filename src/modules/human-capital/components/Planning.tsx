@@ -982,37 +982,52 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                 </div>
 
                 <div className="p-6 bg-gray-50 min-h-[400px]">
-                    {displayTeams.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 opacity-50">
-                            <LayoutList size={48} className="text-gray-300 mb-4" />
-                            <p className="text-lg font-bold text-gray-500">Nenhuma equipe criada</p>
-                            <p className="text-sm text-gray-400">Clique em "Nova Equipe" para começar</p>
-                        </div>
-                    ) : (
-                        displayTeams.map(team => {
+                    <PlanningTable
+                        records={displayTeams.map(team => {
                             const teamEmployees = team.memberChapas
                                 .map(chapa => getEmpObj(chapa))
-                                .filter((e): e is { nome: string; chapa: string; cc: string; regional: string } => !!e);
+                                .filter(e => !!e);
 
-                            return (
-                                <TeamCard
-                                    key={team.id}
-                                    team={team}
-                                    employees={teamEmployees}
-                                    plans={plans}
-                                    salaries={salaries}
-                                    mode={mode}
-                                    periodStart={periodStart}
-                                    periodEnd={periodEnd}
-                                    weekDays={weekDays}
-                                    onPlanChange={handlePlanChange}
-                                    onEmployeeClick={handleEmployeeClick}
-                                    onAddMember={setAddMemberTeamId}
-                                    onDeleteTeam={handleDeleteTeam}
-                                />
-                            );
-                        })
-                    )}
+                            let totalHours = 0;
+                            let totalCost = 0;
+
+                            teamEmployees.forEach((emp: any) => {
+                                const salary = salaries[emp.chapa];
+                                if (mode === 'MONTHLY') {
+                                    const hours = plans[emp.chapa] || 0;
+                                    totalHours += hours;
+                                    if (salary) totalCost += (salary / 220) * 1.6 * hours;
+                                } else {
+                                    const curr = new Date(periodStart);
+                                    while (curr <= periodEnd) {
+                                        const key = `${emp.chapa}_${formatDateKey(curr)}`;
+                                        const hours = plans[key] || 0;
+                                        totalHours += hours;
+                                        if (salary && hours > 0) {
+                                            const isSunday = curr.getDay() === 0;
+                                            const baseHour = salary / 220;
+                                            const multiplier = isSunday ? 2.0 : 1.6;
+                                            totalCost += baseHour * multiplier * hours;
+                                        }
+                                        curr.setDate(curr.getDate() + 1);
+                                    }
+                                }
+                            });
+
+                            return {
+                                id: team.id,
+                                description: team.name,
+                                costCenter: team.costCenter,
+                                headcount: team.memberChapas.length,
+                                plannedHours: totalHours,
+                                customEstCost: totalCost,
+                                date: selectedMonth,
+                                shift: team.managerName || 'Integral'
+                            };
+                        })}
+                        onDelete={handleDeleteTeam}
+                        salariesMap={salaries}
+                    />
                 </div>
             </div>
         </div>
