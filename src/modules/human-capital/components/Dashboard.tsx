@@ -219,29 +219,18 @@ const CostCenterDetailModal: React.FC<{
   );
 };
 
-const HierarchicalCard: React.FC<{ node: TreeNode; level: number; parentTotalHours?: number }> = ({ node, level, parentTotalHours }) => {
+const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHours?: number }> = ({ node, level, parentTotalHours }) => {
   const [isExpanded, setIsExpanded] = React.useState(level === 0);
   const hasChildren = node.children && node.children.length > 0;
 
-  const isGlobal = level === 0;
-  const isRegional = level === 1;
-
   const getIcon = () => {
-    if (isGlobal) return <Building2 size={24} className="text-indigo-400" />;
-    if (isRegional) return <Briefcase size={20} className="text-blue-500" />;
-    return <Building2 size={16} className="text-slate-400" />;
+    if (node.type === 'GLOBAL') return <Building2 size={16} className="text-indigo-600" />;
+    if (node.type === 'REGIONAL') return <Briefcase size={16} className="text-blue-500" />;
+    return <Clock size={16} className="text-slate-400" />;
   };
-
-  const cardWidth = isGlobal ? 'w-full max-w-xl' : isRegional ? 'w-[360px]' : 'w-[320px]';
-  const levelClass = isGlobal
-    ? "bg-slate-800 text-white border-slate-700 shadow-xl"
-    : isRegional
-      ? "bg-white text-slate-800 border-slate-200 shadow-md"
-      : "bg-slate-50 text-slate-700 border-slate-200 shadow-sm";
 
   const diffHours = node.metrics.total - node.metrics.plannedHours;
   const diffCost = node.metrics.totalCost - node.metrics.budgetCost;
-  const impactPct = parentTotalHours && parentTotalHours > 0 ? ((node.metrics.total / parentTotalHours) * 100).toFixed(1) : '100';
 
   const formatCost = (v: number) => {
     const abs = Math.abs(v);
@@ -251,92 +240,68 @@ const HierarchicalCard: React.FC<{ node: TreeNode; level: number; parentTotalHou
   };
 
   return (
-    <div className={`flex flex-col items-center animate-fade-in ${isGlobal ? 'w-full' : 'w-auto'}`}>
+    <React.Fragment>
       <div
-        className={`rounded-2xl border transition-all duration-300 relative overflow-hidden ${cardWidth} ${levelClass} p-5 ${hasChildren ? 'cursor-pointer hover:shadow-2xl hover:-translate-y-1' : ''}`}
+        className={`flex items-center justify-between py-2.5 pr-4 border-b border-slate-100 hover:bg-slate-50 transition-colors ${hasChildren ? 'cursor-pointer' : ''}`}
+        style={{ paddingLeft: `${(level * 1.5) + 1}rem` }}
         onClick={() => hasChildren && setIsExpanded(!isExpanded)}
       >
-        {isGlobal && <div className="absolute top-0 right-0 -mr-8 -mt-8 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />}
-
-        {/* CABEÇALHO (Apenas Ícone e Nome) */}
-        <div className="flex justify-between items-center gap-4 relative z-10">
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${isGlobal ? 'bg-slate-700/80' : isRegional ? 'bg-blue-50' : 'bg-white shadow-sm'}`}>
-              {getIcon()}
-            </div>
-            <h4 className={`font-bold ${isGlobal ? 'text-xl' : isRegional ? 'text-base' : 'text-sm'} leading-tight`} title={node.name}>
-              {node.name.length > 35 ? node.name.substring(0, 35) + '...' : node.name}
-            </h4>
+        {/* Esquerda: Identificação */}
+        <div className="flex items-center gap-2 flex-1 min-w-[250px]">
+          <div className="w-4 flex justify-center">
+            {hasChildren ? (
+              <span className="text-slate-400 font-bold text-xs">{isExpanded ? '▼' : '▶'}</span>
+            ) : <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>}
           </div>
-          {hasChildren && (
-            <div className={`p-1.5 rounded-full transition-transform ${isExpanded ? 'rotate-180' : ''} ${isGlobal ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-500'} shrink-0`}>
-              <ChevronDown size={16} />
-            </div>
-          )}
+          {getIcon()}
+          <span className={`text-sm truncate ${level === 0 ? 'font-black text-slate-800' : level === 1 ? 'font-bold text-slate-700' : 'font-medium text-slate-600'}`} title={node.name}>
+            {node.name}
+          </span>
         </div>
 
-        {/* AS 4 LINHAS DE DADOS (Data-Ink Ratio Otimizado) */}
-        <div className="flex flex-col gap-2.5 mt-4 relative z-10">
+        {/* Direita: Métricas (Tabela Analítica) */}
+        <div className="flex items-center gap-6 justify-end shrink-0">
+          {/* Efetivo */}
+          <div className="w-16 text-right">
+            <span className="text-xs font-mono font-medium text-slate-700" title="Efetivo Total">{node.metrics.headcount}</span>
+          </div>
 
-          {/* Linha 01: Horas */}
-          <div className={`flex justify-between items-center text-xs p-1.5 rounded ${isGlobal ? 'bg-slate-700/50' : 'bg-slate-50/80 border border-slate-100'}`}>
-            <div className="flex gap-4">
-              <span className={isGlobal ? 'text-slate-300' : 'text-slate-500'}>Plan: <strong className={isGlobal ? 'text-white' : 'text-slate-700'}>{formatDecimalHours(node.metrics.plannedHours)}</strong></span>
-              <span className={isGlobal ? 'text-slate-300' : 'text-slate-500'}>Real: <strong className={isGlobal ? 'text-white' : 'text-slate-900'}>{formatDecimalHours(node.metrics.total)}</strong></span>
-            </div>
-            <span className={`px-1.5 py-0.5 rounded font-bold ${diffHours > 0 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+          {/* Horas (Plan | Real | Dif) */}
+          <div className="w-48 flex items-center justify-end gap-2 text-xs font-mono">
+            <span className="text-slate-400 w-12 text-right" title="Planejado">{formatDecimalHours(node.metrics.plannedHours)}</span>
+            <span className="text-slate-300">|</span>
+            <span className="font-bold text-slate-700 w-12 text-right" title="Real">{formatDecimalHours(node.metrics.total)}</span>
+            <span className={`w-14 text-right font-bold ${diffHours > 0 ? 'text-rose-500' : 'text-emerald-500'}`} title="Diferença">
               {diffHours > 0 ? '+' : ''}{formatDecimalHours(diffHours)}
             </span>
           </div>
 
-          {/* Linha 02: Breakdown de Horas */}
-          <div className={`flex items-center justify-between text-[9px] font-mono font-bold rounded p-1.5 ${isGlobal ? 'bg-slate-900/50 text-slate-300' : 'bg-slate-100/80 text-slate-600'}`}>
-            <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-blue-500" />60%: {formatDecimalHours(node.metrics.he60)}</div>
-            <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-red-500" />100%: {formatDecimalHours(node.metrics.he100)}</div>
-            <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-amber-500" />INT: {formatDecimalHours(node.metrics.inter)}</div>
-            <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-purple-500" />NOT: {formatDecimalHours(node.metrics.noturno)}</div>
-          </div>
-
-          {/* Linha 03: Financeiro */}
-          <div className={`flex justify-between items-center text-xs p-1.5 rounded ${isGlobal ? 'bg-slate-700/50' : 'bg-slate-50/80 border border-slate-100'}`}>
-            <div className="flex gap-4">
-              <span className={isGlobal ? 'text-slate-300' : 'text-slate-500'}>Budget: <strong className={isGlobal ? 'text-white' : 'text-slate-700'}>R$ {formatCost(node.metrics.budgetCost)}</strong></span>
-              <span className={isGlobal ? 'text-slate-300' : 'text-slate-500'}>Real: <strong className={isGlobal ? 'text-white' : 'text-slate-900'}>R$ {formatCost(node.metrics.totalCost)}</strong></span>
-            </div>
-            <span className={`px-1.5 py-0.5 rounded font-bold ${diffCost > 0 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
-              {diffCost > 0 ? '+' : ''}R$ {formatCost(diffCost)}
+          {/* Financeiro (Budget | Real | Dif) */}
+          <div className="w-56 flex items-center justify-end gap-2 text-xs font-mono">
+            <span className="text-slate-400 w-16 text-right" title="Budget">R$ {formatCost(node.metrics.budgetCost)}</span>
+            <span className="text-slate-300">|</span>
+            <span className="font-bold text-slate-700 w-16 text-right" title="Custo Real">R$ {formatCost(node.metrics.totalCost)}</span>
+            <span className={`w-16 text-right font-bold ${diffCost > 0 ? 'text-rose-500' : 'text-emerald-500'}`} title="Estouro/Economia">
+              {diffCost > 0 ? '+' : ''}{formatCost(diffCost)}
             </span>
           </div>
 
-          {/* Linha 04: Risco e Impacto */}
-          <div className={`flex justify-between items-center text-xs pt-1 mt-1 border-t ${isGlobal ? 'border-slate-700' : 'border-slate-100'}`}>
-            <span className={`flex items-center gap-1.5 font-bold ${isGlobal ? 'text-slate-300' : 'text-slate-600'}`}>
-              Risco:
-              <span className={`px-2 py-0.5 rounded text-[10px] font-black ${node.metrics.riskIndex > 10 ? 'bg-rose-100 text-rose-700' : node.metrics.riskIndex > 5 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                {node.metrics.riskIndex.toFixed(1)}
-              </span>
+          {/* Risco */}
+          <div className="w-20 flex justify-end">
+            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${node.metrics.riskIndex > 10 ? 'bg-rose-100 text-rose-700' : node.metrics.riskIndex > 5 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+              Risco: {node.metrics.riskIndex.toFixed(1)}
             </span>
-            {level > 0 && (
-              <span className="text-[10px] text-slate-500 font-semibold flex items-center gap-1">
-                Impacto: <strong className="text-indigo-600 text-xs">{impactPct}%</strong> {isRegional ? 'da DR' : 'da Regional'}
-              </span>
-            )}
           </div>
-
         </div>
       </div>
 
+      {/* Renderização Recursiva para Filhos */}
       {isExpanded && hasChildren && (
-        <div className="flex flex-col items-center w-full mt-2">
-          <div className="w-px h-6 bg-slate-300" />
-          <div className={`flex ${isGlobal ? 'flex-row flex-wrap justify-center items-start gap-8 w-full' : 'flex-col gap-4'}`}>
-            {node.children.map(child => (
-              <HierarchicalCard key={child.id} node={child} level={level + 1} parentTotalHours={node.metrics.total} />
-            ))}
-          </div>
+        <div className="flex flex-col w-full">
+          {node.children.map(child => <HierarchicalRow key={child.id} node={child} level={level + 1} parentTotalHours={node.metrics.total} />)}
         </div>
       )}
-    </div>
+    </React.Fragment>
   );
 };
 
@@ -932,20 +897,31 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
       </div>
 
-      {/* Main Hierarchical View */}
-      <div className="mt-8">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 bg-indigo-100 text-indigo-700 rounded-lg">
-            <Building2 size={20} />
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-slate-800">Visão Executiva (Hierarquia de Operações)</h3>
-            <p className="text-sm text-slate-500">Navegue pelos cartões para explorar o detalhamento de horas.</p>
+      {/* Visão Analítica Hierárquica (Tree Grid) */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col mt-8 animate-fade-in">
+        <div className="p-5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Building2 size={18} className="text-indigo-600" />
+            <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Visão Analítica Executiva (Plan vs Real)</h3>
           </div>
         </div>
 
-        <div className="w-full">
-          {hierarchicalData.map(node => <HierarchicalCard key={node.id} node={node} level={0} />)}
+        <div className="w-full bg-white flex flex-col overflow-x-auto">
+          {/* Cabeçalho da Tabela */}
+          <div className="flex items-center justify-between py-2.5 pr-4 pl-4 bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider min-w-[900px]">
+            <span className="flex-1">Estrutura Organizacional</span>
+            <div className="flex items-center gap-6 justify-end shrink-0">
+              <span className="w-16 text-right" title="Número de Pessoas">Efetivo</span>
+              <span className="w-48 text-center bg-slate-200/50 py-1 rounded">Horas (Plan | Real | Dif)</span>
+              <span className="w-56 text-center bg-slate-200/50 py-1 rounded">Custo (Budget | Real | Dif)</span>
+              <span className="w-20 text-right">Risco</span>
+            </div>
+          </div>
+
+          {/* Corpo da Tabela (Árvore) */}
+          <div className="min-w-[900px] pb-4">
+            {hierarchicalData.map(node => <HierarchicalRow key={node.id} node={node} level={0} />)}
+          </div>
         </div>
       </div>
     </div>
