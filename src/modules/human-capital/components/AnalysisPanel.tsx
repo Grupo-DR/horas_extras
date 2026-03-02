@@ -825,9 +825,59 @@ const PressureMap: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
 };
 
 // ────────────────────────────────────────────────────────────
+// Sub-componente: Modal de Ajuda de Compliance
+// ────────────────────────────────────────────────────────────
+const ComplianceHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
+                    <h3 className="text-lg font-semibold text-slate-800">Entendendo o Compliance Trabalhista</h3>
+                    <button
+                        onClick={onClose}
+                        className="text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 p-2 rounded-full transition-colors"
+                    >
+                        <X size={20} />
+                    </button>
+                </div>
+                <div className="p-6 overflow-y-auto space-y-5 text-sm text-slate-600">
+                    <div className="flex items-start gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <div className="text-xl mt-0.5">🛡️</div>
+                        <div>
+                            <strong className="text-slate-800 block mb-1">O que é este painel?</strong>
+                            <p>Este módulo atua como uma auditoria ativa, monitorizando infrações diretas à legislação trabalhista (CLT) e mapeando o passivo gerado por cada Centro de Custo.</p>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <div className="text-xl mt-0.5">🔴</div>
+                        <div>
+                            <strong className="text-rose-700 block">Violação Diária (&gt; 2h):</strong> A legislação permite um máximo de 2 horas extras por dia útil. O sistema sinaliza automaticamente qualquer colaborador que tenha excedido este limite diário, expondo a empresa a riscos de multas e processos.
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <div className="text-xl mt-0.5">🟠</div>
+                        <div>
+                            <strong className="text-amber-700 block">Violação Mensal (&gt; 44h):</strong> Monitoriza o acúmulo excessivo de horas ao longo da competência (mês). Volumes mensais muito altos indicam subdimensionamento crítico da equipa.
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <div className="text-xl mt-0.5">🎯</div>
+                        <div>
+                            <strong className="text-indigo-700 block">Como auditar (Drill-down):</strong> Clique sobre a linha de qualquer Centro de Custo para expandir o nível de detalhe. O sistema listará os colaboradores infratores. Clique no nome do colaborador para abrir o extrato exato (dia a dia) de quando as infrações ocorreram.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ────────────────────────────────────────────────────────────
 // Sub-componente: Tabela de Compliance Trabalhista
 // ────────────────────────────────────────────────────────────
 const ComplianceTable: React.FC<{ data: OvertimeRecord[]; onRowClick?: (cc: string, ccName: string) => void }> = ({ data, onRowClick }) => {
+    const [showHelp, setShowHelp] = useState(false);
+
     const complianceData = useMemo(() => {
         // Mapeamentos para agregação de horas por CHAPA
         // dailyHours: "CHAPA|YYYY-MM-DD" -> horas
@@ -922,12 +972,21 @@ const ComplianceTable: React.FC<{ data: OvertimeRecord[]; onRowClick?: (cc: stri
     }, [data]);
 
     return (
-        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-md shadow-slate-200/50 overflow-hidden">
-            <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <ShieldAlert size={16} className="text-rose-500" />
-                    <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Compliance Trabalhista (Viol. Limites de Jornada)</h3>
+        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-md shadow-slate-200/50 overflow-hidden relative">
+            <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between mb-0">
+                <div className="flex items-center gap-2">
+                    <AlertTriangle size={18} className="text-rose-500" />
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-700">
+                        Compliance Trabalhista (Viol. Limites de Jornada)
+                    </h3>
                 </div>
+                <button
+                    onClick={() => setShowHelp(true)}
+                    className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+                    title="Como auditar estas informações?"
+                >
+                    <Info size={18} />
+                </button>
             </div>
 
             {complianceData.length === 0 ? (
@@ -981,6 +1040,7 @@ const ComplianceTable: React.FC<{ data: OvertimeRecord[]; onRowClick?: (cc: stri
                     </table>
                 </div>
             )}
+            {showHelp && <ComplianceHelpModal onClose={() => setShowHelp(false)} />}
         </div>
     );
 };
