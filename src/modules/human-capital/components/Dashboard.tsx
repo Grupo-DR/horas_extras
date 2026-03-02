@@ -219,7 +219,12 @@ const CostCenterDetailModal: React.FC<{
   );
 };
 
-const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHours?: number }> = ({ node, level, parentTotalHours }) => {
+const HierarchicalRow: React.FC<{
+  node: TreeNode;
+  level: number;
+  parentTotalHours?: number;
+  viewMode: 'financial' | 'operational';
+}> = ({ node, level, parentTotalHours, viewMode }) => {
   const [isExpanded, setIsExpanded] = React.useState(level === 0);
   const hasChildren = node.children && node.children.length > 0;
 
@@ -289,15 +294,36 @@ const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHour
             </span>
           </div>
 
-          {/* BLOCO ISOLADO: Financeiro (Budget | Real | Dif) */}
-          <div className="w-[280px] flex items-center justify-between bg-emerald-50/50 border border-emerald-100 rounded-md px-3 py-1.5 text-xs font-mono shadow-sm">
-            <span className="text-slate-500 w-16 text-right" title="Budget">R$ {formatCost(node.metrics.budgetCost)}</span>
-            <span className="text-emerald-200">|</span>
-            <span className="font-bold text-emerald-900 w-16 text-right" title="Custo Real">R$ {formatCost(node.metrics.totalCost)}</span>
-            <span className={`w-16 text-right font-black ${diffCost > 0 ? 'text-rose-500' : 'text-emerald-600'}`} title="Estouro/Economia">
-              {diffCost > 0 ? '+' : ''}{formatCost(diffCost)}
-            </span>
-          </div>
+          {/* RENDERIZAÇÃO CONDICIONAL: Financeiro vs Operacional */}
+          {viewMode === 'financial' ? (
+            <div className="w-[280px] flex items-center justify-between bg-emerald-50/50 border border-emerald-100 rounded-md px-3 py-1.5 text-xs font-mono shadow-sm">
+              <span className="text-slate-500 w-16 text-right" title="Budget">R$ {formatCost(node.metrics.budgetCost)}</span>
+              <span className="text-emerald-200">|</span>
+              <span className="font-bold text-emerald-900 w-16 text-right" title="Custo Real">R$ {formatCost(node.metrics.totalCost)}</span>
+              <span className={`w-16 text-right font-black ${diffCost > 0 ? 'text-rose-500' : 'text-emerald-600'}`} title="Estouro/Economia">
+                {diffCost > 0 ? '+' : ''}{formatCost(diffCost)}
+              </span>
+            </div>
+          ) : (
+            <div className="w-[280px] flex items-center justify-between bg-indigo-50/40 border border-indigo-100 rounded-md px-2 py-1.5 text-[10px] font-mono shadow-sm">
+              <div className="flex flex-col items-center w-1/4 border-r border-indigo-100/50" title="Horas Extras 60%">
+                <span className="text-indigo-400 font-bold mb-0.5 uppercase text-[8px]">60%</span>
+                <span className="font-black text-slate-700">{formatDecimalHours(node.metrics.he60)}</span>
+              </div>
+              <div className="flex flex-col items-center w-1/4 border-r border-indigo-100/50" title="Horas Extras 100%">
+                <span className="text-rose-400 font-bold mb-0.5 uppercase text-[8px]">100%</span>
+                <span className="font-black text-slate-700">{formatDecimalHours(node.metrics.he100)}</span>
+              </div>
+              <div className="flex flex-col items-center w-1/4 border-r border-indigo-100/50" title="Interjornada">
+                <span className="text-amber-500 font-bold mb-0.5 uppercase text-[8px]">Inter</span>
+                <span className="font-black text-slate-700">{formatDecimalHours(node.metrics.inter)}</span>
+              </div>
+              <div className="flex flex-col items-center w-1/4" title="Adicional Noturno">
+                <span className="text-purple-400 font-bold mb-0.5 uppercase text-[8px]">Noturno</span>
+                <span className="font-black text-slate-700">{formatDecimalHours(node.metrics.noturno)}</span>
+              </div>
+            </div>
+          )}
 
           {/* Risco */}
           <div className="w-20 flex justify-end">
@@ -311,7 +337,7 @@ const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHour
 
       {isExpanded && hasChildren && (
         <div className="flex flex-col w-full">
-          {node.children.map(child => <HierarchicalRow key={child.id} node={child} level={level + 1} parentTotalHours={node.metrics.total} />)}
+          {node.children.map(child => <HierarchicalRow key={child.id} node={child} level={level + 1} parentTotalHours={node.metrics.total} viewMode={viewMode} />)}
         </div>
       )}
     </React.Fragment>
@@ -325,6 +351,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
   const [selectedCcModal, setSelectedCcModal] = useState<string | null>(null);
   const [ccViewMode, setCcViewMode] = useState<ViewMode>('hours');
   const [funcViewMode, setFuncViewMode] = useState<ViewMode>('hours');
+  const [treeViewMode, setTreeViewMode] = React.useState<'financial' | 'operational'>('financial');
 
   const planningRecords = useMemo(() => getAllPlanningRecords(), []);
   // Filtra budgets pelos monthKeys cobertos pelo período atual
@@ -912,29 +939,54 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
       {/* Visão Analítica Hierárquica (Tree Grid) */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col mt-8 animate-fade-in">
-        <div className="p-5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+
+        {/* Header com Toggle */}
+        <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Building2 size={18} className="text-indigo-600" />
             <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Visão Analítica Executiva (Plan vs Real)</h3>
           </div>
+
+          {/* O Toggle de Visão */}
+          <div className="flex bg-slate-200/60 p-1 rounded-lg">
+            <button
+              onClick={() => setTreeViewMode('financial')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${treeViewMode === 'financial' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              <Wallet size={14} /> Financeiro
+            </button>
+            <button
+              onClick={() => setTreeViewMode('operational')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${treeViewMode === 'operational' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              <Zap size={14} /> Operacional
+            </button>
+          </div>
         </div>
 
         <div className="w-full bg-white flex flex-col overflow-x-auto">
-          {/* Cabeçalho da Tabela */}
+          {/* Cabeçalho das Colunas */}
           <div className="flex items-center justify-between py-3 pr-4 pl-4 bg-slate-100 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider min-w-[1100px]">
             <span className="flex-1">Estrutura Organizacional</span>
             <div className="flex items-center gap-4 justify-end shrink-0">
               <span className="w-16 text-center" title="Impacto percentual no pai">Impacto</span>
               <span className="w-16 text-center" title="Número de Pessoas">Efetivo</span>
               <span className="w-[240px] text-center text-slate-600 bg-slate-200/50 py-1.5 rounded-md border border-slate-200/50">Volume de Horas (Plan | Real | Dif)</span>
-              <span className="w-[280px] text-center text-emerald-700 bg-emerald-100/50 py-1.5 rounded-md border border-emerald-200/50">Custo Financeiro (Budget | Real | Dif)</span>
+
+              {/* Título Condicional da 4ª Coluna */}
+              {treeViewMode === 'financial' ? (
+                <span className="w-[280px] text-center text-emerald-700 bg-emerald-100/50 py-1.5 rounded-md border border-emerald-200/50 transition-colors">Custo Financeiro (Budget | Real | Dif)</span>
+              ) : (
+                <span className="w-[280px] text-center text-indigo-700 bg-indigo-100/50 py-1.5 rounded-md border border-indigo-200/50 transition-colors">Breakdown de Horas (Origem do Passivo)</span>
+              )}
+
               <span className="w-20 text-right">Risco</span>
             </div>
           </div>
 
           {/* Corpo da Tabela (Árvore) */}
           <div className="min-w-[1100px] pb-4">
-            {hierarchicalData.map(node => <HierarchicalRow key={node.id} node={node} level={0} />)}
+            {hierarchicalData.map(node => <HierarchicalRow key={node.id} node={node} level={0} viewMode={treeViewMode} />)}
           </div>
         </div>
       </div>
