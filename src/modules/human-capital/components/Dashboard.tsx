@@ -25,6 +25,8 @@ interface DashboardMetrics {
   total: number;
   totalCost: number;
   riskIndex: number;
+  plannedHours: number;
+  budgetCost: number;
 }
 
 interface TreeNode {
@@ -217,13 +219,12 @@ const CostCenterDetailModal: React.FC<{
   );
 };
 
-const HierarchicalCard: React.FC<{ node: TreeNode; level: number }> = ({ node, level }) => {
+const HierarchicalCard: React.FC<{ node: TreeNode; level: number; parentTotalHours?: number }> = ({ node, level, parentTotalHours }) => {
   const [isExpanded, setIsExpanded] = React.useState(level === 0);
   const hasChildren = node.children && node.children.length > 0;
 
   const isGlobal = level === 0;
   const isRegional = level === 1;
-  const isCC = level === 2;
 
   const getIcon = () => {
     if (isGlobal) return <Building2 size={24} className="text-indigo-400" />;
@@ -231,103 +232,106 @@ const HierarchicalCard: React.FC<{ node: TreeNode; level: number }> = ({ node, l
     return <Building2 size={16} className="text-slate-400" />;
   };
 
-  const cardWidth = isGlobal ? 'w-full max-w-lg' : isRegional ? 'w-[340px]' : 'w-[300px]';
+  const cardWidth = isGlobal ? 'w-full max-w-xl' : isRegional ? 'w-[360px]' : 'w-[320px]';
   const levelClass = isGlobal
     ? "bg-slate-800 text-white border-slate-700 shadow-xl"
     : isRegional
       ? "bg-white text-slate-800 border-slate-200 shadow-md"
       : "bg-slate-50 text-slate-700 border-slate-200 shadow-sm";
 
+  const diffHours = node.metrics.total - node.metrics.plannedHours;
+  const diffCost = node.metrics.totalCost - node.metrics.budgetCost;
+  const impactPct = parentTotalHours && parentTotalHours > 0 ? ((node.metrics.total / parentTotalHours) * 100).toFixed(1) : '100';
+
+  const formatCost = (v: number) => {
+    const abs = Math.abs(v);
+    if (abs >= 1000000) return (v / 1000000).toFixed(2) + 'M';
+    if (abs >= 10000) return (v / 1000).toFixed(1) + 'k';
+    return v.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+  };
+
   return (
     <div className={`flex flex-col items-center animate-fade-in ${isGlobal ? 'w-full' : 'w-auto'}`}>
-      {/* O CARTÃO (NÓ DA PIRÂMIDE) */}
       <div
         className={`rounded-2xl border transition-all duration-300 relative overflow-hidden ${cardWidth} ${levelClass} p-5 ${hasChildren ? 'cursor-pointer hover:shadow-2xl hover:-translate-y-1' : ''}`}
         onClick={() => hasChildren && setIsExpanded(!isExpanded)}
       >
         {isGlobal && <div className="absolute top-0 right-0 -mr-8 -mt-8 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />}
 
-        <div className="flex justify-between items-start gap-4 relative z-10">
+        {/* CABEÇALHO (Apenas Ícone e Nome) */}
+        <div className="flex justify-between items-center gap-4 relative z-10">
           <div className="flex items-center gap-3">
-            <div className={`p-2.5 rounded-xl ${isGlobal ? 'bg-slate-700/80 shadow-inner' : isRegional ? 'bg-blue-50' : 'bg-white shadow-sm'}`}>
+            <div className={`p-2 rounded-lg ${isGlobal ? 'bg-slate-700/80' : isRegional ? 'bg-blue-50' : 'bg-white shadow-sm'}`}>
               {getIcon()}
             </div>
-            <div>
-              <h4 className={`font-bold ${isGlobal ? 'text-xl' : isRegional ? 'text-base' : 'text-sm'}`}>
-                {node.name}
-              </h4>
-              <p className={`text-[10px] mt-0.5 font-bold uppercase tracking-wider ${isGlobal ? 'text-slate-400' : 'text-slate-500'}`}>
-                {node.type === 'GLOBAL' ? 'Visão Corporativa' : node.type === 'REGIONAL' ? 'Agrupamento Regional' : 'Centro de Custo'}
-              </p>
-            </div>
+            <h4 className={`font-bold ${isGlobal ? 'text-xl' : isRegional ? 'text-base' : 'text-sm'} leading-tight`} title={node.name}>
+              {node.name.length > 35 ? node.name.substring(0, 35) + '...' : node.name}
+            </h4>
           </div>
-
           {hasChildren && (
-            <div className={`p-1.5 rounded-full transition-transform ${isExpanded ? 'rotate-180' : ''} ${isGlobal ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
+            <div className={`p-1.5 rounded-full transition-transform ${isExpanded ? 'rotate-180' : ''} ${isGlobal ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-500'} shrink-0`}>
               <ChevronDown size={16} />
             </div>
           )}
         </div>
 
-        {/* KPIs Centralizados (4 Colunas) */}
-        <div className={`grid grid-cols-4 gap-2 mt-5 pt-4 border-t ${isGlobal ? 'border-slate-700/50' : 'border-slate-200/60'}`}>
-          <div className="flex flex-col items-center text-center gap-1">
-            <span className={`text-[9px] uppercase font-bold tracking-wider ${isGlobal ? 'text-slate-400' : 'text-slate-500'} flex items-center gap-1`}>
-              <User size={12} /> Efetivo
-            </span>
-            <span className={`font-mono font-black ${isGlobal ? 'text-xl' : 'text-lg'}`}>{node.metrics.headcount}</span>
-          </div>
-          <div className="flex flex-col items-center text-center gap-1">
-            <span className={`text-[9px] uppercase font-bold tracking-wider ${isGlobal ? 'text-slate-400' : 'text-slate-500'} flex items-center gap-1`}>
-              <Clock size={12} /> Horas
-            </span>
-            <span className={`font-mono font-black ${isGlobal ? 'text-xl' : 'text-lg'}`}>{formatDecimalHours(node.metrics.total)}</span>
-          </div>
-          <div className="flex flex-col items-center text-center gap-1">
-            <span className={`text-[9px] uppercase font-bold tracking-wider ${isGlobal ? 'text-slate-400' : 'text-slate-500'} flex items-center gap-1`}>
-              <AlertTriangle size={12} /> Risco
-            </span>
-            <span className={`px-2 py-0.5 rounded text-xs font-black ${node.metrics.riskIndex > 10 ? 'bg-rose-100 text-rose-700' : node.metrics.riskIndex > 5 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
-              {node.metrics.riskIndex.toFixed(1)}
-            </span>
-          </div>
-          <div className="flex flex-col items-center text-center gap-1">
-            <span className={`text-[9px] uppercase font-bold tracking-wider ${isGlobal ? 'text-slate-400' : 'text-slate-500'} flex items-center gap-1`}>
-              <DollarSign size={12} /> Custo (R$)
-            </span>
-            <span className={`font-mono font-black ${isGlobal ? 'text-xl text-emerald-400' : 'text-lg text-emerald-600'}`}>
-              {node.metrics.totalCost > 1000000 ? `${(node.metrics.totalCost / 1000000).toFixed(2)}M` : node.metrics.totalCost > 1000 ? `${(node.metrics.totalCost / 1000).toFixed(1)}k` : node.metrics.totalCost.toFixed(0)}
-            </span>
-          </div>
-        </div>
+        {/* AS 4 LINHAS DE DADOS (Data-Ink Ratio Otimizado) */}
+        <div className="flex flex-col gap-2.5 mt-4 relative z-10">
 
-        {/* Raio-X das Horas (Breakdown) */}
-        <div className={`mt-4 flex items-center justify-between gap-1 text-[9px] font-mono font-bold rounded-lg p-2 ${isGlobal ? 'bg-slate-900/40 text-slate-300' : 'bg-slate-100/80 text-slate-600'}`}>
-          <div className="flex items-center gap-1" title="Horas Extras 60%">
-            <div className="w-1.5 h-1.5 rounded-full bg-blue-500" /> 60%: {formatDecimalHours(node.metrics.he60)}
+          {/* Linha 01: Horas */}
+          <div className={`flex justify-between items-center text-xs p-1.5 rounded ${isGlobal ? 'bg-slate-700/50' : 'bg-slate-50/80 border border-slate-100'}`}>
+            <div className="flex gap-4">
+              <span className={isGlobal ? 'text-slate-300' : 'text-slate-500'}>Plan: <strong className={isGlobal ? 'text-white' : 'text-slate-700'}>{formatDecimalHours(node.metrics.plannedHours)}</strong></span>
+              <span className={isGlobal ? 'text-slate-300' : 'text-slate-500'}>Real: <strong className={isGlobal ? 'text-white' : 'text-slate-900'}>{formatDecimalHours(node.metrics.total)}</strong></span>
+            </div>
+            <span className={`px-1.5 py-0.5 rounded font-bold ${diffHours > 0 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+              {diffHours > 0 ? '+' : ''}{formatDecimalHours(diffHours)}
+            </span>
           </div>
-          <div className="flex items-center gap-1" title="Horas Extras 100%">
-            <div className="w-1.5 h-1.5 rounded-full bg-red-500" /> 100%: {formatDecimalHours(node.metrics.he100)}
+
+          {/* Linha 02: Breakdown de Horas */}
+          <div className={`flex items-center justify-between text-[9px] font-mono font-bold rounded p-1.5 ${isGlobal ? 'bg-slate-900/50 text-slate-300' : 'bg-slate-100/80 text-slate-600'}`}>
+            <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-blue-500" />60%: {formatDecimalHours(node.metrics.he60)}</div>
+            <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-red-500" />100%: {formatDecimalHours(node.metrics.he100)}</div>
+            <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-amber-500" />INT: {formatDecimalHours(node.metrics.inter)}</div>
+            <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-purple-500" />NOT: {formatDecimalHours(node.metrics.noturno)}</div>
           </div>
-          <div className="flex items-center gap-1" title="Interjornada">
-            <div className="w-1.5 h-1.5 rounded-full bg-amber-500" /> INT: {formatDecimalHours(node.metrics.inter)}
+
+          {/* Linha 03: Financeiro */}
+          <div className={`flex justify-between items-center text-xs p-1.5 rounded ${isGlobal ? 'bg-slate-700/50' : 'bg-slate-50/80 border border-slate-100'}`}>
+            <div className="flex gap-4">
+              <span className={isGlobal ? 'text-slate-300' : 'text-slate-500'}>Budget: <strong className={isGlobal ? 'text-white' : 'text-slate-700'}>R$ {formatCost(node.metrics.budgetCost)}</strong></span>
+              <span className={isGlobal ? 'text-slate-300' : 'text-slate-500'}>Real: <strong className={isGlobal ? 'text-white' : 'text-slate-900'}>R$ {formatCost(node.metrics.totalCost)}</strong></span>
+            </div>
+            <span className={`px-1.5 py-0.5 rounded font-bold ${diffCost > 0 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+              {diffCost > 0 ? '+' : ''}R$ {formatCost(diffCost)}
+            </span>
           </div>
-          <div className="flex items-center gap-1" title="Adicional Noturno">
-            <div className="w-1.5 h-1.5 rounded-full bg-purple-500" /> NOT: {formatDecimalHours(node.metrics.noturno)}
+
+          {/* Linha 04: Risco e Impacto */}
+          <div className={`flex justify-between items-center text-xs pt-1 mt-1 border-t ${isGlobal ? 'border-slate-700' : 'border-slate-100'}`}>
+            <span className={`flex items-center gap-1.5 font-bold ${isGlobal ? 'text-slate-300' : 'text-slate-600'}`}>
+              Risco:
+              <span className={`px-2 py-0.5 rounded text-[10px] font-black ${node.metrics.riskIndex > 10 ? 'bg-rose-100 text-rose-700' : node.metrics.riskIndex > 5 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                {node.metrics.riskIndex.toFixed(1)}
+              </span>
+            </span>
+            {level > 0 && (
+              <span className="text-[10px] text-slate-500 font-semibold flex items-center gap-1">
+                Impacto: <strong className="text-indigo-600 text-xs">{impactPct}%</strong> {isRegional ? 'da DR' : 'da Regional'}
+              </span>
+            )}
           </div>
+
         </div>
       </div>
 
-      {/* ÁREA EXPANDIDA (OS DEGRAUS DA PIRÂMIDE) */}
       {isExpanded && hasChildren && (
         <div className="flex flex-col items-center w-full mt-2">
-          {/* Linha vertical conectando o pai aos filhos */}
           <div className="w-px h-6 bg-slate-300" />
-
-          {/* Contêiner de Filhos: Regionais lado a lado (Row), CCs empilhados (Col) */}
           <div className={`flex ${isGlobal ? 'flex-row flex-wrap justify-center items-start gap-8 w-full' : 'flex-col gap-4'}`}>
             {node.children.map(child => (
-              <HierarchicalCard key={child.id} node={child} level={level + 1} />
+              <HierarchicalCard key={child.id} node={child} level={level + 1} parentTotalHours={node.metrics.total} />
             ))}
           </div>
         </div>
@@ -615,9 +619,24 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
   }, [data, planningRecords, selectedCcModal, salariesMap]);
 
   const hierarchicalData = useMemo(() => {
-    const globalMetrics = { headcount: new Set<string>(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0, totalCost: 0 };
+    const globalMetrics = { headcount: new Set<string>(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0, totalCost: 0, plannedHours: 0, budgetCost: 0 };
     const regionalMap = new Map<string, { metrics: any, ccs: Map<string, any> }>();
 
+    const getRegData = (reg: string) => {
+      if (!regionalMap.has(reg)) {
+        regionalMap.set(reg, { metrics: { headcount: new Set(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0, totalCost: 0, plannedHours: 0, budgetCost: 0 }, ccs: new Map() });
+      }
+      return regionalMap.get(reg)!;
+    };
+
+    const getCcData = (regData: any, cc: string, ccName: string) => {
+      if (!regData.ccs.has(cc)) {
+        regData.ccs.set(cc, { name: ccName, metrics: { headcount: new Set(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0, totalCost: 0, plannedHours: 0, budgetCost: 0 } });
+      }
+      return regData.ccs.get(cc)!;
+    };
+
+    // 1. DADOS REAIS
     data.forEach(r => {
       const rawCC = r.CODCCUSTO || 'S/ CC';
       const cc = normalizeCC(rawCC);
@@ -632,24 +651,16 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
       if (!isHE60 && !isHE100 && !isInter && !isNoturno) return;
 
-      // Cálculo de Custo Financeiro
       const sal = salariesMap[r.CHAPA] || 0;
       const baseHour = sal / 220;
       let cost = 0;
       if (isHE60) cost = baseHour * 1.6 * hours;
       if (isHE100) cost = baseHour * 2.0 * hours;
       if (isNoturno) cost = baseHour * 0.2 * hours;
-      if (isHE60 || isHE100) cost += cost / 6; // DSR Estimado sobre HE
+      if (isHE60 || isHE100) cost += cost / 6;
 
-      if (!regionalMap.has(reg)) {
-        regionalMap.set(reg, { metrics: { headcount: new Set(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0, totalCost: 0 }, ccs: new Map() });
-      }
-      const regData = regionalMap.get(reg)!;
-
-      if (!regData.ccs.has(cc)) {
-        regData.ccs.set(cc, { name: ccName, metrics: { headcount: new Set(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0, totalCost: 0 } });
-      }
-      const ccData = regData.ccs.get(cc)!;
+      const regData = getRegData(reg);
+      const ccData = getCcData(regData, cc, ccName);
 
       [globalMetrics, regData.metrics, ccData.metrics].forEach(m => {
         m.headcount.add(r.CHAPA);
@@ -659,6 +670,36 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
         if (isNoturno) m.noturno += hours;
         m.total += hours;
         m.totalCost += cost;
+      });
+    });
+
+    // 2. DADOS PLANEJADOS
+    planningRecords.forEach(p => {
+      const rawCC = p.costCenter || 'S/ CC';
+      const cc = normalizeCC(rawCC);
+      const ccName = resolveName(rawCC);
+      const reg = getCCRegional(rawCC) || 'Sem Regional';
+
+      const regData = getRegData(reg);
+      const ccData = getCcData(regData, cc, ccName);
+
+      [globalMetrics, regData.metrics, ccData.metrics].forEach(m => {
+        m.plannedHours += p.plannedHours;
+      });
+    });
+
+    // 3. DADOS DE ORÇAMENTO (BUDGET)
+    budgets.forEach(b => {
+      const rawCC = b.costCenter || 'S/ CC';
+      const cc = normalizeCC(rawCC);
+      const ccName = resolveName(rawCC);
+      const reg = getCCRegional(rawCC) || 'Sem Regional';
+
+      const regData = getRegData(reg);
+      const ccData = getCcData(regData, cc, ccName);
+
+      [globalMetrics, regData.metrics, ccData.metrics].forEach(m => {
+        m.budgetCost += b.value;
       });
     });
 
@@ -679,7 +720,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     };
 
     return [root];
-  }, [data, salariesMap]);
+  }, [data, planningRecords, budgets, salariesMap]);
 
   const ToggleButtons = ({ mode, setMode }: { mode: ViewMode, setMode: (m: ViewMode) => void }) => (
     <div className="flex bg-gray-200 p-1 rounded-xl h-9">
