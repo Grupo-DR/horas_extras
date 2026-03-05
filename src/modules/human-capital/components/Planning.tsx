@@ -419,12 +419,13 @@ const TeamPlanModal: React.FC<{
     onClose: () => void;
     team: WorkTeam;
     memberNames: Record<string, string>;
+    memberFuncoes: Record<string, string>;
     plans: Record<string, number>;
     salaries: Record<string, number>;
     periodStart: Date;
     periodEnd: Date;
     onSave: (teamId: string, localNums: Record<string, number>) => Promise<void>;
-}> = ({ isOpen, onClose, team, memberNames, plans, salaries, periodStart, periodEnd, onSave }) => {
+}> = ({ isOpen, onClose, team, memberNames, memberFuncoes, plans, salaries, periodStart, periodEnd, onSave }) => {
     const [saving, setSaving] = useState(false);
     const [localValues, setLocalValues] = useState<Record<string, string>>({});
 
@@ -525,7 +526,7 @@ const TeamPlanModal: React.FC<{
                                         <tr key={chapa} className="hover:bg-slate-50/70 border-b border-slate-100">
                                             <td className="sticky left-0 bg-white px-4 py-1.5 border-r border-slate-200 z-10">
                                                 <p className="font-bold text-slate-800 leading-tight">{name}</p>
-                                                <p className="text-[10px] text-slate-400 font-mono">{chapa}</p>
+                                                <p className="text-[10px] text-slate-400 font-medium truncate max-w-[180px]">{memberFuncoes[chapa] || '—'}</p>
                                             </td>
                                             {days.map(day => {
                                                 const dk = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
@@ -1045,6 +1046,13 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
         return map;
     }, [employees, uniqueEmployees]);
 
+    // Mapa chapa→cargo para o TeamPlanModal
+    const memberFuncoes = useMemo(() => {
+        const map: Record<string, string> = {};
+        employees.forEach(e => { if (e.CHAPA && e.FUNCAO) map[e.CHAPA] = e.FUNCAO; });
+        return map;
+    }, [employees]);
+
     const teamPlanModalTeam = teams.find(t => t.id === teamPlanModalId) || null;
 
     return (
@@ -1078,6 +1086,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                     onClose={() => setTeamPlanModalId(null)}
                     team={teamPlanModalTeam}
                     memberNames={memberNames}
+                    memberFuncoes={memberFuncoes}
                     plans={plans}
                     salaries={salaries}
                     periodStart={periodStart}
