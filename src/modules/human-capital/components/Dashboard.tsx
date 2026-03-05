@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, SalaryRecord, WorkTeam, TeamAllocation } from '../types';
 import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, AlertTriangle, Moon, Scale, Percent, ArrowUpRight, ArrowDownRight, X, User, Users, DollarSign, ListFilter, ShieldAlert, Zap, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { formatDecimalHours } from '../utils/formatters';
-import { getPlanning, getPlanningSync, getSalariesSync, getBudgetsSync, saveBudgets, getTeamsSync, getTeamAllocationsSync, getTeamAllocations, getAllPlanningRecords } from '../services/planning';
+import { getPlanning, getSalariesSync, getBudgetsSync, saveBudgets, getTeamsSync, getTeamAllocationsSync, getTeamAllocations, getAllPlanningRecords } from '../services/planning';
 import { getCCName, getCCRegional, normalizeCC } from '../data/ccMaster';
 
 interface DashboardProps {
@@ -13,6 +13,7 @@ interface DashboardProps {
   budgetMonthKeys: string[];
   /** Callback: clique em colaborador no modal de função → navega para aba Histórico */
   onNavigateToEmployee?: (name: string, chapa: string) => void;
+  selectedMonth: string;
 }
 
 interface DashboardMetrics {
@@ -429,7 +430,7 @@ const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHour
   );
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMonthKeys, onNavigateToEmployee }) => {
+const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMonthKeys, onNavigateToEmployee, selectedMonth }) => {
   const [ccSearch, setCcSearch] = useState('');
   const [funcSearch, setFuncSearch] = useState('');
   const [selectedFuncModal, setSelectedFuncModal] = useState<string | null>(null);

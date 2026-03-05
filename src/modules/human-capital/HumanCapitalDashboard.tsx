@@ -329,6 +329,7 @@ const HumanCapitalDashboard: React.FC = () => {
                     setFilters(prev => ({ ...prev, searchTerm: name }));
                     setActiveTab(Tab.DATA);
                   }}
+                  selectedMonth={`${filters.year}-${filters.month}`}
                 />
               );
             })()}
