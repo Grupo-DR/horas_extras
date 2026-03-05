@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, SalaryRecord, WorkTeam } from '../types';
+import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, SalaryRecord, WorkTeam, TeamAllocation } from '../types';
 import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, AlertTriangle, Moon, Scale, Percent, ArrowUpRight, ArrowDownRight, X, User, Users, DollarSign, ListFilter, ShieldAlert, Zap, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { formatDecimalHours } from '../utils/formatters';
-import { getAllPlanningRecords, getBudgetsSync, getSalariesSync, getTeamsSync } from '../services/planning';
+import { getPlanning, getPlanningSync, getSalariesSync, getBudgetsSync, saveBudgets, getTeamsSync, getTeamAllocationsSync, getTeamAllocations } from '../services/planning';
 import { getCCName, getCCRegional, normalizeCC } from '../data/ccMaster';
 
 interface DashboardProps {
@@ -710,8 +710,11 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
   }, [data, planningRecords, selectedCcModal, salariesMap]);
 
   const hierarchicalData = useMemo(() => {
-    // Carrega as equipes do planejamento
+    // Carrega as equipes e alocações locais para a resposta imediata
     const allTeams: WorkTeam[] = getTeamsSync();
+
+    // Obter alocações baseadas no mês selecionado da view
+    const allAllocations: TeamAllocation[] = getTeamAllocationsSync().filter(a => a.monthKey === selectedMonth);
 
     // Lookup: cc normalizado → lista de WorkTeams daquele CC
     const ccTeams = new Map<string, WorkTeam[]>();
@@ -721,14 +724,18 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       ccTeams.get(cc)!.push(t);
     });
 
-    // Lookup: "cc|chapa" → WorkTeam (qual equipe a chapa pertence dentro de um CC)
+    // Lookup: "cc|chapa" → WorkTeam (qual equipe a chapa pertence dentro de um CC no mês ativo)
     const chapaTeamKey = (cc: string, chapa: string) => `${cc}|${chapa}`;
     const chapaToTeam = new Map<string, WorkTeam>();
+
     allTeams.forEach(t => {
-      const cc = normalizeCC(t.costCenter);
-      t.memberChapas.forEach(chapa => {
-        chapaToTeam.set(chapaTeamKey(cc, chapa), t);
-      });
+      const alloc = allAllocations.find(a => a.teamId === t.id);
+      if (alloc) {
+        const cc = normalizeCC(t.costCenter);
+        alloc.chapas.forEach(chapa => {
+          chapaToTeam.set(chapaTeamKey(cc, chapa), t);
+        });
+      }
     });
 
     // Mapa de nome por chapa (para exibição nos nós PERSON)
@@ -892,7 +899,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     };
 
     return [root];
-  }, [data, planningRecords, budgets, salariesMap]);
+  }, [data, planningRecords, budgets, salariesMap, selectedMonth]);
 
   const ToggleButtons = ({ mode, setMode }: { mode: ViewMode, setMode: (m: ViewMode) => void }) => (
     <div className="flex bg-gray-200 p-1 rounded-xl h-9">

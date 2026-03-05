@@ -83,7 +83,14 @@ export interface WorkTeam {
     name: string;
     costCenter: string;
     managerName?: string;
-    memberChapas: string[];
+    memberChapas?: string[]; // Legado, migrando para TeamAllocation
+}
+
+export interface TeamAllocation {
+    id: string;
+    teamId: string;
+    monthKey: string; // 'YYYY-MM'
+    chapas: string[];
 }
 
 export interface ManualEmployee {

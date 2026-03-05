@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { OvertimeRecord, UserProfile, PlanningRecord, SalaryAllocation, BudgetRecord, WorkTeam, ManualEmployee } from '../types';
-import { savePlanning, getPlanning, saveSalaries, getSalariesSync, saveBudgets, getBudgetsSync, saveTeams, getTeams, deleteTeam, getTeamsSync, getAllBudgetsAsync, deleteBudgets, deleteAllBudgets } from '../services/planning';
+import { OvertimeRecord, UserProfile, PlanningRecord, SalaryAllocation, BudgetRecord, WorkTeam, ManualEmployee, TeamAllocation } from '../types';
+import { savePlanning, getPlanning, saveSalaries, getSalariesSync, saveBudgets, getBudgetsSync, saveTeams, getTeams, deleteTeam, getTeamsSync, getAllBudgetsAsync, deleteBudgets, deleteAllBudgets, getTeamAllocationsSync, getTeamAllocations, saveTeamAllocations } from '../services/planning';
 
 import { Users, Clock, Wallet, TrendingUp, Calculator, CheckCircle2, AlertTriangle, X, ChevronLeft, ChevronRight, Save, FileUp, Plus, Search, ArrowUpRight, ArrowDownRight, LayoutList, Trash2 } from 'lucide-react';
 import { formatDecimalHours, parseTimeToDecimal } from '../utils/formatters';
@@ -425,7 +425,8 @@ const TeamPlanModal: React.FC<{
     periodStart: Date;
     periodEnd: Date;
     onSave: (teamId: string, localNums: Record<string, number>) => Promise<void>;
-}> = ({ isOpen, onClose, team, memberNames, memberFuncoes, plans, salaries, periodStart, periodEnd, onSave }) => {
+    onRemoveMember: (teamId: string, chapa: string) => void;
+}> = ({ isOpen, onClose, team, memberNames, memberFuncoes, plans, salaries, periodStart, periodEnd, onSave, onRemoveMember }) => {
     const [saving, setSaving] = useState(false);
     const [localValues, setLocalValues] = useState<Record<string, string>>({});
 
@@ -523,10 +524,19 @@ const TeamPlanModal: React.FC<{
                                     const total = getMemberTotal(chapa);
                                     const isOver = total > 44;
                                     return (
-                                        <tr key={chapa} className="hover:bg-slate-50/70 border-b border-slate-100">
-                                            <td className="sticky left-0 bg-white px-4 py-1.5 border-r border-slate-200 z-10">
-                                                <p className="font-bold text-slate-800 leading-tight">{name}</p>
-                                                <p className="text-[10px] text-slate-400 font-medium truncate max-w-[180px]">{memberFuncoes[chapa] || '—'}</p>
+                                        <tr key={chapa} className="hover:bg-slate-50/70 border-b border-slate-100 group">
+                                            <td className="sticky left-0 bg-white px-4 py-1.5 border-r border-slate-200 z-10 flex items-center justify-between">
+                                                <div>
+                                                    <p className="font-bold text-slate-800 leading-tight">{name}</p>
+                                                    <p className="text-[10px] text-slate-400 font-medium truncate max-w-[150px]">{memberFuncoes[chapa] || '—'}</p>
+                                                </div>
+                                                <button
+                                                    onClick={() => onRemoveMember(team.id, chapa)}
+                                                    className="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-all"
+                                                    title="Remover da Turma"
+                                                >
+                                                    <Trash2 size={13} />
+                                                </button>
                                             </td>
                                             {days.map(day => {
                                                 const dk = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
@@ -614,6 +624,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
 
     // Teams State
     const [teams, setTeams] = useState<WorkTeam[]>([]);
+    const [allocations, setAllocations] = useState<TeamAllocation[]>([]);
     const [isCreateTeamOpen, setIsCreateTeamOpen] = useState(false);
     const [addMemberTeamId, setAddMemberTeamId] = useState<string | null>(null);
     const [teamPlanModalId, setTeamPlanModalId] = useState<string | null>(null);
@@ -679,6 +690,20 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
     }, []);
 
     useEffect(() => {
+        const cached = getTeamAllocationsSync();
+        setAllocations(cached);
+        const loadAllocs = async () => {
+            const alls = await getTeamAllocations(selectedMonth, user);
+            setAllocations(prev => {
+                const map = new Map(prev.map(a => [a.id, a]));
+                alls.forEach(a => map.set(a.id, a));
+                return Array.from(map.values());
+            });
+        };
+        loadAllocs();
+    }, [selectedMonth, user]);
+
+    useEffect(() => {
         const loadPlans = async () => {
             let records: PlanningRecord[] = [];
             const startMonthStr = formatDateKey(periodStart).slice(0, 7);
@@ -726,26 +751,105 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
         setAlert({ type: 'success', message: 'Equipe removida.' });
     };
 
-    const handleAddMembers = (chapas: string[]) => {
+    const handleAddMembers = async (chapas: string[]) => {
         if (!addMemberTeamId) return;
-        const updated = teams.map(t => {
-            if (t.id === addMemberTeamId) {
-                // Avoid duplicates
-                const newMembers = [...new Set([...t.memberChapas, ...chapas])];
-                return { ...t, memberChapas: newMembers };
-            }
-            return t;
+        const teamId = addMemberTeamId;
+
+        let alloc = allocations.find(a => a.teamId === teamId && a.monthKey === selectedMonth);
+        if (!alloc) {
+            alloc = {
+                id: crypto.randomUUID(),
+                teamId: teamId,
+                monthKey: selectedMonth,
+                chapas: []
+            };
+        }
+
+        const newMembers = [...new Set([...alloc.chapas, ...chapas])];
+        const updatedAlloc = { ...alloc, chapas: newMembers };
+
+        setAllocations(prev => {
+            const other = prev.filter(a => a.id !== updatedAlloc.id);
+            return [...other, updatedAlloc];
         });
-        setTeams(updated);
-        saveTeams(updated, user);
+
+        await saveTeamAllocations([updatedAlloc], user);
         setAddMemberTeamId(null);
+        setAlert({ type: 'success', message: 'Membros adicionados à turma!' });
     };
+
+    const handleRemoveMember = async (teamId: string, chapa: string) => {
+        let alloc = allocations.find(a => a.teamId === teamId && a.monthKey === selectedMonth);
+        if (!alloc) return;
+
+        const newMembers = alloc.chapas.filter(c => c !== chapa);
+        const updatedAlloc = { ...alloc, chapas: newMembers };
+
+        setAllocations(prev => {
+            const other = prev.filter(a => a.id !== updatedAlloc.id);
+            return [...other, updatedAlloc];
+        });
+
+        await saveTeamAllocations([updatedAlloc], user);
+        setAlert({ type: 'success', message: 'Membro removido da turma!' });
+    };
+
+    const handleClonePreviousMonth = async () => {
+        const parts = selectedMonth.split('-');
+        let year = parseInt(parts[0], 10);
+        let month = parseInt(parts[1], 10) - 1;
+        if (month === 0) {
+            month = 12;
+            year -= 1;
+        }
+        const prevMonthKey = `${year}-${String(month).padStart(2, '0')}`;
+
+        const prevAllocs = await getTeamAllocations(prevMonthKey, user);
+        if (prevAllocs.length === 0) {
+            setAlert({ type: 'error', message: `Nenhuma alocação encontrada em ${prevMonthKey}.` });
+            return;
+        }
+
+        const newAllocs: TeamAllocation[] = prevAllocs.map(a => ({
+            id: crypto.randomUUID(),
+            teamId: a.teamId,
+            monthKey: selectedMonth,
+            chapas: [...a.chapas]
+        }));
+
+        setAllocations(prev => {
+            // Remove as antigas do mês selecionado
+            const other = prev.filter(a => a.monthKey !== selectedMonth);
+            return [...other, ...newAllocs];
+        });
+
+        await saveTeamAllocations(newAllocs, user);
+        setAlert({ type: 'success', message: `Copiadas ${newAllocs.length} equipes de ${prevMonthKey}!` });
+    };
+
+    // FILTERED TEAMS (Moved up so it can be used by handleTeamPlanSave)
+    const displayTeams = useMemo(() => {
+        return teams.map(t => {
+            const alloc = allocations.find(a => a.teamId === t.id && a.monthKey === selectedMonth);
+            return {
+                ...t,
+                memberChapas: alloc ? alloc.chapas : [] // Aqui ocorre o versionamento temporal
+            };
+        }).filter(t => {
+            const matchesCC = !ccFilter || t.costCenter === ccFilter;
+            const teamRegional = getRegional(t.costCenter);
+            const matchesRegional = !regionalFilter || teamRegional === regionalFilter;
+            const isAuthorized = user.role === 'HC_COSTCENTER_PLANNER' ? t.costCenter === user.costCenter : true;
+            return matchesCC && matchesRegional && isAuthorized;
+        });
+    }, [teams, allocations, selectedMonth, ccFilter, regionalFilter, user]);
 
     // Helper to get Employee Object
     const getEmpObj = (chapa: string) => uniqueEmployees.find(e => e.chapa === chapa);
 
     const handleTeamPlanSave = async (teamId: string, numericMap: Record<string, number>) => {
-        const team = teams.find(t => t.id === teamId);
+        // Usa `displayTeams` para acessar a WorkTeam já injetada com os `memberChapas` temporais do mês selecionado
+        const team = displayTeams.find(t => t.id === teamId);
         if (!team) return;
         // Merge into plans state
         setPlans(prev => ({ ...prev, ...numericMap }));
@@ -1016,15 +1120,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
     };
 
     // FILTERED TEAMS
-    const displayTeams = useMemo(() => {
-        return teams.filter(t => {
-            const matchesCC = !ccFilter || t.costCenter === ccFilter;
-            const teamRegional = getRegional(t.costCenter);
-            const matchesRegional = !regionalFilter || teamRegional === regionalFilter;
-            const isAuthorized = user.role === 'HC_COSTCENTER_PLANNER' ? t.costCenter === user.costCenter : true;
-            return matchesCC && matchesRegional && isAuthorized;
-        });
-    }, [teams, ccFilter, regionalFilter, user]);
+    // displayTeams was moved above to be accessible by handleTeamPlanSave
 
     // Colaboradores disponíveis para adicionar à equipe selecionada
     // Filtrados pelo CC da equipe e excluindo quem já é membro
@@ -1053,7 +1149,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
         return map;
     }, [employees]);
 
-    const teamPlanModalTeam = teams.find(t => t.id === teamPlanModalId) || null;
+    const teamPlanModalTeam = displayTeams.find(t => t.id === teamPlanModalId) || null;
 
     return (
         <div className="space-y-6">
@@ -1092,6 +1188,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                     periodStart={periodStart}
                     periodEnd={periodEnd}
                     onSave={handleTeamPlanSave}
+                    onRemoveMember={handleRemoveMember}
                 />
             )}
 
@@ -1203,6 +1300,9 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                         <button onClick={() => setIsCreateTeamOpen(true)} className="bg-white text-blue-600 border border-blue-200 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-tight hover:bg-blue-50 transition-colors flex items-center gap-2 shadow-sm">
                             <Plus size={16} /> Nova Equipe
                         </button>
+                        <button onClick={handleClonePreviousMonth} className="bg-white text-emerald-600 border border-emerald-200 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-tight hover:bg-emerald-50 transition-colors flex items-center gap-2 shadow-sm">
+                            <Users size={16} /> Copiar Mês Anterior
+                        </button>
                     </div>
 
                     <div className="flex flex-wrap gap-3 w-full xl:w-auto justify-end">
@@ -1275,6 +1375,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                         onAddMember={setAddMemberTeamId}
                         onPlanTeam={setTeamPlanModalId}
                         salariesMap={salaries}
+                        onRemoveMember={handleRemoveMember}
                     />
                 </div>
             </div>

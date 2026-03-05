@@ -27,7 +27,8 @@ const PlanningTreeRow: React.FC<{
     onDelete?: (id: string) => void;
     onAddMember?: (teamId: string) => void;
     onPlanTeam?: (teamId: string) => void;
-}> = ({ node, level, onEdit, onDelete, onAddMember, onPlanTeam }) => {
+    onRemoveMember?: (teamId: string, chapa: string) => void;
+}> = ({ node, level, onEdit, onDelete, onAddMember, onPlanTeam, onRemoveMember }) => {
     const [isExpanded, setIsExpanded] = useState(level === 0);
     const isRecord = node.type === 'RECORD';
     const hasChildren = node.children && node.children.length > 0;
@@ -116,7 +117,7 @@ const PlanningTreeRow: React.FC<{
 
             {isExpanded && hasChildren && (
                 <div className="flex flex-col w-full">
-                    {node.children.map(child => <PlanningTreeRow key={child.id} node={child} level={level + 1} onEdit={onEdit} onDelete={onDelete} onAddMember={onAddMember} onPlanTeam={onPlanTeam} />)}
+                    {node.children.map(child => <PlanningTreeRow key={child.id} node={child} level={level + 1} onEdit={onEdit} onDelete={onDelete} onAddMember={onAddMember} onPlanTeam={onPlanTeam} onRemoveMember={onRemoveMember} />)}
                 </div>
             )}
         </React.Fragment>
@@ -130,9 +131,10 @@ interface PlanningTableProps {
     onAddMember?: (teamId: string) => void;
     onPlanTeam?: (teamId: string) => void;
     salariesMap?: Record<string, number>;
+    onRemoveMember?: (teamId: string, chapa: string) => void;
 }
 
-export const PlanningTable: React.FC<PlanningTableProps> = ({ records, onEdit, onDelete, onAddMember, onPlanTeam, salariesMap }) => {
+export const PlanningTable: React.FC<PlanningTableProps> = ({ records, onEdit, onDelete, onAddMember, onPlanTeam, salariesMap, onRemoveMember }) => {
     const hierarchicalData = useMemo(() => {
         const regionalMap = new Map<string, { metrics: PlanningMetrics, ccs: Map<string, { name: string, metrics: PlanningMetrics, records: any[] }> }>();
 
@@ -219,6 +221,7 @@ export const PlanningTable: React.FC<PlanningTableProps> = ({ records, onEdit, o
                         onDelete={onDelete}
                         onAddMember={onAddMember}
                         onPlanTeam={onPlanTeam}
+                        onRemoveMember={onRemoveMember}
                     />
                 ))}
             </div>

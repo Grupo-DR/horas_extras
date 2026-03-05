@@ -1,5 +1,5 @@
 
-import { PlanningRecord, SalaryRecord, BudgetRecord, SalaryAllocation, UserProfile, WorkTeam } from '../types';
+import { PlanningRecord, SalaryRecord, BudgetRecord, SalaryAllocation, UserProfile, WorkTeam, TeamAllocation } from '../types';
 import * as FirestoreService from './firestoreCH';
 import { Scope } from '../../iam/types';
 
@@ -333,5 +333,77 @@ export const deleteTeam = async (teamId: string, user: UserProfile) => {
         const current = getTeamsSync();
         const updated = current.filter(t => t.id !== teamId);
         localStorage.setItem('hc_work_teams_v1', JSON.stringify(updated));
+    }
+};
+
+// --- TEAM ALLOCATIONS ---
+
+const ALLOC_CACHE_KEY = 'hc_team_allocations_v1';
+
+export const saveTeamAllocations = async (allocations: TeamAllocation[], user: UserProfile) => {
+    try {
+        if (isOnline()) {
+            // Firestore transactions: save one by one for now or add bulk to firestoreCH.ts
+            // Usually we only save one allocation at a time from UI, but supporting array here
+            for (const alloc of allocations) {
+                await FirestoreService.upsertTeamAllocation(alloc, user);
+            }
+        }
+
+        // Update local cache
+        const current = getTeamAllocationsSync();
+        const allocsMap = new Map(current.map(a => [a.id, a]));
+        allocations.forEach(a => allocsMap.set(a.id, a));
+        localStorage.setItem(ALLOC_CACHE_KEY, JSON.stringify(Array.from(allocsMap.values())));
+    } catch (e) {
+        console.error("Save Team Allocations Failed:", e);
+        const current = getTeamAllocationsSync();
+        const allocsMap = new Map(current.map(a => [a.id, a]));
+        allocations.forEach(a => allocsMap.set(a.id, a));
+        localStorage.setItem(ALLOC_CACHE_KEY, JSON.stringify(Array.from(allocsMap.values())));
+    }
+};
+
+export const getTeamAllocationsSync = (): TeamAllocation[] => {
+    try {
+        const data = localStorage.getItem(ALLOC_CACHE_KEY);
+        if (data) return (JSON.parse(data) || []) as TeamAllocation[];
+    } catch (e) {
+        console.error("Error reading local team allocations:", e);
+    }
+    return [];
+};
+
+export const getTeamAllocations = async (monthKey: string, user?: UserProfile): Promise<TeamAllocation[]> => {
+    if (!monthKey) return [];
+    try {
+        if (isOnline()) {
+            const rows = await FirestoreService.getTeamAllocationsByMonthKey(monthKey, user?.scope);
+
+            // Merge with local cache
+            const current = getTeamAllocationsSync();
+            const filtered = current.filter(a => a.monthKey !== monthKey); // remove old ones for this month
+            const newCache = [...filtered, ...rows];
+            localStorage.setItem(ALLOC_CACHE_KEY, JSON.stringify(newCache));
+
+            return rows;
+        }
+        throw new Error("Offline");
+    } catch (error) {
+        console.warn("Fetching team allocations failed/offline, using cache", error);
+        return getTeamAllocationsSync().filter(a => a.monthKey === monthKey);
+    }
+};
+
+export const getAllTeamAllocationsAsync = async (): Promise<TeamAllocation[]> => {
+    try {
+        if (isOnline()) {
+            const rows = await FirestoreService.getAllTeamAllocations();
+            localStorage.setItem(ALLOC_CACHE_KEY, JSON.stringify(rows));
+            return rows;
+        }
+        throw new Error("Offline");
+    } catch (error) {
+        return getTeamAllocationsSync();
     }
 };

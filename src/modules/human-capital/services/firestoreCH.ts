@@ -1,7 +1,7 @@
 
 import { db } from '@/services/firebaseConfig';
 import { collection, doc, writeBatch, query, where, getDocs, addDoc, Timestamp, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
-import { BudgetRecord, SalaryAllocation, PlanningRecord, UserProfile, WorkTeam, ManualEmployee } from '../types';
+import { BudgetRecord, SalaryAllocation, PlanningRecord, UserProfile, WorkTeam, ManualEmployee, TeamAllocation } from '../types';
 import { Scope } from '../../iam/types';
 
 const COL_BUDGETS = 'hc_budgets';
@@ -228,6 +228,33 @@ export const getTeams = async (scope?: Scope) => {
 export const deleteTeam = async (teamId: string) => {
     if (!teamId) return;
     await deleteDoc(doc(db, COL_TEAMS, teamId));
+};
+
+// --- TEAM ALLOCATIONS ---
+
+const COL_TEAM_ALLOCATIONS = 'hc_team_allocations';
+
+export const upsertTeamAllocation = async (allocation: TeamAllocation, user: UserProfile) => {
+    if (!allocation.id) return;
+    const ref = doc(db, COL_TEAM_ALLOCATIONS, allocation.id);
+    await setDoc(ref, {
+        ...allocation,
+        updatedAt: Timestamp.now(),
+        updatedBy: user.email
+    }, { merge: true });
+};
+
+export const getTeamAllocationsByMonthKey = async (monthKey: string, scope?: Scope) => {
+    if (!monthKey) return [];
+    const q = query(collection(db, COL_TEAM_ALLOCATIONS), where('monthKey', '==', monthKey));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => d.data() as TeamAllocation);
+};
+
+export const getAllTeamAllocations = async () => {
+    const q = query(collection(db, COL_TEAM_ALLOCATIONS));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => d.data() as TeamAllocation);
 };
 
 // --- MANUAL EMPLOYEES ---
