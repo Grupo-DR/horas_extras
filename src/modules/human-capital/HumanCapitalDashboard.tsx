@@ -11,13 +11,14 @@ import Planning from '@/src/modules/human-capital/components/Planning';
 import { canManageProfiles, canPlan } from '../iam/types';
 import { formatDateForApi } from '@/src/modules/human-capital/utils/formatters';
 import { LayoutDashboard, Table, Settings, CheckCircle2, AlertTriangle, Sparkles, CalendarRange, UserCog, Lock, BarChart3 } from 'lucide-react';
-import { ApiConfig, OvertimeRecord, FetchStatus, UserProfile, ManualEmployee } from '@/src/modules/human-capital/types';
+import { ApiConfig, OvertimeRecord, FetchStatus, UserProfile, ManualEmployee, GlobalEmployee } from '@/src/modules/human-capital/types';
 import { CorporateSidebar, SidebarItem } from '../../components/navigation/CorporateSidebar';
 import { useNavigate } from 'react-router-dom';
 import { realOvertimeData, RealOvertimeRecord } from '@/src/modules/human-capital/data/realOvertime';
 import { getManualEmployees, upsertManualEmployee } from '@/src/modules/human-capital/services/firestoreCH';
 import { CreateEmployeeModal } from '@/src/modules/human-capital/components/CreateEmployeeModal';
 import { getCCRegional } from '@/src/modules/human-capital/data/ccMaster';
+import { saveGlobalEmployees, getGlobalEmployeesSync } from '@/src/modules/human-capital/services/planning';
 
 // Configuração padrão da API TOTVS
 const DEFAULT_CONFIG: ApiConfig = {
@@ -82,6 +83,7 @@ const HumanCapitalDashboard: React.FC = () => {
   // Manual Employees State (Global for HC Module)
   const [manualEmployees, setManualEmployees] = useState<ManualEmployee[]>([]);
   const [isCreateEmployeeOpen, setIsCreateEmployeeOpen] = useState(false);
+  const [globalEmployees, setGlobalEmployees] = useState<GlobalEmployee[]>(() => getGlobalEmployeesSync());
 
   // ... (keeping other lines same if not part of this block, but mainly reverting the state init)
 
@@ -139,6 +141,56 @@ const HumanCapitalDashboard: React.FC = () => {
     };
     loadManual();
   }, []);
+
+  // Esponja de Dados Global: Sempre que carregarmos novos dados ou manuais, verifica se tem nomes novos que faltam
+  useEffect(() => {
+    if (!effectiveUser || (data.length === 0 && manualEmployees.length === 0)) return;
+
+    // Processa em background
+    const timer = setTimeout(() => {
+      const currentGlobalMap = new Map(globalEmployees.map(e => [e.chapa, e]));
+      const newGlobalEmps: GlobalEmployee[] = [];
+      let hasChanges = false;
+
+      data.forEach(e => {
+        if (!e.CHAPA) return;
+        const existing = currentGlobalMap.get(e.CHAPA);
+        if (!existing || existing.nome !== e.NOME || existing.funcao !== e.FUNCAO || existing.costCenter !== e.CODCCUSTO) {
+          newGlobalEmps.push({
+            chapa: e.CHAPA,
+            nome: e.NOME || '',
+            funcao: e.FUNCAO || '',
+            costCenter: e.CODCCUSTO || ''
+          });
+          hasChanges = true;
+          currentGlobalMap.set(e.CHAPA, newGlobalEmps[newGlobalEmps.length - 1]);
+        }
+      });
+
+      manualEmployees.forEach(m => {
+        if (!m.chapa) return;
+        const existing = currentGlobalMap.get(m.chapa);
+        if (!existing || existing.nome !== m.name || existing.costCenter !== m.costCenter) {
+          newGlobalEmps.push({
+            chapa: m.chapa,
+            nome: m.name,
+            funcao: existing?.funcao || 'Manual',
+            costCenter: m.costCenter
+          });
+          hasChanges = true;
+          currentGlobalMap.set(m.chapa, newGlobalEmps[newGlobalEmps.length - 1]);
+        }
+      });
+
+      if (hasChanges && newGlobalEmps.length > 0) {
+        saveGlobalEmployees(newGlobalEmps, effectiveUser).then(() => {
+          setGlobalEmployees(Array.from(currentGlobalMap.values()));
+        }).catch(console.error);
+      }
+    }, 2000); // 2 segundos depois pra não travar a renderização imediata da tela
+
+    return () => clearTimeout(timer);
+  }, [data, manualEmployees, effectiveUser, globalEmployees.length]);
 
   const handleCreateEmployee = async (name: string, chapa: string, cc: string, role: string) => {
     if (!effectiveUser) return;
