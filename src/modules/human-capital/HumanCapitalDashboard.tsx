@@ -68,7 +68,8 @@ const HumanCapitalDashboard: React.FC = () => {
       email: profile.email,
       role: profile.modules.human_capital.role,
       scope: profile.modules.human_capital.scope,
-      avatar: '👤'
+      avatar: '👤',
+      isSuperAdmin: profile.isSuperAdmin
     };
   }, [profile]);
 
@@ -302,7 +303,7 @@ const HumanCapitalDashboard: React.FC = () => {
       { key: Tab.ANALYSIS, label: "Análise de Dados", icon: BarChart3, onClick: () => setActiveTab(Tab.ANALYSIS), isActive: activeTab === Tab.ANALYSIS },
       { key: Tab.DATA, label: "Histórico", icon: Table, onClick: () => setActiveTab(Tab.DATA), isActive: activeTab === Tab.DATA },
     ];
-    if (canPlan(effectiveUser.role)) items.push({ key: Tab.PLANNING, label: "Planejamento", icon: CalendarRange, onClick: () => setActiveTab(Tab.PLANNING), isActive: activeTab === Tab.PLANNING });
+    if (effectiveUser.isSuperAdmin || canPlan(effectiveUser.role)) items.push({ key: Tab.PLANNING, label: "Planejamento", icon: CalendarRange, onClick: () => setActiveTab(Tab.PLANNING), isActive: activeTab === Tab.PLANNING });
     if (canManageProfiles(profile)) items.push({ key: Tab.PROFILES, label: "Gestão de Usuários", icon: UserCog, onClick: () => setActiveTab(Tab.PROFILES), isActive: activeTab === Tab.PROFILES });
     items.push({ key: Tab.SETTINGS, label: "Configurações", icon: Settings, onClick: () => setActiveTab(Tab.SETTINGS), isActive: activeTab === Tab.SETTINGS });
     return items;
@@ -393,7 +394,7 @@ const HumanCapitalDashboard: React.FC = () => {
                 selectedYear={filters.year}
               />
             )}
-            {activeTab === Tab.PLANNING && canPlan(effectiveUser.role) && <Planning user={effectiveUser} employees={scopedData} manualEmployees={manualEmployees} />}
+            {activeTab === Tab.PLANNING && (effectiveUser.isSuperAdmin || canPlan(effectiveUser.role)) && <Planning user={effectiveUser} employees={scopedData} manualEmployees={manualEmployees} />}
             {activeTab === Tab.PROFILES && canManageProfiles(profile) && <ProfileManager />}
             {activeTab === Tab.SETTINGS && (
               <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center text-gray-500">

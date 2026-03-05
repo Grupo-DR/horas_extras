@@ -68,7 +68,7 @@ export interface UserProfileDoc {
 
 export const canPlan = (role?: CHRole): boolean => {
     if (!role) return false;
-    return ['CH_ADMIN', 'CH_MANAGER', 'CH_COSTCENTER_PLANNER'].includes(role);
+    return ['CH_ADMIN', 'CH_MANAGER', 'CH_COSTCENTER_PLANNER', 'CH_APPROVER'].includes(role);
 };
 
 export const canManageProfiles = (profile: UserProfileDoc | null | undefined): boolean => {

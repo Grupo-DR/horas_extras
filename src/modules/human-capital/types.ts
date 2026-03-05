@@ -45,6 +45,7 @@ export interface UserProfile {
     chapa?: string;
     costCenter?: string;
     avatar?: string;
+    isSuperAdmin?: boolean;
 }
 
 export interface PlanningRecord {

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { OvertimeRecord, UserProfile, PlanningRecord, SalaryAllocation, BudgetRecord, WorkTeam, ManualEmployee, TeamAllocation, GlobalEmployee } from '../types';
 import { savePlanning, getPlanning, saveSalaries, getSalariesSync, saveBudgets, getBudgetsSync, saveTeams, getTeams, deleteTeam, getTeamsSync, getAllBudgetsAsync, deleteBudgets, deleteAllBudgets, getTeamAllocationsSync, getTeamAllocations, saveTeamAllocations, saveGlobalEmployees, getGlobalEmployeesAsync, getGlobalEmployeesSync } from '../services/planning';
+import { canApprove } from '../../iam/types';
+import { ApprovalPanel } from './ApprovalPanel';
 
 import { Users, Clock, Wallet, TrendingUp, Calculator, CheckCircle2, AlertTriangle, X, ChevronLeft, ChevronRight, Save, FileUp, Plus, Search, ArrowUpRight, ArrowDownRight, LayoutList, Trash2 } from 'lucide-react';
 import { formatDecimalHours, parseTimeToDecimal } from '../utils/formatters';
@@ -609,6 +611,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
         const now = new Date();
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     });
+    const [activeSubTab, setActiveSubTab] = useState<'PLANNING' | 'APPROVAL'>('PLANNING');
 
     const [ccFilter, setCcFilter] = useState<string>('');
     const [regionalFilter, setRegionalFilter] = useState<string>('');
@@ -841,6 +844,89 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
         await saveTeamAllocations([updatedAlloc], user);
         setAddMemberTeamId(null);
         setAlert({ type: 'success', message: 'Membros adicionados à turma!' });
+    };
+
+    const handleApproveCC = async (cc: string) => {
+        setSaving(true);
+        try {
+            // Get all records for this CC and Month that are 'pending'
+            const startMonthStr = formatDateKey(periodStart).slice(0, 7);
+            const endMonthStr = formatDateKey(periodEnd).slice(0, 7);
+
+            let allRecs = await getPlanning(undefined, startMonthStr, mode === 'MONTHLY' ? 'MONTHLY' : 'DAILY');
+            if (startMonthStr !== endMonthStr) {
+                const recs2 = await getPlanning(undefined, endMonthStr, mode === 'MONTHLY' ? 'MONTHLY' : 'DAILY');
+                allRecs = [...allRecs, ...recs2];
+            }
+
+            const pendingRecs = allRecs.filter(r => r.costCenter === cc && r.status === 'pending');
+            if (pendingRecs.length === 0) {
+                setAlert({ type: 'error', message: 'Nenhum registro pendente para este Centro de Custo.' });
+                return;
+            }
+
+            const approvedRecs = pendingRecs.map(r => ({
+                ...r,
+                status: 'approved' as const,
+                approvedBy: user.email,
+                approvedAt: new Date().toISOString()
+            }));
+
+            await savePlanning(approvedRecs, user);
+
+            // Refresh local state
+            const newPlans = { ...plans };
+            const newStatuses = { ...planStatuses };
+            approvedRecs.forEach(r => {
+                const key = mode === 'MONTHLY' ? r.chapa : `${r.chapa}_${r.date}`;
+                newStatuses[key] = 'approved';
+            });
+            setPlanStatuses(newStatuses);
+
+            setAlert({ type: 'success', message: `Planejamento de ${cc} aprovado com sucesso!` });
+        } catch (error) {
+            console.error(error);
+            setAlert({ type: 'error', message: 'Erro ao aprovar planejamento.' });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleRejectCC = async (cc: string) => {
+        setSaving(true);
+        try {
+            const startMonthStr = formatDateKey(periodStart).slice(0, 7);
+            const endMonthStr = formatDateKey(periodEnd).slice(0, 7);
+
+            let allRecs = await getPlanning(undefined, startMonthStr, mode === 'MONTHLY' ? 'MONTHLY' : 'DAILY');
+            if (startMonthStr !== endMonthStr) {
+                const recs2 = await getPlanning(undefined, endMonthStr, mode === 'MONTHLY' ? 'MONTHLY' : 'DAILY');
+                allRecs = [...allRecs, ...recs2];
+            }
+
+            const pendingRecs = allRecs.filter(r => r.costCenter === cc && r.status === 'pending');
+            const rejectedRecs = pendingRecs.map(r => ({
+                ...r,
+                status: 'draft' as const // Returning to draft so they can edit
+            }));
+
+            await savePlanning(rejectedRecs, user);
+
+            // Refresh local state
+            const newStatuses = { ...planStatuses };
+            rejectedRecs.forEach(r => {
+                const key = mode === 'MONTHLY' ? r.chapa : `${r.chapa}_${r.date}`;
+                newStatuses[key] = 'draft';
+            });
+            setPlanStatuses(newStatuses);
+
+            setAlert({ type: 'success', message: `Planejamento de ${cc} devolvido para ajuste.` });
+        } catch (error) {
+            console.error(error);
+            setAlert({ type: 'error', message: 'Erro ao rejeitar planejamento.' });
+        } finally {
+            setSaving(false);
+        }
     };
 
     const handleRemoveMember = async (teamId: string, chapa: string) => {
@@ -1332,132 +1418,209 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="p-4 bg-gray-50 border-b border-gray-100 flex flex-col xl:flex-row items-center justify-between gap-6">
-                    <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto">
-                        <div className="flex flex-col">
-                            <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Mês de Referência</label>
-                            <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium" />
-                        </div>
-
-                        <div className="flex flex-col">
-                            <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Regional</label>
-                            <select value={regionalFilter} onChange={(e) => setRegionalFilter(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-w-[140px] font-medium">
-                                <option value="">Todas</option>
-                                {regionals.map(r => <option key={r} value={r}>{r}</option>)}
-                            </select>
-                        </div>
-
-                        <div className="flex flex-col">
-                            <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Centro de Custo</label>
-                            <select value={ccFilter} onChange={(e) => setCcFilter(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-w-[140px] max-w-[200px] font-medium">
-                                <option value="">Todos</option>
-                                {costCenters.map(cc => <option key={cc} value={cc}>{cc}</option>)}
-                            </select>
-                        </div>
-
-                        <div className="flex bg-gray-200 p-1 rounded-lg self-end h-[42px]">
-                            <button onClick={() => setMode('MONTHLY')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all uppercase ${mode === 'MONTHLY' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}>Mensal</button>
-                            <button onClick={() => setMode('DAILY')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all uppercase ${mode === 'DAILY' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}>Diário</button>
-                        </div>
-
-                        {mode === 'DAILY' && (
-                            <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-gray-200 self-end h-[42px]">
-                                <button onClick={() => changeWeek('prev')} className="p-1.5 hover:bg-gray-100 rounded-lg"><ChevronLeft size={16} /></button>
-                                <span className="font-bold text-gray-700 text-[11px] min-w-[150px] text-center">{weekDays[0].toLocaleDateString('pt-BR')} - {weekDays[6].toLocaleDateString('pt-BR')}</span>
-                                <button onClick={() => changeWeek('next')} className="p-1.5 hover:bg-gray-100 rounded-lg"><ChevronRight size={16} /></button>
-                            </div>
-                        )}
-
-                        <button onClick={() => setIsCreateTeamOpen(true)} className="bg-white text-blue-600 border border-blue-200 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-tight hover:bg-blue-50 transition-colors flex items-center gap-2 shadow-sm">
-                            <Plus size={16} /> Nova Equipe
-                        </button>
-                        <button onClick={handleClonePreviousMonth} className="bg-white text-emerald-600 border border-emerald-200 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-tight hover:bg-emerald-50 transition-colors flex items-center gap-2 shadow-sm">
-                            <Users size={16} /> Copiar Mês Anterior
-                        </button>
-                    </div>
-
-                    <div className="flex flex-wrap gap-3 w-full xl:w-auto justify-end">
-                        {(user.role === 'CH_ADMIN') && (
-                            <>
-                                <input type="file" ref={salaryInputRef} onChange={handleSalaryImport} accept=".xlsx,.xls,.csv,.txt" className="hidden" />
-                                <button onClick={() => salaryInputRef.current?.click()} className="bg-white text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-indigo-50 flex items-center gap-2 shadow-sm">
-                                    <FileUp size={16} /> Salários
-                                </button>
-                                <input type="file" ref={budgetInputRef} onChange={handleBudgetImport} accept=".xlsx,.xls" className="hidden" />
-                                <button onClick={() => budgetInputRef.current?.click()} className="bg-white text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-indigo-50 flex items-center gap-2 shadow-sm">
-                                    <FileUp size={16} /> Importar Budget
-                                </button>
-                                <button onClick={() => setIsBudgetManagerOpen(true)} className="bg-white text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-indigo-50 flex items-center gap-2 shadow-sm">
-                                    <Wallet size={16} /> Gerenciar Budgets
-                                </button>
-                            </>
-                        )}
-                        <button onClick={() => handleSave(false)} disabled={saving} className="bg-gray-100 text-gray-700 px-6 py-2.5 rounded-lg text-sm font-bold uppercase hover:bg-gray-200 transition flex items-center gap-2 shadow-sm">
-                            <Save size={18} /> Salvar Rascunho
-                        </button>
-                        <button onClick={() => {
-                            if (window.confirm("Atenção: Enviar os dados limitará a edição futura desses centros de custo. Deseja prosseguir?")) {
-                                handleSave(true);
-                            }
-                        }} disabled={saving} className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-bold uppercase hover:bg-blue-700 transition flex items-center gap-2 shadow-md">
-                            {saving ? <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : <CheckCircle2 size={18} />} Enviar P/ Aprovar
-                        </button>
-                    </div>
+            {canApprove(user.role) && (
+                <div className="flex border-b border-slate-200 mb-6 bg-white rounded-t-xl overflow-hidden shadow-sm">
+                    <button
+                        onClick={() => setActiveSubTab('PLANNING')}
+                        className={`flex-1 py-4 text-sm font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeSubTab === 'PLANNING' ? 'bg-blue-600 text-white shadow-inner' : 'text-slate-500 hover:bg-slate-50'}`}
+                    >
+                        <LayoutList size={18} /> Elaboração de Escalas
+                    </button>
+                    <button
+                        onClick={() => setActiveSubTab('APPROVAL')}
+                        className={`flex-1 py-4 text-sm font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeSubTab === 'APPROVAL' ? 'bg-indigo-600 text-white shadow-inner' : 'text-slate-500 hover:bg-slate-50'}`}
+                    >
+                        <CheckCircle2 size={18} /> Aprovação / Liberação
+                    </button>
                 </div>
+            )}
 
-                <div className="p-6 bg-gray-50 min-h-[400px]">
-                    <PlanningTable
-                        records={displayTeams.map(team => {
-                            const teamEmployees = team.memberChapas
-                                .map(chapa => getEmpObj(chapa))
-                                .filter(e => !!e);
+            {activeSubTab === 'APPROVAL' ? (
+                <ApprovalPanel
+                    records={displayTeams.map(team => {
+                        const teamEmployees = team.memberChapas
+                            .map(chapa => getEmpObj(chapa))
+                            .filter(e => !!e);
 
-                            let totalHours = 0;
-                            let totalCost = 0;
+                        let totalHours = 0;
+                        let totalCost = 0;
+                        let hasPending = false;
+                        let hasDraft = false;
 
-                            teamEmployees.forEach((emp: any) => {
-                                const salary = salaries[emp.chapa];
-                                if (mode === 'MONTHLY') {
-                                    const hours = plans[emp.chapa] || 0;
+                        teamEmployees.forEach((emp: any) => {
+                            const salary = salaries[emp.chapa];
+                            if (mode === 'MONTHLY') {
+                                const hours = plans[emp.chapa] || 0;
+                                totalHours += hours;
+                                if (salary) totalCost += (salary / 220) * 1.6 * hours;
+                                const st = planStatuses[emp.chapa] || 'approved';
+                                if (st === 'pending') hasPending = true;
+                                if (st === 'draft' && hours > 0) hasDraft = true;
+                            } else {
+                                const curr = new Date(periodStart);
+                                while (curr <= periodEnd) {
+                                    const dateKey = formatDateKey(curr);
+                                    const key = `${emp.chapa}_${dateKey}`;
+                                    const hours = plans[key] || 0;
                                     totalHours += hours;
-                                    if (salary) totalCost += (salary / 220) * 1.6 * hours;
-                                } else {
-                                    const curr = new Date(periodStart);
-                                    while (curr <= periodEnd) {
-                                        const key = `${emp.chapa}_${formatDateKey(curr)}`;
-                                        const hours = plans[key] || 0;
-                                        totalHours += hours;
-                                        if (salary && hours > 0) {
-                                            const isSunday = curr.getDay() === 0;
-                                            const baseHour = salary / 220;
-                                            const multiplier = isSunday ? 2.0 : 1.6;
-                                            totalCost += baseHour * multiplier * hours;
-                                        }
-                                        curr.setDate(curr.getDate() + 1);
+                                    if (salary && hours > 0) {
+                                        const isSunday = curr.getDay() === 0;
+                                        const baseHour = salary / 220;
+                                        const multiplier = isSunday ? 2.0 : 1.6;
+                                        totalCost += baseHour * multiplier * hours;
                                     }
+                                    const st = planStatuses[key] || 'approved';
+                                    if (st === 'pending') hasPending = true;
+                                    if (st === 'draft' && hours > 0) hasDraft = true;
+                                    curr.setDate(curr.getDate() + 1);
                                 }
-                            });
+                            }
+                        });
 
-                            return {
-                                id: team.id,
-                                description: team.name,
-                                costCenter: team.costCenter,
-                                headcount: team.memberChapas.length,
-                                plannedHours: totalHours,
-                                customEstCost: totalCost,
-                                date: selectedMonth,
-                                shift: team.managerName || 'Integral'
-                            };
-                        })}
-                        onDelete={handleDeleteTeam}
-                        onAddMember={setAddMemberTeamId}
-                        onPlanTeam={setTeamPlanModalId}
-                        salariesMap={salaries}
-                        onRemoveMember={handleRemoveMember}
-                    />
+                        const teamStatus = hasPending ? 'pending' : (hasDraft ? 'draft' : 'approved');
+
+                        return {
+                            id: team.id,
+                            description: team.name,
+                            costCenter: team.costCenter,
+                            headcount: team.memberChapas.length,
+                            plannedHours: totalHours,
+                            customEstCost: totalCost,
+                            estStatus: teamStatus,
+                            date: selectedMonth,
+                            shift: team.managerName || 'Integral'
+                        };
+                    })}
+                    onApprove={handleApproveCC}
+                    onReject={handleRejectCC}
+                />
+            ) : (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="p-4 bg-gray-50 border-b border-gray-100 flex flex-col xl:flex-row items-center justify-between gap-6">
+                        <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto">
+                            <div className="flex flex-col">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Mês de Referência</label>
+                                <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium" />
+                            </div>
+
+                            <div className="flex flex-col">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Regional</label>
+                                <select value={regionalFilter} onChange={(e) => setRegionalFilter(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-w-[140px] font-medium">
+                                    <option value="">Todas</option>
+                                    {regionals.map(r => <option key={r} value={r}>{r}</option>)}
+                                </select>
+                            </div>
+
+                            <div className="flex flex-col">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Centro de Custo</label>
+                                <select value={ccFilter} onChange={(e) => setCcFilter(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-w-[140px] max-w-[200px] font-medium">
+                                    <option value="">Todos</option>
+                                    {costCenters.map(cc => <option key={cc} value={cc}>{cc}</option>)}
+                                </select>
+                            </div>
+
+                            <div className="flex bg-gray-200 p-1 rounded-lg self-end h-[42px]">
+                                <button onClick={() => setMode('MONTHLY')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all uppercase ${mode === 'MONTHLY' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}>Mensal</button>
+                                <button onClick={() => setMode('DAILY')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all uppercase ${mode === 'DAILY' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}>Diário</button>
+                            </div>
+
+                            {mode === 'DAILY' && (
+                                <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-gray-200 self-end h-[42px]">
+                                    <button onClick={() => changeWeek('prev')} className="p-1.5 hover:bg-gray-100 rounded-lg"><ChevronLeft size={16} /></button>
+                                    <span className="font-bold text-gray-700 text-[11px] min-w-[150px] text-center">{weekDays[0].toLocaleDateString('pt-BR')} - {weekDays[6].toLocaleDateString('pt-BR')}</span>
+                                    <button onClick={() => changeWeek('next')} className="p-1.5 hover:bg-gray-100 rounded-lg"><ChevronRight size={16} /></button>
+                                </div>
+                            )}
+
+                            <button onClick={() => setIsCreateTeamOpen(true)} className="bg-white text-blue-600 border border-blue-200 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-tight hover:bg-blue-50 transition-colors flex items-center gap-2 shadow-sm">
+                                <Plus size={16} /> Nova Equipe
+                            </button>
+                            <button onClick={handleClonePreviousMonth} className="bg-white text-emerald-600 border border-emerald-200 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-tight hover:bg-emerald-50 transition-colors flex items-center gap-2 shadow-sm">
+                                <Users size={16} /> Copiar Mês Anterior
+                            </button>
+                        </div>
+
+                        <div className="flex flex-wrap gap-3 w-full xl:w-auto justify-end">
+                            {(user.role === 'CH_ADMIN') && (
+                                <>
+                                    <input type="file" ref={salaryInputRef} onChange={handleSalaryImport} accept=".xlsx,.xls,.csv,.txt" className="hidden" />
+                                    <button onClick={() => salaryInputRef.current?.click()} className="bg-white text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-indigo-50 flex items-center gap-2 shadow-sm">
+                                        <FileUp size={16} /> Salários
+                                    </button>
+                                    <input type="file" ref={budgetInputRef} onChange={handleBudgetImport} accept=".xlsx,.xls" className="hidden" />
+                                    <button onClick={() => budgetInputRef.current?.click()} className="bg-white text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-indigo-50 flex items-center gap-2 shadow-sm">
+                                        <FileUp size={16} /> Importar Budget
+                                    </button>
+                                    <button onClick={() => setIsBudgetManagerOpen(true)} className="bg-white text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-indigo-50 flex items-center gap-2 shadow-sm">
+                                        <Wallet size={16} /> Gerenciar Budgets
+                                    </button>
+                                </>
+                            )}
+                            <button onClick={() => handleSave(false)} disabled={saving} className="bg-gray-100 text-gray-700 px-6 py-2.5 rounded-lg text-sm font-bold uppercase hover:bg-gray-200 transition flex items-center gap-2 shadow-sm">
+                                <Save size={18} /> Salvar Rascunho
+                            </button>
+                            <button onClick={() => {
+                                if (window.confirm("Atenção: Enviar os dados limitará a edição futura desses centros de custo. Deseja prosseguir?")) {
+                                    handleSave(true);
+                                }
+                            }} disabled={saving} className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-bold uppercase hover:bg-blue-700 transition flex items-center gap-2 shadow-md">
+                                {saving ? <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : <CheckCircle2 size={18} />} Enviar P/ Aprovar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="p-6 bg-gray-50 min-h-[400px]">
+                        <PlanningTable
+                            records={displayTeams.map(team => {
+                                const teamEmployees = team.memberChapas
+                                    .map(chapa => getEmpObj(chapa))
+                                    .filter(e => !!e);
+
+                                let totalHours = 0;
+                                let totalCost = 0;
+
+                                teamEmployees.forEach((emp: any) => {
+                                    const salary = salaries[emp.chapa];
+                                    if (mode === 'MONTHLY') {
+                                        const hours = plans[emp.chapa] || 0;
+                                        totalHours += hours;
+                                        if (salary) totalCost += (salary / 220) * 1.6 * hours;
+                                    } else {
+                                        const curr = new Date(periodStart);
+                                        while (curr <= periodEnd) {
+                                            const key = `${emp.chapa}_${formatDateKey(curr)}`;
+                                            const hours = plans[key] || 0;
+                                            totalHours += hours;
+                                            if (salary && hours > 0) {
+                                                const isSunday = curr.getDay() === 0;
+                                                const baseHour = salary / 220;
+                                                const multiplier = isSunday ? 2.0 : 1.6;
+                                                totalCost += baseHour * multiplier * hours;
+                                            }
+                                            curr.setDate(curr.getDate() + 1);
+                                        }
+                                    }
+                                });
+
+                                return {
+                                    id: team.id,
+                                    description: team.name,
+                                    costCenter: team.costCenter,
+                                    headcount: team.memberChapas.length,
+                                    plannedHours: totalHours,
+                                    customEstCost: totalCost,
+                                    date: selectedMonth,
+                                    shift: team.managerName || 'Integral'
+                                };
+                            })}
+                            onDelete={handleDeleteTeam}
+                            onAddMember={setAddMemberTeamId}
+                            onPlanTeam={setTeamPlanModalId}
+                            salariesMap={salaries}
+                        />
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 };

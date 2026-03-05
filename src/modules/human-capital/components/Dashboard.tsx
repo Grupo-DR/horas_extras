@@ -442,7 +442,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
   const [treeViewMode, setTreeViewMode] = React.useState<'financial' | 'operational'>('financial');
   const [showTreeHelp, setShowTreeHelp] = React.useState(false);
 
-  const planningRecords = useMemo(() => getAllPlanningRecords(), []);
+  const planningRecords = useMemo(() => getAllPlanningRecords().filter(p => !p.status || p.status === 'approved'), []);
   // Filtra budgets pelos monthKeys cobertos pelo período atual
   const budgets = useMemo(() => {
     const all = getBudgetsSync();
