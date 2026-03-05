@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronDown, ChevronRight, Building2, Briefcase, Users, Calendar, Clock, DollarSign, Trash2, Edit2 } from 'lucide-react';
+import { Building2, Briefcase, Users, Calendar, Trash2, Edit2, UserPlus } from 'lucide-react';
 import { getCCRegional, getCCName, normalizeCC } from '../data/ccMaster';
 import { PlanningRecord } from '../types';
 import { formatDecimalHours } from '../utils/formatters';
@@ -25,7 +25,8 @@ const PlanningTreeRow: React.FC<{
     level: number;
     onEdit?: (r: any) => void;
     onDelete?: (id: string) => void;
-}> = ({ node, level, onEdit, onDelete }) => {
+    onAddMember?: (teamId: string) => void;
+}> = ({ node, level, onEdit, onDelete, onAddMember }) => {
     const [isExpanded, setIsExpanded] = useState(level === 0);
     const isRecord = node.type === 'RECORD';
     const hasChildren = node.children && node.children.length > 0;
@@ -58,6 +59,15 @@ const PlanningTreeRow: React.FC<{
                     <span className="w-20 text-right text-xs font-mono font-bold text-slate-800">{r.plannedHours}h</span>
                     <span className="w-24 text-right text-xs font-mono text-emerald-600 font-semibold">R$ {formatCost(node.metrics.estimatedCost)}</span>
                     <div className="w-16 flex justify-end gap-2">
+                        {onAddMember && (
+                            <button
+                                onClick={() => onAddMember(r.id)}
+                                className="p-1 text-slate-400 hover:text-blue-600"
+                                title="Adicionar / Gerenciar Membros"
+                            >
+                                <UserPlus size={14} />
+                            </button>
+                        )}
                         {onEdit && <button onClick={() => onEdit(r)} className="p-1 text-slate-400 hover:text-blue-600"><Edit2 size={14} /></button>}
                         {onDelete && <button onClick={() => onDelete(r.id)} className="p-1 text-slate-400 hover:text-rose-600"><Trash2 size={14} /></button>}
                     </div>
@@ -99,7 +109,7 @@ const PlanningTreeRow: React.FC<{
 
             {isExpanded && hasChildren && (
                 <div className="flex flex-col w-full">
-                    {node.children.map(child => <PlanningTreeRow key={child.id} node={child} level={level + 1} onEdit={onEdit} onDelete={onDelete} />)}
+                    {node.children.map(child => <PlanningTreeRow key={child.id} node={child} level={level + 1} onEdit={onEdit} onDelete={onDelete} onAddMember={onAddMember} />)}
                 </div>
             )}
         </React.Fragment>
@@ -110,10 +120,11 @@ interface PlanningTableProps {
     records: any[]; // The flat array of planning records
     onEdit?: (r: any) => void;
     onDelete?: (id: string) => void;
+    onAddMember?: (teamId: string) => void;
     salariesMap?: Record<string, number>; // Opcional, mantido para futura integração de cálculo exato
 }
 
-export const PlanningTable: React.FC<PlanningTableProps> = ({ records, onEdit, onDelete, salariesMap }) => {
+export const PlanningTable: React.FC<PlanningTableProps> = ({ records, onEdit, onDelete, onAddMember, salariesMap }) => {
     const hierarchicalData = useMemo(() => {
         const regionalMap = new Map<string, { metrics: PlanningMetrics, ccs: Map<string, { name: string, metrics: PlanningMetrics, records: any[] }> }>();
 
@@ -198,6 +209,7 @@ export const PlanningTable: React.FC<PlanningTableProps> = ({ records, onEdit, o
                         level={0}
                         onEdit={onEdit}
                         onDelete={onDelete}
+                        onAddMember={onAddMember}
                     />
                 ))}
             </div>

@@ -824,6 +824,17 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
         });
     }, [teams, ccFilter, regionalFilter, user]);
 
+    // Colaboradores disponíveis para adicionar à equipe selecionada
+    // Filtrados pelo CC da equipe e excluindo quem já é membro
+    const availableForTeam = useMemo(() => {
+        if (!addMemberTeamId) return uniqueEmployees;
+        const team = teams.find(t => t.id === addMemberTeamId);
+        if (!team) return uniqueEmployees;
+        return uniqueEmployees.filter(e =>
+            e.cc === team.costCenter && !team.memberChapas.includes(e.chapa)
+        );
+    }, [addMemberTeamId, teams, uniqueEmployees]);
+
     return (
         <div className="space-y-6">
             <BudgetManagerModal
@@ -846,7 +857,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                 isOpen={!!addMemberTeamId}
                 onClose={() => setAddMemberTeamId(null)}
                 onAdd={handleAddMembers}
-                availableEmployees={uniqueEmployees}
+                availableEmployees={availableForTeam}
             />
 
             {selectedEmployee && (
@@ -1026,6 +1037,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                             };
                         })}
                         onDelete={handleDeleteTeam}
+                        onAddMember={setAddMemberTeamId}
                         salariesMap={salaries}
                     />
                 </div>
