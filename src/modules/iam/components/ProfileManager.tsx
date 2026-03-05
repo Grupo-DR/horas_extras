@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { UserProfileDoc, HCRole, CommercialRole, Scope, ScopeType, ConstructionRole, canManageProfiles } from '../types';
+import { UserProfileDoc, CHRole, CommercialRole, Scope, ScopeType, ConstructionRole, canManageProfiles } from '../types';
 import { getAllProfiles, updateUserRoles, createUserProfile } from '../profileService';
 import { useAuth } from '@/contexts/AuthContext';
 import { Users, Search, Edit2, Shield, AlertTriangle, Save, X, Building2, MapPin, Plus, HardHat, KeyRound, Ban, CheckCircle2, Trash2 } from 'lucide-react';
@@ -32,13 +32,15 @@ const ProfileManager: React.FC = () => {
 
     useEffect(() => {
         if (!searchTerm) {
-            setFilteredUsers(users);
+            setFilteredUsers(users.filter(u => !u.isSuperAdmin));
         } else {
             const lower = searchTerm.toLowerCase();
             setFilteredUsers(users.filter(u =>
-                u.email.toLowerCase().includes(lower) ||
-                u.displayName.toLowerCase().includes(lower) ||
-                (u.jobTitle && u.jobTitle.toLowerCase().includes(lower))
+                (!u.isSuperAdmin) && (
+                    u.email.toLowerCase().includes(lower) ||
+                    u.displayName.toLowerCase().includes(lower) ||
+                    (u.jobTitle && u.jobTitle.toLowerCase().includes(lower))
+                )
             ));
         }
     }, [searchTerm, users]);
@@ -260,7 +262,7 @@ const ProfileManager: React.FC = () => {
                                     {user.modules.human_capital?.enabled ? (
                                         <div className="flex flex-col gap-1 items-start">
                                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-bold border border-indigo-100">
-                                                <Shield size={12} /> {user.modules.human_capital.role.replace('HC_', '')}
+                                                <Shield size={12} /> {user.modules.human_capital.role.replace('CH_', '')}
                                             </span>
                                             {user.modules.human_capital.scope.type !== 'ALL' && (
                                                 <span className="text-[10px] text-gray-500 flex items-center gap-1 bg-gray-100 px-1.5 py-0.5 rounded">
@@ -486,7 +488,7 @@ const ProfileManager: React.FC = () => {
                                                         ...editingUser.modules,
                                                         human_capital: {
                                                             enabled,
-                                                            role: enabled ? (editingUser.modules.human_capital?.role || 'HC_AUDITOR_VIEWER') : (editingUser.modules.human_capital?.role || 'HC_AUDITOR_VIEWER'),
+                                                            role: enabled ? (editingUser.modules.human_capital?.role || 'CH_AUDITOR_VIEWER') : (editingUser.modules.human_capital?.role || 'CH_AUDITOR_VIEWER'),
                                                             scope: currentScope
                                                         }
                                                     }
@@ -505,14 +507,15 @@ const ProfileManager: React.FC = () => {
                                                 value={editingUser.modules.human_capital.role}
                                                 onChange={(e) => setEditingUser({
                                                     ...editingUser,
-                                                    modules: { ...editingUser.modules, human_capital: { ...editingUser.modules.human_capital!, role: e.target.value as HCRole } }
+                                                    modules: { ...editingUser.modules, human_capital: { ...editingUser.modules.human_capital!, role: e.target.value as import('../types').CHRole } }
                                                 })}
                                                 className="w-full p-2 border rounded-lg text-sm"
                                             >
-                                                <option value="HC_AUDITOR_VIEWER">Auditor (Visualização Total)</option>
-                                                <option value="HC_COSTCENTER_PLANNER">Planejador de CC</option>
-                                                <option value="HC_MANAGER">Gerente Regional</option>
-                                                <option value="HC_ADMIN">Administrador HC</option>
+                                                <option value="CH_AUDITOR_VIEWER">Auditor (Visualização Total)</option>
+                                                <option value="CH_COSTCENTER_PLANNER">Planejador de CC</option>
+                                                <option value="CH_MANAGER">Gerente Regional</option>
+                                                <option value="CH_APPROVER">Aprovador CH</option>
+                                                <option value="CH_ADMIN">Administrador CH</option>
                                             </select>
                                         </div>
 

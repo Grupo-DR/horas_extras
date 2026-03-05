@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Building2, Briefcase, Users, Calendar, Trash2, Edit2, UserPlus } from 'lucide-react';
+import { Building2, Briefcase, Users, Calendar, Trash2, Edit2, UserPlus, Lock, Clock, FileEdit } from 'lucide-react';
 import { getCCRegional, getCCName, normalizeCC } from '../data/ccMaster';
 import { PlanningRecord } from '../types';
 import { formatDecimalHours } from '../utils/formatters';
@@ -52,14 +52,19 @@ const PlanningTreeRow: React.FC<{
                 <div className="flex items-center gap-3 flex-1">
                     <div className="w-1.5 h-1.5 rounded-full bg-slate-200 ml-4 shrink-0" />
                     <div className="flex flex-col">
-                        <span
-                            className={`text-xs font-bold text-slate-700 ${onPlanTeam ? 'cursor-pointer hover:text-blue-600 hover:underline' : ''}`}
-                            onClick={e => { if (onPlanTeam) { e.stopPropagation(); onPlanTeam(r.id); } }}
-                            title={onPlanTeam ? 'Clique para planejar horas desta equipe' : undefined}
-                        >
-                            {r.description || 'Turma de Trabalho'}
-                        </span>
-                        <span className="text-[10px] text-slate-500 flex items-center gap-1"><Calendar size={10} /> {r.date} • {r.shift}</span>
+                        <div className="flex items-center">
+                            <span
+                                className={`text-xs font-bold text-slate-700 ${onPlanTeam ? 'cursor-pointer hover:text-blue-600 hover:underline' : ''}`}
+                                onClick={e => { if (onPlanTeam) { e.stopPropagation(); onPlanTeam(r.id); } }}
+                                title={onPlanTeam ? 'Clique para planejar horas desta equipe' : undefined}
+                            >
+                                {r.description || 'Turma de Trabalho'}
+                            </span>
+                            {r.estStatus === 'approved' && <span title="Planilha Aprovada e Travada" className="ml-1.5 flex items-center"><Lock size={12} className="text-emerald-500" /></span>}
+                            {r.estStatus === 'pending' && <span title="Aguardando Aprovação" className="ml-1.5 flex items-center"><Clock size={12} className="text-amber-500" /></span>}
+                            {r.estStatus === 'draft' && <span title="Rascunho em Andamento" className="ml-1.5 flex items-center"><FileEdit size={12} className="text-blue-400" /></span>}
+                        </div>
+                        <span className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5"><Calendar size={10} /> {r.date} • {r.shift}</span>
                     </div>
                 </div>
                 <div className="flex items-center gap-6 justify-end">

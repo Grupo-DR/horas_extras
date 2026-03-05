@@ -1,5 +1,5 @@
 
-import { HCRole, Scope } from '../iam/types';
+import { CHRole, Scope } from '../iam/types';
 
 export interface OvertimeRecord {
     CHAPA: string;
@@ -34,7 +34,7 @@ export interface DashboardMetrics {
     employeeCount: number;
 }
 
-export type UserRole = HCRole;
+export type UserRole = CHRole;
 
 export interface UserProfile {
     id: string;
@@ -55,6 +55,9 @@ export interface PlanningRecord {
     date: string;
     type: 'DAILY' | 'MONTHLY';
     plannedHours: number;
+    status?: 'draft' | 'pending' | 'approved' | 'rejected';
+    approvedBy?: string;
+    approvedAt?: string;
 }
 
 export interface SalaryRecord {

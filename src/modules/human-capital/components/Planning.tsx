@@ -426,7 +426,9 @@ const TeamPlanModal: React.FC<{
     periodEnd: Date;
     onSave: (teamId: string, localNums: Record<string, number>) => Promise<void>;
     onRemoveMember: (teamId: string, chapa: string) => void;
-}> = ({ isOpen, onClose, team, memberNames, memberFuncoes, plans, salaries, periodStart, periodEnd, onSave, onRemoveMember }) => {
+    planStatuses: Record<string, string>;
+    canOverrideLock: boolean;
+}> = ({ isOpen, onClose, team, memberNames, memberFuncoes, plans, salaries, periodStart, periodEnd, onSave, onRemoveMember, planStatuses, canOverrideLock }) => {
     const [saving, setSaving] = useState(false);
     const [localValues, setLocalValues] = useState<Record<string, string>>({});
 
@@ -545,14 +547,22 @@ const TeamPlanModal: React.FC<{
                                                 const isSun = day.getDay() === 0;
                                                 const isSat = day.getDay() === 6;
                                                 const hasValue = parseTimeToDecimal(strVal) > 0;
+                                                const recordStatus = planStatuses[key] || 'approved'; // Retrocompatibilidade: sem status assume-se approved
+                                                const isLocked = !canOverrideLock && (recordStatus === 'approved' || recordStatus === 'pending');
+
                                                 return (
                                                     <td key={dk} className={`px-0.5 py-1 text-center ${isSun ? 'bg-red-50' : isSat ? 'bg-orange-50' : ''}`}>
                                                         <input
                                                             type="text"
                                                             value={strVal}
                                                             onChange={e => handleInputChange(chapa, dk, e.target.value)}
-                                                            className={`w-10 text-center text-[11px] border rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 font-mono transition-colors ${hasValue ? 'border-blue-300 bg-blue-50 text-blue-800 font-bold' : 'border-gray-200 bg-white text-gray-300'}`}
+                                                            className={`w-10 text-center text-[11px] border rounded px-1 py-0.5 outline-none font-mono transition-colors 
+                                                                ${hasValue ? 'border-blue-300 bg-blue-50 text-blue-800 font-bold' : 'border-gray-200 bg-white text-gray-300'}
+                                                                ${isLocked ? 'cursor-not-allowed opacity-60 bg-gray-100 ring-1 ring-gray-300' : 'focus:ring-1 focus:ring-blue-400'}
+                                                            `}
                                                             placeholder="--"
+                                                            disabled={isLocked}
+                                                            title={isLocked ? `Status: ${recordStatus}. Apenas aprovadores podem editar.` : undefined}
                                                         />
                                                     </td>
                                                 );
@@ -617,6 +627,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
     useEffect(() => { setCurrentWeekStart(periodStart); }, [periodStart]);
 
     const [plans, setPlans] = useState<Record<string, number>>({});
+    const [planStatuses, setPlanStatuses] = useState<Record<string, string>>({});
     const [salaries, setSalaries] = useState<Record<string, number>>({});
     const [budgets, setBudgets] = useState<BudgetRecord[]>([]);
     const [saving, setSaving] = useState(false);
@@ -770,11 +781,14 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
             }
 
             const planMap: Record<string, number> = {};
+            const statusMap: Record<string, string> = {};
             records.forEach(r => {
                 const key = mode === 'MONTHLY' ? r.chapa : `${r.chapa}_${r.date}`;
                 planMap[key] = r.plannedHours;
+                statusMap[key] = r.status || 'approved'; // Retrocompatibilidade global
             });
             setPlans(planMap);
+            setPlanStatuses(statusMap);
         };
         loadPlans();
     }, [mode, selectedMonth, periodStart, periodEnd, user]);
@@ -890,7 +904,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
             const matchesCC = !ccFilter || t.costCenter === ccFilter;
             const teamRegional = getRegional(t.costCenter);
             const matchesRegional = !regionalFilter || teamRegional === regionalFilter;
-            const isAuthorized = user.role === 'HC_COSTCENTER_PLANNER' ? t.costCenter === user.costCenter : true;
+            const isAuthorized = user.role === 'CH_COSTCENTER_PLANNER' ? t.costCenter === user.costCenter : true;
             return matchesCC && matchesRegional && isAuthorized;
         });
     }, [teams, allocations, selectedMonth, ccFilter, regionalFilter, user]);
@@ -923,7 +937,8 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                         costCenter: team.costCenter,
                         date: dateKey,
                         type: 'DAILY',
-                        plannedHours: hours
+                        plannedHours: hours,
+                        status: 'draft'
                     });
                 }
                 curr.setDate(curr.getDate() + 1);
@@ -939,7 +954,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
             const reg = e.regional;
             const matchesCC = !ccFilter || e.cc === ccFilter;
             const matchesRegional = !regionalFilter || reg === regionalFilter;
-            const isAuthorized = user.role === 'HC_COSTCENTER_PLANNER' ? e.cc === user.costCenter : true;
+            const isAuthorized = user.role === 'CH_COSTCENTER_PLANNER' ? e.cc === user.costCenter : true;
             return matchesCC && matchesRegional && isAuthorized;
         });
     }, [uniqueEmployees, ccFilter, regionalFilter, user]);
@@ -984,7 +999,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
             const matchesMonth = b.month.toLowerCase() === monthStr.toLowerCase();
             const matchesCC = !ccFilter || b.costCenter === ccFilter;
             const matchesRegional = !regionalFilter || getRegional(b.costCenter) === regionalFilter;
-            const isAuthorized = user.role === 'HC_COSTCENTER_PLANNER' ? b.costCenter === user.costCenter : true;
+            const isAuthorized = user.role === 'CH_COSTCENTER_PLANNER' ? b.costCenter === user.costCenter : true;
             return (matchesMonth && matchesCC && matchesRegional && isAuthorized) ? acc + b.value : acc;
         }, 0);
     }, [budgets, selectedMonth, user, ccFilter, regionalFilter]);
@@ -1138,14 +1153,15 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
         if (budgetInputRef.current) budgetInputRef.current.value = '';
     };
 
-    const handleSave = async () => {
+    const handleSave = async (submitPending: boolean = false) => {
         setSaving(true);
+        const statusFlag: 'draft' | 'pending' = submitPending ? 'pending' : 'draft';
         const recordsToSave: PlanningRecord[] = [];
         uniqueEmployees.forEach(emp => {
             if (mode === 'MONTHLY') {
                 const hours = plans[emp.chapa];
                 if (hours !== undefined) {
-                    recordsToSave.push({ id: `${emp.chapa}_MONTHLY_${selectedMonth}`, chapa: emp.chapa, nome: emp.nome, costCenter: emp.cc, date: selectedMonth, type: 'MONTHLY', plannedHours: hours });
+                    recordsToSave.push({ id: `${emp.chapa}_MONTHLY_${selectedMonth}`, chapa: emp.chapa, nome: emp.nome, costCenter: emp.cc, date: selectedMonth, type: 'MONTHLY', plannedHours: hours, status: statusFlag });
                 }
             } else {
                 const curr = new Date(periodStart);
@@ -1154,7 +1170,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                     const key = `${emp.chapa}_${dateKey}`;
                     const hours = plans[key];
                     if (hours !== undefined) {
-                        recordsToSave.push({ id: `${emp.chapa}_DAILY_${dateKey}`, chapa: emp.chapa, nome: emp.nome, costCenter: emp.cc, date: dateKey, type: 'DAILY', plannedHours: hours });
+                        recordsToSave.push({ id: `${emp.chapa}_DAILY_${dateKey}`, chapa: emp.chapa, nome: emp.nome, costCenter: emp.cc, date: dateKey, type: 'DAILY', plannedHours: hours, status: statusFlag });
                     }
                     curr.setDate(curr.getDate() + 1);
                 }
@@ -1162,7 +1178,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
         });
         await savePlanning(recordsToSave, user);
         setSaving(false);
-        setAlert({ type: 'success', message: 'Planejamento salvo!' });
+        setAlert({ type: 'success', message: submitPending ? 'Planejamento submetido para aprovação!' : 'Rascunho salvo!' });
     };
 
     const handleEmployeeClick = (emp: { nome: string; chapa: string }) => {
@@ -1243,6 +1259,8 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                     periodEnd={periodEnd}
                     onSave={handleTeamPlanSave}
                     onRemoveMember={handleRemoveMember}
+                    planStatuses={planStatuses}
+                    canOverrideLock={(user.role === 'CH_ADMIN' || user.role === 'CH_APPROVER')}
                 />
             )}
 
@@ -1360,7 +1378,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                     </div>
 
                     <div className="flex flex-wrap gap-3 w-full xl:w-auto justify-end">
-                        {(user.role === 'HC_ADMIN') && (
+                        {(user.role === 'CH_ADMIN') && (
                             <>
                                 <input type="file" ref={salaryInputRef} onChange={handleSalaryImport} accept=".xlsx,.xls,.csv,.txt" className="hidden" />
                                 <button onClick={() => salaryInputRef.current?.click()} className="bg-white text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-indigo-50 flex items-center gap-2 shadow-sm">
@@ -1375,8 +1393,15 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                                 </button>
                             </>
                         )}
-                        <button onClick={handleSave} disabled={saving} className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-bold uppercase hover:bg-blue-700 transition flex items-center gap-2 shadow-md">
-                            {saving ? <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : <Save size={18} />} Salvar
+                        <button onClick={() => handleSave(false)} disabled={saving} className="bg-gray-100 text-gray-700 px-6 py-2.5 rounded-lg text-sm font-bold uppercase hover:bg-gray-200 transition flex items-center gap-2 shadow-sm">
+                            <Save size={18} /> Salvar Rascunho
+                        </button>
+                        <button onClick={() => {
+                            if (window.confirm("Atenção: Enviar os dados limitará a edição futura desses centros de custo. Deseja prosseguir?")) {
+                                handleSave(true);
+                            }
+                        }} disabled={saving} className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-bold uppercase hover:bg-blue-700 transition flex items-center gap-2 shadow-md">
+                            {saving ? <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : <CheckCircle2 size={18} />} Enviar P/ Aprovar
                         </button>
                     </div>
                 </div>

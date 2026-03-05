@@ -7,11 +7,12 @@ export type Scope =
 
 export type CommercialRole = 'COMMERCIAL_ADMIN' | 'COMMERCIAL_VIEWER' | 'IAM_ADMIN';
 
-export type HCRole =
-    | 'HC_ADMIN'              // Type 01: All access + Plan + CRUD Profiles
-    | 'HC_MANAGER'            // Type 02: Regional + Plan
-    | 'HC_COSTCENTER_PLANNER' // Type 03: CostCenter + Plan
-    | 'HC_AUDITOR_VIEWER';    // Type 04: All + Read Only
+export type CHRole =
+    | 'CH_ADMIN'              // Type 01: All access + Plan + CRUD Profiles
+    | 'CH_MANAGER'            // Type 02: Regional + Plan
+    | 'CH_COSTCENTER_PLANNER' // Type 03: CostCenter + Plan
+    | 'CH_APPROVER'           // Type 04: Approver Level
+    | 'CH_AUDITOR_VIEWER';    // Type 05: All + Read Only
 
 export type ConstructionRole =
     | 'CONSTRUCTION_ADMIN'
@@ -44,7 +45,7 @@ export interface UserProfileDoc {
         };
         human_capital?: {
             enabled: boolean;
-            role: HCRole;
+            role: CHRole;
             scope: Scope;
         };
         construction?: {
@@ -65,23 +66,28 @@ export interface UserProfileDoc {
 
 // Helpers
 
-export const canPlan = (role?: HCRole): boolean => {
+export const canPlan = (role?: CHRole): boolean => {
     if (!role) return false;
-    return ['HC_ADMIN', 'HC_MANAGER', 'HC_COSTCENTER_PLANNER'].includes(role);
+    return ['CH_ADMIN', 'CH_MANAGER', 'CH_COSTCENTER_PLANNER'].includes(role);
 };
 
 export const canManageProfiles = (profile: UserProfileDoc | null | undefined): boolean => {
     if (!profile) return false;
     if (profile.isSuperAdmin) return true;
     return (
-        profile.modules.human_capital?.role === 'HC_ADMIN' ||
+        profile.modules.human_capital?.role === 'CH_ADMIN' ||
         profile.modules.commercial?.role === 'COMMERCIAL_ADMIN' ||
         profile.modules.commercial?.role === 'IAM_ADMIN' ||
         profile.modules.construction?.role === 'CONSTRUCTION_ADMIN'
     );
 };
 
-export const canReadAll = (role?: HCRole): boolean => {
+export const canReadAll = (role?: CHRole): boolean => {
     if (!role) return false;
-    return ['HC_ADMIN', 'HC_AUDITOR_VIEWER'].includes(role);
+    return ['CH_ADMIN', 'CH_AUDITOR_VIEWER', 'CH_APPROVER'].includes(role);
+};
+
+export const canApprove = (role?: CHRole): boolean => {
+    if (!role) return false;
+    return ['CH_ADMIN', 'CH_APPROVER'].includes(role);
 };

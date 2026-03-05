@@ -49,7 +49,7 @@ export const getOrCreateUserProfile = async (authUser: FirebaseUser): Promise<Us
             },
             human_capital: {
                 enabled: isSuperAdmin,
-                role: isSuperAdmin ? 'HC_ADMIN' : 'HC_AUDITOR_VIEWER',
+                role: isSuperAdmin ? 'CH_ADMIN' : 'CH_AUDITOR_VIEWER',
                 scope: { type: 'ALL' } // Default scope
             },
             construction: {
@@ -92,7 +92,7 @@ export const createUserProfile = async (uid: string, email: string, displayName:
             status: 'invited',
             modules: {
                 commercial: { enabled: false, role: 'COMMERCIAL_VIEWER' },
-                human_capital: { enabled: false, role: 'HC_AUDITOR_VIEWER', scope: { type: 'ALL' } },
+                human_capital: { enabled: false, role: 'CH_AUDITOR_VIEWER', scope: { type: 'ALL' } },
                 construction: { enabled: false, role: 'CONSTRUCTION_VIEWER' }
             },
             createdAt: new Date().toISOString(),
@@ -138,7 +138,7 @@ export const getUsersDirectory = async (): Promise<any[]> => {
 
 export const updateUserRoles = async (uid: string, iamUpdates: {
     commercial?: { enabled: boolean; role: 'COMMERCIAL_ADMIN' | 'COMMERCIAL_VIEWER' | 'IAM_ADMIN' };
-    human_capital?: { enabled: boolean; role: 'HC_ADMIN' | 'HC_MANAGER' | 'HC_COSTCENTER_PLANNER' | 'HC_AUDITOR_VIEWER'; scope: any };
+    human_capital?: { enabled: boolean; role: import('./types').CHRole; scope: any };
     construction?: { enabled: boolean; role: 'CONSTRUCTION_ADMIN' | 'CONSTRUCTION_MANAGER' | 'CONSTRUCTION_VIEWER' };
 }) => {
     const ref = doc(db, COLLECTION, uid);
