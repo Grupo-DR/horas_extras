@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, SalaryRecord, WorkTeam, TeamAllocation } from '../types';
 import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, AlertTriangle, Moon, Scale, Percent, ArrowUpRight, ArrowDownRight, X, User, Users, DollarSign, ListFilter, ShieldAlert, Zap, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { formatDecimalHours } from '../utils/formatters';
-import { getPlanning, getPlanningSync, getSalariesSync, getBudgetsSync, saveBudgets, getTeamsSync, getTeamAllocationsSync, getTeamAllocations } from '../services/planning';
+import { getPlanning, getPlanningSync, getSalariesSync, getBudgetsSync, saveBudgets, getTeamsSync, getTeamAllocationsSync, getTeamAllocations, getAllPlanningRecords } from '../services/planning';
 import { getCCName, getCCRegional, normalizeCC } from '../data/ccMaster';
 
 interface DashboardProps {
