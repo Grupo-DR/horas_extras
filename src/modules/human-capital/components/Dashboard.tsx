@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, SalaryRecord } from '../types';
+import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, SalaryRecord, WorkTeam } from '../types';
 import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, AlertTriangle, Moon, Scale, Percent, ArrowUpRight, ArrowDownRight, X, User, Users, DollarSign, ListFilter, ShieldAlert, Zap, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { formatDecimalHours } from '../utils/formatters';
-import { getAllPlanningRecords, getBudgetsSync, getSalariesSync } from '../services/planning';
+import { getAllPlanningRecords, getBudgetsSync, getSalariesSync, getTeamsSync } from '../services/planning';
 import { getCCName, getCCRegional, normalizeCC } from '../data/ccMaster';
 
 interface DashboardProps {
@@ -31,9 +31,10 @@ interface DashboardMetrics {
 interface TreeNode {
   id: string;
   name: string;
-  type: 'GLOBAL' | 'REGIONAL' | 'CC' | 'TEAM';
+  type: 'GLOBAL' | 'REGIONAL' | 'CC' | 'TEAM' | 'PERSON';
   metrics: DashboardMetrics;
   children: TreeNode[];
+  chapa?: string; // Apenas para nós PERSON
 }
 
 type ViewMode = 'hours' | 'finance';
@@ -274,12 +275,9 @@ const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHour
     if (isGlobal) return <Building2 size={16} className="text-indigo-600" />;
     if (isRegional) return <Briefcase size={16} className="text-blue-600" />;
     if (isCC) return <Building2 size={16} className="text-slate-500" />;
-    return <Users size={16} className="text-emerald-500" />;
+    if (node.type === 'TEAM') return <Users size={16} className="text-emerald-500" />;
+    return <User size={16} className="text-slate-400" />; // PERSON
   };
-
-  const diffHours = node.metrics.total - node.metrics.plannedHours;
-  const diffCost = node.metrics.totalCost - node.metrics.budgetCost;
-  const impactPct = parentTotalHours && parentTotalHours > 0 ? ((node.metrics.total / parentTotalHours) * 100).toFixed(1) : '100';
 
   const formatCost = (v: number) => {
     const abs = Math.abs(v);
@@ -287,6 +285,62 @@ const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHour
     if (abs >= 10000) return (v / 1000).toFixed(1) + 'k';
     return v.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
   };
+
+  // Nó PERSON: folha, sem expansão
+  if (node.type === 'PERSON') {
+    return (
+      <div
+        className="flex items-center justify-between py-2 pr-4 border-b border-slate-50 bg-white hover:bg-blue-50/30 transition-colors"
+        style={{ paddingLeft: `${(level * 1.5) + 1}rem` }}
+      >
+        <div className="flex items-center gap-2 flex-1 min-w-[250px] mr-4">
+          <div className="w-4 flex justify-center shrink-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-300 inline-block" />
+          </div>
+          <User size={14} className="text-slate-400 shrink-0" />
+          <span className="text-xs text-slate-600 truncate" title={node.name}>{node.name}</span>
+        </div>
+        <div className="flex items-center gap-4 justify-end shrink-0">
+          <div className="w-16" />{/* impacto % */}
+          <div className="w-16 text-center">
+            <span className="text-xs font-mono text-slate-500">1</span>
+          </div>
+          {viewMode === 'operational' && (
+            <div className="w-[240px] flex items-center justify-between border rounded-md px-3 py-1 text-xs font-mono shadow-sm bg-slate-50 border-slate-200">
+              <span className="text-slate-400 w-12 text-right">{formatDecimalHours(node.metrics.plannedHours)}</span>
+              <span className="text-slate-200">|</span>
+              <span className="font-bold text-slate-800 w-12 text-right">{formatDecimalHours(node.metrics.total)}</span>
+              <span className={`w-14 text-right font-black ${(node.metrics.total - node.metrics.plannedHours) > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                {(node.metrics.total - node.metrics.plannedHours) > 0 ? '+' : ''}{formatDecimalHours(node.metrics.total - node.metrics.plannedHours)}
+              </span>
+            </div>
+          )}
+          {viewMode === 'financial' ? (
+            <div className="w-[280px] flex items-center justify-between border rounded-md px-3 py-1 text-xs font-mono shadow-sm bg-emerald-50/50 border-emerald-100">
+              <span className="text-slate-500 w-16 text-right">R$ {formatCost(node.metrics.budgetCost)}</span>
+              <span className="text-emerald-200">|</span>
+              <span className="font-bold text-emerald-900 w-16 text-right">R$ {formatCost(node.metrics.totalCost)}</span>
+              <span className={`w-16 text-right font-black ${(node.metrics.totalCost - node.metrics.budgetCost) > 0 ? 'text-rose-500' : 'text-emerald-600'}`}>
+                {(node.metrics.totalCost - node.metrics.budgetCost) > 0 ? '+' : ''}{formatCost(node.metrics.totalCost - node.metrics.budgetCost)}
+              </span>
+            </div>
+          ) : (
+            <div className="w-[280px] flex items-center justify-between border rounded-md px-2 py-1 text-[10px] font-mono shadow-sm bg-indigo-50/40 border-indigo-100">
+              <div className="flex flex-col items-center w-1/4 border-r border-indigo-100/50"><span className="text-indigo-500 font-bold mb-0.5 uppercase text-[8px]">60%</span><span className="font-black text-slate-700">{formatDecimalHours(node.metrics.he60)}</span></div>
+              <div className="flex flex-col items-center w-1/4 border-r border-indigo-100/50"><span className="text-rose-400 font-bold mb-0.5 uppercase text-[8px]">100%</span><span className="font-black text-slate-700">{formatDecimalHours(node.metrics.he100)}</span></div>
+              <div className="flex flex-col items-center w-1/4 border-r border-indigo-100/50"><span className="text-amber-500 font-bold mb-0.5 uppercase text-[8px]">Inter</span><span className="font-black text-slate-700">{formatDecimalHours(node.metrics.inter)}</span></div>
+              <div className="flex flex-col items-center w-1/4"><span className="text-purple-400 font-bold mb-0.5 uppercase text-[8px]">Noturno</span><span className="font-black text-slate-700">{formatDecimalHours(node.metrics.noturno)}</span></div>
+            </div>
+          )}
+          <div className="w-20" />{/* risco vazio para pessoa */}
+        </div>
+      </div>
+    );
+  }
+
+  const diffHours = node.metrics.total - node.metrics.plannedHours;
+  const diffCost = node.metrics.totalCost - node.metrics.budgetCost;
+  const impactPct = parentTotalHours && parentTotalHours > 0 ? ((node.metrics.total / parentTotalHours) * 100).toFixed(1) : '100';
 
   // Cores dinâmicas por nível para facilitar o entendimento da hierarquia
   const rowBgClass = isGlobal
@@ -656,51 +710,89 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
   }, [data, planningRecords, selectedCcModal, salariesMap]);
 
   const hierarchicalData = useMemo(() => {
-    const globalMetrics = { headcount: new Set<string>(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0, totalCost: 0, plannedHours: 0, budgetCost: 0 };
-    const regionalMap = new Map<string, { metrics: any, ccs: Map<string, { name: string, metrics: any, teams: Map<string, any> }> }>();
+    // Carrega as equipes do planejamento
+    const allTeams: WorkTeam[] = getTeamsSync();
 
-    // Mapeamento extra para descobrir a função da chapa nos registros de planejamento
-    const chapaToFunc: Record<string, string> = {};
-    data.forEach(r => {
-      if (r.FUNCAO) chapaToFunc[r.CHAPA] = r.FUNCAO;
+    // Lookup: cc normalizado → lista de WorkTeams daquele CC
+    const ccTeams = new Map<string, WorkTeam[]>();
+    allTeams.forEach(t => {
+      const cc = normalizeCC(t.costCenter);
+      if (!ccTeams.has(cc)) ccTeams.set(cc, []);
+      ccTeams.get(cc)!.push(t);
     });
 
-    const getRegData = (reg: string) => {
-      if (!regionalMap.has(reg)) {
-        regionalMap.set(reg, { metrics: { headcount: new Set(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0, totalCost: 0, plannedHours: 0, budgetCost: 0 }, ccs: new Map() });
-      }
+    // Lookup: "cc|chapa" → WorkTeam (qual equipe a chapa pertence dentro de um CC)
+    const chapaTeamKey = (cc: string, chapa: string) => `${cc}|${chapa}`;
+    const chapaToTeam = new Map<string, WorkTeam>();
+    allTeams.forEach(t => {
+      const cc = normalizeCC(t.costCenter);
+      t.memberChapas.forEach(chapa => {
+        chapaToTeam.set(chapaTeamKey(cc, chapa), t);
+      });
+    });
+
+    // Mapa de nome por chapa (para exibição nos nós PERSON)
+    const chapaToName = new Map<string, string>();
+    data.forEach(r => { if (r.CHAPA && r.NOME) chapaToName.set(r.CHAPA, r.NOME); });
+
+    // Estrutura de acumulação
+    type PersonAcc = { name: string; metrics: any };
+    type TeamAcc = { name: string; metrics: any; persons: Map<string, PersonAcc> };
+    type CcAcc = { name: string; metrics: any; teams: Map<string, TeamAcc>; persons: Map<string, PersonAcc> };
+    type RegAcc = { metrics: any; ccs: Map<string, CcAcc> };
+
+    const newM = () => ({ headcount: new Set<string>(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0, totalCost: 0, plannedHours: 0, budgetCost: 0 });
+
+    const globalMetrics = newM();
+    const regionalMap = new Map<string, RegAcc>();
+
+    const getRegData = (reg: string): RegAcc => {
+      if (!regionalMap.has(reg)) regionalMap.set(reg, { metrics: newM(), ccs: new Map() });
       return regionalMap.get(reg)!;
     };
 
-    const getCcData = (regData: any, cc: string, ccName: string) => {
-      if (!regData.ccs.has(cc)) {
-        regData.ccs.set(cc, { name: ccName, metrics: { headcount: new Set(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0, totalCost: 0, plannedHours: 0, budgetCost: 0 }, teams: new Map() });
-      }
+    const getCcData = (regData: RegAcc, cc: string, ccName: string): CcAcc => {
+      if (!regData.ccs.has(cc)) regData.ccs.set(cc, { name: ccName, metrics: newM(), teams: new Map(), persons: new Map() });
       return regData.ccs.get(cc)!;
     };
 
-    const getTeamData = (ccData: any, teamName: string) => {
-      if (!ccData.teams.has(teamName)) {
-        ccData.teams.set(teamName, { metrics: { headcount: new Set(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0, totalCost: 0, plannedHours: 0, budgetCost: 0 } });
+    const getTeamAcc = (ccData: CcAcc, teamId: string, teamName: string): TeamAcc => {
+      if (!ccData.teams.has(teamId)) ccData.teams.set(teamId, { name: teamName, metrics: newM(), persons: new Map() });
+      return ccData.teams.get(teamId)!;
+    };
+
+    const getPersonAcc = (container: { persons: Map<string, PersonAcc> }, chapa: string): PersonAcc => {
+      if (!container.persons.has(chapa)) {
+        container.persons.set(chapa, { name: chapaToName.get(chapa) || chapa, metrics: newM() });
       }
-      return ccData.teams.get(teamName)!;
+      return container.persons.get(chapa)!;
+    };
+
+    const addHours = (m: any, chapa: string, hours: number, isHE60: boolean, isHE100: boolean, isInter: boolean, isNoturno: boolean, cost: number) => {
+      m.headcount.add(chapa);
+      if (isHE60) m.he60 += hours;
+      if (isHE100) m.he100 += hours;
+      if (isInter) m.inter += hours;
+      if (isNoturno) m.noturno += hours;
+      m.total += hours;
+      m.totalCost += cost;
     };
 
     // 1. DADOS REAIS
     data.forEach(r => {
       const rawCC = r.CODCCUSTO || 'S/ CC';
       const cc = normalizeCC(rawCC);
-      const ccName = getCCName(rawCC) || 'S/ CC';
+      const ccName = getCCName(rawCC) || resolveName(rawCC);
       const reg = getCCRegional(rawCC) || 'Sem Regional';
-      const funcName = r.FUNCAO || 'S/ Função';
       const hours = Number(r.HORAS) || 0;
       const evt = (r.EVENTO || '').toUpperCase();
       const isHE60 = evt.includes('EXTRA') && evt.includes('60');
       const isHE100 = evt.includes('EXTRA') && evt.includes('100');
       const isInter = evt.includes('INTER');
       const isNoturno = evt.includes('NOTURNO') || evt.includes('20');
-
       if (!isHE60 && !isHE100 && !isInter && !isNoturno) return;
+
+      if (!chapaToName.has(r.CHAPA)) chapaToName.set(r.CHAPA, r.NOME || r.CHAPA);
 
       const sal = salariesMap[r.CHAPA] || 0;
       const baseHour = sal / 220;
@@ -712,52 +804,69 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
       const regData = getRegData(reg);
       const ccData = getCcData(regData, cc, ccName);
-      const teamData = getTeamData(ccData, funcName);
+      const hasTeams = (ccTeams.get(cc)?.length ?? 0) > 0;
 
-      [globalMetrics, regData.metrics, ccData.metrics, teamData.metrics].forEach(m => {
-        m.headcount.add(r.CHAPA);
-        if (isHE60) m.he60 += hours;
-        if (isHE100) m.he100 += hours;
-        if (isInter) m.inter += hours;
-        if (isNoturno) m.noturno += hours;
-        m.total += hours;
-        m.totalCost += cost;
-      });
+      addHours(globalMetrics, r.CHAPA, hours, isHE60, isHE100, isInter, isNoturno, cost);
+      addHours(regData.metrics, r.CHAPA, hours, isHE60, isHE100, isInter, isNoturno, cost);
+      addHours(ccData.metrics, r.CHAPA, hours, isHE60, isHE100, isInter, isNoturno, cost);
+
+      if (hasTeams) {
+        const wt = chapaToTeam.get(chapaTeamKey(cc, r.CHAPA));
+        const teamAcc = getTeamAcc(ccData, wt ? wt.id : `${cc}-sem-equipe`, wt ? wt.name : 'Sem Equipe Designada');
+        addHours(teamAcc.metrics, r.CHAPA, hours, isHE60, isHE100, isInter, isNoturno, cost);
+        const personAcc = getPersonAcc(teamAcc, r.CHAPA);
+        addHours(personAcc.metrics, r.CHAPA, hours, isHE60, isHE100, isInter, isNoturno, cost);
+      } else {
+        const personAcc = getPersonAcc(ccData, r.CHAPA);
+        addHours(personAcc.metrics, r.CHAPA, hours, isHE60, isHE100, isInter, isNoturno, cost);
+      }
     });
 
     // 2. DADOS PLANEJADOS
     planningRecords.forEach(p => {
       const rawCC = p.costCenter || 'S/ CC';
       const cc = normalizeCC(rawCC);
-      const ccName = getCCName(rawCC) || 'S/ CC';
+      const ccName = getCCName(rawCC) || resolveName(rawCC);
       const reg = getCCRegional(rawCC) || 'Sem Regional';
-      const funcName = chapaToFunc[p.chapa] || 'S/ Função';
 
       const regData = getRegData(reg);
       const ccData = getCcData(regData, cc, ccName);
-      const teamData = getTeamData(ccData, funcName);
+      const hasTeams = (ccTeams.get(cc)?.length ?? 0) > 0;
 
-      [globalMetrics, regData.metrics, ccData.metrics, teamData.metrics].forEach(m => {
-        m.plannedHours += p.plannedHours;
-      });
+      const addPlan = (m: any) => { m.plannedHours += p.plannedHours; };
+      addPlan(globalMetrics); addPlan(regData.metrics); addPlan(ccData.metrics);
+
+      if (hasTeams) {
+        const wt = chapaToTeam.get(chapaTeamKey(cc, p.chapa));
+        const teamAcc = getTeamAcc(ccData, wt ? wt.id : `${cc}-sem-equipe`, wt ? wt.name : 'Sem Equipe Designada');
+        addPlan(teamAcc.metrics);
+        const personAcc = getPersonAcc(teamAcc, p.chapa);
+        addPlan(personAcc.metrics);
+      } else {
+        const personAcc = getPersonAcc(ccData, p.chapa);
+        addPlan(personAcc.metrics);
+      }
     });
 
-    // 3. DADOS DE ORÇAMENTO (BUDGET) - Não desce para Equipe (fica 0)
+    // 3. BUDGET (fica no nível CC e acima)
     budgets.forEach(b => {
       const rawCC = b.costCenter || 'S/ CC';
       const cc = normalizeCC(rawCC);
-      const ccName = getCCName(rawCC) || 'S/ CC';
+      const ccName = getCCName(rawCC) || resolveName(rawCC);
       const reg = getCCRegional(rawCC) || 'Sem Regional';
-
       const regData = getRegData(reg);
       const ccData = getCcData(regData, cc, ccName);
-
-      [globalMetrics, regData.metrics, ccData.metrics].forEach(m => {
-        m.budgetCost += b.value;
-      });
+      [globalMetrics, regData.metrics, ccData.metrics].forEach(m => { m.budgetCost += b.value; });
     });
 
     const calcRisk = (m: any) => ((m.he100 * 2.5) + (m.he60 * 1.0) + (m.inter * 5.0) + (m.noturno * 0.5)) / (m.headcount.size || 1);
+
+    const buildPersonNodes = (persons: Map<string, PersonAcc>, baseId: string): TreeNode[] =>
+      Array.from(persons.entries()).map(([chapa, p]) => ({
+        id: `${baseId}-${chapa}`, name: p.name, type: 'PERSON' as const, chapa,
+        metrics: { ...p.metrics, headcount: 1, riskIndex: calcRisk(p.metrics) },
+        children: []
+      })).sort((a, b) => b.metrics.total - a.metrics.total);
 
     const root: TreeNode = {
       id: 'global', name: 'DR Construtora (Global)', type: 'GLOBAL',
@@ -765,16 +874,20 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       children: Array.from(regionalMap.entries()).map(([regName, regData]) => ({
         id: regName, name: regName, type: 'REGIONAL' as const,
         metrics: { ...regData.metrics, headcount: regData.metrics.headcount.size, riskIndex: calcRisk(regData.metrics) },
-        children: Array.from(regData.ccs.entries()).map(([ccCode, ccData]) => ({
-          id: ccCode, name: `${ccCode} - ${ccData.name}`, type: 'CC' as const,
-          metrics: { ...ccData.metrics, headcount: ccData.metrics.headcount.size, riskIndex: calcRisk(ccData.metrics) },
-          // A MÁGICA: O 4º Nível das Equipes
-          children: Array.from(ccData.teams.entries()).map(([teamName, teamData]) => ({
-            id: `${ccCode}-${teamName}`, name: teamName, type: 'TEAM' as const,
-            metrics: { ...teamData.metrics, headcount: teamData.metrics.headcount.size, riskIndex: calcRisk(teamData.metrics) },
-            children: []
-          })).sort((a, b) => b.metrics.riskIndex - a.metrics.riskIndex) // Ordena as equipes mais críticas primeiro
-        })).sort((a, b) => b.metrics.riskIndex - a.metrics.riskIndex)
+        children: Array.from(regData.ccs.entries()).map(([ccCode, ccData]) => {
+          const hasTeams = ccData.teams.size > 0;
+          return {
+            id: ccCode, name: `${ccCode} - ${ccData.name}`, type: 'CC' as const,
+            metrics: { ...ccData.metrics, headcount: ccData.metrics.headcount.size, riskIndex: calcRisk(ccData.metrics) },
+            children: hasTeams
+              ? Array.from(ccData.teams.entries()).map(([teamId, teamData]) => ({
+                id: teamId, name: teamData.name, type: 'TEAM' as const,
+                metrics: { ...teamData.metrics, headcount: teamData.metrics.headcount.size, riskIndex: calcRisk(teamData.metrics) },
+                children: buildPersonNodes(teamData.persons, teamId)
+              })).sort((a, b) => b.metrics.riskIndex - a.metrics.riskIndex)
+              : buildPersonNodes(ccData.persons, ccCode)
+          };
+        }).sort((a, b) => b.metrics.riskIndex - a.metrics.riskIndex)
       })).sort((a, b) => b.metrics.riskIndex - a.metrics.riskIndex)
     };
 
