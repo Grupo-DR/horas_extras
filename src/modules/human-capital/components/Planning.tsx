@@ -413,8 +413,174 @@ const BudgetManagerModal: React.FC<{
             </div>
         </div>
     );
-};
+};// --- TEAM PLAN MODAL (Grade Membros × Dias) ---
+const TeamPlanModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    team: WorkTeam;
+    memberNames: Record<string, string>;
+    plans: Record<string, number>;
+    salaries: Record<string, number>;
+    periodStart: Date;
+    periodEnd: Date;
+    onSave: (teamId: string, localNums: Record<string, number>) => Promise<void>;
+}> = ({ isOpen, onClose, team, memberNames, plans, salaries, periodStart, periodEnd, onSave }) => {
+    const [saving, setSaving] = useState(false);
+    const [localValues, setLocalValues] = useState<Record<string, string>>({});
 
+    const days = useMemo(() => {
+        const arr: Date[] = [];
+        const curr = new Date(periodStart);
+        while (curr <= periodEnd) { arr.push(new Date(curr)); curr.setDate(curr.getDate() + 1); }
+        return arr;
+    }, [periodStart, periodEnd]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const init: Record<string, string> = {};
+        team.memberChapas.forEach(chapa => {
+            days.forEach(day => {
+                const dk = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+                const h = plans[`${chapa}_${dk}`];
+                if (h && h > 0) init[`${chapa}_${dk}`] = formatDecimalHours(h);
+            });
+        });
+        setLocalValues(init);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, team.id]);
+
+    const getMemberTotal = (chapa: string): number =>
+        days.reduce((sum, day) => {
+            const dk = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+            return sum + parseTimeToDecimal(localValues[`${chapa}_${dk}`] || '0');
+        }, 0);
+
+    const handleInputChange = (chapa: string, dk: string, value: string) => {
+        setLocalValues(prev => ({ ...prev, [`${chapa}_${dk}`]: value }));
+    };
+
+    const handleSaveClick = async () => {
+        setSaving(true);
+        const numericMap: Record<string, number> = {};
+        team.memberChapas.forEach(chapa => {
+            days.forEach(day => {
+                const dk = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+                numericMap[`${chapa}_${dk}`] = parseTimeToDecimal(localValues[`${chapa}_${dk}`] || '0');
+            });
+        });
+        await onSave(team.id, numericMap);
+        setSaving(false);
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-2">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[96vw] overflow-hidden flex flex-col max-h-[92vh]">
+                <div className="bg-blue-600 px-6 py-4 flex justify-between items-center text-white shrink-0">
+                    <div>
+                        <h3 className="text-lg font-bold">{team.name}</h3>
+                        <p className="text-blue-200 text-xs mt-0.5">
+                            CC: {team.costCenter} • Gestor: {team.managerName || 'N/A'} • Período: {periodStart.toLocaleDateString('pt-BR')} → {periodEnd.toLocaleDateString('pt-BR')}
+                        </p>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors"><X size={20} /></button>
+                </div>
+
+                <div className="flex-1 overflow-auto">
+                    {team.memberChapas.length === 0 ? (
+                        <div className="py-16 text-center text-slate-400">
+                            <Users size={40} className="mx-auto mb-3 opacity-30" />
+                            <p className="font-bold">Nenhum membro nesta equipe.</p>
+                            <p className="text-sm mt-1">Use o botão + na lista de turmas para adicionar colaboradores.</p>
+                        </div>
+                    ) : (
+                        <table className="border-collapse text-xs" style={{ minWidth: `${(days.length + 2) * 56}px` }}>
+                            <thead className="sticky top-0 z-20">
+                                <tr>
+                                    <th className="sticky left-0 z-30 bg-slate-100 px-4 py-2 text-left font-black text-slate-700 border-b border-r border-slate-200 min-w-[200px]">
+                                        Colaborador
+                                    </th>
+                                    {days.map(day => {
+                                        const isSun = day.getDay() === 0;
+                                        const isSat = day.getDay() === 6;
+                                        return (
+                                            <th key={day.toISOString()} className={`px-1 py-2 text-center font-bold border-b border-slate-200 w-12 min-w-[44px] ${isSun ? 'bg-red-100 text-red-700' : isSat ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-600'}`}>
+                                                <div className="text-[11px]">{day.getDate()}</div>
+                                                <div className="text-[9px] font-normal opacity-70">{['D', 'S', 'T', 'Q', 'Q', 'S', 'S'][day.getDay()]}</div>
+                                            </th>
+                                        );
+                                    })}
+                                    <th className="bg-slate-100 px-3 py-2 text-center font-black text-slate-700 border-b border-l-2 border-slate-300 min-w-[72px]">
+                                        Total
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {team.memberChapas.map(chapa => {
+                                    const name = memberNames[chapa] || chapa;
+                                    const total = getMemberTotal(chapa);
+                                    const isOver = total > 44;
+                                    return (
+                                        <tr key={chapa} className="hover:bg-slate-50/70 border-b border-slate-100">
+                                            <td className="sticky left-0 bg-white px-4 py-1.5 border-r border-slate-200 z-10">
+                                                <p className="font-bold text-slate-800 leading-tight">{name}</p>
+                                                <p className="text-[10px] text-slate-400 font-mono">{chapa}</p>
+                                            </td>
+                                            {days.map(day => {
+                                                const dk = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+                                                const key = `${chapa}_${dk}`;
+                                                const strVal = localValues[key] || '';
+                                                const isSun = day.getDay() === 0;
+                                                const isSat = day.getDay() === 6;
+                                                const hasValue = parseTimeToDecimal(strVal) > 0;
+                                                return (
+                                                    <td key={dk} className={`px-0.5 py-1 text-center ${isSun ? 'bg-red-50' : isSat ? 'bg-orange-50' : ''}`}>
+                                                        <input
+                                                            type="text"
+                                                            value={strVal}
+                                                            onChange={e => handleInputChange(chapa, dk, e.target.value)}
+                                                            className={`w-10 text-center text-[11px] border rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 font-mono transition-colors ${hasValue ? 'border-blue-300 bg-blue-50 text-blue-800 font-bold' : 'border-gray-200 bg-white text-gray-300'}`}
+                                                            placeholder="--"
+                                                        />
+                                                    </td>
+                                                );
+                                            })}
+                                            <td className={`px-3 py-1.5 text-center font-black font-mono border-l-2 border-slate-300 ${isOver ? 'text-red-600 bg-red-50' : 'text-emerald-700'}`}>
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <span>{formatDecimalHours(total)}</span>
+                                                    {isOver && <AlertTriangle size={12} className="text-red-500 shrink-0" />}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+
+                <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                        <AlertTriangle size={11} className="text-amber-500" />
+                        Colaboradores acima de 44h totais são destacados em vermelho
+                    </p>
+                    <div className="flex gap-2">
+                        <button onClick={onClose} className="px-4 py-2 text-slate-500 font-bold text-sm hover:bg-slate-100 rounded-lg transition-colors">Fechar</button>
+                        <button
+                            onClick={handleSaveClick}
+                            disabled={saving || team.memberChapas.length === 0}
+                            className="px-5 py-2 bg-blue-600 text-white font-bold text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
+                        >
+                            {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Save size={15} />}
+                            Salvar Planejamento
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees }) => {
     const [mode, setMode] = useState<'MONTHLY' | 'DAILY'>('DAILY');
@@ -449,6 +615,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
     const [teams, setTeams] = useState<WorkTeam[]>([]);
     const [isCreateTeamOpen, setIsCreateTeamOpen] = useState(false);
     const [addMemberTeamId, setAddMemberTeamId] = useState<string | null>(null);
+    const [teamPlanModalId, setTeamPlanModalId] = useState<string | null>(null);
 
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState<{ name: string, chapa: string } | null>(null);
@@ -575,6 +742,40 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
 
     // Helper to get Employee Object
     const getEmpObj = (chapa: string) => uniqueEmployees.find(e => e.chapa === chapa);
+
+    const handleTeamPlanSave = async (teamId: string, numericMap: Record<string, number>) => {
+        const team = teams.find(t => t.id === teamId);
+        if (!team) return;
+        // Merge into plans state
+        setPlans(prev => ({ ...prev, ...numericMap }));
+        // Build PlanningRecord[] only for this team's members
+        const mergedPlans = { ...plans, ...numericMap };
+        const recordsToSave: PlanningRecord[] = [];
+        team.memberChapas.forEach(chapa => {
+            const emp = getEmpObj(chapa);
+            if (!emp) return;
+            const curr = new Date(periodStart);
+            while (curr <= periodEnd) {
+                const dateKey = formatDateKey(curr);
+                const key = `${chapa}_${dateKey}`;
+                const hours = mergedPlans[key];
+                if (hours !== undefined) {
+                    recordsToSave.push({
+                        id: `${chapa}_DAILY_${dateKey}`,
+                        chapa,
+                        nome: emp.nome,
+                        costCenter: team.costCenter,
+                        date: dateKey,
+                        type: 'DAILY',
+                        plannedHours: hours
+                    });
+                }
+                curr.setDate(curr.getDate() + 1);
+            }
+        });
+        await savePlanning(recordsToSave, user);
+        setAlert({ type: 'success', message: `Planejamento da ${team.name} salvo!` });
+    };
 
     // Calculate Global Stats (Filtered)
     const filteredEmployeesForStats = useMemo(() => {
@@ -835,6 +1036,15 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
         );
     }, [addMemberTeamId, teams, uniqueEmployees]);
 
+    // Mapa chapa→nome para o TeamPlanModal
+    const memberNames = useMemo(() => {
+        const map: Record<string, string> = {};
+        uniqueEmployees.forEach(e => { map[e.chapa] = e.nome; });
+        return map;
+    }, [uniqueEmployees]);
+
+    const teamPlanModalTeam = teams.find(t => t.id === teamPlanModalId) || null;
+
     return (
         <div className="space-y-6">
             <BudgetManagerModal
@@ -859,6 +1069,20 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                 onAdd={handleAddMembers}
                 availableEmployees={availableForTeam}
             />
+
+            {teamPlanModalTeam && (
+                <TeamPlanModal
+                    isOpen={!!teamPlanModalId}
+                    onClose={() => setTeamPlanModalId(null)}
+                    team={teamPlanModalTeam}
+                    memberNames={memberNames}
+                    plans={plans}
+                    salaries={salaries}
+                    periodStart={periodStart}
+                    periodEnd={periodEnd}
+                    onSave={handleTeamPlanSave}
+                />
+            )}
 
             {selectedEmployee && (
                 <EmployeeCalendarModal
@@ -1038,6 +1262,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                         })}
                         onDelete={handleDeleteTeam}
                         onAddMember={setAddMemberTeamId}
+                        onPlanTeam={setTeamPlanModalId}
                         salariesMap={salaries}
                     />
                 </div>

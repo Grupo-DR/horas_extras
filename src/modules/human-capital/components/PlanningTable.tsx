@@ -26,7 +26,8 @@ const PlanningTreeRow: React.FC<{
     onEdit?: (r: any) => void;
     onDelete?: (id: string) => void;
     onAddMember?: (teamId: string) => void;
-}> = ({ node, level, onEdit, onDelete, onAddMember }) => {
+    onPlanTeam?: (teamId: string) => void;
+}> = ({ node, level, onEdit, onDelete, onAddMember, onPlanTeam }) => {
     const [isExpanded, setIsExpanded] = useState(level === 0);
     const isRecord = node.type === 'RECORD';
     const hasChildren = node.children && node.children.length > 0;
@@ -50,7 +51,13 @@ const PlanningTreeRow: React.FC<{
                 <div className="flex items-center gap-3 flex-1">
                     <div className="w-1.5 h-1.5 rounded-full bg-slate-200 ml-4 shrink-0" />
                     <div className="flex flex-col">
-                        <span className="text-xs font-bold text-slate-700">{r.description || 'Turma de Trabalho'}</span>
+                        <span
+                            className={`text-xs font-bold text-slate-700 ${onPlanTeam ? 'cursor-pointer hover:text-blue-600 hover:underline' : ''}`}
+                            onClick={e => { if (onPlanTeam) { e.stopPropagation(); onPlanTeam(r.id); } }}
+                            title={onPlanTeam ? 'Clique para planejar horas desta equipe' : undefined}
+                        >
+                            {r.description || 'Turma de Trabalho'}
+                        </span>
                         <span className="text-[10px] text-slate-500 flex items-center gap-1"><Calendar size={10} /> {r.date} • {r.shift}</span>
                     </div>
                 </div>
@@ -109,7 +116,7 @@ const PlanningTreeRow: React.FC<{
 
             {isExpanded && hasChildren && (
                 <div className="flex flex-col w-full">
-                    {node.children.map(child => <PlanningTreeRow key={child.id} node={child} level={level + 1} onEdit={onEdit} onDelete={onDelete} onAddMember={onAddMember} />)}
+                    {node.children.map(child => <PlanningTreeRow key={child.id} node={child} level={level + 1} onEdit={onEdit} onDelete={onDelete} onAddMember={onAddMember} onPlanTeam={onPlanTeam} />)}
                 </div>
             )}
         </React.Fragment>
@@ -117,14 +124,15 @@ const PlanningTreeRow: React.FC<{
 };
 
 interface PlanningTableProps {
-    records: any[]; // The flat array of planning records
+    records: any[];
     onEdit?: (r: any) => void;
     onDelete?: (id: string) => void;
     onAddMember?: (teamId: string) => void;
-    salariesMap?: Record<string, number>; // Opcional, mantido para futura integração de cálculo exato
+    onPlanTeam?: (teamId: string) => void;
+    salariesMap?: Record<string, number>;
 }
 
-export const PlanningTable: React.FC<PlanningTableProps> = ({ records, onEdit, onDelete, onAddMember, salariesMap }) => {
+export const PlanningTable: React.FC<PlanningTableProps> = ({ records, onEdit, onDelete, onAddMember, onPlanTeam, salariesMap }) => {
     const hierarchicalData = useMemo(() => {
         const regionalMap = new Map<string, { metrics: PlanningMetrics, ccs: Map<string, { name: string, metrics: PlanningMetrics, records: any[] }> }>();
 
@@ -210,6 +218,7 @@ export const PlanningTable: React.FC<PlanningTableProps> = ({ records, onEdit, o
                         onEdit={onEdit}
                         onDelete={onDelete}
                         onAddMember={onAddMember}
+                        onPlanTeam={onPlanTeam}
                     />
                 ))}
             </div>
