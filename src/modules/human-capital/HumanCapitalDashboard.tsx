@@ -383,6 +383,7 @@ const HumanCapitalDashboard: React.FC = () => {
                     setActiveTab(Tab.DATA);
                   }}
                   selectedMonth={`${filters.year}-${filters.month}`}
+                  user={effectiveUser}
                 />
               );
             })()}
