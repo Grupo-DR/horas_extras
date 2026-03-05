@@ -112,7 +112,7 @@ const ProfileManager: React.FC = () => {
             const functions = getFunctions(app, 'us-central1');
             const inviteUser = httpsCallable(functions, 'adminCreateUserInvite');
             const result = await inviteUser({ email: newUserEmail, displayName: newUserName });
-            const link = (result.data as any).link; // Manual link fallback
+            const link = (result.data as any).passwordResetLink; // Manual link fallback
 
             // Attempt to send email automatically via Firebase Auth
             try {
