@@ -101,3 +101,11 @@ export interface ManualEmployee {
     role: string;
     status: 'ACTIVE' | 'INACTIVE';
 }
+
+export interface GlobalEmployee {
+    chapa: string;
+    nome: string;
+    funcao: string;
+    costCenter: string;
+    updatedAt?: string | number | any; // To allow for Firebase Timestamps
+}

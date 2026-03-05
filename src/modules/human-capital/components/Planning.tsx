@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { OvertimeRecord, UserProfile, PlanningRecord, SalaryAllocation, BudgetRecord, WorkTeam, ManualEmployee, TeamAllocation } from '../types';
-import { savePlanning, getPlanning, saveSalaries, getSalariesSync, saveBudgets, getBudgetsSync, saveTeams, getTeams, deleteTeam, getTeamsSync, getAllBudgetsAsync, deleteBudgets, deleteAllBudgets, getTeamAllocationsSync, getTeamAllocations, saveTeamAllocations } from '../services/planning';
+import { OvertimeRecord, UserProfile, PlanningRecord, SalaryAllocation, BudgetRecord, WorkTeam, ManualEmployee, TeamAllocation, GlobalEmployee } from '../types';
+import { savePlanning, getPlanning, saveSalaries, getSalariesSync, saveBudgets, getBudgetsSync, saveTeams, getTeams, deleteTeam, getTeamsSync, getAllBudgetsAsync, deleteBudgets, deleteAllBudgets, getTeamAllocationsSync, getTeamAllocations, saveTeamAllocations, saveGlobalEmployees, getGlobalEmployeesAsync, getGlobalEmployeesSync } from '../services/planning';
 
 import { Users, Clock, Wallet, TrendingUp, Calculator, CheckCircle2, AlertTriangle, X, ChevronLeft, ChevronRight, Save, FileUp, Plus, Search, ArrowUpRight, ArrowDownRight, LayoutList, Trash2 } from 'lucide-react';
 import { formatDecimalHours, parseTimeToDecimal } from '../utils/formatters';
@@ -632,6 +632,9 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState<{ name: string, chapa: string } | null>(null);
 
+    // Global Employees Dictionary
+    const [globalEmployees, setGlobalEmployees] = useState<GlobalEmployee[]>(() => getGlobalEmployeesSync());
+
     const salaryInputRef = useRef<HTMLInputElement>(null);
     const budgetInputRef = useRef<HTMLInputElement>(null);
 
@@ -687,7 +690,55 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
 
         // Background refresh for teams
         getTeams(user).then(t => setTeams(t));
+
+        // Background refresh for global employees
+        getGlobalEmployeesAsync().then(emps => setGlobalEmployees(emps)).catch(console.error);
     }, []);
+
+    // UPSERT Global Employees silently
+    useEffect(() => {
+        if (employees.length === 0 && manualEmployees.length === 0) return;
+
+        const currentGlobalMap = new Map(globalEmployees.map(e => [e.chapa, e]));
+        const newGlobalEmps: GlobalEmployee[] = [];
+        let hasChanges = false;
+
+        employees.forEach(e => {
+            if (!e.CHAPA) return;
+            const existing = currentGlobalMap.get(e.CHAPA);
+            if (!existing || existing.nome !== e.NOME || existing.funcao !== e.FUNCAO || existing.costCenter !== e.CODCCUSTO) {
+                newGlobalEmps.push({
+                    chapa: e.CHAPA,
+                    nome: e.NOME || '',
+                    funcao: e.FUNCAO || '',
+                    costCenter: e.CODCCUSTO || ''
+                });
+                hasChanges = true;
+                currentGlobalMap.set(e.CHAPA, newGlobalEmps[newGlobalEmps.length - 1]); // locally mark as added
+            }
+        });
+
+        manualEmployees.forEach(m => {
+            if (!m.chapa) return;
+            const existing = currentGlobalMap.get(m.chapa);
+            if (!existing || existing.nome !== m.name || existing.costCenter !== m.costCenter) {
+                newGlobalEmps.push({
+                    chapa: m.chapa,
+                    nome: m.name,
+                    funcao: existing?.funcao || 'Manual',
+                    costCenter: m.costCenter
+                });
+                hasChanges = true;
+                currentGlobalMap.set(m.chapa, newGlobalEmps[newGlobalEmps.length - 1]);
+            }
+        });
+
+        if (hasChanges && newGlobalEmps.length > 0) {
+            saveGlobalEmployees(newGlobalEmps, user).then(() => {
+                setGlobalEmployees(Array.from(currentGlobalMap.values()));
+            }).catch(console.error);
+        }
+    }, [employees, manualEmployees, globalEmployees.length, user]);
 
     useEffect(() => {
         const cached = getTeamAllocationsSync();
@@ -1134,20 +1185,23 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
     }, [addMemberTeamId, teams, uniqueEmployees]);
 
     // Mapa chapa→nome para o TeamPlanModal
-    // Usa a lista bruta de employees como fonte primária para garantir cobertura total
+    // Usa a lista bruta de employees como fonte primária para garantir cobertura total e consulta o Global Dictionary
     const memberNames = useMemo(() => {
         const map: Record<string, string> = {};
+        globalEmployees.forEach(e => { if (e.chapa && e.nome) map[e.chapa] = e.nome; });
         employees.forEach(e => { if (e.CHAPA && e.NOME) map[e.CHAPA] = e.NOME; });
         uniqueEmployees.forEach(e => { if (e.chapa && e.nome) map[e.chapa] = e.nome; });
         return map;
-    }, [employees, uniqueEmployees]);
+    }, [globalEmployees, employees, uniqueEmployees]);
 
     // Mapa chapa→cargo para o TeamPlanModal
     const memberFuncoes = useMemo(() => {
         const map: Record<string, string> = {};
+        globalEmployees.forEach(e => { if (e.chapa && e.funcao) map[e.chapa] = e.funcao; });
         employees.forEach(e => { if (e.CHAPA && e.FUNCAO) map[e.CHAPA] = e.FUNCAO; });
         return map;
-    }, [employees]);
+    }, [globalEmployees, employees]);
+
 
     const teamPlanModalTeam = displayTeams.find(t => t.id === teamPlanModalId) || null;
 

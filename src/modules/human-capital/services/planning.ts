@@ -407,3 +407,50 @@ export const getAllTeamAllocationsAsync = async (): Promise<TeamAllocation[]> =>
         return getTeamAllocationsSync();
     }
 };
+
+// --- GLOBAL EMPLOYEES (DICTIONARY) ---
+
+const GLOBAL_EMP_CACHE_KEY = 'hc_global_employees_v1';
+
+export const saveGlobalEmployees = async (employees: import('../types').GlobalEmployee[], user: UserProfile) => {
+    try {
+        if (isOnline()) {
+            await FirestoreService.upsertGlobalEmployees(employees, user);
+        }
+
+        // Update local cache
+        const current = getGlobalEmployeesSync();
+        const empMap = new Map(current.map(e => [e.chapa, e]));
+        employees.forEach(e => empMap.set(e.chapa, e));
+        localStorage.setItem(GLOBAL_EMP_CACHE_KEY, JSON.stringify(Array.from(empMap.values())));
+    } catch (e) {
+        console.error("Save Global Employees Failed:", e);
+        const current = getGlobalEmployeesSync();
+        const empMap = new Map(current.map(e => [e.chapa, e]));
+        employees.forEach(e => empMap.set(e.chapa, e));
+        localStorage.setItem(GLOBAL_EMP_CACHE_KEY, JSON.stringify(Array.from(empMap.values())));
+    }
+};
+
+export const getGlobalEmployeesSync = (): import('../types').GlobalEmployee[] => {
+    try {
+        const data = localStorage.getItem(GLOBAL_EMP_CACHE_KEY);
+        if (data) return (JSON.parse(data) || []) as import('../types').GlobalEmployee[];
+    } catch (e) {
+        console.error("Error reading local global employees:", e);
+    }
+    return [];
+};
+
+export const getGlobalEmployeesAsync = async (): Promise<import('../types').GlobalEmployee[]> => {
+    try {
+        if (isOnline()) {
+            const rows = await FirestoreService.getGlobalEmployees();
+            localStorage.setItem(GLOBAL_EMP_CACHE_KEY, JSON.stringify(rows));
+            return rows;
+        }
+        throw new Error("Offline");
+    } catch (error) {
+        return getGlobalEmployeesSync();
+    }
+};

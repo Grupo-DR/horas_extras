@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, SalaryRecord, WorkTeam, TeamAllocation } from '../types';
 import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, AlertTriangle, Moon, Scale, Percent, ArrowUpRight, ArrowDownRight, X, User, Users, DollarSign, ListFilter, ShieldAlert, Zap, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { formatDecimalHours } from '../utils/formatters';
-import { getPlanning, getSalariesSync, getBudgetsSync, saveBudgets, getTeamsSync, getTeamAllocationsSync, getTeamAllocations, getAllPlanningRecords } from '../services/planning';
+import { getPlanning, getSalariesSync, getBudgetsSync, saveBudgets, getTeamsSync, getTeamAllocationsSync, getTeamAllocations, getAllPlanningRecords, getGlobalEmployeesAsync, getGlobalEmployeesSync } from '../services/planning';
 import { getCCName, getCCRegional, normalizeCC } from '../data/ccMaster';
 
 interface DashboardProps {
@@ -433,6 +433,8 @@ const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHour
 const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMonthKeys, onNavigateToEmployee, selectedMonth }) => {
   const [ccSearch, setCcSearch] = useState('');
   const [funcSearch, setFuncSearch] = useState('');
+  const [salariesMap, setSalariesMap] = useState<Record<string, number>>({});
+  const [globalEmployees, setGlobalEmployees] = useState<import('../types').GlobalEmployee[]>(() => getGlobalEmployeesSync());
   const [selectedFuncModal, setSelectedFuncModal] = useState<string | null>(null);
   const [selectedCcModal, setSelectedCcModal] = useState<string | null>(null);
   const [ccViewMode, setCcViewMode] = useState<ViewMode>('hours');
@@ -448,11 +450,19 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     const keySet = new Set(budgetMonthKeys);
     return all.filter(b => keySet.has(b.monthKey));
   }, [budgetMonthKeys]);
-  const salariesMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    getSalariesSync().forEach(s => map[s.chapa] = s.salary);
-    return map;
-  }, []);
+
+  useEffect(() => {
+    const loadSalaries = () => {
+      const recs = getSalariesSync();
+      const sMap: Record<string, number> = {};
+      recs.forEach(r => sMap[r.chapa] = r.salary);
+      setSalariesMap(sMap);
+    };
+    loadSalaries();
+
+    // Background refresh for global employees
+    getGlobalEmployeesAsync().then(emps => setGlobalEmployees(emps)).catch(console.error);
+  }, [budgetMonthKeys]);
 
   const metrics = useMemo(() => {
     let realHE60Hours = 0;
@@ -741,6 +751,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
     // Mapa de nome por chapa (para exibição nos nós PERSON)
     const chapaToName = new Map<string, string>();
+    globalEmployees.forEach(e => { if (e.chapa && e.nome) chapaToName.set(e.chapa, e.nome); });
     data.forEach(r => { if (r.CHAPA && r.NOME) chapaToName.set(r.CHAPA, r.NOME); });
 
     // Estrutura de acumulação
@@ -785,6 +796,25 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       m.total += hours;
       m.totalCost += cost;
     };
+
+    // 0. ESTRUTURA SOBERANA (Gavetas de Equipes/Alocações)
+    allAllocations.forEach(alloc => {
+      const t = allTeams.find(t => t.id === alloc.teamId);
+      if (!t) return;
+
+      const rawCC = t.costCenter;
+      const cc = normalizeCC(rawCC);
+      const ccName = getCCName(rawCC) || resolveName(rawCC);
+      const reg = getCCRegional(rawCC) || 'Sem Regional';
+
+      const regData = getRegData(reg);
+      const ccData = getCcData(regData, cc, ccName);
+      const teamAcc = getTeamAcc(ccData, t.id, t.name);
+
+      alloc.chapas.forEach(chapa => {
+        getPersonAcc(teamAcc, chapa);
+      });
+    });
 
     // 1. DADOS REAIS
     data.forEach(r => {

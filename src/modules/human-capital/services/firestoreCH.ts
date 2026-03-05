@@ -276,3 +276,35 @@ export const getManualEmployees = async () => {
     const snapshot = await getDocs(q);
     return snapshot.docs.map(d => d.data() as ManualEmployee);
 };
+
+// --- GLOBAL EMPLOYEES (DICTIONARY) ---
+
+const COL_GLOBAL_EMPLOYEES = 'hc_global_employees';
+
+export const upsertGlobalEmployees = async (employees: import('../types').GlobalEmployee[], user: UserProfile) => {
+    // Batches limited to 500.
+    const chunks = [];
+    for (let i = 0; i < employees.length; i += 400) {
+        chunks.push(employees.slice(i, i + 400));
+    }
+
+    for (const chunk of chunks) {
+        const batch = writeBatch(db);
+        chunk.forEach(emp => {
+            if (!emp.chapa) return;
+            const ref = doc(db, COL_GLOBAL_EMPLOYEES, emp.chapa);
+            batch.set(ref, {
+                ...emp,
+                updatedAt: Timestamp.now(),
+                updatedBy: user.email
+            }, { merge: true });
+        });
+        await batch.commit();
+    }
+};
+
+export const getGlobalEmployees = async () => {
+    const q = query(collection(db, COL_GLOBAL_EMPLOYEES));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => d.data() as import('../types').GlobalEmployee);
+};
