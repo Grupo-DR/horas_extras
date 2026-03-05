@@ -1037,11 +1037,13 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
     }, [addMemberTeamId, teams, uniqueEmployees]);
 
     // Mapa chapa→nome para o TeamPlanModal
+    // Usa a lista bruta de employees como fonte primária para garantir cobertura total
     const memberNames = useMemo(() => {
         const map: Record<string, string> = {};
-        uniqueEmployees.forEach(e => { map[e.chapa] = e.nome; });
+        employees.forEach(e => { if (e.CHAPA && e.NOME) map[e.CHAPA] = e.NOME; });
+        uniqueEmployees.forEach(e => { if (e.chapa && e.nome) map[e.chapa] = e.nome; });
         return map;
-    }, [uniqueEmployees]);
+    }, [employees, uniqueEmployees]);
 
     const teamPlanModalTeam = teams.find(t => t.id === teamPlanModalId) || null;
 
