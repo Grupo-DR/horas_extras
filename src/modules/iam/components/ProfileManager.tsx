@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { UserProfileDoc, CHRole, CommercialRole, Scope, ScopeType, ConstructionRole, canManageProfiles } from '../types';
 import { getAllProfiles, updateUserRoles, createUserProfile } from '../profileService';
 import { useAuth } from '@/contexts/AuthContext';
-import { Users, Search, Edit2, Shield, AlertTriangle, Save, X, Building2, MapPin, Plus, HardHat, KeyRound, Ban, CheckCircle2, Trash2 } from 'lucide-react';
+import { Users, Search, Edit2, Shield, AlertTriangle, Save, X, Building2, MapPin, Plus, HardHat, KeyRound, Ban, CheckCircle2, Trash2, Copy, ExternalLink, Check } from 'lucide-react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getAuth, sendPasswordResetEmail } from 'firebase/auth';
 import { app } from '@/services/firebaseConfig';
@@ -25,6 +25,11 @@ const ProfileManager: React.FC = () => {
     const [newUserEmail, setNewUserEmail] = useState('');
     const [newUserName, setNewUserName] = useState('');
     const [creatingUser, setCreatingUser] = useState(false);
+    const [linkModal, setLinkModal] = useState<{ isOpen: boolean; link: string; title: string }>({
+        isOpen: false,
+        link: '',
+        title: ''
+    });
 
     useEffect(() => {
         loadUsers();
@@ -114,7 +119,6 @@ const ProfileManager: React.FC = () => {
             const result = await inviteUser({ email: newUserEmail, displayName: newUserName });
             const link = (result.data as any).passwordResetLink; // Manual link fallback
 
-            // Attempt to send email automatically via Firebase Auth
             try {
                 const authInstance = getAuth();
                 await sendPasswordResetEmail(authInstance, newUserEmail, {
@@ -124,7 +128,11 @@ const ProfileManager: React.FC = () => {
                 alert(`Usuário convidado com sucesso!\n\nUm e-mail de definição de senha foi enviado automaticamente para: ${newUserEmail}`);
             } catch (emailError: any) {
                 console.error("Failed to send reset email natively", emailError);
-                alert(`Usuário criado, mas falha ao enviar e-mail automático.\n\nLink de ativação/senha gerado (copie e envie ao usuário):\n${link}`);
+                setLinkModal({
+                    isOpen: true,
+                    title: "Convite Criado (Envio de E-mail Falhou)",
+                    link: link
+                });
             }
 
             setIsAddModalOpen(false);
@@ -162,7 +170,11 @@ const ProfileManager: React.FC = () => {
                 const resetPassword = httpsCallable(functions, 'adminGeneratePasswordResetLink');
                 const result = await resetPassword({ email: userDoc.email });
                 const link = (result.data as any).link;
-                alert(`Link de redefinição gerado com sucesso:\n\n${link}\n\nCopie este link e envie ao usuário de forma segura.`);
+                setLinkModal({
+                    isOpen: true,
+                    title: "Link de Redefinição Gerado",
+                    link: link
+                });
             }
             loadUsers();
         } catch (error: any) {
@@ -613,6 +625,73 @@ const ProfileManager: React.FC = () => {
                             <button onClick={handleSave} disabled={saving} className="px-6 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold shadow-lg hover:bg-blue-700 transition-all flex items-center gap-2">
                                 {saving ? <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : <Save size={16} />}
                                 Salvar Alterações
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Link de Convite/Redefinição */}
+            {linkModal.isOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100 animate-in fade-in zoom-in duration-200">
+                        <div className="p-6 border-b border-gray-50 flex justify-between items-center bg-blue-50/30">
+                            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                <KeyRound className="text-blue-600" size={20} />
+                                {linkModal.title}
+                            </h3>
+                            <button
+                                onClick={() => setLinkModal({ ...linkModal, isOpen: false })}
+                                className="p-2 hover:bg-white rounded-full transition-colors text-gray-400 hover:text-gray-600"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="p-8 space-y-6">
+                            <p className="text-sm text-gray-600 leading-relaxed">
+                                O link foi gerado com sucesso. Como o envio automático de e-mail pode ser bloqueado por filtros de spam,
+                                você pode copiar o link abaixo e enviá-lo diretamente ao usuário.
+                            </p>
+
+                            <div className="relative group">
+                                <div className="absolute -top-2.5 left-4 px-2 bg-white text-[10px] font-bold text-blue-600 uppercase tracking-wider">
+                                    Link de Acesso
+                                </div>
+                                <div className="flex items-center gap-2 p-4 bg-gray-50 rounded-2xl border-2 border-gray-100 group-hover:border-blue-100 transition-colors">
+                                    <input
+                                        type="text"
+                                        readOnly
+                                        value={linkModal.link}
+                                        className="bg-transparent border-none outline-none text-xs text-gray-500 w-full font-mono truncate"
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(linkModal.link);
+                                            alert("Link copiado para a área de transferência!");
+                                        }}
+                                        className="p-2 bg-white shadow-sm border border-gray-100 rounded-xl text-blue-600 hover:bg-blue-50 transition-all flex items-center gap-2 group/btn"
+                                        title="Copiar Link"
+                                    >
+                                        <Copy size={16} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100 flex gap-3 items-start">
+                                <AlertTriangle className="text-amber-600 shrink-0" size={18} />
+                                <p className="text-xs text-amber-800 leading-relaxed">
+                                    <strong>Atenção:</strong> Este link é temporário. Por segurança, não o compartilhe publicamente.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="p-6 bg-gray-50 flex justify-end gap-3">
+                            <button
+                                onClick={() => setLinkModal({ ...linkModal, isOpen: false })}
+                                className="px-6 py-2.5 bg-gray-800 text-white rounded-xl text-sm font-bold shadow-lg hover:bg-black transition-all"
+                            >
+                                Entendi
                             </button>
                         </div>
                     </div>
