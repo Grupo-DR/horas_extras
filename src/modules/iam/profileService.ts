@@ -12,7 +12,17 @@ export const getUserProfile = async (uid: string): Promise<UserProfileDoc | null
         const ref = doc(db, COLLECTION, uid);
         const snap = await getDoc(ref);
         if (snap.exists()) {
-            return snap.data() as UserProfileDoc;
+            const data = snap.data() as UserProfileDoc;
+
+            // Normalization: translate legacy HC roles to CH
+            if (data.modules?.human_capital?.role) {
+                const role = data.modules.human_capital.role as string;
+                if (role.startsWith('HC_')) {
+                    data.modules.human_capital.role = role.replace('HC_', 'CH_') as any;
+                }
+            }
+
+            return data;
         }
         return null;
     } catch (error) {
@@ -119,7 +129,17 @@ export const updateUserProfile = async (uid: string, data: Partial<UserProfileDo
 export const getAllProfiles = async (): Promise<UserProfileDoc[]> => {
     try {
         const snapshot = await getDocs(collection(db, COLLECTION));
-        return snapshot.docs.map(d => d.data() as UserProfileDoc);
+        return snapshot.docs.map(d => {
+            const data = d.data() as UserProfileDoc;
+            // Normalization: translate legacy HC roles to CH
+            if (data.modules?.human_capital?.role) {
+                const role = data.modules.human_capital.role as string;
+                if (role.startsWith('HC_')) {
+                    data.modules.human_capital.role = role.replace('HC_', 'CH_') as any;
+                }
+            }
+            return data;
+        });
     } catch (error) {
         console.error("Error fetching all profiles:", error);
         throw error;
