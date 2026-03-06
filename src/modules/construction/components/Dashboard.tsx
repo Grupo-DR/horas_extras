@@ -96,7 +96,36 @@ const Dashboard: React.FC<DashboardProps> = ({
     const refDate = new Date((start.getTime() + end.getTime()) / 2);
     const period = getPeriodInfo(refDate, filteredRecords);
 
-    let realTotal = 0, realProdutivo = 0, realImprodutivo = 0;
+    const parseDashboardDate = (dateStr: string): Date | null => {
+      if (!dateStr) return null;
+      let d = 0, m = 0, y = 0;
+
+      if (dateStr.includes('/')) {
+        const parts = dateStr.split('/');
+        if (parts.length !== 3) return null;
+        d = Number(parts[0]);
+        m = Number(parts[1]);
+        y = Number(parts[2]);
+      } else if (dateStr.includes('-')) {
+        const parts = dateStr.split('-');
+        if (parts.length !== 3) return null;
+        y = Number(parts[0]);
+        m = Number(parts[1]);
+        d = Number(parts[2]);
+      } else {
+        return null;
+      }
+
+      const parsed = new Date(y, m - 1, d);
+      if (Number.isNaN(parsed.getTime())) return null;
+      parsed.setHours(0, 0, 0, 0);
+      return parsed;
+    };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let realTotal = 0, realProdutivo = 0, realImprodutivo = 0, realToDate = 0;
     const byCategoryReal: Record<string, number> = {};
     const byDateReal: Record<string, number> = {};
     const byTrechoImprod: Record<string, number> = {};
@@ -106,8 +135,12 @@ const Dashboard: React.FC<DashboardProps> = ({
       const financials = calculateRecordFinancials(curr, servicePrices);
       const geo = getTrechoInfo(curr.trechoFinal);
       const category = getEquipmentCategory(curr.frota);
+      const recordDate = parseDashboardDate(curr.data);
 
       realTotal += financials.total;
+      if (recordDate && recordDate <= today) {
+        realToDate += financials.total;
+      }
       if (financials.status === 'IMPRODUTIVA') {
         realImprodutivo += financials.total;
         if (geo.trecho) {
@@ -142,13 +175,18 @@ const Dashboard: React.FC<DashboardProps> = ({
 
 
     let planejadoTotal = 0;
+    let projectedFuturePlan = 0;
     const byDatePlan: Record<string, number> = {};
     filteredAssignments.forEach(a => {
       const parts = a.date.split('-');
       const formatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
       const totalA = calculateAssignmentTotal(a, servicePrices);
+      const assignmentDate = parseDashboardDate(a.date);
       planejadoTotal += totalA;
       byDatePlan[formatted] = (byDatePlan[formatted] || 0) + totalA;
+      if (assignmentDate && assignmentDate > today) {
+        projectedFuturePlan += totalA;
+      }
     });
 
     // Preparar dados detalhados por data incluindo registros completos
@@ -433,10 +471,13 @@ const Dashboard: React.FC<DashboardProps> = ({
       .filter(item => item.planned > 0 || item.actual > 0)
       .sort((a, b) => b.actual - a.actual);
 
+    const ritmoFechamento = realTotal + (realTotal / (period.daysWithMeasurement || 1)) * period.remainingDays;
+    const tendenciaFechamento = realToDate + projectedFuturePlan;
+
     return {
       realTotal, realProdutivo, realImprodutivo, planejadoTotal, period, chartData,
       paretoCategory, idleTrechoTable, paretoRevenue, paretoIdle, equipmentComparison, idleComparison,
-      totalBudget, dailyBudget, sapComparison
+      totalBudget, dailyBudget, sapComparison, ritmoFechamento, tendenciaFechamento, realToDate, projectedFuturePlan
     };
   }, [data, selectedCycle, servicePrices, assignments, selectedEquipmentType, selectedEquipment]);
 
@@ -532,10 +573,31 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         <div className="bg-slate-900 p-6 rounded-3xl shadow-xl border border-slate-800">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tendência Fechamento</p>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ritmo de Fechamento</p>
           <p className="text-2xl font-black text-amber-500 mt-1">
-            {formatCurrencyWithZero(stats.realTotal + (stats.realTotal / (stats.period.daysWithMeasurement || 1)) * stats.period.remainingDays)}
+            {formatCurrencyWithZero(stats.ritmoFechamento)}
           </p>
+          <div className="mt-4">
+            <p className="text-[8px] font-bold text-slate-400 uppercase">Base de Medição</p>
+            <p className="text-[10px] font-black text-slate-200">{stats.period.daysWithMeasurement} dia(s)</p>
+          </div>
+        </div>
+
+        <div className="bg-emerald-50 p-6 rounded-3xl shadow-sm border border-emerald-100">
+          <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Tendência de Fechamento</p>
+          <p className="text-2xl font-black text-emerald-700 mt-1">
+            {formatCurrencyWithZero(stats.tendenciaFechamento)}
+          </p>
+          <div className="mt-4 flex gap-4">
+            <div>
+              <p className="text-[8px] font-bold text-emerald-500 uppercase">Real até hoje</p>
+              <p className="text-[10px] font-black text-emerald-700">{formatCurrencyWithZero(stats.realToDate)}</p>
+            </div>
+            <div>
+              <p className="text-[8px] font-bold text-emerald-500 uppercase">Projetado futuro</p>
+              <p className="text-[10px] font-black text-emerald-700">{formatCurrencyWithZero(stats.projectedFuturePlan)}</p>
+            </div>
+          </div>
         </div>
       </div>
 
