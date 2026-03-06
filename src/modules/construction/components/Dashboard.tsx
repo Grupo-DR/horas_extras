@@ -570,6 +570,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     const tendenciaVsBudget = buildComparison(tendenciaFechamento, totalBudget);
     const realVsPlanejado = buildComparison(realTotal, planejadoTotal);
     const realVsBudget = buildComparison(realTotal, totalBudget);
+    const productiveSharePct = realTotal > 0 ? (realProdutivo / realTotal) * 100 : null;
     const improdutiveSharePct = realTotal > 0 ? (realImprodutivo / realTotal) * 100 : null;
     const plannedDailyAvg = selectedRangeBusinessDays > 0 ? planejadoTotal / selectedRangeBusinessDays : 0;
     const plannedToDate = planejadoTotal - projectedFuturePlan;
@@ -610,6 +611,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       burnRatePct,
       realVsPlanejado,
       realVsBudget,
+      productiveSharePct,
       improdutiveSharePct,
       plannedDailyAvg,
       plannedToDate,
@@ -792,22 +794,11 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Realizado no Intervalo</p>
           <p className="text-2xl font-black text-indigo-600 mt-1">{formatCurrencyWithZero(stats.realTotal)}</p>
-          <div className="mt-3">
-            <div className="flex items-center justify-between text-[8px] font-black text-slate-500 uppercase tracking-wider">
-              <span>Execucao do planejado</span>
-              <span>{formatComparisonPercent(stats.plannedExecutionPct)}</span>
-            </div>
-            <div className="mt-1 h-1.5 rounded-full overflow-hidden bg-slate-200">
-              <div
-                className={`${(stats.plannedExecutionPct ?? 0) <= 100 ? 'bg-indigo-500' : 'bg-amber-500'} h-full`}
-                style={{ width: `${Math.max(0, Math.min(100, stats.plannedExecutionPct ?? 0))}%` }}
-              />
-            </div>
-          </div>
           <div className="mt-4 pt-3 border-t border-slate-200 grid grid-cols-2 gap-3">
             <div>
               <p className="text-[8px] font-bold text-emerald-500 uppercase">Produtivo</p>
               <p className="text-[10px] font-black">{formatCurrencyWithZero(stats.realProdutivo)}</p>
+              <p className="text-[9px] font-bold text-emerald-600">{formatComparisonPercent(stats.productiveSharePct)}</p>
             </div>
             <div>
               <p className="text-[8px] font-bold text-red-400 uppercase">Improdutivo</p>
@@ -815,18 +806,18 @@ const Dashboard: React.FC<DashboardProps> = ({
               <p className="text-[9px] font-bold text-red-500">{formatComparisonPercent(stats.improdutiveSharePct)}</p>
             </div>
             <div>
-              <p className="text-[8px] font-bold text-slate-400 uppercase">vs Planejado</p>
-              <p className={`text-[10px] font-black ${stats.realVsPlanejado.delta >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                {stats.realVsPlanejado.delta >= 0 ? '+' : ''}{formatCurrencyWithZero(stats.realVsPlanejado.delta)}
-              </p>
-              <p className="text-[9px] font-bold text-slate-600">{formatComparisonPercent(stats.realVsPlanejado.percent)}</p>
-            </div>
-            <div>
               <p className="text-[8px] font-bold text-slate-400 uppercase">vs Budget</p>
               <p className={`text-[10px] font-black ${stats.realVsBudget.delta >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                 {stats.realVsBudget.delta >= 0 ? '+' : ''}{formatCurrencyWithZero(stats.realVsBudget.delta)}
               </p>
               <p className="text-[9px] font-bold text-slate-600">{formatComparisonPercent(stats.realVsBudget.percent)}</p>
+            </div>
+            <div>
+              <p className="text-[8px] font-bold text-slate-400 uppercase">vs Planejado</p>
+              <p className={`text-[10px] font-black ${stats.realVsPlanejado.delta >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {stats.realVsPlanejado.delta >= 0 ? '+' : ''}{formatCurrencyWithZero(stats.realVsPlanejado.delta)}
+              </p>
+              <p className="text-[9px] font-bold text-slate-600">{formatComparisonPercent(stats.realVsPlanejado.percent)}</p>
             </div>
             <div>
               <p className="text-[8px] font-bold text-slate-400 uppercase">Media diaria real</p>
@@ -839,36 +830,36 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        <div className="bg-slate-900 p-6 rounded-3xl shadow-xl border border-slate-800">
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ritmo de Fechamento</p>
-          <p className="text-2xl font-black text-amber-500 mt-1">
+          <p className="text-2xl font-black text-slate-900 mt-1">
             {formatCurrencyWithZero(stats.ritmoFechamento)}
           </p>
           <div className="mt-3">
             <p className="text-[8px] font-bold text-slate-400 uppercase">Base de Medicao</p>
-            <p className="text-[10px] font-black text-slate-200">{stats.period.daysWithMeasurement} dia(s)</p>
+            <p className="text-[10px] font-black text-slate-700">{stats.period.daysWithMeasurement} dia(s)</p>
           </div>
-          <div className="mt-3 pt-3 border-t border-slate-700 grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-[8px] font-bold text-slate-400 uppercase">vs Planejado</p>
-              <p className={`text-[10px] font-black ${stats.ritmoVsPlanejado.delta >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {stats.ritmoVsPlanejado.delta >= 0 ? '+' : ''}{formatCurrencyWithZero(stats.ritmoVsPlanejado.delta)}
-              </p>
-              <p className="text-[9px] font-bold text-slate-300">{formatComparisonPercent(stats.ritmoVsPlanejado.percent)}</p>
-            </div>
+          <div className="mt-3 pt-3 border-t border-slate-200 grid grid-cols-2 gap-3">
             <div>
               <p className="text-[8px] font-bold text-slate-400 uppercase">vs Budget</p>
-              <p className={`text-[10px] font-black ${stats.ritmoVsBudget.delta >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              <p className={`text-[10px] font-black ${stats.ritmoVsBudget.delta >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                 {stats.ritmoVsBudget.delta >= 0 ? '+' : ''}{formatCurrencyWithZero(stats.ritmoVsBudget.delta)}
               </p>
-              <p className="text-[9px] font-bold text-slate-300">{formatComparisonPercent(stats.ritmoVsBudget.percent)}</p>
+              <p className="text-[9px] font-bold text-slate-700">{formatComparisonPercent(stats.ritmoVsBudget.percent)}</p>
+            </div>
+            <div>
+              <p className="text-[8px] font-bold text-slate-400 uppercase">vs Planejado</p>
+              <p className={`text-[10px] font-black ${stats.ritmoVsPlanejado.delta >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {stats.ritmoVsPlanejado.delta >= 0 ? '+' : ''}{formatCurrencyWithZero(stats.ritmoVsPlanejado.delta)}
+              </p>
+              <p className="text-[9px] font-bold text-slate-700">{formatComparisonPercent(stats.ritmoVsPlanejado.percent)}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-emerald-50 p-6 rounded-3xl shadow-sm border border-emerald-100">
-          <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Tendencia de Fechamento</p>
-          <p className="text-2xl font-black text-emerald-700 mt-1">
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tendencia de Fechamento</p>
+          <p className="text-2xl font-black text-slate-900 mt-1">
             {formatCurrencyWithZero(stats.tendenciaFechamento)}
           </p>
           <div className="mt-4 flex gap-4">
@@ -881,20 +872,20 @@ const Dashboard: React.FC<DashboardProps> = ({
               <p className="text-[10px] font-black text-emerald-700">{formatCurrencyWithZero(stats.projectedFuturePlan)}</p>
             </div>
           </div>
-          <div className="mt-3 pt-3 border-t border-emerald-200 grid grid-cols-2 gap-3">
+          <div className="mt-3 pt-3 border-t border-slate-200 grid grid-cols-2 gap-3">
             <div>
-              <p className="text-[8px] font-bold text-emerald-500 uppercase">vs Planejado</p>
-              <p className={`text-[10px] font-black ${stats.tendenciaVsPlanejado.delta >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                {stats.tendenciaVsPlanejado.delta >= 0 ? '+' : ''}{formatCurrencyWithZero(stats.tendenciaVsPlanejado.delta)}
-              </p>
-              <p className="text-[9px] font-bold text-emerald-700">{formatComparisonPercent(stats.tendenciaVsPlanejado.percent)}</p>
-            </div>
-            <div>
-              <p className="text-[8px] font-bold text-emerald-500 uppercase">vs Budget</p>
+              <p className="text-[8px] font-bold text-slate-400 uppercase">vs Budget</p>
               <p className={`text-[10px] font-black ${stats.tendenciaVsBudget.delta >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                 {stats.tendenciaVsBudget.delta >= 0 ? '+' : ''}{formatCurrencyWithZero(stats.tendenciaVsBudget.delta)}
               </p>
-              <p className="text-[9px] font-bold text-emerald-700">{formatComparisonPercent(stats.tendenciaVsBudget.percent)}</p>
+              <p className="text-[9px] font-bold text-slate-700">{formatComparisonPercent(stats.tendenciaVsBudget.percent)}</p>
+            </div>
+            <div>
+              <p className="text-[8px] font-bold text-slate-400 uppercase">vs Planejado</p>
+              <p className={`text-[10px] font-black ${stats.tendenciaVsPlanejado.delta >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {stats.tendenciaVsPlanejado.delta >= 0 ? '+' : ''}{formatCurrencyWithZero(stats.tendenciaVsPlanejado.delta)}
+              </p>
+              <p className="text-[9px] font-bold text-slate-700">{formatComparisonPercent(stats.tendenciaVsPlanejado.percent)}</p>
             </div>
           </div>
         </div>
