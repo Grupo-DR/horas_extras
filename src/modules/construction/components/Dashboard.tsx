@@ -153,6 +153,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
     // Preparar dados detalhados por data incluindo registros completos
     const byDateEquipments: Record<string, { frota: string; value: number; planned: number }[]> = {};
+    const byDatePlannedServices: Record<string, { frota: string; item: string; planned: number }[]> = {};
     const byDateRecords: Record<string, any[]> = {}; // Armazena registros completos por data
 
     filteredRecords.forEach((curr) => {
@@ -180,6 +181,26 @@ const Dashboard: React.FC<DashboardProps> = ({
     filteredAssignments.forEach(a => {
       const parts = a.date.split('-');
       const formatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
+
+      if (!byDatePlannedServices[formatted]) byDatePlannedServices[formatted] = [];
+      a.services.forEach(service => {
+        const info = getUnifiedServiceInfo(service.item, servicePrices);
+        const plannedValue = (service.producao || 0) * info.precoTotal;
+        const existingService = byDatePlannedServices[formatted].find(
+          s => s.frota === a.frota && s.item === service.item
+        );
+
+        if (existingService) {
+          existingService.planned += plannedValue;
+        } else {
+          byDatePlannedServices[formatted].push({
+            frota: a.frota,
+            item: service.item,
+            planned: plannedValue
+          });
+        }
+      });
+
       if (!byDateEquipments[formatted]) byDateEquipments[formatted] = [];
       const existing = byDateEquipments[formatted].find(e => e.frota === a.frota);
       if (existing) {
@@ -195,6 +216,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         real: byDateReal[d] || 0,
         plan: byDatePlan[d] || 0,
         equipments: byDateEquipments[d] || [],
+        plannedServices: byDatePlannedServices[d] || [],
         records: byDateRecords[d] || [], // Adiciona registros completos
         ts: new Date(d.split('/')[2] + '-' + d.split('/')[1] + '-' + d.split('/')[0]).getTime()
       })).sort((a, b) => a.ts - b.ts);

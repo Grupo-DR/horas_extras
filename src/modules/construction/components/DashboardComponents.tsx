@@ -164,25 +164,33 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({ day, onClose }) 
     const totalPlan = day.plan || 0;
     const difference = totalReal - totalPlan;
 
-    // Build a lookup map: frota -> planned value (from Dashboard.tsx pre-calculation)
-    const plannedByFrota: Record<string, number> = {};
-    (day.equipments || []).forEach((eq: any) => {
-        plannedByFrota[eq.frota] = (plannedByFrota[eq.frota] || 0) + (eq.planned || 0);
+    // Build a lookup map: frota+item -> planned value (service-level comparison)
+    const plannedByFrotaItem: Record<string, number> = {};
+    const makePlanKey = (frota: string, item: string) => `${String(frota || '').trim()}|${String(item || '').trim()}`;
+    (day.plannedServices || []).forEach((service: any) => {
+        const key = makePlanKey(service.frota, service.item);
+        plannedByFrotaItem[key] = (plannedByFrotaItem[key] || 0) + (service.planned || 0);
     });
 
     // Group records by equipment category
     const recordsByCategory: Record<string, any[]> = {};
     const categorySummaries: Record<string, { total: number; planned: number; difference: number }> = {};
+    const categoryPlanSeenKeys: Record<string, Set<string>> = {};
 
     records.forEach((record: any) => {
         const category = getEquipmentCategory(record.frota);
         if (!recordsByCategory[category]) {
             recordsByCategory[category] = [];
             categorySummaries[category] = { total: 0, planned: 0, difference: 0 };
+            categoryPlanSeenKeys[category] = new Set<string>();
         }
         recordsByCategory[category].push(record);
         categorySummaries[category].total += record.financials?.total || 0;
-        categorySummaries[category].planned += plannedByFrota[record.frota] || 0;
+        const recordKey = makePlanKey(record.frota, record.item);
+        if (!categoryPlanSeenKeys[category].has(recordKey)) {
+            categorySummaries[category].planned += plannedByFrotaItem[recordKey] || 0;
+            categoryPlanSeenKeys[category].add(recordKey);
+        }
         categorySummaries[category].difference = categorySummaries[category].total - categorySummaries[category].planned;
     });
 
@@ -254,7 +262,8 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({ day, onClose }) 
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
                                                 {categoryRecords.map((record: any, idx: number) => {
-                                                    const plannedValue = plannedByFrota[record.frota] || 0;
+                                                    const recordKey = makePlanKey(record.frota, record.item);
+                                                    const plannedValue = plannedByFrotaItem[recordKey] || 0;
                                                     const recordDifference = (record.financials?.total || 0) - plannedValue;
 
                                                     return (
