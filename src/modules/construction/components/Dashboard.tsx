@@ -102,6 +102,11 @@ const formatComparisonPercent = (value: number | null): string => (
   value === null ? 'n/d' : `${value.toFixed(1)}%`
 );
 
+const normalizeRealFrota = (frota: string): string => {
+  const normalized = String(frota || '').trim();
+  return normalized.toUpperCase() === 'CM-005' ? 'CM-005/SR-005' : normalized;
+};
+
 const Dashboard: React.FC<DashboardProps> = ({
   data,
   servicePrices,
@@ -193,11 +198,11 @@ const Dashboard: React.FC<DashboardProps> = ({
     let filteredRecords = data.filter(r => getCycleKey(r.data) === selectedCycle && isWithinRange(r.data));
 
     if (selectedEquipmentType) {
-      filteredRecords = filteredRecords.filter(r => getEquipmentCategory(r.frota) === selectedEquipmentType);
+      filteredRecords = filteredRecords.filter(r => getEquipmentCategory(normalizeRealFrota(r.frota)) === selectedEquipmentType);
     }
 
     if (selectedEquipment) {
-      filteredRecords = filteredRecords.filter(r => r.frota === selectedEquipment);
+      filteredRecords = filteredRecords.filter(r => normalizeRealFrota(r.frota) === selectedEquipment);
     }
 
     let filteredAssignments = assignments.filter(a => {
@@ -229,7 +234,8 @@ const Dashboard: React.FC<DashboardProps> = ({
     filteredRecords.forEach((curr) => {
       const financials = calculateRecordFinancials(curr, servicePrices);
       const geo = getTrechoInfo(curr.trechoFinal);
-      const category = getEquipmentCategory(curr.frota);
+      const realFrota = normalizeRealFrota(curr.frota);
+      const category = getEquipmentCategory(realFrota);
       const recordDate = parseDashboardDate(curr.data);
       if (!recordDate) return;
 
@@ -276,6 +282,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     filteredRecords.forEach((curr) => {
       const financials = calculateRecordFinancials(curr, servicePrices);
       const geo = getTrechoInfo(curr.trechoFinal);
+      const realFrota = normalizeRealFrota(curr.frota);
       const recordDate = parseDashboardDate(curr.data);
       if (!recordDate) return;
       const dateKey = toBrDateKey(recordDate);
@@ -283,16 +290,17 @@ const Dashboard: React.FC<DashboardProps> = ({
       if (!byDateRecords[dateKey]) byDateRecords[dateKey] = [];
       byDateRecords[dateKey].push({
         ...curr,
+        frota: realFrota,
         financials,
         geo
       });
 
       if (!byDateEquipments[dateKey]) byDateEquipments[dateKey] = [];
-      const existing = byDateEquipments[dateKey].find(e => e.frota === curr.frota);
+      const existing = byDateEquipments[dateKey].find(e => e.frota === realFrota);
       if (existing) {
         existing.value += financials.total;
       } else {
-        byDateEquipments[dateKey].push({ frota: curr.frota, value: financials.total, planned: 0 });
+        byDateEquipments[dateKey].push({ frota: realFrota, value: financials.total, planned: 0 });
       }
     });
 
@@ -400,7 +408,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     const byCategoryIdle: Record<string, number> = {};
     filteredRecords.forEach((curr) => {
       const financials = calculateRecordFinancials(curr, servicePrices);
-      const category = getEquipmentCategory(curr.frota);
+      const category = getEquipmentCategory(normalizeRealFrota(curr.frota));
       if (financials.status === 'IMPRODUTIVA') {
         byCategoryIdle[category] = (byCategoryIdle[category] || 0) + financials.total;
       }
@@ -427,18 +435,19 @@ const Dashboard: React.FC<DashboardProps> = ({
 
     filteredRecords.forEach((curr) => {
       const financials = calculateRecordFinancials(curr, servicePrices);
-      const category = getEquipmentCategory(curr.frota);
+      const realFrota = normalizeRealFrota(curr.frota);
+      const category = getEquipmentCategory(realFrota);
       if (!equipmentTable[category]) {
         equipmentTable[category] = { planned: 0, actual: 0, equipments: [], equipmentDetails: [] };
       }
       equipmentTable[category].actual += financials.total;
-      if (!equipmentTable[category].equipments.includes(curr.frota)) {
-        equipmentTable[category].equipments.push(curr.frota);
+      if (!equipmentTable[category].equipments.includes(realFrota)) {
+        equipmentTable[category].equipments.push(realFrota);
       }
 
-      let detail = equipmentTable[category].equipmentDetails.find(d => d.frota === curr.frota);
+      let detail = equipmentTable[category].equipmentDetails.find(d => d.frota === realFrota);
       if (!detail) {
-        detail = { frota: curr.frota, planned: 0, actual: 0, difference: 0 };
+        detail = { frota: realFrota, planned: 0, actual: 0, difference: 0 };
         equipmentTable[category].equipmentDetails.push(detail);
       }
       detail.actual += financials.total;
@@ -489,15 +498,16 @@ const Dashboard: React.FC<DashboardProps> = ({
     filteredRecords.forEach((curr) => {
       const financials = calculateRecordFinancials(curr, servicePrices);
       if (financials.status === 'IMPRODUTIVA') {
-        const category = getEquipmentCategory(curr.frota);
+        const realFrota = normalizeRealFrota(curr.frota);
+        const category = getEquipmentCategory(realFrota);
         if (!idleEquipmentTable[category]) {
           idleEquipmentTable[category] = { idle: 0, equipmentDetails: [] };
         }
         idleEquipmentTable[category].idle += financials.total;
 
-        let detail = idleEquipmentTable[category].equipmentDetails.find(d => d.frota === curr.frota);
+        let detail = idleEquipmentTable[category].equipmentDetails.find(d => d.frota === realFrota);
         if (!detail) {
-          detail = { frota: curr.frota, idle: 0 };
+          detail = { frota: realFrota, idle: 0 };
           idleEquipmentTable[category].equipmentDetails.push(detail);
         }
         detail.idle += financials.total;
@@ -715,7 +725,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-700 outline-none focus:ring-2 focus:ring-amber-500/20"
             >
               <option value="">Todos os Tipos</option>
-              {Array.from(new Set(data.filter(r => getCycleKey(r.data) === selectedCycle).map(r => getEquipmentCategory(r.frota)))).sort().map(type => (
+              {Array.from(new Set(data.filter(r => getCycleKey(r.data) === selectedCycle).map(r => getEquipmentCategory(normalizeRealFrota(r.frota))))).sort().map(type => (
                 <option key={type} value={type}>{type}</option>
               ))}
             </select>
@@ -733,8 +743,8 @@ const Dashboard: React.FC<DashboardProps> = ({
               {Array.from(new Set(
                 data
                   .filter(r => getCycleKey(r.data) === selectedCycle)
-                  .filter(r => !selectedEquipmentType || getEquipmentCategory(r.frota) === selectedEquipmentType)
-                  .map(r => r.frota)
+                  .filter(r => !selectedEquipmentType || getEquipmentCategory(normalizeRealFrota(r.frota)) === selectedEquipmentType)
+                  .map(r => normalizeRealFrota(r.frota))
               )).sort().map(frota => (
                 <option key={frota} value={frota}>{frota}</option>
               ))}
