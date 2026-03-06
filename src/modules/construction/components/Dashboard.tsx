@@ -11,9 +11,9 @@ import {
   TrendingUp, ArrowDownRight, ClipboardCheck, Calendar, DollarSign
 } from 'lucide-react';
 import {
-  calculateRecordFinancials, formatCurrency, formatCurrencyWithZero,
+  calculateRecordFinancials, formatCurrencyWithZero,
   getTrechoInfo, getEquipmentCategory, calculateAssignmentTotal,
-  getPeriodInfo, getProductivityStatus, getUnifiedServiceInfo, getCycleKey, getPeriodFromCycle
+  getProductivityStatus, getUnifiedServiceInfo, getCycleKey, getPeriodFromCycle
 } from '../utils/calculations';
 import { CategoryDetailModal, DayDetailModal } from './DashboardComponents';
 import budgetData from '../data/budgets.json';
@@ -26,6 +26,81 @@ interface DashboardProps {
   selectedCycle?: string;
   onCycleChange?: (cycle: string) => void;
 }
+
+interface ComparisonMetric {
+  delta: number;
+  percent: number | null;
+}
+
+const DAY_MS = 1000 * 60 * 60 * 24;
+
+const toIsoDateString = (date: Date): string => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+const parseDashboardDate = (dateStr: string): Date | null => {
+  if (!dateStr) return null;
+
+  let d = 0;
+  let m = 0;
+  let y = 0;
+
+  if (dateStr.includes('/')) {
+    const parts = dateStr.split('/');
+    if (parts.length !== 3) return null;
+    d = Number(parts[0]);
+    m = Number(parts[1]);
+    y = Number(parts[2]);
+  } else if (dateStr.includes('-')) {
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return null;
+    y = Number(parts[0]);
+    m = Number(parts[1]);
+    d = Number(parts[2]);
+  } else {
+    return null;
+  }
+
+  const parsed = new Date(y, m - 1, d);
+  if (Number.isNaN(parsed.getTime())) return null;
+  parsed.setHours(0, 0, 0, 0);
+  return parsed;
+};
+
+const countBusinessDays = (start: Date, end: Date): number => {
+  if (start > end) return 0;
+
+  let total = 0;
+  const cursor = new Date(start);
+  cursor.setHours(0, 0, 0, 0);
+  const endDate = new Date(end);
+  endDate.setHours(0, 0, 0, 0);
+
+  while (cursor <= endDate) {
+    const day = cursor.getDay();
+    if (day !== 0 && day !== 6) total++;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return total;
+};
+
+const countCalendarDaysInclusive = (start: Date, end: Date): number => {
+  if (start > end) return 0;
+  return Math.floor((end.getTime() - start.getTime()) / DAY_MS) + 1;
+};
+
+const buildComparison = (value: number, baseline: number): ComparisonMetric => ({
+  delta: value - baseline,
+  percent: baseline > 0 ? (value / baseline) * 100 : null
+});
+
+const formatComparisonPercent = (value: number | null): string => (
+  value === null ? 'n/d' : `${value.toFixed(1)}%`
+);
 
 const Dashboard: React.FC<DashboardProps> = ({
   data,
@@ -68,64 +143,84 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [selectedDayDetail, setSelectedDayDetail] = useState<any>(null);
   const [selectedEquipmentType, setSelectedEquipmentType] = useState<string>('');
   const [selectedEquipment, setSelectedEquipment] = useState<string>('');
+  const [rangeStartDate, setRangeStartDate] = useState<string>('');
+  const [rangeEndDate, setRangeEndDate] = useState<string>('');
+
+  const cycleDateBounds = useMemo(() => {
+    if (!selectedCycle) return null;
+    return getPeriodFromCycle(selectedCycle);
+  }, [selectedCycle]);
+
+  React.useEffect(() => {
+    if (!cycleDateBounds) return;
+    setRangeStartDate(toIsoDateString(cycleDateBounds.start));
+    setRangeEndDate(toIsoDateString(cycleDateBounds.end));
+  }, [cycleDateBounds]);
 
 
   const stats = useMemo(() => {
     if (!selectedCycle && availableCycles.length > 0) return null;
+    if (!selectedCycle) return null;
 
-    // Filtrar dados pelo ciclo selecionado
-    let filteredRecords = data.filter(r => getCycleKey(r.data) === selectedCycle);
+    const { start: cycleStartRaw, end: cycleEndRaw } = getPeriodFromCycle(selectedCycle);
+    const cycleStart = new Date(cycleStartRaw);
+    cycleStart.setHours(0, 0, 0, 0);
+    const cycleEnd = new Date(cycleEndRaw);
+    cycleEnd.setHours(0, 0, 0, 0);
 
-    // Aplicar filtro de tipo de equipamento
+    const parsedRangeStart = parseDashboardDate(rangeStartDate);
+    const parsedRangeEnd = parseDashboardDate(rangeEndDate);
+
+    const rangeStart = new Date(parsedRangeStart ? parsedRangeStart.getTime() : cycleStart.getTime());
+    const rangeEnd = new Date(parsedRangeEnd ? parsedRangeEnd.getTime() : cycleEnd.getTime());
+
+    if (rangeStart < cycleStart) rangeStart.setTime(cycleStart.getTime());
+    if (rangeEnd > cycleEnd) rangeEnd.setTime(cycleEnd.getTime());
+    if (rangeEnd < rangeStart) rangeEnd.setTime(rangeStart.getTime());
+
+    const toBrDateKey = (date: Date): string => {
+      const d = String(date.getDate()).padStart(2, '0');
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      return `${d}/${m}/${date.getFullYear()}`;
+    };
+
+    const isWithinRange = (rawDate: string): boolean => {
+      const parsed = parseDashboardDate(rawDate);
+      if (!parsed) return false;
+      return parsed >= rangeStart && parsed <= rangeEnd;
+    };
+
+    let filteredRecords = data.filter(r => getCycleKey(r.data) === selectedCycle && isWithinRange(r.data));
+
     if (selectedEquipmentType) {
       filteredRecords = filteredRecords.filter(r => getEquipmentCategory(r.frota) === selectedEquipmentType);
     }
 
-    // Aplicar filtro de equipamento específico
     if (selectedEquipment) {
       filteredRecords = filteredRecords.filter(r => r.frota === selectedEquipment);
     }
 
-    // Obter datas do ciclo (Ex: se ciclo é 05-2024, periodo é 21/04 a 20/05)
-    // Usando a função canônica para garantir regra 21-20
-    const { start, end } = getPeriodFromCycle(selectedCycle);
+    let filteredAssignments = assignments.filter(a => {
+      if (getCycleKey(a.date) !== selectedCycle) return false;
+      return isWithinRange(a.date);
+    });
 
-    // getPeriodInfo agora usa getPeriodFromCycle internamente, então podemos passar qualquer data dentro do range
-    // Mas para manter compatibilidade com o retorno esperado de getPeriodInfo (que inclui dias úteis/medidos), chamamos ele.
-    // Ele precisa apenas de uma data de referência. Usamos o meio do período.
-    const refDate = new Date((start.getTime() + end.getTime()) / 2);
-    const period = getPeriodInfo(refDate, filteredRecords);
+    if (selectedEquipmentType) {
+      filteredAssignments = filteredAssignments.filter(a => getEquipmentCategory(a.frota) === selectedEquipmentType);
+    }
 
-    const parseDashboardDate = (dateStr: string): Date | null => {
-      if (!dateStr) return null;
-      let d = 0, m = 0, y = 0;
-
-      if (dateStr.includes('/')) {
-        const parts = dateStr.split('/');
-        if (parts.length !== 3) return null;
-        d = Number(parts[0]);
-        m = Number(parts[1]);
-        y = Number(parts[2]);
-      } else if (dateStr.includes('-')) {
-        const parts = dateStr.split('-');
-        if (parts.length !== 3) return null;
-        y = Number(parts[0]);
-        m = Number(parts[1]);
-        d = Number(parts[2]);
-      } else {
-        return null;
-      }
-
-      const parsed = new Date(y, m - 1, d);
-      if (Number.isNaN(parsed.getTime())) return null;
-      parsed.setHours(0, 0, 0, 0);
-      return parsed;
-    };
+    if (selectedEquipment) {
+      filteredAssignments = filteredAssignments.filter(a => a.frota === selectedEquipment);
+    }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    let realTotal = 0, realProdutivo = 0, realImprodutivo = 0, realToDate = 0;
+    let realTotal = 0;
+    let realProdutivo = 0;
+    let realImprodutivo = 0;
+    let realToDate = 0;
+    const measuredDates = new Set<string>();
     const byCategoryReal: Record<string, number> = {};
     const byDateReal: Record<string, number> = {};
     const byTrechoImprod: Record<string, number> = {};
@@ -136,9 +231,12 @@ const Dashboard: React.FC<DashboardProps> = ({
       const geo = getTrechoInfo(curr.trechoFinal);
       const category = getEquipmentCategory(curr.frota);
       const recordDate = parseDashboardDate(curr.data);
+      if (!recordDate) return;
 
+      const dateKey = toBrDateKey(recordDate);
+      measuredDates.add(toIsoDateString(recordDate));
       realTotal += financials.total;
-      if (recordDate && recordDate <= today) {
+      if (recordDate <= today) {
         realToDate += financials.total;
       }
       if (financials.status === 'IMPRODUTIVA') {
@@ -146,79 +244,62 @@ const Dashboard: React.FC<DashboardProps> = ({
         if (geo.trecho) {
           byTrechoImprod[geo.trecho] = (byTrechoImprod[geo.trecho] || 0) + financials.total;
           if (!byTrechoCityImprod[geo.trecho]) byTrechoCityImprod[geo.trecho] = {};
-          const cityKey = geo.cidade || 'Não Identificada';
+          const cityKey = geo.cidade || 'Nao Identificada';
           byTrechoCityImprod[geo.trecho][cityKey] = (byTrechoCityImprod[geo.trecho][cityKey] || 0) + financials.total;
         }
       } else if (financials.status === 'PRODUTIVA') {
         realProdutivo += financials.total;
       }
       byCategoryReal[category] = (byCategoryReal[category] || 0) + financials.total;
-      byDateReal[curr.data] = (byDateReal[curr.data] || 0) + financials.total;
+      byDateReal[dateKey] = (byDateReal[dateKey] || 0) + financials.total;
     });
-
-    // Filtrar planejamentos do ciclo
-    let filteredAssignments = assignments.filter(a => {
-      const parts = a.date.split('-');
-      const formatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
-      return getCycleKey(formatted) === selectedCycle;
-    });
-
-    // Aplicar filtro de tipo de equipamento aos planejamentos
-    if (selectedEquipmentType) {
-      filteredAssignments = filteredAssignments.filter(a => getEquipmentCategory(a.frota) === selectedEquipmentType);
-    }
-
-    // Aplicar filtro de equipamento específico aos planejamentos
-    if (selectedEquipment) {
-      filteredAssignments = filteredAssignments.filter(a => a.frota === selectedEquipment);
-    }
-
 
     let planejadoTotal = 0;
     let projectedFuturePlan = 0;
     const byDatePlan: Record<string, number> = {};
     filteredAssignments.forEach(a => {
-      const parts = a.date.split('-');
-      const formatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
-      const totalA = calculateAssignmentTotal(a, servicePrices);
       const assignmentDate = parseDashboardDate(a.date);
+      if (!assignmentDate) return;
+      const formatted = toBrDateKey(assignmentDate);
+      const totalA = calculateAssignmentTotal(a, servicePrices);
       planejadoTotal += totalA;
       byDatePlan[formatted] = (byDatePlan[formatted] || 0) + totalA;
-      if (assignmentDate && assignmentDate > today) {
+      if (assignmentDate > today) {
         projectedFuturePlan += totalA;
       }
     });
 
-    // Preparar dados detalhados por data incluindo registros completos
     const byDateEquipments: Record<string, { frota: string; value: number; planned: number }[]> = {};
     const byDatePlannedServices: Record<string, { frota: string; item: string; planned: number }[]> = {};
-    const byDateRecords: Record<string, any[]> = {}; // Armazena registros completos por data
+    const byDateRecords: Record<string, any[]> = {};
 
     filteredRecords.forEach((curr) => {
       const financials = calculateRecordFinancials(curr, servicePrices);
       const geo = getTrechoInfo(curr.trechoFinal);
+      const recordDate = parseDashboardDate(curr.data);
+      if (!recordDate) return;
+      const dateKey = toBrDateKey(recordDate);
 
-      // Armazenar registro completo com informações financeiras e geográficas
-      if (!byDateRecords[curr.data]) byDateRecords[curr.data] = [];
-      byDateRecords[curr.data].push({
+      if (!byDateRecords[dateKey]) byDateRecords[dateKey] = [];
+      byDateRecords[dateKey].push({
         ...curr,
         financials,
         geo
       });
 
-      // Agregação por equipamento (para compatibilidade)
-      if (!byDateEquipments[curr.data]) byDateEquipments[curr.data] = [];
-      const existing = byDateEquipments[curr.data].find(e => e.frota === curr.frota);
+      if (!byDateEquipments[dateKey]) byDateEquipments[dateKey] = [];
+      const existing = byDateEquipments[dateKey].find(e => e.frota === curr.frota);
       if (existing) {
         existing.value += financials.total;
       } else {
-        byDateEquipments[curr.data].push({ frota: curr.frota, value: financials.total, planned: 0 });
+        byDateEquipments[dateKey].push({ frota: curr.frota, value: financials.total, planned: 0 });
       }
     });
 
     filteredAssignments.forEach(a => {
-      const parts = a.date.split('-');
-      const formatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
+      const assignmentDate = parseDashboardDate(a.date);
+      if (!assignmentDate) return;
+      const formatted = toBrDateKey(assignmentDate);
 
       if (!byDatePlannedServices[formatted]) byDatePlannedServices[formatted] = [];
       a.services.forEach(service => {
@@ -255,37 +336,46 @@ const Dashboard: React.FC<DashboardProps> = ({
         plan: byDatePlan[d] || 0,
         equipments: byDateEquipments[d] || [],
         plannedServices: byDatePlannedServices[d] || [],
-        records: byDateRecords[d] || [], // Adiciona registros completos
+        records: byDateRecords[d] || [],
         ts: new Date(d.split('/')[2] + '-' + d.split('/')[1] + '-' + d.split('/')[0]).getTime()
-      })).sort((a, b) => a.ts - b.ts);
+      }))
+      .sort((a, b) => a.ts - b.ts);
 
-    // Calculate budget for current cycle
-    const cycleEndDate = end;
-    const budgetMonth = cycleEndDate.getMonth() + 2; // +1 for next month, +1 because getMonth() is 0-indexed
-    const budgetYear = budgetMonth > 12 ? cycleEndDate.getFullYear() + 1 : cycleEndDate.getFullYear();
+    const period = {
+      start: rangeStart,
+      end: rangeEnd,
+      totalDaysInPeriod: countCalendarDaysInclusive(rangeStart, rangeEnd),
+      daysWithMeasurement: measuredDates.size,
+      remainingDays: (() => {
+        const projectionStart = new Date(Math.max(today.getTime(), rangeStart.getTime()));
+        return projectionStart > rangeEnd ? 0 : countBusinessDays(projectionStart, rangeEnd);
+      })()
+    };
+
+    const budgetMonth = cycleEnd.getMonth() + 2;
+    const budgetYear = budgetMonth > 12 ? cycleEnd.getFullYear() + 1 : cycleEnd.getFullYear();
     const normalizedBudgetMonth = budgetMonth > 12 ? 1 : budgetMonth;
 
     const monthBudgets = budgetData.budgets.filter(
       b => b.month === normalizedBudgetMonth && b.year === budgetYear
     );
 
-    const totalBudget = monthBudgets.reduce((sum, b) => sum + b.value, 0);
-
-    // Calculate daily budget (budget divided by number of days in period)
-    const periodDays = chartData.length;
-    const dailyBudget = periodDays > 0 ? totalBudget / periodDays : 0;
+    const cycleBudget = monthBudgets.reduce((sum, b) => sum + b.value, 0);
+    const cycleBusinessDays = countBusinessDays(cycleStart, cycleEnd);
+    const selectedRangeBusinessDays = countBusinessDays(rangeStart, rangeEnd);
+    const totalBudget = cycleBusinessDays > 0 ? (cycleBudget * selectedRangeBusinessDays) / cycleBusinessDays : 0;
+    const dailyBudget = selectedRangeBusinessDays > 0 ? totalBudget / selectedRangeBusinessDays : 0;
 
     const paretoCategory = Object.entries(byCategoryReal)
       .sort((a, b) => b[1] - a[1])
       .map(([name, value]) => ({ name, value }));
 
     const idleTrechoTable = Object.keys(byTrechoImprod).map(key => ({
-      name: key, value: byTrechoImprod[key],
+      name: key,
+      value: byTrechoImprod[key],
       cities: Object.entries(byTrechoCityImprod[key]).map(([name, value]) => ({ name, value }))
     })).sort((a, b) => b.value - a.value);
 
-
-    // Pareto de Faturamento por Tipo de Equipamento (ABC)
     const paretoRevenue = Object.entries(byCategoryReal)
       .sort((a, b) => b[1] - a[1])
       .map(([name, value], index, arr) => {
@@ -298,7 +388,6 @@ const Dashboard: React.FC<DashboardProps> = ({
         return { name, value, abcClass };
       });
 
-    // Pareto de Horas Improdutivas por Tipo de Equipamento (ABC)
     const byCategoryIdle: Record<string, number> = {};
     filteredRecords.forEach((curr) => {
       const financials = calculateRecordFinancials(curr, servicePrices);
@@ -320,12 +409,11 @@ const Dashboard: React.FC<DashboardProps> = ({
         return { name, value, abcClass };
       });
 
-    // Tabela de Equipamentos: Planejado vs Real
     const equipmentTable: Record<string, {
       planned: number;
       actual: number;
       equipments: string[];
-      equipmentDetails: { frota: string; planned: number; actual: number; difference: number }[]
+      equipmentDetails: { frota: string; planned: number; actual: number; difference: number }[];
     }> = {};
 
     filteredRecords.forEach((curr) => {
@@ -339,7 +427,6 @@ const Dashboard: React.FC<DashboardProps> = ({
         equipmentTable[category].equipments.push(curr.frota);
       }
 
-      // Track individual equipment
       let detail = equipmentTable[category].equipmentDetails.find(d => d.frota === curr.frota);
       if (!detail) {
         detail = { frota: curr.frota, planned: 0, actual: 0, difference: 0 };
@@ -359,7 +446,6 @@ const Dashboard: React.FC<DashboardProps> = ({
         equipmentTable[category].equipments.push(a.frota);
       }
 
-      // Track individual equipment
       let detail = equipmentTable[category].equipmentDetails.find(d => d.frota === a.frota);
       if (!detail) {
         detail = { frota: a.frota, planned: 0, actual: 0, difference: 0 };
@@ -368,7 +454,6 @@ const Dashboard: React.FC<DashboardProps> = ({
       detail.planned += totalA;
     });
 
-    // Calculate differences
     Object.values(equipmentTable).forEach(cat => {
       cat.equipmentDetails.forEach(detail => {
         detail.difference = detail.actual - detail.planned;
@@ -377,20 +462,19 @@ const Dashboard: React.FC<DashboardProps> = ({
     });
 
     const equipmentComparison = Object.entries(equipmentTable)
-      .map(([category, data]) => ({
+      .map(([category, categoryData]) => ({
         category,
-        planned: data.planned,
-        actual: data.actual,
-        difference: data.actual - data.planned,
-        equipments: data.equipments.sort(),
-        equipmentDetails: data.equipmentDetails
+        planned: categoryData.planned,
+        actual: categoryData.actual,
+        difference: categoryData.actual - categoryData.planned,
+        equipments: categoryData.equipments.sort(),
+        equipmentDetails: categoryData.equipmentDetails
       }))
       .sort((a, b) => b.actual - a.actual);
 
-    // Tabela de Equipamentos Improdutivos (apenas valores improdutivos)
     const idleEquipmentTable: Record<string, {
       idle: number;
-      equipmentDetails: { frota: string; idle: number }[]
+      equipmentDetails: { frota: string; idle: number }[];
     }> = {};
 
     filteredRecords.forEach((curr) => {
@@ -411,20 +495,18 @@ const Dashboard: React.FC<DashboardProps> = ({
       }
     });
 
-    // Sort equipment details by idle value
     Object.values(idleEquipmentTable).forEach(cat => {
       cat.equipmentDetails.sort((a, b) => b.idle - a.idle);
     });
 
     const idleComparison = Object.entries(idleEquipmentTable)
-      .map(([category, data]) => ({
+      .map(([category, categoryData]) => ({
         category,
-        idle: data.idle,
-        equipmentDetails: data.equipmentDetails
+        idle: categoryData.idle,
+        equipmentDetails: categoryData.equipmentDetails
       }))
       .sort((a, b) => b.idle - a.idle);
 
-    // Tabela Detalhada do Catálogo SAP
     const sapItemMap: Record<string, {
       item: string;
       description: string;
@@ -432,7 +514,6 @@ const Dashboard: React.FC<DashboardProps> = ({
       actual: number;
     }> = {};
 
-    // Initialize with all items from servicePrices (unified)
     servicePrices.forEach(sp => {
       const info = getUnifiedServiceInfo(sp.item, servicePrices);
       if (!sapItemMap[sp.item]) {
@@ -445,7 +526,6 @@ const Dashboard: React.FC<DashboardProps> = ({
       }
     });
 
-    // Add Actuals
     filteredRecords.forEach(r => {
       const financials = calculateRecordFinancials(r, servicePrices);
       if (sapItemMap[r.item]) {
@@ -453,7 +533,6 @@ const Dashboard: React.FC<DashboardProps> = ({
       }
     });
 
-    // Add Planned
     filteredAssignments.forEach(a => {
       a.services.forEach(s => {
         const info = getUnifiedServiceInfo(s.item, servicePrices);
@@ -471,15 +550,55 @@ const Dashboard: React.FC<DashboardProps> = ({
       .filter(item => item.planned > 0 || item.actual > 0)
       .sort((a, b) => b.actual - a.actual);
 
-    const ritmoFechamento = realTotal + (realTotal / (period.daysWithMeasurement || 1)) * period.remainingDays;
+    const ritmoFechamento = period.daysWithMeasurement > 0
+      ? realTotal + (realTotal / period.daysWithMeasurement) * period.remainingDays
+      : realTotal;
     const tendenciaFechamento = realToDate + projectedFuturePlan;
 
+    const ritmoVsPlanejado = buildComparison(ritmoFechamento, planejadoTotal);
+    const ritmoVsBudget = buildComparison(ritmoFechamento, totalBudget);
+    const tendenciaVsPlanejado = buildComparison(tendenciaFechamento, planejadoTotal);
+    const tendenciaVsBudget = buildComparison(tendenciaFechamento, totalBudget);
+
     return {
-      realTotal, realProdutivo, realImprodutivo, planejadoTotal, period, chartData,
-      paretoCategory, idleTrechoTable, paretoRevenue, paretoIdle, equipmentComparison, idleComparison,
-      totalBudget, dailyBudget, sapComparison, ritmoFechamento, tendenciaFechamento, realToDate, projectedFuturePlan
+      realTotal,
+      realProdutivo,
+      realImprodutivo,
+      planejadoTotal,
+      period,
+      chartData,
+      paretoCategory,
+      idleTrechoTable,
+      paretoRevenue,
+      paretoIdle,
+      equipmentComparison,
+      idleComparison,
+      totalBudget,
+      dailyBudget,
+      sapComparison,
+      ritmoFechamento,
+      tendenciaFechamento,
+      realToDate,
+      projectedFuturePlan,
+      ritmoVsPlanejado,
+      ritmoVsBudget,
+      tendenciaVsPlanejado,
+      tendenciaVsBudget
     };
-  }, [data, selectedCycle, servicePrices, assignments, selectedEquipmentType, selectedEquipment]);
+  }, [
+    data,
+    selectedCycle,
+    servicePrices,
+    assignments,
+    selectedEquipmentType,
+    selectedEquipment,
+    rangeStartDate,
+    rangeEndDate,
+    availableCycles.length
+  ]);
+
+  const cycleStartIso = cycleDateBounds ? toIsoDateString(cycleDateBounds.start) : '';
+  const cycleEndIso = cycleDateBounds ? toIsoDateString(cycleDateBounds.end) : '';
 
   if (!stats) return (
     <div className="flex flex-col items-center justify-center py-20 text-slate-400">
@@ -491,71 +610,117 @@ const Dashboard: React.FC<DashboardProps> = ({
   return (
     <div className="space-y-8 pb-12">
       {/* Header com Filtro de Ciclo */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-        <div>
-          <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-            <Filter className="w-4 h-4 text-amber-500" /> Ciclo de Medição
-          </h2>
-          <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Dados de {stats.period.start.toLocaleDateString()} até {stats.period.end.toLocaleDateString()}</p>
+      <div className="flex flex-col gap-4 bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+              <Filter className="w-4 h-4 text-amber-500" /> Ciclo de Medicao
+            </h2>
+            <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">
+              Intervalo selecionado: {stats.period.start.toLocaleDateString()} ate {stats.period.end.toLocaleDateString()}
+            </p>
+          </div>
+
+          <select
+            value={selectedCycle}
+            onChange={(e) => handleCycleChange(e.target.value)}
+            className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-black text-slate-700 outline-none focus:ring-2 focus:ring-amber-500/20"
+          >
+            {availableCycles.map(c => (
+              <option key={c} value={c}>Ciclo {c.split('-')[0]}/{c.split('-')[1]}</option>
+            ))}
+          </select>
         </div>
-        <select
-          value={selectedCycle}
-          onChange={(e) => handleCycleChange(e.target.value)}
-          className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-black text-slate-700 outline-none focus:ring-2 focus:ring-amber-500/20"
-        >
-          {availableCycles.map(c => (
-            <option key={c} value={c}>Ciclo {c.split('-')[0]}/{c.split('-')[1]}</option>
-          ))}
-        </select>
 
-        {/* Equipment Type Filter */}
-        <select
-          value={selectedEquipmentType}
-          onChange={(e) => {
-            setSelectedEquipmentType(e.target.value);
-            setSelectedEquipment(''); // Reset specific equipment when type changes
-          }}
-          className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-black text-slate-700 outline-none focus:ring-2 focus:ring-amber-500/20"
-        >
-          <option value="">Todos os Tipos</option>
-          {Array.from(new Set(data.filter(r => getCycleKey(r.data) === selectedCycle).map(r => getEquipmentCategory(r.frota)))).sort().map(type => (
-            <option key={type} value={type}>{type}</option>
-          ))}
-        </select>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Data inicial</label>
+            <input
+              type="date"
+              value={rangeStartDate}
+              min={cycleStartIso}
+              max={rangeEndDate || cycleEndIso}
+              onChange={(e) => {
+                const nextStart = e.target.value;
+                setRangeStartDate(nextStart);
+                if (rangeEndDate && nextStart > rangeEndDate) {
+                  setRangeEndDate(nextStart);
+                }
+              }}
+              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-700 outline-none focus:ring-2 focus:ring-amber-500/20"
+            />
+          </div>
 
-        {/* Specific Equipment Filter */}
-        <select
-          value={selectedEquipment}
-          onChange={(e) => setSelectedEquipment(e.target.value)}
-          className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-black text-slate-700 outline-none focus:ring-2 focus:ring-amber-500/20"
-          disabled={!selectedEquipmentType && data.filter(r => getCycleKey(r.data) === selectedCycle).length > 50}
-        >
-          <option value="">Todos os Equipamentos</option>
-          {Array.from(new Set(
-            data
-              .filter(r => getCycleKey(r.data) === selectedCycle)
-              .filter(r => !selectedEquipmentType || getEquipmentCategory(r.frota) === selectedEquipmentType)
-              .map(r => r.frota)
-          )).sort().map(frota => (
-            <option key={frota} value={frota}>{frota}</option>
-          ))}
-        </select>
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Data final</label>
+            <input
+              type="date"
+              value={rangeEndDate}
+              min={rangeStartDate || cycleStartIso}
+              max={cycleEndIso}
+              onChange={(e) => {
+                const nextEnd = e.target.value;
+                setRangeEndDate(nextEnd);
+                if (rangeStartDate && nextEnd < rangeStartDate) {
+                  setRangeStartDate(nextEnd);
+                }
+              }}
+              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-700 outline-none focus:ring-2 focus:ring-amber-500/20"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Tipo de equipamento</label>
+            <select
+              value={selectedEquipmentType}
+              onChange={(e) => {
+                setSelectedEquipmentType(e.target.value);
+                setSelectedEquipment('');
+              }}
+              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-700 outline-none focus:ring-2 focus:ring-amber-500/20"
+            >
+              <option value="">Todos os Tipos</option>
+              {Array.from(new Set(data.filter(r => getCycleKey(r.data) === selectedCycle).map(r => getEquipmentCategory(r.frota)))).sort().map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Equipamento</label>
+            <select
+              value={selectedEquipment}
+              onChange={(e) => setSelectedEquipment(e.target.value)}
+              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-700 outline-none focus:ring-2 focus:ring-amber-500/20"
+              disabled={!selectedEquipmentType && data.filter(r => getCycleKey(r.data) === selectedCycle).length > 50}
+            >
+              <option value="">Todos os Equipamentos</option>
+              {Array.from(new Set(
+                data
+                  .filter(r => getCycleKey(r.data) === selectedCycle)
+                  .filter(r => !selectedEquipmentType || getEquipmentCategory(r.frota) === selectedEquipmentType)
+                  .map(r => r.frota)
+              )).sort().map(frota => (
+                <option key={frota} value={frota}>{frota}</option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        {/* Budget Card - FIRST */}
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-3xl shadow-lg border border-blue-400 text-white">
-          <p className="text-[10px] font-black uppercase tracking-widest opacity-90">Budget do Ciclo</p>
+          <p className="text-[10px] font-black uppercase tracking-widest opacity-90">Budget no Intervalo</p>
           <p className="text-2xl font-black mt-1">{formatCurrencyWithZero(stats.totalBudget)}</p>
           <div className="mt-4">
-            <p className="text-[8px] font-bold uppercase opacity-75">Diário Médio</p>
+            <p className="text-[8px] font-bold uppercase opacity-75">Diario Medio (Uteis)</p>
             <p className="text-[10px] font-black opacity-90">{formatCurrencyWithZero(stats.dailyBudget)}</p>
           </div>
         </div>
 
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Realizado no Ciclo</p>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Realizado no Intervalo</p>
           <p className="text-2xl font-black text-indigo-600 mt-1">{formatCurrencyWithZero(stats.realTotal)}</p>
           <div className="mt-4 flex gap-4">
             <div><p className="text-[8px] font-bold text-emerald-500 uppercase">Produtivo</p><p className="text-[10px] font-black">{formatCurrencyWithZero(stats.realProdutivo)}</p></div>
@@ -567,8 +732,10 @@ const Dashboard: React.FC<DashboardProps> = ({
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Planejado</p>
           <p className="text-2xl font-black text-slate-800 mt-1">{formatCurrencyWithZero(stats.planejadoTotal)}</p>
           <div className="mt-4">
-            <p className="text-[8px] font-bold text-slate-400 uppercase">Aderência</p>
-            <p className="text-[10px] font-black text-amber-600">{stats.planejadoTotal > 0 ? ((stats.realTotal / stats.planejadoTotal) * 100).toFixed(1) : '0'}%</p>
+            <p className="text-[8px] font-bold text-slate-400 uppercase">Aderencia</p>
+            <p className="text-[10px] font-black text-amber-600">
+              {formatComparisonPercent(stats.planejadoTotal > 0 ? ((stats.realTotal / stats.planejadoTotal) * 100) : null)}
+            </p>
           </div>
         </div>
 
@@ -577,25 +744,57 @@ const Dashboard: React.FC<DashboardProps> = ({
           <p className="text-2xl font-black text-amber-500 mt-1">
             {formatCurrencyWithZero(stats.ritmoFechamento)}
           </p>
-          <div className="mt-4">
-            <p className="text-[8px] font-bold text-slate-400 uppercase">Base de Medição</p>
+          <div className="mt-3">
+            <p className="text-[8px] font-bold text-slate-400 uppercase">Base de Medicao</p>
             <p className="text-[10px] font-black text-slate-200">{stats.period.daysWithMeasurement} dia(s)</p>
+          </div>
+          <div className="mt-3 pt-3 border-t border-slate-700 grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-[8px] font-bold text-slate-400 uppercase">vs Planejado</p>
+              <p className={`text-[10px] font-black ${stats.ritmoVsPlanejado.delta >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {stats.ritmoVsPlanejado.delta >= 0 ? '+' : ''}{formatCurrencyWithZero(stats.ritmoVsPlanejado.delta)}
+              </p>
+              <p className="text-[9px] font-bold text-slate-300">{formatComparisonPercent(stats.ritmoVsPlanejado.percent)}</p>
+            </div>
+            <div>
+              <p className="text-[8px] font-bold text-slate-400 uppercase">vs Budget</p>
+              <p className={`text-[10px] font-black ${stats.ritmoVsBudget.delta >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {stats.ritmoVsBudget.delta >= 0 ? '+' : ''}{formatCurrencyWithZero(stats.ritmoVsBudget.delta)}
+              </p>
+              <p className="text-[9px] font-bold text-slate-300">{formatComparisonPercent(stats.ritmoVsBudget.percent)}</p>
+            </div>
           </div>
         </div>
 
         <div className="bg-emerald-50 p-6 rounded-3xl shadow-sm border border-emerald-100">
-          <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Tendência de Fechamento</p>
+          <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Tendencia de Fechamento</p>
           <p className="text-2xl font-black text-emerald-700 mt-1">
             {formatCurrencyWithZero(stats.tendenciaFechamento)}
           </p>
           <div className="mt-4 flex gap-4">
             <div>
-              <p className="text-[8px] font-bold text-emerald-500 uppercase">Real até hoje</p>
+              <p className="text-[8px] font-bold text-emerald-500 uppercase">Real ate hoje</p>
               <p className="text-[10px] font-black text-emerald-700">{formatCurrencyWithZero(stats.realToDate)}</p>
             </div>
             <div>
               <p className="text-[8px] font-bold text-emerald-500 uppercase">Projetado futuro</p>
               <p className="text-[10px] font-black text-emerald-700">{formatCurrencyWithZero(stats.projectedFuturePlan)}</p>
+            </div>
+          </div>
+          <div className="mt-3 pt-3 border-t border-emerald-200 grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-[8px] font-bold text-emerald-500 uppercase">vs Planejado</p>
+              <p className={`text-[10px] font-black ${stats.tendenciaVsPlanejado.delta >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {stats.tendenciaVsPlanejado.delta >= 0 ? '+' : ''}{formatCurrencyWithZero(stats.tendenciaVsPlanejado.delta)}
+              </p>
+              <p className="text-[9px] font-bold text-emerald-700">{formatComparisonPercent(stats.tendenciaVsPlanejado.percent)}</p>
+            </div>
+            <div>
+              <p className="text-[8px] font-bold text-emerald-500 uppercase">vs Budget</p>
+              <p className={`text-[10px] font-black ${stats.tendenciaVsBudget.delta >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {stats.tendenciaVsBudget.delta >= 0 ? '+' : ''}{formatCurrencyWithZero(stats.tendenciaVsBudget.delta)}
+              </p>
+              <p className="text-[9px] font-bold text-emerald-700">{formatComparisonPercent(stats.tendenciaVsBudget.percent)}</p>
             </div>
           </div>
         </div>
@@ -627,7 +826,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   onClick: (e: any, payload: any) => setSelectedDayDetail(payload.payload)
                 }}
               />
-              <ReferenceLine y={stats.dailyBudget} stroke="#3b82f6" strokeDasharray="5 5" strokeWidth={2} label={{ value: 'Budget Diário', position: 'insideTopRight', fill: '#3b82f6', fontSize: 10, fontWeight: 'bold' }} />
+              <ReferenceLine y={stats.dailyBudget} stroke="#3b82f6" strokeDasharray="5 5" strokeWidth={2} label={{ value: 'Budget Diario (Uteis)', position: 'insideTopRight', fill: '#3b82f6', fontSize: 10, fontWeight: 'bold' }} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
@@ -863,3 +1062,4 @@ const Dashboard: React.FC<DashboardProps> = ({
 };
 
 export default Dashboard;
+
