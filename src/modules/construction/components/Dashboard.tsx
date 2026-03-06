@@ -748,7 +748,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           <p className="text-2xl font-black mt-1">{formatCurrencyWithZero(stats.totalBudget)}</p>
           <div className="mt-3">
             <div className="flex items-center justify-between text-[8px] font-black uppercase tracking-wider opacity-90">
-              <span>Consumido</span>
+              <span>Taxa de Aderencia</span>
               <span>{formatComparisonPercent(stats.budgetConsumedPct)}</span>
             </div>
             <div className="mt-1 h-1.5 rounded-full overflow-hidden bg-white/20">
@@ -758,26 +758,33 @@ const Dashboard: React.FC<DashboardProps> = ({
               />
             </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-blue-300/40 grid grid-cols-2 gap-3">
+          <div className="mt-4 pt-3 border-t border-blue-300/40">
             <div>
-              <p className="text-[8px] font-bold uppercase opacity-75">Budget restante</p>
-              <p className={`text-[10px] font-black ${stats.budgetRemaining >= 0 ? 'text-emerald-100' : 'text-red-100'}`}>
-                {formatCurrencyWithZero(stats.budgetRemaining)}
-              </p>
-            </div>
-            <div>
-              <p className="text-[8px] font-bold uppercase opacity-75">Dias uteis</p>
-              <p className="text-[10px] font-black opacity-90">{stats.elapsedBusinessDays}/{stats.selectedRangeBusinessDays}</p>
-            </div>
-            <div>
-              <p className="text-[8px] font-bold uppercase opacity-75">Diario medio</p>
+              <p className="text-[8px] font-bold uppercase opacity-75">Diario Medio</p>
               <p className="text-[10px] font-black opacity-90">{formatCurrencyWithZero(stats.dailyBudget)}</p>
             </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Planejado</p>
+          <p className="text-2xl font-black text-slate-800 mt-1">{formatCurrencyWithZero(stats.planejadoTotal)}</p>
+          <div className="mt-3">
+            <div className="flex items-center justify-between text-[8px] font-black text-slate-500 uppercase tracking-wider">
+              <span>Taxa de Aderencia</span>
+              <span>{formatComparisonPercent(stats.plannedExecutionPct)}</span>
+            </div>
+            <div className="mt-1 h-1.5 rounded-full overflow-hidden bg-slate-200">
+              <div
+                className={`${(stats.plannedExecutionPct ?? 0) <= 100 ? 'bg-amber-500' : 'bg-emerald-500'} h-full`}
+                style={{ width: `${Math.max(0, Math.min(100, stats.plannedExecutionPct ?? 0))}%` }}
+              />
+            </div>
+          </div>
+          <div className="mt-4 pt-3 border-t border-slate-200">
             <div>
-              <p className="text-[8px] font-bold uppercase opacity-75">Burn rate</p>
-              <p className={`text-[10px] font-black ${(stats.burnRatePct ?? 0) <= 100 ? 'text-emerald-100' : 'text-amber-100'}`}>
-                {formatComparisonPercent(stats.burnRatePct)}
-              </p>
+              <p className="text-[8px] font-bold text-slate-400 uppercase">Planejado por dia util</p>
+              <p className="text-[10px] font-black">{formatCurrencyWithZero(stats.plannedDailyAvg)}</p>
             </div>
           </div>
         </div>
@@ -828,51 +835,6 @@ const Dashboard: React.FC<DashboardProps> = ({
             <div>
               <p className="text-[8px] font-bold text-slate-400 uppercase">Dias uteis medidos</p>
               <p className="text-[10px] font-black">{stats.elapsedBusinessDays}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Planejado</p>
-          <p className="text-2xl font-black text-slate-800 mt-1">{formatCurrencyWithZero(stats.planejadoTotal)}</p>
-          <div className="mt-3">
-            <div className="flex items-center justify-between text-[8px] font-black text-slate-500 uppercase tracking-wider">
-              <span>Executado do planejado</span>
-              <span>{formatComparisonPercent(stats.plannedExecutionPct)}</span>
-            </div>
-            <div className="mt-1 h-1.5 rounded-full overflow-hidden bg-slate-200">
-              <div
-                className={`${(stats.plannedExecutionPct ?? 0) <= 100 ? 'bg-amber-500' : 'bg-emerald-500'} h-full`}
-                style={{ width: `${Math.max(0, Math.min(100, stats.plannedExecutionPct ?? 0))}%` }}
-              />
-            </div>
-          </div>
-          <div className="mt-4 pt-3 border-t border-slate-200 grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-[8px] font-bold text-slate-400 uppercase">Planejado por dia util</p>
-              <p className="text-[10px] font-black">{formatCurrencyWithZero(stats.plannedDailyAvg)}</p>
-            </div>
-            <div>
-              <p className="text-[8px] font-bold text-slate-400 uppercase">Saldo planejado</p>
-              <p className={`text-[10px] font-black ${stats.plannedRemaining >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                {formatCurrencyWithZero(stats.plannedRemaining)}
-              </p>
-            </div>
-            <div>
-              <p className="text-[8px] font-bold text-slate-400 uppercase">Planejado ate hoje</p>
-              <p className="text-[10px] font-black">{formatCurrencyWithZero(stats.plannedToDate)}</p>
-            </div>
-            <div>
-              <p className="text-[8px] font-bold text-slate-400 uppercase">Aderencia temporal</p>
-              <p className={`text-[10px] font-black ${(stats.adherenceToDatePct ?? 0) >= 100 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                {formatComparisonPercent(stats.adherenceToDatePct)}
-              </p>
-            </div>
-            <div className="col-span-2">
-              <p className="text-[8px] font-bold text-slate-400 uppercase">Real x plano ate hoje</p>
-              <p className={`text-[10px] font-black ${stats.realToDateVsPlannedToDate >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                {stats.realToDateVsPlannedToDate >= 0 ? '+' : ''}{formatCurrencyWithZero(stats.realToDateVsPlannedToDate)}
-              </p>
             </div>
           </div>
         </div>
