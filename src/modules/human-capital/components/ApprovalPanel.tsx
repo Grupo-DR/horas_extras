@@ -318,7 +318,7 @@ export const ApprovalPanel: React.FC<ApprovalPanelProps> = ({ records, onApprove
                                     onClick={() => handleApprove(selectedGroup[0])}
                                     className="flex-1 sm:flex-none px-4 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2"
                                 >
-                                    <CheckCircle2 size={16} /> Aprovar faturamento
+                                    <CheckCircle2 size={16} /> Aprovar planejamento
                                 </button>
                             </div>
                         </div>

@@ -1427,7 +1427,10 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                         <LayoutList size={18} /> Elaboração de Escalas
                     </button>
                     <button
-                        onClick={() => setActiveSubTab('APPROVAL')}
+                        onClick={() => {
+                            setMode('DAILY');
+                            setActiveSubTab('APPROVAL');
+                        }}
                         className={`flex-1 py-4 text-sm font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeSubTab === 'APPROVAL' ? 'bg-indigo-600 text-white shadow-inner' : 'text-slate-500 hover:bg-slate-50'}`}
                     >
                         <CheckCircle2 size={18} /> Aprovação / Liberação
@@ -1481,7 +1484,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                                     const st = planStatuses[key] || 'approved';
                                     if (st === 'pending') hasPending = true;
                                     if (st === 'draft' && hours > 0) hasDraft = true;
-                                    if (st === 'pending' && hours > 0) {
+                                    if (hours > 0) {
                                         detailRows.push({
                                             id: `${team.id}_${key}`,
                                             date: dateKey,
