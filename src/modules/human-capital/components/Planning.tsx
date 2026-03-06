@@ -1446,6 +1446,15 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                         let totalCost = 0;
                         let hasPending = false;
                         let hasDraft = false;
+                        const detailRows: Array<{
+                            id: string;
+                            date: string;
+                            teamName: string;
+                            employeeName: string;
+                            employeeRole: string;
+                            hours: number;
+                            status: string;
+                        }> = [];
 
                         teamEmployees.forEach((emp: any) => {
                             const salary = salaries[emp.chapa];
@@ -1472,6 +1481,17 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                                     const st = planStatuses[key] || 'approved';
                                     if (st === 'pending') hasPending = true;
                                     if (st === 'draft' && hours > 0) hasDraft = true;
+                                    if (st === 'pending' && hours > 0) {
+                                        detailRows.push({
+                                            id: `${team.id}_${key}`,
+                                            date: dateKey,
+                                            teamName: team.name,
+                                            employeeName: emp.nome,
+                                            employeeRole: memberFuncoes[emp.chapa] || 'Sem funcao',
+                                            hours,
+                                            status: st
+                                        });
+                                    }
                                     curr.setDate(curr.getDate() + 1);
                                 }
                             }
@@ -1488,11 +1508,13 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                             customEstCost: totalCost,
                             estStatus: teamStatus,
                             date: selectedMonth,
-                            shift: team.managerName || 'Integral'
+                            shift: team.managerName || 'Integral',
+                            detailRows
                         };
                     })}
                     onApprove={handleApproveCC}
                     onReject={handleRejectCC}
+                    mode={mode}
                 />
             ) : (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
