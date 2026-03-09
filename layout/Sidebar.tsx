@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FileText, CheckSquare, Users, Target, Settings } from 'lucide-react';
+import { LayoutDashboard, FileText, CheckSquare, Users, Target } from 'lucide-react';
 import { AppModule } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { ModuleKey } from '../types/auth';
@@ -68,16 +68,6 @@ export const Sidebar: React.FC = () => {
         icon: item.icon,
         to: item.path,
     }));
-
-    // Add Settings if Admin
-    if (user?.systemRole === 'ADMIN') {
-        sidebarItems.push({
-            key: 'SETTINGS',
-            label: 'Gestão de Equipe',
-            icon: Settings,
-            to: '/config/team'
-        });
-    }
 
     // Add IAM if has permission
     if (canManageProfiles(profile)) {

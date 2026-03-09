@@ -19,7 +19,6 @@ import { ActionsView } from './pages/ActionsView';
 import { LoginPage } from './pages/LoginPage';
 import { ClientsView } from './pages/crm/ClientsView';
 import { ClientDetailsView } from './pages/crm/ClientDetailsView';
-import { TeamSettings } from './pages/config/TeamSettings';
 import { AccountSettings } from './pages/config/AccountSettings';
 
 // Módulo Capital Humano
@@ -43,7 +42,6 @@ const App = () => {
             <Route path="/contracts/dashboard" element={<ContractDashboardView />} />
             <Route path="/production" element={<ConstructionSiteView />} />
             <Route path="/actions" element={<ActionsView />} />
-            <Route path="/config/team" element={<TeamSettings />} />
             <Route path="/config/account" element={<AccountSettings />} />
             <Route path="/users" element={<ProfileManager />} />
             <Route path="*" element={<Navigate to="/" replace />} />
