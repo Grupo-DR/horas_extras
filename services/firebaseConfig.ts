@@ -6,7 +6,7 @@ export const firebaseConfig = {
     apiKey: "AIzaSyCCIPZr7nfdZZKHPQ5VdwIzwglSM7bXapo",
     authDomain: "kanbancomercial-af561.firebaseapp.com",
     projectId: "kanbancomercial-af561",
-    storageBucket: "kanbancomercial-af561.appspot.com",
+    storageBucket: "kanbancomercial-af561.firebasestorage.app",
     messagingSenderId: "1034446322680",
     appId: "1:1034446322680:web:d3d8778a6131d9bb22740d",
     measurementId: "G-SR7KRPM38D"
