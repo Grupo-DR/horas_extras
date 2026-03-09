@@ -30,24 +30,26 @@ import ProfileManager from './src/modules/iam/components/ProfileManager';
 
 const App = () => {
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
       <Sidebar />
-      <div className="flex-1 ml-64 p-8 overflow-y-auto">
-        <Routes>
-          <Route path="/" element={<CommercialView />} />
-          <Route path="/prospecting" element={<ProspectingView />} />
-          <Route path="/crm/clients" element={<ClientsView />} />
-          <Route path="/crm/clients/:id" element={<ClientDetailsView />} />
-          <Route path="/contracts" element={<ContractsView />} />
-          <Route path="/contracts/dashboard" element={<ContractDashboardView />} />
-          <Route path="/production" element={<ConstructionSiteView />} />
-          <Route path="/actions" element={<ActionsView />} />
-          <Route path="/config/team" element={<TeamSettings />} />
-          <Route path="/config/account" element={<AccountSettings />} />
-          <Route path="/users" element={<ProfileManager />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </div>
+      <main className="flex-1 flex flex-col overflow-hidden relative bg-gray-50/30 transition-all duration-300">
+        <div className="flex-1 overflow-y-auto pt-2 pb-4 px-4 lg:pt-3 lg:pb-8 lg:px-8 scroll-smooth">
+          <Routes>
+            <Route path="/" element={<CommercialView />} />
+            <Route path="/prospecting" element={<ProspectingView />} />
+            <Route path="/crm/clients" element={<ClientsView />} />
+            <Route path="/crm/clients/:id" element={<ClientDetailsView />} />
+            <Route path="/contracts" element={<ContractsView />} />
+            <Route path="/contracts/dashboard" element={<ContractDashboardView />} />
+            <Route path="/production" element={<ConstructionSiteView />} />
+            <Route path="/actions" element={<ActionsView />} />
+            <Route path="/config/team" element={<TeamSettings />} />
+            <Route path="/config/account" element={<AccountSettings />} />
+            <Route path="/users" element={<ProfileManager />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
+      </main>
     </div>
   );
 };

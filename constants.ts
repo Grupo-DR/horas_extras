@@ -1,7 +1,7 @@
 import { User } from './types';
 
 export const OFFICIAL_USERS: User[] = [
-    { id: 'u1', name: 'Antonio Augusto da Silva', role: 'Diretor Comercial', email: 'antonio.silva@grupodr.com.br' },
+    { id: 'u1', name: 'Antonio Augusto da Silva', role: 'Desenvolvedor', email: 'antonio.silva@grupodr.com.br' },
     { id: 'u2', name: 'Cintia Ferreira', role: 'Engenheira Orçamentista', email: 'cintia.ferreira@grupodr.com.br' },
     { id: 'u3', name: 'Tatiana Guimarães', role: 'Engenheira Auxiliar', email: 'tatiana.guimaraes@grupodr.com.br' },
     { id: 'u4', name: 'Nilton Camilo', role: 'Gerente Comercial', email: 'nilton.camilo@grupodr.com.br' },
