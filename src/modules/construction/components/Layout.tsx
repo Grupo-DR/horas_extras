@@ -2,7 +2,7 @@
 import React from 'react';
 import {
   LayoutDashboard, Table, UploadCloud, HardHat,
-  Coins, CalendarRange, Download, Trash2, Cloud, LogOut, History, Users, Truck
+  Coins, CalendarRange, Download, Trash2, Cloud, LogOut, History, UserCog, Truck
 } from 'lucide-react';
 import { ViewType } from '../types';
 import { useNavigate } from 'react-router-dom';
@@ -42,7 +42,7 @@ const Layout: React.FC<LayoutProps> = ({
   ];
 
   if (canManageProfiles(profile)) {
-    sidebarItems.push({ key: 'iam', label: 'Gestão de Usuários', icon: Users, onClick: () => setView('iam'), isActive: activeView === 'iam' });
+    sidebarItems.push({ key: 'iam', label: 'Gestão de Usuários', icon: UserCog, onClick: () => setView('iam'), isActive: activeView === 'iam' });
   }
 
   return (

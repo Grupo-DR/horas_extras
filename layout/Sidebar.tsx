@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FileText, CheckSquare, Users, Target } from 'lucide-react';
+import { LayoutDashboard, FileText, CheckSquare, Users, UserCog, Target } from 'lucide-react';
 import { AppModule } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { ModuleKey } from '../types/auth';
@@ -74,7 +74,7 @@ export const Sidebar: React.FC = () => {
         sidebarItems.push({
             key: 'IAM',
             label: 'Gestão de Usuários',
-            icon: Users,
+            icon: UserCog,
             to: '/users'
         });
     }
