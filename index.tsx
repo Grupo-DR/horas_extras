@@ -32,7 +32,7 @@ const App = () => {
     <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
       <Sidebar />
       <main className="flex-1 flex flex-col overflow-hidden relative bg-gray-50/30 transition-all duration-300">
-        <div className="flex-1 overflow-y-auto pt-2 pb-4 px-4 lg:pt-3 lg:pb-8 lg:px-8 scroll-smooth">
+        <div className="flex-1 overflow-y-auto scroll-smooth">
           <Routes>
             <Route path="/" element={<CommercialView />} />
             <Route path="/prospecting" element={<ProspectingView />} />
