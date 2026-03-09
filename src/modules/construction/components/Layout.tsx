@@ -52,6 +52,7 @@ const Layout: React.FC<LayoutProps> = ({
         items={sidebarItems}
         userDisplay={{ name: user?.name || 'Usuário', role: user?.role || 'Membro', avatarUrl: user?.avatarUrl }}
         onLogout={handleLogout}
+        accountLinkTo="/config/account"
         storageKey="drnexus.sidebar.collapsed.obras"
       />
 

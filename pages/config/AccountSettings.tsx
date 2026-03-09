@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { updateUserProfile } from '../../src/modules/iam/profileService';
 
 export const AccountSettings: React.FC = () => {
-    const { user, logout } = useAuth();
+    const { user, logout, refreshProfile } = useAuth();
     const navigate = useNavigate();
 
     const [currentPassword, setCurrentPassword] = useState('');
@@ -49,6 +49,7 @@ export const AccountSettings: React.FC = () => {
 
             // 4. Update Profile
             await updateUserProfile(user!.id, { avatarUrl: downloadURL });
+            await refreshProfile();
             toast.success('Foto de perfil atualizada!');
 
         } catch (error: any) {

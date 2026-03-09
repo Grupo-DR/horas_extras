@@ -33,6 +33,7 @@ interface AuthContextData {
     // IAM Helpers
     hasModuleAccess: (module: 'commercial' | 'human_capital') => boolean;
     isProfileLoading: boolean;
+    refreshProfile: () => Promise<void>;
 
     // Legacy Support for CRM Dropdowns
     users: User[];
@@ -85,6 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             role: p.jobTitle || 'Colaborador',
             systemRole,
             permissions,
+            avatarUrl: p.avatarUrl,
             mustChangePassword: p.status === 'invited',
             createdAt: p.createdAt,
             lastLoginAt: new Date().toISOString()
@@ -163,6 +165,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return !!profile.modules[module]?.enabled;
     };
 
+    const refreshProfile = async () => {
+        const currentFirebaseUser = auth.currentUser;
+        if (!currentFirebaseUser) return;
+        try {
+            const updatedProfile = await getOrCreateUserProfile(currentFirebaseUser);
+            setProfile(updatedProfile);
+            setUser(mapProfileToLegacyUser(updatedProfile));
+        } catch (err) {
+            console.error('Failed to refresh profile', err);
+        }
+    };
+
 
     const getUserById = (id: string) => {
         return usersById[id];
@@ -201,7 +215,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             isProfileLoading,
             login,
             logout,
-            hasModuleAccess
+            hasModuleAccess,
+            refreshProfile
         }}>
             {children}
         </AuthContext.Provider>

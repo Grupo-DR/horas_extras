@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchOvertimeData } from '@/src/modules/human-capital/services/totvs';
 import Dashboard from '@/src/modules/human-capital/components/Dashboard';
@@ -68,7 +68,7 @@ const HumanCapitalDashboard: React.FC = () => {
       email: profile.email,
       role: profile.modules.human_capital.role,
       scope: profile.modules.human_capital.scope,
-      avatar: '👤',
+      avatar: profile.avatarUrl || '👤',
       isSuperAdmin: profile.isSuperAdmin
     };
   }, [profile]);
@@ -320,6 +320,7 @@ const HumanCapitalDashboard: React.FC = () => {
         items={sidebarItems}
         userDisplay={{ name: effectiveUser.name || 'Usuário', role: effectiveUser.role || 'Membro', avatarUrl: effectiveUser.avatar === '👤' ? undefined : effectiveUser.avatar }}
         onLogout={handleLogout}
+        accountLinkTo="/config/account"
         storageKey="drnexus.sidebar.collapsed.human-capital"
       />
 
