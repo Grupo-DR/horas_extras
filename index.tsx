@@ -43,7 +43,7 @@ const App = () => {
             <Route path="/production" element={<ConstructionSiteView />} />
             <Route path="/actions" element={<ActionsView />} />
             <Route path="/config/account" element={<AccountSettings />} />
-            <Route path="/users" element={<ProfileManager />} />
+            <Route path="/users" element={<div className="p-4 lg:p-8"><ProfileManager /></div>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
