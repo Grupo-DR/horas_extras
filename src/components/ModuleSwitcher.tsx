@@ -11,7 +11,7 @@ interface ModuleSwitcherProps {
 export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ isOpen, onClose }) => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { user } = useAuth();
+    const { user, profile, hasModuleAccess } = useAuth();
 
     if (!isOpen) return null;
 
@@ -25,7 +25,7 @@ export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ isOpen, onClose 
             color: 'bg-blue-600',
             textColor: 'text-blue-600',
             bgLight: 'bg-blue-50',
-            allowed: true
+            allowed: profile?.isSuperAdmin || hasModuleAccess('commercial')
         },
         {
             id: 'human_capital',
@@ -36,7 +36,7 @@ export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ isOpen, onClose 
             color: 'bg-emerald-600',
             textColor: 'text-emerald-600',
             bgLight: 'bg-emerald-50',
-            allowed: user?.systemRole === 'ADMIN' || (user?.permissions as any)?.human_capital === 'VIEW' || (user?.permissions as any)?.human_capital === 'EDIT' || (user?.permissions as any)?.human_capital === 'ADMIN'
+            allowed: profile?.isSuperAdmin || hasModuleAccess('human_capital')
         },
         {
             id: 'construction',
@@ -47,7 +47,7 @@ export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ isOpen, onClose 
             color: 'bg-amber-600',
             textColor: 'text-amber-600',
             bgLight: 'bg-amber-50',
-            allowed: user?.systemRole === 'ADMIN' || (user?.permissions as any)?.construction === 'VIEW' || (user?.permissions as any)?.construction === 'EDIT' || (user?.permissions as any)?.construction === 'ADMIN'
+            allowed: profile?.isSuperAdmin || !!(profile?.modules?.construction?.enabled)
         }
     ];
 

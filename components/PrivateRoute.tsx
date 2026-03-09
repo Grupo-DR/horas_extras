@@ -2,13 +2,13 @@ import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-// Define props to accept children
 interface PrivateRouteProps {
     children?: React.ReactNode;
+    requiredModule?: 'commercial' | 'human_capital' | 'construction';
 }
 
-export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
-    const { isAuthenticated, loading, user } = useAuth(); // Destructure user
+export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, requiredModule }) => {
+    const { isAuthenticated, loading, user, profile, hasModuleAccess } = useAuth();
     const location = useLocation();
 
     if (loading) {
@@ -28,6 +28,15 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
         return <Navigate to="/config/account" replace />;
     }
 
-    // Render children if provided, otherwise render Outlet
+    // Module-level access guard
+    if (requiredModule && !profile?.isSuperAdmin && !hasModuleAccess(requiredModule)) {
+        // Redirect to the first module the user has access to
+        if (hasModuleAccess('human_capital')) return <Navigate to="/human-capital" replace />;
+        if (hasModuleAccess('commercial')) return <Navigate to="/" replace />;
+        if (profile?.modules?.construction?.enabled) return <Navigate to="/construction" replace />;
+        // No module access at all - show login
+        return <Navigate to="/login" replace />;
+    }
+
     return children ? <>{children}</> : <Outlet />;
 };

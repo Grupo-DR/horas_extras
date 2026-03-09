@@ -69,7 +69,7 @@ root.render(
               <Route
                 path="/human-capital/*"
                 element={
-                  <PrivateRoute>
+                  <PrivateRoute requiredModule="human_capital">
                     <HumanCapitalDashboard />
                   </PrivateRoute>
                 }
@@ -79,7 +79,7 @@ root.render(
               <Route
                 path="/construction/*"
                 element={
-                  <PrivateRoute>
+                  <PrivateRoute requiredModule="construction">
                     <ConstructionDashboard />
                   </PrivateRoute>
                 }
@@ -89,7 +89,7 @@ root.render(
               <Route
                 path="/*"
                 element={
-                  <PrivateRoute>
+                  <PrivateRoute requiredModule="commercial">
                     <App />
                   </PrivateRoute>
                 }

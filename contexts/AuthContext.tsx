@@ -31,7 +31,7 @@ interface AuthContextData {
     loading: boolean;
 
     // IAM Helpers
-    hasModuleAccess: (module: 'commercial' | 'human_capital') => boolean;
+    hasModuleAccess: (module: 'commercial' | 'human_capital' | 'construction') => boolean;
     isProfileLoading: boolean;
     refreshProfile: () => Promise<void>;
 
@@ -158,7 +158,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return () => unsubscribe();
     }, []);
 
-    const hasModuleAccess = (module: 'commercial' | 'human_capital'): boolean => {
+    const hasModuleAccess = (module: 'commercial' | 'human_capital' | 'construction'): boolean => {
         if (!profile) return false;
         if (profile.isSuperAdmin) return true;
 
