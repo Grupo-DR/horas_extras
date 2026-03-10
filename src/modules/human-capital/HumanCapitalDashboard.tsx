@@ -68,6 +68,9 @@ const HumanCapitalDashboard: React.FC = () => {
       email: profile.email,
       role: profile.modules.human_capital.role,
       scope: profile.modules.human_capital.scope,
+      costCenter: profile.modules.human_capital.scope.type === 'COST_CENTER' 
+        ? profile.modules.human_capital.scope.costCenters[0] 
+        : undefined,
       avatar: profile.avatarUrl || '👤',
       isSuperAdmin: profile.isSuperAdmin
     };

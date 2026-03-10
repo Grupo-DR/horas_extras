@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, SalaryRecord, WorkTeam, TeamAllocation } from '../types';
 import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, AlertTriangle, Moon, Scale, Percent, ArrowUpRight, ArrowDownRight, X, User, Users, DollarSign, ListFilter, ShieldAlert, Zap, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { formatDecimalHours } from '../utils/formatters';
-import { getPlanning, getSalariesSync, getBudgetsSync, saveBudgets, getTeamsSync, getTeamAllocationsSync, getTeamAllocations, getAllPlanningRecords, getGlobalEmployeesAsync, getGlobalEmployeesSync } from '../services/planning';
+import { getPlanning, getSalariesSync, getBudgetsSync, saveBudgets, getTeams, getTeamsSync, getTeamAllocationsSync, getTeamAllocations, getAllPlanningRecords, getGlobalEmployeesAsync, getGlobalEmployeesSync } from '../services/planning';
 import { getCCName, getCCRegional, normalizeCC } from '../data/ccMaster';
 
 interface DashboardProps {
@@ -442,6 +442,8 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
   const [funcViewMode, setFuncViewMode] = useState<ViewMode>('hours');
   const [treeViewMode, setTreeViewMode] = React.useState<'financial' | 'operational'>('financial');
   const [showTreeHelp, setShowTreeHelp] = React.useState(false);
+  const [teams, setTeams] = useState<WorkTeam[]>(() => getTeamsSync());
+  const [allocations, setAllocations] = useState<TeamAllocation[]>([]);
 
   const planningRecords = useMemo(() => getAllPlanningRecords().filter(p => !p.status || p.status === 'approved'), []);
   // Filtra budgets pelos monthKeys cobertos pelo período atual
@@ -463,7 +465,11 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
     // Background refresh for global employees
     getGlobalEmployeesAsync().then(emps => setGlobalEmployees(emps)).catch(console.error);
-  }, [budgetMonthKeys]);
+
+    // Background refresh for teams and allocations
+    getTeams(user).then(t => setTeams(t));
+    getTeamAllocations(selectedMonth, user).then(a => setAllocations(a));
+  }, [selectedMonth, user, budgetMonthKeys]);
 
   const metrics = useMemo(() => {
     let realHE60Hours = 0;
@@ -765,11 +771,11 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
   }, [data, planningRecords, selectedCcModal, salariesMap]);
 
   const hierarchicalData = useMemo(() => {
-    // Carrega as equipes e alocações locais para a resposta imediata
-    const allTeams: WorkTeam[] = getTeamsSync();
+    // Carrega as equipes e alocações locais para a resposta imediata, atualizado pelo useEffect
+    const allTeams = teams;
 
     // Obter alocações baseadas no mês selecionado da view
-    const allAllocations: TeamAllocation[] = getTeamAllocationsSync().filter(a => a.monthKey === selectedMonth);
+    const allAllocations = allocations.filter(a => a.monthKey === selectedMonth);
 
     // Lookup: cc normalizado → lista de WorkTeams daquele CC
     const ccTeams = new Map<string, WorkTeam[]>();

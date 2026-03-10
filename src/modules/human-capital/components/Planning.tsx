@@ -663,8 +663,10 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
     const costCenters = useMemo(() => {
         const set = new Set<string>();
         employees.forEach(e => { if (e.CODCCUSTO) set.add(e.CODCCUSTO); });
+        // Include CCs from teams to ensure visibility even without TOTVS employees
+        teams.forEach(t => { if (t.costCenter) set.add(t.costCenter); });
         return Array.from(set).sort();
-    }, [employees]);
+    }, [employees, teams]);
 
     const regionals = useMemo(() => {
         const set = new Set<string>();
@@ -990,7 +992,14 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
             const matchesCC = !ccFilter || t.costCenter === ccFilter;
             const teamRegional = getRegional(t.costCenter);
             const matchesRegional = !regionalFilter || teamRegional === regionalFilter;
-            const isAuthorized = user.role === 'CH_COSTCENTER_PLANNER' ? t.costCenter === user.costCenter : true;
+            
+            // Fix authorization: check against user.scope if role is CC Planner
+            let isAuthorized = true;
+            if (user.role === 'CH_COSTCENTER_PLANNER') {
+                const allowedCCs = user.scope?.type === 'COST_CENTER' ? user.scope.costCenters : [user.costCenter];
+                isAuthorized = allowedCCs.includes(t.costCenter);
+            }
+            
             return matchesCC && matchesRegional && isAuthorized;
         });
     }, [teams, allocations, selectedMonth, ccFilter, regionalFilter, user]);
