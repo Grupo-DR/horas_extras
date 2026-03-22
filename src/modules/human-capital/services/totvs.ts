@@ -63,6 +63,13 @@ const parseTotvsResponse = (data: any[]): OvertimeRecord[] => {
         console.log("=================================================");
     }
 
+    const allowedEvents = [
+        'HORA_EXTRA_60',
+        'HORA_EXTRA_100',
+        'INTER_JORNADA60',
+        'ADICIONAL_NOTURNO_20'
+    ];
+
     data.forEach((item) => {
         // Campos Básicos (Extração Direta)
         const baseRecord = {
@@ -74,22 +81,24 @@ const parseTotvsResponse = (data: any[]): OvertimeRecord[] => {
             DATA: String(item.DATA || new Date().toISOString()),
         };
 
-        // Extração Dinâmica de Eventos de Hora (Evita problemas com hardcoded whitelists)
+        // Filtro Simplificado e Seguro por Whitelist
         Object.keys(item).forEach((key) => {
             const upperKey = key.toUpperCase();
-            // Identifica se a chave se trata de um evento de hora extra, adicional ou interjornada
-            if (upperKey.includes('EXTRA') || upperKey.includes('NOTURNO') || upperKey.includes('INTER') || upperKey.includes('HORAS_TRABALHADAS')) {
-                const value = item[key];
+            const value = item[key];
 
-                // Verifica se a chave existe e tem valor numérico diferente de zero
-                if (value !== undefined && value !== null && typeof value === 'number' && value !== 0) {
-                    records.push({
-                        ...baseRecord,
-                        EVENTO: key.replace(/_/g, ' '),
-                        HORAS: convertTotvsHourToDecimal(value),
-                        VALOR: 0
-                    });
-                }
+            if (
+                allowedEvents.includes(upperKey) &&
+                value !== undefined &&
+                value !== null &&
+                typeof value === 'number' &&
+                value !== 0
+            ) {
+                records.push({
+                    ...baseRecord,
+                    EVENTO: key.replace(/_/g, ' '),
+                    HORAS: convertTotvsHourToDecimal(value),
+                    VALOR: 0
+                });
             }
         });
     });
