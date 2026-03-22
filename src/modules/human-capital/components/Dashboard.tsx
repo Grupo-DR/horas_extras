@@ -4,6 +4,7 @@ import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, Al
 import { formatDecimalHours } from '../utils/formatters';
 import { getPlanning, getSalariesSync, getBudgetsSync, saveBudgets, getTeams, getTeamsSync, getTeamAllocationsSync, getTeamAllocations, getAllPlanningRecords, getGlobalEmployeesAsync, getGlobalEmployeesSync } from '../services/planning';
 import { getCCName, getCCRegional, normalizeCC } from '../data/ccMaster';
+import { isRecordInHumanCapitalScope } from '../utils/scopeFilters';
 
 interface DashboardProps {
   data: OvertimeRecord[];              // dados filtrados (regional, CC, etc.)
@@ -516,16 +517,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
         const cc = normalizeCC(rawCC);
         const reg = getCCRegional(rawCC);
 
-        // Scope Check for metrics - usually we want these to be scoped too, 
-        // but let's follow the "Global can show all" if it matches global metrics.
-        // Actually, metrics variable is used for Mega Cards. 
-        // If the user wants a "Scoped" Dashboard, he expects these to be scoped.
-        const isExternal = user && user.scope && user.scope.type !== 'ALL' && (
-          (user.scope.type === 'REGIONAL' && !user.scope.regionals.includes(reg)) ||
-          (user.scope.type === 'COST_CENTER' && !user.scope.costCenters.includes(cc))
-        );
-
-        if (isExternal) return;
+        if (!isRecordInHumanCapitalScope(user, rawCC)) return;
 
         totalPlannedHours += p.plannedHours;
         const sal = salariesMap[p.chapa];
@@ -537,12 +529,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     });
 
     const totalBudget = budgets.reduce((acc, b) => {
-      if (user && user.scope && user.scope.type !== 'ALL') {
-        const cc = normalizeCC(b.costCenter || '');
-        const reg = getCCRegional(b.costCenter || '');
-        if (user.scope.type === 'REGIONAL' && !user.scope.regionals.includes(reg)) return acc;
-        if (user.scope.type === 'COST_CENTER' && !user.scope.costCenters.includes(cc)) return acc;
-      }
+      if (!isRecordInHumanCapitalScope(user, b.costCenter || '')) return acc;
       return acc + b.value;
     }, 0);
 
@@ -600,11 +587,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       const reg = getCCRegional(r.CODCCUSTO || '');
 
       // Secondary scope check for safety
-      if (user && user.scope && user.scope.type !== 'ALL') {
-        const scope = user.scope;
-        if (scope.type === 'REGIONAL' && !scope.regionals.includes(reg)) return;
-        if (scope.type === 'COST_CENTER' && !scope.costCenters.includes(cc)) return;
-      }
+      if (!isRecordInHumanCapitalScope(user, r.CODCCUSTO || '')) return;
 
       if (!map[cc]) map[cc] = { real: 0, planned: 0, name: resolveName(r.CODCCUSTO || cc), realCost: 0, plannedCost: 0, budget: 0 };
       if (map[cc].name === cc || map[cc].name === 'S/ CC') map[cc].name = resolveName(r.CODCCUSTO || cc);
@@ -623,6 +606,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
     // Planejamento: filtrar por regional se ativo
     planningRecords.forEach(p => {
+      if (!isRecordInHumanCapitalScope(user, p.costCenter || '')) return;
       const ccRegional = getCCRegional(p.costCenter || '');
       if (regional && ccRegional !== regional) return; // filtro regional
       const cc = normalizeCC(p.costCenter || 'S/ CC');
@@ -668,11 +652,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       const reg = getCCRegional(rawCC);
 
       // Scope Check
-      if (user && user.scope && user.scope.type !== 'ALL') {
-        const scope = user.scope;
-        if (scope.type === 'REGIONAL' && !scope.regionals.includes(reg)) return;
-        if (scope.type === 'COST_CENTER' && !scope.costCenters.includes(cc)) return;
-      }
+      if (!isRecordInHumanCapitalScope(user, rawCC)) return;
 
       const f = chapaToFunc[p.chapa] || 'Indefinido';
       if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0 };
@@ -857,11 +837,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       const reg = getCCRegional(rawCC) || 'Sem Regional';
 
       // Scope Check
-      if (user && user.scope && user.scope.type !== 'ALL') {
-        const scope = user.scope;
-        if (scope.type === 'REGIONAL' && !scope.regionals.includes(reg)) return;
-        if (scope.type === 'COST_CENTER' && !scope.costCenters.includes(cc)) return;
-      }
+      if (!isRecordInHumanCapitalScope(user, rawCC)) return;
 
       const ccName = getCCName(rawCC) || resolveName(rawCC);
       const regData = getRegData(reg);
@@ -880,10 +856,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       const reg = getCCRegional(rawCC) || 'Sem Regional';
 
       // Scope Check
-      const isExternalToScope = user && user.scope && user.scope.type !== 'ALL' && (
-        (user.scope.type === 'REGIONAL' && !user.scope.regionals.includes(reg)) ||
-        (user.scope.type === 'COST_CENTER' && !user.scope.costCenters.includes(cc))
-      );
+      const isExternalToScope = !isRecordInHumanCapitalScope(user, rawCC);
 
       const hours = Number(r.HORAS) || 0;
       const evt = (r.EVENTO || '').toUpperCase();
@@ -903,11 +876,9 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       if (isNoturno) cost = baseHour * 0.2 * hours;
       if (isHE60 || isHE100) cost += cost / 6;
 
-      // Global Metrics always count for context as per user request
-      addHours(globalMetrics, r.CHAPA, hours, isHE60, isHE100, isInter, isNoturno, cost);
-
-      // Branching logic: if external to scope, skip adding to children
       if (isExternalToScope) return;
+
+      addHours(globalMetrics, r.CHAPA, hours, isHE60, isHE100, isInter, isNoturno, cost);
 
       const ccName = getCCName(rawCC) || resolveName(rawCC);
       const regData = getRegData(reg);
@@ -936,17 +907,13 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       const reg = getCCRegional(rawCC) || 'Sem Regional';
 
       // Scope Check
-      const isExternalToScope = user && user.scope && user.scope.type !== 'ALL' && (
-        (user.scope.type === 'REGIONAL' && !user.scope.regionals.includes(reg)) ||
-        (user.scope.type === 'COST_CENTER' && !user.scope.costCenters.includes(cc))
-      );
+      const isExternalToScope = !isRecordInHumanCapitalScope(user, rawCC);
 
       const addPlan = (m: any) => { m.plannedHours += p.plannedHours; };
 
-      // Global Metrics for context
-      addPlan(globalMetrics);
-
       if (isExternalToScope) return;
+
+      addPlan(globalMetrics);
 
       const ccName = getCCName(rawCC) || resolveName(rawCC);
       const regData = getRegData(reg);
@@ -975,15 +942,11 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       const reg = getCCRegional(rawCC) || 'Sem Regional';
 
       // Scope Check
-      const isExternalToScope = user && user.scope && user.scope.type !== 'ALL' && (
-        (user.scope.type === 'REGIONAL' && !user.scope.regionals.includes(reg)) ||
-        (user.scope.type === 'COST_CENTER' && !user.scope.costCenters.includes(cc))
-      );
-
-      // Global for context
-      globalMetrics.budgetCost += b.value;
+      const isExternalToScope = !isRecordInHumanCapitalScope(user, rawCC);
 
       if (isExternalToScope) return;
+
+      globalMetrics.budgetCost += b.value;
 
       const ccName = getCCName(rawCC) || resolveName(rawCC);
       const regData = getRegData(reg);

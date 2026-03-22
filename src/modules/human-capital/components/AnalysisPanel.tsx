@@ -55,6 +55,41 @@ export const getPayrollMonthKey = (dateString: string): string => {
 };
 
 // ────────────────────────────────────────────────────────────
+export const isExtraEvent = (evento?: string): boolean => {
+    const evt = (evento || '').toUpperCase();
+    return evt.includes('EXTRA') || evt.includes('60') || evt.includes('100');
+};
+
+export const isExtra100Event = (evento?: string): boolean => {
+    const evt = (evento || '').toUpperCase();
+    return isExtraEvent(evt) && evt.includes('100');
+};
+
+export const isExtra60Event = (evento?: string): boolean => {
+    const evt = (evento || '').toUpperCase();
+    return isExtraEvent(evt) && !evt.includes('100');
+};
+
+export const isInterjornadaEvent = (evento?: string): boolean => {
+    const evt = (evento || '').toUpperCase();
+    return evt.includes('INTER');
+};
+
+export const isNoturnoEvent = (evento?: string): boolean => {
+    const evt = (evento || '').toUpperCase();
+    return evt.includes('NOTURNO') || evt.includes('NOT');
+};
+
+export const isRelevantOvertimeEvent = (evento?: string): boolean => {
+    return isExtraEvent(evento) || isInterjornadaEvent(evento) || isNoturnoEvent(evento);
+};
+
+export const normalizeCC = (cc?: string): string => cc ? cc.trim().toUpperCase() : 'S/ CC';
+export const normalizeFunction = (funcao?: string): string => funcao ? funcao.trim().toUpperCase() : 'S/ FUNÇÃO';
+export const normalizeName = (nome?: string): string => nome ? nome.trim().toUpperCase() : 'S/ NOME';
+export const normalizeChapa = (chapa?: string): string => chapa ? chapa.trim().toUpperCase() : '';
+
+// ────────────────────────────────────────────────────────────
 // Sub-componente: Custom Outlier Label
 // ────────────────────────────────────────────────────────────
 const CustomOutlierLabel = (props: any) => {
@@ -149,16 +184,15 @@ const TrendAnalysis: React.FC<{ data: OvertimeRecord[]; onDayClick?: (date: stri
 
             if (!map[key]) map[key] = { date: key, he: 0, inter: 0, noturno: 0, total: 0 };
 
-            const evt = (r.EVENTO || '').toUpperCase();
             const hours = Number(r.HORAS) || 0;
 
-            if (evt.includes('EXTRA') || evt.includes('60') || evt.includes('100')) {
+            if (isExtraEvent(r.EVENTO)) {
                 map[key].he += hours;
                 map[key].total += hours;
-            } else if (evt.includes('INTER')) {
+            } else if (isInterjornadaEvent(r.EVENTO)) {
                 map[key].inter += hours;
                 map[key].total += hours;
-            } else if (evt.includes('NOTURNO') || evt.includes('NOT')) {
+            } else if (isNoturnoEvent(r.EVENTO)) {
                 map[key].noturno += hours;
                 map[key].total += hours;
             }
@@ -338,15 +372,21 @@ const ConcentrationPareto: React.FC<{ data: OvertimeRecord[], onBarClick?: (titl
     const chartData = useMemo(() => {
         const counts: Record<string, { value: number; chapas: Set<string> }> = {};
         data.forEach(r => {
+            if (!isRelevantOvertimeEvent(r.EVENTO)) {
+                return;
+            }
+
             let key = '';
-            if (view === 'cc') key = r.CODCCUSTO || 'S/ CC';
-            else if (view === 'funcao') key = r.FUNCAO || 'S/ Função';
-            else if (view === 'colaborador') key = r.NOME || 'S/ Nome';
-            else if (view === 'regional') key = getCCRegional(r.CODCCUSTO || '');
+            if (view === 'cc') key = normalizeCC(r.CODCCUSTO);
+            else if (view === 'funcao') key = normalizeFunction(r.FUNCAO);
+            else if (view === 'colaborador') key = normalizeName(r.NOME);
+            else if (view === 'regional') key = getCCRegional(normalizeCC(r.CODCCUSTO));
 
             if (!counts[key]) counts[key] = { value: 0, chapas: new Set() };
             counts[key].value += (Number(r.HORAS) || 0);
-            if (r.CHAPA) counts[key].chapas.add(r.CHAPA);
+            
+            const chapa = normalizeChapa(r.CHAPA);
+            if (chapa) counts[key].chapas.add(chapa);
         });
 
         const sorted = Object.entries(counts)
@@ -542,9 +582,9 @@ const DistributionHistogram: React.FC<{ data: OvertimeRecord[]; onBucketClick?: 
     const buckets = useMemo(() => {
         const empHours: Record<string, number> = {};
         data.forEach(r => {
-            if (!r.CHAPA) return;
-            const evt = (r.EVENTO || '').toUpperCase();
-            if (evt.includes('EXTRA') || evt.includes('60') || evt.includes('100') || evt.includes('INTER') || evt.includes('NOTURNO') || evt.includes('NOT')) {
+            const chapa = normalizeChapa(r.CHAPA);
+            if (!chapa) return;
+            if (isRelevantOvertimeEvent(r.EVENTO)) {
                 empHours[r.CHAPA] = (empHours[r.CHAPA] || 0) + (Number(r.HORAS) || 0);
             }
         });
@@ -676,13 +716,13 @@ const EmployeeTable: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
         }> = {};
 
         data.forEach(r => {
-            const chapa = r.CHAPA;
+            const chapa = normalizeChapa(r.CHAPA);
             if (!chapa) return;
 
             if (!map[chapa]) {
                 map[chapa] = {
-                    name: r.NOME || 'Sem Nome',
-                    cc: r.CODCCUSTO || 'S/ CC',
+                    name: normalizeName(r.NOME),
+                    cc: normalizeCC(r.CODCCUSTO),
                     he60: 0,
                     he100: 0,
                     inter: 0,
@@ -691,15 +731,15 @@ const EmployeeTable: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
                 };
             }
 
-            const evt = (r.EVENTO || '').toUpperCase();
             const hours = Number(r.HORAS) || 0;
 
-            if (evt.includes('EXTRA')) {
-                if (evt.includes('100')) map[chapa].he100 += hours;
-                else map[chapa].he60 += hours;
-            } else if (evt.includes('INTER')) {
+            if (isExtra100Event(r.EVENTO)) {
+                map[chapa].he100 += hours;
+            } else if (isExtra60Event(r.EVENTO)) {
+                map[chapa].he60 += hours;
+            } else if (isInterjornadaEvent(r.EVENTO)) {
                 map[chapa].inter += hours;
-            } else if (evt.includes('NOTURNO') || evt.includes('NOT')) {
+            } else if (isNoturnoEvent(r.EVENTO)) {
                 map[chapa].noturnas += hours;
             }
         });
@@ -780,18 +820,17 @@ const PressureMap: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
         const map: Record<string, { cc: string; he60: number; he100: number; inter: number; noturno: number; uniqueEmps: Set<string> }> = {};
 
         data.forEach(r => {
-            const cc = r.CODCCUSTO || 'S/ CC';
+            const cc = normalizeCC(r.CODCCUSTO);
             if (!map[cc]) map[cc] = { cc, he60: 0, he100: 0, inter: 0, noturno: 0, uniqueEmps: new Set() };
 
             const hours = Number(r.HORAS) || 0;
-            const evt = (r.EVENTO || '').toUpperCase();
-            if (r.CHAPA) map[cc].uniqueEmps.add(r.CHAPA);
+            const chapa = normalizeChapa(r.CHAPA);
+            if (chapa) map[cc].uniqueEmps.add(chapa);
 
-            if (evt.includes('EXTRA')) {
-                if (evt.includes('100')) map[cc].he100 += hours;
-                else map[cc].he60 += hours;
-            } else if (evt.includes('INTER')) map[cc].inter += hours;
-            else if (evt.includes('NOTURNO') || evt.includes('NOT')) map[cc].noturno += hours;
+            if (isExtra100Event(r.EVENTO)) map[cc].he100 += hours;
+            else if (isExtra60Event(r.EVENTO)) map[cc].he60 += hours;
+            else if (isInterjornadaEvent(r.EVENTO)) map[cc].inter += hours;
+            else if (isNoturnoEvent(r.EVENTO)) map[cc].noturno += hours;
         });
 
         return Object.values(map).map(item => {
@@ -951,14 +990,13 @@ const ComplianceTable: React.FC<{ data: OvertimeRecord[]; onRowClick?: (cc: stri
 
         // Loop principal único nos dados
         data.forEach(r => {
-            const chapa = r.CHAPA;
+            const chapa = normalizeChapa(r.CHAPA);
             if (!chapa) return;
 
-            const cc = r.CODCCUSTO || 'S/ CC';
+            const cc = normalizeCC(r.CODCCUSTO);
             empToCC[chapa] = cc; // Assume último CC lido ou mapeia todos do colaborador
 
-            const evt = (r.EVENTO || '').toUpperCase();
-            if (evt.includes('EXTRA') || evt.includes('60') || evt.includes('100')) {
+            if (isExtraEvent(r.EVENTO)) {
                 const hours = Number(r.HORAS) || 0;
 
                 if (r.DATA) {
@@ -1127,13 +1165,13 @@ const DailyDrilldownModal: React.FC<{ date: string | null; data: OvertimeRecord[
         data.forEach(r => {
             if (!r.DATA || !r.DATA.startsWith(date)) return;
 
-            const chapa = r.CHAPA;
+            const chapa = normalizeChapa(r.CHAPA);
             if (!chapa) return;
 
             if (!map[chapa]) {
                 map[chapa] = {
-                    name: r.NOME || 'Sem Nome',
-                    cc: r.CODCCUSTO || 'S/ CC',
+                    name: normalizeName(r.NOME),
+                    cc: normalizeCC(r.CODCCUSTO),
                     he60: 0,
                     he100: 0,
                     inter: 0,
@@ -1142,15 +1180,15 @@ const DailyDrilldownModal: React.FC<{ date: string | null; data: OvertimeRecord[
                 };
             }
 
-            const evt = (r.EVENTO || '').toUpperCase();
             const hours = Number(r.HORAS) || 0;
 
-            if (evt.includes('EXTRA')) {
-                if (evt.includes('100')) map[chapa].he100 += hours;
-                else map[chapa].he60 += hours;
-            } else if (evt.includes('INTER')) {
+            if (isExtra100Event(r.EVENTO)) {
+                map[chapa].he100 += hours;
+            } else if (isExtra60Event(r.EVENTO)) {
+                map[chapa].he60 += hours;
+            } else if (isInterjornadaEvent(r.EVENTO)) {
                 map[chapa].inter += hours;
-            } else if (evt.includes('NOTURNO') || evt.includes('NOT')) {
+            } else if (isNoturnoEvent(r.EVENTO)) {
                 map[chapa].noturnas += hours;
             }
         });
@@ -1259,13 +1297,13 @@ const EmployeeListDrilldownModal: React.FC<{ title: string; chapas: string[]; da
         }> = {};
 
         data.forEach(r => {
-            const chapa = r.CHAPA;
+            const chapa = normalizeChapa(r.CHAPA);
             if (!chapa || !chapas.includes(chapa)) return;
 
             if (!map[chapa]) {
                 map[chapa] = {
-                    name: r.NOME || 'Sem Nome',
-                    cc: r.CODCCUSTO || 'S/ CC',
+                    name: normalizeName(r.NOME),
+                    cc: normalizeCC(r.CODCCUSTO),
                     he60: 0,
                     he100: 0,
                     inter: 0,
@@ -1274,15 +1312,15 @@ const EmployeeListDrilldownModal: React.FC<{ title: string; chapas: string[]; da
                 };
             }
 
-            const evt = (r.EVENTO || '').toUpperCase();
             const hours = Number(r.HORAS) || 0;
 
-            if (evt.includes('EXTRA')) {
-                if (evt.includes('100')) map[chapa].he100 += hours;
-                else map[chapa].he60 += hours;
-            } else if (evt.includes('INTER')) {
+            if (isExtra100Event(r.EVENTO)) {
+                map[chapa].he100 += hours;
+            } else if (isExtra60Event(r.EVENTO)) {
+                map[chapa].he60 += hours;
+            } else if (isInterjornadaEvent(r.EVENTO)) {
                 map[chapa].inter += hours;
-            } else if (evt.includes('NOTURNO') || evt.includes('NOT')) {
+            } else if (isNoturnoEvent(r.EVENTO)) {
                 map[chapa].noturnas += hours;
             }
         });
@@ -1395,16 +1433,16 @@ const ComplianceDrilldownModal: React.FC<{ cc: string; ccName: string; data: Ove
         }> = {};
 
         data.forEach(r => {
-            const rowCC = r.CODCCUSTO || 'S/ CC';
+            const rowCC = normalizeCC(r.CODCCUSTO);
             if (rowCC !== cc) return;
 
-            const chapa = r.CHAPA;
+            const chapa = normalizeChapa(r.CHAPA);
             if (!chapa) return;
 
             if (!map[chapa]) {
                 map[chapa] = {
                     chapa,
-                    name: r.NOME || 'Sem Nome',
+                    name: normalizeName(r.NOME),
                     he60: 0,
                     he100: 0,
                     inter: 0,
@@ -1417,11 +1455,10 @@ const ComplianceDrilldownModal: React.FC<{ cc: string; ccName: string; data: Ove
                 };
             }
 
-            const evt = (r.EVENTO || '').toUpperCase();
             const hours = Number(r.HORAS) || 0;
 
-            if (evt.includes('EXTRA') || evt.includes('60') || evt.includes('100')) {
-                if (evt.includes('100')) map[chapa].he100 += hours;
+            if (isExtraEvent(r.EVENTO)) {
+                if (isExtra100Event(r.EVENTO)) map[chapa].he100 += hours;
                 else map[chapa].he60 += hours;
 
                 if (r.DATA) {
@@ -1434,9 +1471,9 @@ const ComplianceDrilldownModal: React.FC<{ cc: string; ccName: string; data: Ove
                         map[chapa].monthlyHours[payrollKey] = (map[chapa].monthlyHours[payrollKey] || 0) + hours;
                     }
                 }
-            } else if (evt.includes('INTER')) {
+            } else if (isInterjornadaEvent(r.EVENTO)) {
                 map[chapa].inter += hours;
-            } else if (evt.includes('NOTURNO') || evt.includes('NOT')) {
+            } else if (isNoturnoEvent(r.EVENTO)) {
                 map[chapa].noturnas += hours;
             }
         });
@@ -1607,10 +1644,9 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
         let interjornadas = 0;
 
         data.forEach(r => {
-            const evt = (r.EVENTO || '').toUpperCase();
             const hours = Number(r.HORAS) || 0;
-            if ((evt.includes('EXTRA') || evt.includes('60') || evt.includes('100')) && hours > 10) jornadasLongas++;
-            if (evt.includes('INTER')) interjornadas++;
+            if (isExtraEvent(r.EVENTO) && hours > 10) jornadasLongas++;
+            if (isInterjornadaEvent(r.EVENTO)) interjornadas++;
         });
 
         return { jornadasLongas, interjornadas };
