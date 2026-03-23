@@ -1184,7 +1184,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                         const detailRows: Array<{
                             id: string;
                             date: string;
-                            teamName: string;
+                            ccName: string;
                             employeeName: string;
                             employeeRole: string;
                             hours: number;
@@ -1220,7 +1220,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                                         detailRows.push({
                                             id: `${cc.id}_${key}`,
                                             date: dateKey,
-                                            teamName: `CC ${cc.costCenter}`,
+                                            ccName: `CC ${cc.costCenter}`,
                                             employeeName: emp.nome,
                                             employeeRole: memberFuncoes[emp.chapa] || 'Sem funcao',
                                             hours,

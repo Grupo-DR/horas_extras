@@ -7,7 +7,7 @@ type ApprovalStatus = 'approved' | 'pending' | 'draft' | 'rejected' | string;
 interface ApprovalDetailRow {
     id: string;
     date: string;
-    teamName: string;
+    ccName: string;
     employeeName: string;
     employeeRole: string;
     hours: number;
@@ -60,7 +60,7 @@ export const ApprovalPanel: React.FC<ApprovalPanelProps> = ({ records, onApprove
             totalCost: number;
             headcount: number;
             statusBreakdown: { approved: number; pending: number; draft: number };
-            teams: ApprovalRecord[];
+            records: ApprovalRecord[];
             detailRows: ApprovalDetailRow[];
         }>();
 
@@ -74,7 +74,7 @@ export const ApprovalPanel: React.FC<ApprovalPanelProps> = ({ records, onApprove
                     totalCost: 0,
                     headcount: 0,
                     statusBreakdown: { approved: 0, pending: 0, draft: 0 },
-                    teams: [],
+                    records: [],
                     detailRows: []
                 });
             }
@@ -89,7 +89,7 @@ export const ApprovalPanel: React.FC<ApprovalPanelProps> = ({ records, onApprove
             if (st === 'pending') group.statusBreakdown.pending++;
             if (st === 'draft') group.statusBreakdown.draft++;
 
-            group.teams.push(r);
+            group.records.push(r);
 
             if (Array.isArray(r.detailRows) && r.detailRows.length > 0) {
                 group.detailRows.push(...r.detailRows);
@@ -101,10 +101,10 @@ export const ApprovalPanel: React.FC<ApprovalPanelProps> = ({ records, onApprove
             .map(([cc, data]) => {
                 const orderedRows = [...data.detailRows].sort((a, b) => {
                     if (a.date === b.date) {
-                        if (a.teamName === b.teamName) {
+                        if (a.ccName === b.ccName) {
                             return a.employeeName.localeCompare(b.employeeName);
                         }
-                        return a.teamName.localeCompare(b.teamName);
+                        return a.ccName.localeCompare(b.ccName);
                     }
                     return a.date.localeCompare(b.date);
                 });
@@ -180,7 +180,7 @@ export const ApprovalPanel: React.FC<ApprovalPanelProps> = ({ records, onApprove
                                     </div>
                                 </div>
                                 <div className="flex bg-amber-100 text-amber-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase items-center gap-1 shrink-0">
-                                    <Clock size={12} /> {data.statusBreakdown.pending} Turmas pendentes
+                                    <Clock size={12} /> {data.statusBreakdown.pending} Registros pendentes
                                 </div>
                             </div>
 
@@ -227,7 +227,7 @@ export const ApprovalPanel: React.FC<ApprovalPanelProps> = ({ records, onApprove
                             <div>
                                 <h3 className="text-lg font-bold">{selectedGroup[0]} - {selectedGroup[1].name}</h3>
                                 <p className="text-indigo-200 text-xs mt-0.5">
-                                    {selectedGroup[1].regional} | {selectedGroup[1].statusBreakdown.pending} turmas pendentes
+                                    {selectedGroup[1].regional} | {selectedGroup[1].statusBreakdown.pending} registros pendentes
                                 </p>
                             </div>
                             <button
@@ -262,7 +262,7 @@ export const ApprovalPanel: React.FC<ApprovalPanelProps> = ({ records, onApprove
                                     <p className="text-sm mt-1">
                                         {mode === 'MONTHLY'
                                             ? 'A visualizacao detalhada por dia depende da base diaria (modo diario).'
-                                            : 'As turmas pendentes nao possuem horas lancadas no periodo selecionado.'}
+                                            : 'Os registros pendentes não possuem horas lançadas no período selecionado.'}
                                     </p>
                                 </div>
                             ) : (
@@ -270,7 +270,7 @@ export const ApprovalPanel: React.FC<ApprovalPanelProps> = ({ records, onApprove
                                     <thead className="sticky top-0 z-20 bg-slate-100 text-slate-600">
                                         <tr>
                                             <th className="px-4 py-3 text-left font-black uppercase tracking-wider text-[10px] border-b border-slate-200">Data</th>
-                                            <th className="px-4 py-3 text-left font-black uppercase tracking-wider text-[10px] border-b border-slate-200">Turma</th>
+                                            <th className="px-4 py-3 text-left font-black uppercase tracking-wider text-[10px] border-b border-slate-200">Centro de Custo</th>
                                             <th className="px-4 py-3 text-left font-black uppercase tracking-wider text-[10px] border-b border-slate-200">Colaborador</th>
                                             <th className="px-4 py-3 text-left font-black uppercase tracking-wider text-[10px] border-b border-slate-200">Funcao</th>
                                             <th className="px-4 py-3 text-right font-black uppercase tracking-wider text-[10px] border-b border-slate-200">Horas</th>
@@ -281,7 +281,7 @@ export const ApprovalPanel: React.FC<ApprovalPanelProps> = ({ records, onApprove
                                         {selectedGroup[1].detailRows.map((row) => (
                                             <tr key={row.id} className="border-b border-slate-100 hover:bg-slate-50">
                                                 <td className="px-4 py-3 text-slate-600">{formatDateBR(row.date)}</td>
-                                                <td className="px-4 py-3 text-slate-700 font-semibold">{row.teamName}</td>
+                                                <td className="px-4 py-3 text-slate-700 font-semibold">{row.ccName}</td>
                                                 <td className="px-4 py-3 text-slate-700">{row.employeeName}</td>
                                                 <td className="px-4 py-3 text-slate-500">{row.employeeRole || '-'}</td>
                                                 <td className="px-4 py-3 text-right font-mono font-black text-slate-700">{row.hours.toFixed(1)}h</td>
