@@ -1,13 +1,28 @@
 
 import { db } from '@/services/firebaseConfig';
 import { collection, doc, writeBatch, query, where, getDocs, addDoc, Timestamp, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
-import { BudgetRecord, SalaryAllocation, PlanningRecord, UserProfile, WorkTeam, ManualEmployee, TeamAllocation } from '../types';
+import { BudgetRecord, SalaryAllocation, PlanningRecord, UserProfile, ManualEmployee } from '../types';
 import { Scope } from '../../iam/types';
 
 const COL_BUDGETS = 'hc_budgets';
 const COL_SALARIES = 'hc_salary_allocations';
 const COL_PLANNING = 'hc_planning_records';
 const COL_AUDIT = 'hc_audit_logs';
+
+interface LegacyWorkTeam {
+    id: string;
+    name: string;
+    costCenter: string;
+    managerName?: string;
+    memberChapas?: string[];
+}
+
+interface LegacyTeamAllocation {
+    id: string;
+    teamId: string;
+    monthKey: string;
+    chapas: string[];
+}
 
 // --- BUDGETS ---
 
@@ -203,7 +218,7 @@ export const writeAudit = async (action: string, meta: any, user: UserProfile) =
 
 const COL_TEAMS = 'hc_teams';
 
-export const upsertTeams = async (teams: WorkTeam[], user: UserProfile) => {
+export const upsertTeams = async (teams: LegacyWorkTeam[], user: UserProfile) => {
     const batch = writeBatch(db);
     teams.forEach(t => {
         if (!t.id) return;
@@ -222,7 +237,7 @@ export const getTeams = async (scope?: Scope) => {
     const q = query(collection(db, COL_TEAMS));
     // Filters based on scope can be added here if needed, currently global or filtered in UI
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => d.data() as WorkTeam);
+    return snapshot.docs.map(d => d.data() as LegacyWorkTeam);
 };
 
 export const deleteTeam = async (teamId: string) => {
@@ -234,7 +249,7 @@ export const deleteTeam = async (teamId: string) => {
 
 const COL_TEAM_ALLOCATIONS = 'hc_team_allocations';
 
-export const upsertTeamAllocation = async (allocation: TeamAllocation, user: UserProfile) => {
+export const upsertTeamAllocation = async (allocation: LegacyTeamAllocation, user: UserProfile) => {
     if (!allocation.id) return;
     const ref = doc(db, COL_TEAM_ALLOCATIONS, allocation.id);
     await setDoc(ref, {
@@ -248,13 +263,13 @@ export const getTeamAllocationsByMonthKey = async (monthKey: string, scope?: Sco
     if (!monthKey) return [];
     const q = query(collection(db, COL_TEAM_ALLOCATIONS), where('monthKey', '==', monthKey));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => d.data() as TeamAllocation);
+    return snapshot.docs.map(d => d.data() as LegacyTeamAllocation);
 };
 
 export const getAllTeamAllocations = async () => {
     const q = query(collection(db, COL_TEAM_ALLOCATIONS));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => d.data() as TeamAllocation);
+    return snapshot.docs.map(d => d.data() as LegacyTeamAllocation);
 };
 
 // --- MANUAL EMPLOYEES ---

@@ -1,13 +1,12 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { OvertimeRecord, UserProfile, PlanningRecord, SalaryAllocation, BudgetRecord, WorkTeam, ManualEmployee, TeamAllocation, GlobalEmployee } from '../types';
-import { savePlanning, getPlanning, saveSalaries, getSalariesSync, saveBudgets, getBudgetsSync, saveTeams, getTeams, deleteTeam, getTeamsSync, getAllBudgetsAsync, deleteBudgets, deleteAllBudgets, getTeamAllocationsSync, getTeamAllocations, saveTeamAllocations, saveGlobalEmployees, getGlobalEmployeesAsync, getGlobalEmployeesSync } from '../services/planning';
+﻿import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { OvertimeRecord, UserProfile, PlanningRecord, SalaryAllocation, BudgetRecord, ManualEmployee, GlobalEmployee } from '../types';
+import { savePlanning, getPlanning, saveSalaries, getSalariesSync, saveBudgets, getBudgetsSync, getAllBudgetsAsync, deleteBudgets, deleteAllBudgets, saveGlobalEmployees, getGlobalEmployeesAsync, getGlobalEmployeesSync } from '../services/planning';
 import { canApprove } from '../../iam/types';
 import { ApprovalPanel } from './ApprovalPanel';
 
-import { Users, Clock, Wallet, TrendingUp, Calculator, CheckCircle2, AlertTriangle, X, ChevronLeft, ChevronRight, Save, FileUp, Plus, Search, ArrowUpRight, ArrowDownRight, LayoutList, Trash2 } from 'lucide-react';
+import { Users, Clock, Wallet, TrendingUp, Calculator, CheckCircle2, AlertTriangle, X, ChevronLeft, ChevronRight, Save, FileUp, ArrowUpRight, ArrowDownRight, LayoutList, Trash2 } from 'lucide-react';
 import { formatDecimalHours, parseTimeToDecimal } from '../utils/formatters';
 import * as XLSX from 'xlsx';
-import { TeamCard } from './TeamCard';
 import { PlanningTable } from './PlanningTable';
 
 // Constants for Regional Mapping based on the provided image
@@ -34,7 +33,7 @@ const formatDateKey = (date: Date): string => {
 };
 
 const MONTH_NAMES = [
-    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Janeiro", "Fevereiro", "MarÃ§o", "Abril", "Maio", "Junho",
     "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
 ];
 
@@ -95,7 +94,7 @@ const EmployeeCalendarModal: React.FC<{
                 <div className="bg-blue-600 p-6 flex justify-between items-center text-white shrink-0">
                     <div>
                         <h3 className="text-xl font-bold">{employeeName}</h3>
-                        <p className="text-blue-100 text-sm">Chapa: {chapa} • Período: {periodStart.toLocaleDateString('pt-BR')} a {periodEnd.toLocaleDateString('pt-BR')}</p>
+                        <p className="text-blue-100 text-sm">Chapa: {chapa} â€¢ PerÃ­odo: {periodStart.toLocaleDateString('pt-BR')} a {periodEnd.toLocaleDateString('pt-BR')}</p>
                     </div>
                     <div className="text-right flex gap-6">
                         <div>
@@ -116,7 +115,7 @@ const EmployeeCalendarModal: React.FC<{
 
                 <div className="p-6 overflow-y-auto bg-gray-50 flex-1">
                     <div className="grid grid-cols-7 gap-2 mb-2 text-center">
-                        {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
+                        {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'SÃ¡b'].map(d => (
                             <div key={d} className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{d}</div>
                         ))}
                     </div>
@@ -163,120 +162,8 @@ const EmployeeCalendarModal: React.FC<{
                 <div className="p-4 bg-gray-100 border-t border-gray-200 text-center">
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest flex items-center justify-center gap-2">
                         <CheckCircle2 size={12} className="text-emerald-500" />
-                        Visualização de Planejamento Detalhado por Dia
+                        VisualizaÃ§Ã£o de Planejamento Detalhado por Dia
                     </p>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// --- MODALS FOR TEAMS ---
-
-
-const CreateTeamModal: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    onSave: (name: string, manager: string, cc: string) => void;
-    costCenters: string[];
-}> = ({ isOpen, onClose, onSave, costCenters }) => {
-    const [name, setName] = useState('');
-    const [manager, setManager] = useState('');
-    const [cc, setCc] = useState('');
-
-    if (!isOpen) return null;
-
-    const handleSubmit = () => {
-        if (!name || !cc) return;
-        onSave(name, manager, cc);
-        setName(''); setManager(''); setCc('');
-        onClose();
-    };
-
-    return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Nova Frente de Trabalho (Equipe)</h3>
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome da Equipe</label>
-                        <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full border rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: Equipe Predial" />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Centro de Custo</label>
-                        <select value={cc} onChange={e => setCc(e.target.value)} className="w-full border rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="">Selecione...</option>
-                            {costCenters.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome do Gestor (Opcional)</label>
-                        <input type="text" value={manager} onChange={e => setManager(e.target.value)} className="w-full border rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: João da Silva" />
-                    </div>
-                </div>
-                <div className="flex justify-end gap-2 mt-6">
-                    <button onClick={onClose} className="px-4 py-2 text-gray-500 font-bold text-sm hover:bg-gray-100 rounded-lg">Cancelar</button>
-                    <button onClick={handleSubmit} disabled={!name || !cc} className="px-4 py-2 bg-blue-600 text-white font-bold text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50">Criar Equipe</button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const AddMemberModal: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    onAdd: (chapas: string[]) => void;
-    availableEmployees: Array<{ chapa: string; nome: string; cc: string }>;
-}> = ({ isOpen, onClose, onAdd, availableEmployees }) => {
-    const [search, setSearch] = useState('');
-    const [selected, setSelected] = useState<string[]>([]);
-
-    if (!isOpen) return null;
-
-    const filtered = availableEmployees.filter(e =>
-        e.nome.toLowerCase().includes(search.toLowerCase()) ||
-        e.chapa.includes(search)
-    ).slice(0, 50); // Limit results for performance
-
-    const toggle = (chapa: string) => {
-        setSelected(prev => prev.includes(chapa) ? prev.filter(c => c !== chapa) : [...prev, chapa]);
-    };
-
-    return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg h-[80vh] flex flex-col">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Adicionar Membros</h3>
-                <div className="relative mb-4">
-                    <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Buscar por nome ou chapa..."
-                        autoFocus
-                    />
-                </div>
-                <div className="flex-1 overflow-y-auto border rounded-lg divide-y divide-gray-100">
-                    {filtered.map(emp => (
-                        <div key={emp.chapa} onClick={() => toggle(emp.chapa)} className={`p-3 flex items-center justify-between cursor-pointer hover:bg-gray-50 ${selected.includes(emp.chapa) ? 'bg-blue-50' : ''}`}>
-                            <div>
-                                <p className="font-bold text-sm text-gray-800">{emp.nome}</p>
-                                <p className="text-xs text-gray-500">{emp.chapa} • {emp.cc}</p>
-                            </div>
-                            <div className={`w-5 h-5 rounded border flex items-center justify-center ${selected.includes(emp.chapa) ? 'bg-blue-600 border-blue-600' : 'border-gray-300'}`}>
-                                {selected.includes(emp.chapa) && <CheckCircle2 size={12} className="text-white" />}
-                            </div>
-                        </div>
-                    ))}
-                    {filtered.length === 0 && <p className="p-4 text-center text-gray-400 text-sm">Nenhum colaborador encontrado.</p>}
-                </div>
-                <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
-                    <button onClick={onClose} className="px-4 py-2 text-gray-500 font-bold text-sm hover:bg-gray-100 rounded-lg">Cancelar</button>
-                    <button onClick={() => { onAdd(selected); onClose(); setSelected([]); }} disabled={selected.length === 0} className="px-4 py-2 bg-blue-600 text-white font-bold text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                        Adicionar ({selected.length})
-                    </button>
                 </div>
             </div>
         </div>
@@ -312,7 +199,7 @@ const BudgetManagerModal: React.FC<{
     }, [allBudgets]);
 
     const handleDelete = async (monthKey: string) => {
-        if (!window.confirm(`Excluir TODOS os registros de budget de ${monthKey}? Esta ação não pode ser desfeita.`)) return;
+        if (!window.confirm(`Excluir TODOS os registros de budget de ${monthKey}? Esta aÃ§Ã£o nÃ£o pode ser desfeita.`)) return;
         setDeleting(monthKey);
         try {
             await deleteBudgets(monthKey, user);
@@ -323,7 +210,7 @@ const BudgetManagerModal: React.FC<{
     };
 
     const handleDeleteAll = async () => {
-        if (!window.confirm(`Excluir TODOS os ${grouped.length} períodos de budget? Esta ação não pode ser desfeita.`)) return;
+        if (!window.confirm(`Excluir TODOS os ${grouped.length} perÃ­odos de budget? Esta aÃ§Ã£o nÃ£o pode ser desfeita.`)) return;
         setDeleting('__all__');
         try {
             await deleteAllBudgets(user);
@@ -341,7 +228,7 @@ const BudgetManagerModal: React.FC<{
                 <div className="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white shrink-0">
                     <div>
                         <h3 className="text-lg font-bold">Gerenciar Budgets</h3>
-                        <p className="text-indigo-200 text-xs">{grouped.length} períodos importados</p>
+                        <p className="text-indigo-200 text-xs">{grouped.length} perÃ­odos importados</p>
                     </div>
                     <div className="flex items-center gap-2">
                         {grouped.length > 0 && (
@@ -374,8 +261,8 @@ const BudgetManagerModal: React.FC<{
                         <table className="w-full text-sm">
                             <thead className="bg-gray-50 border-b border-gray-100 sticky top-0">
                                 <tr>
-                                    <th className="px-5 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">Período</th>
-                                    <th className="px-5 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">Competência</th>
+                                    <th className="px-5 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">PerÃ­odo</th>
+                                    <th className="px-5 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">CompetÃªncia</th>
                                     <th className="px-5 py-3 text-right text-[10px] font-bold text-gray-400 uppercase tracking-wider">Qtd. CCs</th>
                                     <th className="px-5 py-3 text-right text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Budget</th>
                                     <th className="px-5 py-3"></th>
@@ -395,7 +282,7 @@ const BudgetManagerModal: React.FC<{
                                                 onClick={() => handleDelete(g.monthKey)}
                                                 disabled={deleting === g.monthKey}
                                                 className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40"
-                                                title="Excluir período"
+                                                title="Excluir perÃ­odo"
                                             >
                                                 {deleting === g.monthKey
                                                     ? <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
@@ -410,27 +297,28 @@ const BudgetManagerModal: React.FC<{
                 </div>
 
                 <div className="px-6 py-3 bg-gray-50 border-t border-gray-100 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                    A exclusão remove todos os Centros de Custo do período selecionado do Firestore e do cache local.
+                    A exclusÃ£o remove todos os Centros de Custo do perÃ­odo selecionado do Firestore e do cache local.
                 </div>
             </div>
         </div>
     );
-};// --- TEAM PLAN MODAL (Grade Membros × Dias) ---
-const TeamPlanModal: React.FC<{
+};
+
+// --- COST CENTER PLAN MODAL (Grade Membros × Dias) ---
+const CostCenterPlanModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
-    team: WorkTeam;
+    costCenter: string;
+    memberChapas: string[];
     memberNames: Record<string, string>;
     memberFuncoes: Record<string, string>;
     plans: Record<string, number>;
-    salaries: Record<string, number>;
     periodStart: Date;
     periodEnd: Date;
-    onSave: (teamId: string, localNums: Record<string, number>) => Promise<void>;
-    onRemoveMember: (teamId: string, chapa: string) => void;
+    onSave: (costCenter: string, localNums: Record<string, number>) => Promise<void>;
     planStatuses: Record<string, string>;
     canOverrideLock: boolean;
-}> = ({ isOpen, onClose, team, memberNames, memberFuncoes, plans, salaries, periodStart, periodEnd, onSave, onRemoveMember, planStatuses, canOverrideLock }) => {
+}> = ({ isOpen, onClose, costCenter, memberChapas, memberNames, memberFuncoes, plans, periodStart, periodEnd, onSave, planStatuses, canOverrideLock }) => {
     const [saving, setSaving] = useState(false);
     const [localValues, setLocalValues] = useState<Record<string, string>>({});
 
@@ -444,7 +332,7 @@ const TeamPlanModal: React.FC<{
     useEffect(() => {
         if (!isOpen) return;
         const init: Record<string, string> = {};
-        team.memberChapas.forEach(chapa => {
+        memberChapas.forEach(chapa => {
             days.forEach(day => {
                 const dk = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
                 const h = plans[`${chapa}_${dk}`];
@@ -452,8 +340,7 @@ const TeamPlanModal: React.FC<{
             });
         });
         setLocalValues(init);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isOpen, team.id]);
+    }, [isOpen, costCenter, memberChapas, days, plans]);
 
     const getMemberTotal = (chapa: string): number =>
         days.reduce((sum, day) => {
@@ -468,13 +355,13 @@ const TeamPlanModal: React.FC<{
     const handleSaveClick = async () => {
         setSaving(true);
         const numericMap: Record<string, number> = {};
-        team.memberChapas.forEach(chapa => {
+        memberChapas.forEach(chapa => {
             days.forEach(day => {
                 const dk = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
                 numericMap[`${chapa}_${dk}`] = parseTimeToDecimal(localValues[`${chapa}_${dk}`] || '0');
             });
         });
-        await onSave(team.id, numericMap);
+        await onSave(costCenter, numericMap);
         setSaving(false);
     };
 
@@ -485,20 +372,19 @@ const TeamPlanModal: React.FC<{
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[96vw] overflow-hidden flex flex-col max-h-[92vh]">
                 <div className="bg-blue-600 px-6 py-4 flex justify-between items-center text-white shrink-0">
                     <div>
-                        <h3 className="text-lg font-bold">{team.name}</h3>
+                        <h3 className="text-lg font-bold">Planejamento do Centro de Custo</h3>
                         <p className="text-blue-200 text-xs mt-0.5">
-                            CC: {team.costCenter} • Gestor: {team.managerName || 'N/A'} • Período: {periodStart.toLocaleDateString('pt-BR')} → {periodEnd.toLocaleDateString('pt-BR')}
+                            CC: {costCenter} • Período: {periodStart.toLocaleDateString('pt-BR')} a {periodEnd.toLocaleDateString('pt-BR')}
                         </p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors"><X size={20} /></button>
                 </div>
 
                 <div className="flex-1 overflow-auto">
-                    {team.memberChapas.length === 0 ? (
+                    {memberChapas.length === 0 ? (
                         <div className="py-16 text-center text-slate-400">
                             <Users size={40} className="mx-auto mb-3 opacity-30" />
-                            <p className="font-bold">Nenhum membro nesta equipe.</p>
-                            <p className="text-sm mt-1">Use o botão + na lista de turmas para adicionar colaboradores.</p>
+                            <p className="font-bold">Nenhum colaborador encontrado neste Centro de Custo.</p>
                         </div>
                     ) : (
                         <table className="border-collapse text-xs" style={{ minWidth: `${(days.length + 2) * 56}px` }}>
@@ -523,24 +409,15 @@ const TeamPlanModal: React.FC<{
                                 </tr>
                             </thead>
                             <tbody>
-                                {team.memberChapas.map(chapa => {
+                                {memberChapas.map(chapa => {
                                     const name = memberNames[chapa] || chapa;
                                     const total = getMemberTotal(chapa);
                                     const isOver = total > 44;
                                     return (
                                         <tr key={chapa} className="hover:bg-slate-50/70 border-b border-slate-100 group">
-                                            <td className="sticky left-0 bg-white px-4 py-1.5 border-r border-slate-200 z-10 flex items-center justify-between">
-                                                <div>
-                                                    <p className="font-bold text-slate-800 leading-tight">{name}</p>
-                                                    <p className="text-[10px] text-slate-400 font-medium truncate max-w-[150px]">{memberFuncoes[chapa] || '—'}</p>
-                                                </div>
-                                                <button
-                                                    onClick={() => onRemoveMember(team.id, chapa)}
-                                                    className="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-all"
-                                                    title="Remover da Turma"
-                                                >
-                                                    <Trash2 size={13} />
-                                                </button>
+                                            <td className="sticky left-0 bg-white px-4 py-1.5 border-r border-slate-200 z-10">
+                                                <p className="font-bold text-slate-800 leading-tight">{name}</p>
+                                                <p className="text-[10px] text-slate-400 font-medium truncate max-w-[150px]">{memberFuncoes[chapa] || '—'}</p>
                                             </td>
                                             {days.map(day => {
                                                 const dk = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
@@ -549,7 +426,7 @@ const TeamPlanModal: React.FC<{
                                                 const isSun = day.getDay() === 0;
                                                 const isSat = day.getDay() === 6;
                                                 const hasValue = parseTimeToDecimal(strVal) > 0;
-                                                const recordStatus = planStatuses[key] || 'approved'; // Retrocompatibilidade: sem status assume-se approved
+                                                const recordStatus = planStatuses[key] || 'approved';
                                                 const isLocked = !canOverrideLock && (recordStatus === 'approved' || recordStatus === 'pending');
 
                                                 return (
@@ -558,7 +435,7 @@ const TeamPlanModal: React.FC<{
                                                             type="text"
                                                             value={strVal}
                                                             onChange={e => handleInputChange(chapa, dk, e.target.value)}
-                                                            className={`w-10 text-center text-[11px] border rounded px-1 py-0.5 outline-none font-mono transition-colors 
+                                                            className={`w-10 text-center text-[11px] border rounded px-1 py-0.5 outline-none font-mono transition-colors
                                                                 ${hasValue ? 'border-blue-300 bg-blue-50 text-blue-800 font-bold' : 'border-gray-200 bg-white text-gray-300'}
                                                                 ${isLocked ? 'cursor-not-allowed opacity-60 bg-gray-100 ring-1 ring-gray-300' : 'focus:ring-1 focus:ring-blue-400'}
                                                             `}
@@ -592,7 +469,7 @@ const TeamPlanModal: React.FC<{
                         <button onClick={onClose} className="px-4 py-2 text-slate-500 font-bold text-sm hover:bg-slate-100 rounded-lg transition-colors">Fechar</button>
                         <button
                             onClick={handleSaveClick}
-                            disabled={saving || team.memberChapas.length === 0}
+                            disabled={saving || memberChapas.length === 0}
                             className="px-5 py-2 bg-blue-600 text-white font-bold text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
                         >
                             {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Save size={15} />}
@@ -636,12 +513,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
     const [saving, setSaving] = useState(false);
     const [alert, setAlert] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
-    // Teams State
-    const [teams, setTeams] = useState<WorkTeam[]>([]);
-    const [allocations, setAllocations] = useState<TeamAllocation[]>([]);
-    const [isCreateTeamOpen, setIsCreateTeamOpen] = useState(false);
-    const [addMemberTeamId, setAddMemberTeamId] = useState<string | null>(null);
-    const [teamPlanModalId, setTeamPlanModalId] = useState<string | null>(null);
+    const [ccPlanModalId, setCcPlanModalId] = useState<string | null>(null);
 
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState<{ name: string, chapa: string } | null>(null);
@@ -659,23 +531,6 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
         }
     }, [alert]);
 
-    // Derived Lists
-    const costCenters = useMemo(() => {
-        const set = new Set<string>();
-        employees.forEach(e => { if (e.CODCCUSTO) set.add(e.CODCCUSTO); });
-        // Include CCs from teams to ensure visibility even without TOTVS employees
-        teams.forEach(t => { if (t.costCenter) set.add(t.costCenter); });
-        return Array.from(set).sort();
-    }, [employees, teams]);
-
-    const regionals = useMemo(() => {
-        const set = new Set<string>();
-        employees.forEach(e => {
-            if (e.CODCCUSTO) set.add(getRegional(e.CODCCUSTO));
-        });
-        return Array.from(set).sort();
-    }, [employees]);
-
     const uniqueEmployees = useMemo(() => {
         const map = new Map<string, { nome: string; cc: string; chapa: string; regional: string }>();
         employees.forEach(e => {
@@ -691,6 +546,15 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
         return Array.from(map.values()).sort((a, b) => a.nome.localeCompare(b.nome));
     }, [employees, manualEmployees]);
 
+    // Derived Lists
+    const costCenters = useMemo(() => {
+        return Array.from(new Set(uniqueEmployees.map(e => e.cc).filter(Boolean))).sort();
+    }, [uniqueEmployees]);
+
+    const regionals = useMemo(() => {
+        return Array.from(new Set(uniqueEmployees.map(e => e.regional).filter(Boolean))).sort();
+    }, [uniqueEmployees]);
+
     // Load Data
     useEffect(() => {
         const storedSalaries = getSalariesSync();
@@ -700,12 +564,6 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
 
         const storedBudgets = getBudgetsSync();
         setBudgets(storedBudgets);
-
-        const loadedTeams = getTeamsSync(); // Sync for immediate render, async for update could be added
-        setTeams(loadedTeams);
-
-        // Background refresh for teams
-        getTeams(user).then(t => setTeams(t));
 
         // Background refresh for global employees
         getGlobalEmployeesAsync().then(emps => setGlobalEmployees(emps)).catch(console.error);
@@ -757,20 +615,6 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
     }, [employees, manualEmployees, globalEmployees.length, user]);
 
     useEffect(() => {
-        const cached = getTeamAllocationsSync();
-        setAllocations(cached);
-        const loadAllocs = async () => {
-            const alls = await getTeamAllocations(selectedMonth, user);
-            setAllocations(prev => {
-                const map = new Map(prev.map(a => [a.id, a]));
-                alls.forEach(a => map.set(a.id, a));
-                return Array.from(map.values());
-            });
-        };
-        loadAllocs();
-    }, [selectedMonth, user]);
-
-    useEffect(() => {
         const loadPlans = async () => {
             let records: PlanningRecord[] = [];
             const startMonthStr = formatDateKey(periodStart).slice(0, 7);
@@ -798,55 +642,41 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
         loadPlans();
     }, [mode, selectedMonth, periodStart, periodEnd, user]);
 
-    // Team Actions
-    const handleCreateTeam = (name: string, manager: string, cc: string) => {
-        const newTeam: WorkTeam = {
-            id: crypto.randomUUID(),
-            name,
-            managerName: manager,
-            costCenter: cc,
-            memberChapas: []
-        };
-        const updated = [...teams, newTeam];
-        setTeams(updated);
-        saveTeams(updated, user);
-        setAlert({ type: 'success', message: 'Equipe criada com sucesso!' });
-    };
-
-
-    const handleDeleteTeam = (teamId: string) => {
-        const updated = teams.filter(t => t.id !== teamId);
-        setTeams(updated);
-        deleteTeam(teamId, user);
-        setAlert({ type: 'success', message: 'Equipe removida.' });
-    };
-
-    const handleAddMembers = async (chapas: string[]) => {
-        if (!addMemberTeamId) return;
-        const teamId = addMemberTeamId;
-
-        let alloc = allocations.find(a => a.teamId === teamId && a.monthKey === selectedMonth);
-        if (!alloc) {
-            alloc = {
-                id: crypto.randomUUID(),
-                teamId: teamId,
-                monthKey: selectedMonth,
-                chapas: []
-            };
-        }
-
-        const newMembers = [...new Set([...alloc.chapas, ...chapas])];
-        const updatedAlloc = { ...alloc, chapas: newMembers };
-
-        setAllocations(prev => {
-            const other = prev.filter(a => a.id !== updatedAlloc.id);
-            return [...other, updatedAlloc];
+    const displayCostCenters = useMemo(() => {
+        const ccMap = new Map<string, { id: string; costCenter: string; memberChapas: string[]; regional: string }>();
+        uniqueEmployees.forEach(emp => {
+            if (!emp.cc) return;
+            if (!ccMap.has(emp.cc)) {
+                ccMap.set(emp.cc, {
+                    id: emp.cc,
+                    costCenter: emp.cc,
+                    memberChapas: [],
+                    regional: emp.regional
+                });
+            }
+            ccMap.get(emp.cc)!.memberChapas.push(emp.chapa);
         });
 
-        await saveTeamAllocations([updatedAlloc], user);
-        setAddMemberTeamId(null);
-        setAlert({ type: 'success', message: 'Membros adicionados à turma!' });
-    };
+        return Array.from(ccMap.values())
+            .map(cc => ({ ...cc, memberChapas: Array.from(new Set(cc.memberChapas)) }))
+            .filter(cc => {
+                const matchesCC = !ccFilter || cc.costCenter === ccFilter;
+                const matchesRegional = !regionalFilter || cc.regional === regionalFilter;
+
+                if (user.role === 'CH_COSTCENTER_PLANNER') {
+                    const allowedCCs = user.scope?.type === 'COST_CENTER'
+                        ? user.scope.costCenters
+                        : [user.costCenter];
+                    return matchesCC && matchesRegional && allowedCCs.includes(cc.costCenter);
+                }
+
+                return matchesCC && matchesRegional;
+            })
+            .sort((a, b) => a.costCenter.localeCompare(b.costCenter));
+    }, [uniqueEmployees, ccFilter, regionalFilter, user]);
+
+    // Helper to get Employee Object
+    const getEmpObj = (chapa: string) => uniqueEmployees.find(e => e.chapa === chapa);
 
     const handleApproveCC = async (cc: string) => {
         setSaving(true);
@@ -931,92 +761,15 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
         }
     };
 
-    const handleRemoveMember = async (teamId: string, chapa: string) => {
-        let alloc = allocations.find(a => a.teamId === teamId && a.monthKey === selectedMonth);
-        if (!alloc) return;
+    const handleCostCenterPlanSave = async (costCenter: string, numericMap: Record<string, number>) => {
+        const ccData = displayCostCenters.find(cc => cc.costCenter === costCenter);
+        if (!ccData) return;
 
-        const newMembers = alloc.chapas.filter(c => c !== chapa);
-        const updatedAlloc = { ...alloc, chapas: newMembers };
-
-        setAllocations(prev => {
-            const other = prev.filter(a => a.id !== updatedAlloc.id);
-            return [...other, updatedAlloc];
-        });
-
-        await saveTeamAllocations([updatedAlloc], user);
-        setAlert({ type: 'success', message: 'Membro removido da turma!' });
-    };
-
-    const handleClonePreviousMonth = async () => {
-        const parts = selectedMonth.split('-');
-        let year = parseInt(parts[0], 10);
-        let month = parseInt(parts[1], 10) - 1;
-        if (month === 0) {
-            month = 12;
-            year -= 1;
-        }
-        const prevMonthKey = `${year}-${String(month).padStart(2, '0')}`;
-
-        const prevAllocs = await getTeamAllocations(prevMonthKey, user);
-        if (prevAllocs.length === 0) {
-            setAlert({ type: 'error', message: `Nenhuma alocação encontrada em ${prevMonthKey}.` });
-            return;
-        }
-
-        const newAllocs: TeamAllocation[] = prevAllocs.map(a => ({
-            id: crypto.randomUUID(),
-            teamId: a.teamId,
-            monthKey: selectedMonth,
-            chapas: [...a.chapas]
-        }));
-
-        setAllocations(prev => {
-            // Remove as antigas do mês selecionado
-            const other = prev.filter(a => a.monthKey !== selectedMonth);
-            return [...other, ...newAllocs];
-        });
-
-        await saveTeamAllocations(newAllocs, user);
-        setAlert({ type: 'success', message: `Copiadas ${newAllocs.length} equipes de ${prevMonthKey}!` });
-    };
-
-    // FILTERED TEAMS (Moved up so it can be used by handleTeamPlanSave)
-    const displayTeams = useMemo(() => {
-        return teams.map(t => {
-            const alloc = allocations.find(a => a.teamId === t.id && a.monthKey === selectedMonth);
-            return {
-                ...t,
-                memberChapas: alloc ? alloc.chapas : [] // Aqui ocorre o versionamento temporal
-            };
-        }).filter(t => {
-            const matchesCC = !ccFilter || t.costCenter === ccFilter;
-            const teamRegional = getRegional(t.costCenter);
-            const matchesRegional = !regionalFilter || teamRegional === regionalFilter;
-            
-            // Fix authorization: check against user.scope if role is CC Planner
-            let isAuthorized = true;
-            if (user.role === 'CH_COSTCENTER_PLANNER') {
-                const allowedCCs = user.scope?.type === 'COST_CENTER' ? user.scope.costCenters : [user.costCenter];
-                isAuthorized = allowedCCs.includes(t.costCenter);
-            }
-            
-            return matchesCC && matchesRegional && isAuthorized;
-        });
-    }, [teams, allocations, selectedMonth, ccFilter, regionalFilter, user]);
-
-    // Helper to get Employee Object
-    const getEmpObj = (chapa: string) => uniqueEmployees.find(e => e.chapa === chapa);
-
-    const handleTeamPlanSave = async (teamId: string, numericMap: Record<string, number>) => {
-        // Usa `displayTeams` para acessar a WorkTeam já injetada com os `memberChapas` temporais do mês selecionado
-        const team = displayTeams.find(t => t.id === teamId);
-        if (!team) return;
-        // Merge into plans state
         setPlans(prev => ({ ...prev, ...numericMap }));
-        // Build PlanningRecord[] only for this team's members
         const mergedPlans = { ...plans, ...numericMap };
         const recordsToSave: PlanningRecord[] = [];
-        team.memberChapas.forEach(chapa => {
+
+        ccData.memberChapas.forEach(chapa => {
             const emp = getEmpObj(chapa);
             if (!emp) return;
             const curr = new Date(periodStart);
@@ -1029,7 +782,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                         id: `${chapa}_DAILY_${dateKey}`,
                         chapa,
                         nome: emp.nome,
-                        costCenter: team.costCenter,
+                        costCenter,
                         date: dateKey,
                         type: 'DAILY',
                         plannedHours: hours,
@@ -1039,8 +792,9 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                 curr.setDate(curr.getDate() + 1);
             }
         });
+
         await savePlanning(recordsToSave, user);
-        setAlert({ type: 'success', message: `Planejamento da ${team.name} salvo!` });
+        setAlert({ type: 'success', message: `Planejamento do Centro de Custo ${costCenter} salvo!` });
     };
 
     // Calculate Global Stats (Filtered)
@@ -1147,12 +901,12 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
 
                 const headers = (json[0] as any[]).map(h => String(h).toUpperCase().trim());
                 const idxChapa = headers.findIndex(h => h.includes('CHAPA'));
-                const idxSalario = headers.findIndex(h => h.includes('SALÁRIO') || h.includes('SALARIO'));
-                const idxMes = headers.findIndex(h => h.includes('MÊS') || h.includes('MES'));
+                const idxSalario = headers.findIndex(h => h.includes('SALÃRIO') || h.includes('SALARIO'));
+                const idxMes = headers.findIndex(h => h.includes('MÃŠS') || h.includes('MES'));
                 const idxStatus = headers.findIndex(h => h.includes('STATUS'));
 
                 if (idxChapa === -1 || idxSalario === -1 || idxMes === -1 || idxStatus === -1) {
-                    setAlert({ type: 'error', message: "Colunas obrigatórias não encontradas: Chapa, Salário, Mês, Status." });
+                    setAlert({ type: 'error', message: "Colunas obrigatÃ³rias nÃ£o encontradas: Chapa, SalÃ¡rio, MÃªs, Status." });
                     return;
                 }
 
@@ -1187,12 +941,12 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                 if (count > 0) {
                     saveSalaries(salaryAllocations, user);
                     setSalaries(salaryMap);
-                    setAlert({ type: 'success', message: `${count} salários importados!` });
+                    setAlert({ type: 'success', message: `${count} salÃ¡rios importados!` });
                 } else {
-                    setAlert({ type: 'error', message: "Nenhum registro válido encontrado." });
+                    setAlert({ type: 'error', message: "Nenhum registro vÃ¡lido encontrado." });
                 }
 
-            } catch (err) { console.error(err); setAlert({ type: 'error', message: "Erro na importação" }); }
+            } catch (err) { console.error(err); setAlert({ type: 'error', message: "Erro na importaÃ§Ã£o" }); }
         };
         reader.readAsBinaryString(file);
         if (salaryInputRef.current) salaryInputRef.current.value = '';
@@ -1213,7 +967,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                 let count = 0;
 
                 json.forEach((row: any, index: number) => {
-                    if (index === 0 && (String(row[0]).toLowerCase().includes('mês'))) return;
+                    if (index === 0 && (String(row[0]).toLowerCase().includes('mÃªs'))) return;
                     const monthName = String(row[0] || '').trim();
                     const costCenter = String(row[1] || '').trim().replace(/\./g, ''); // normaliza: remove pontos
                     let budgetVal = row[2];
@@ -1240,7 +994,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                     });
                     setAlert({ type: 'success', message: `${count} registros de budget importados!` });
                 } else {
-                    setAlert({ type: 'error', message: "Erro budget: nenhuma linha válida encontrada." });
+                    setAlert({ type: 'error', message: "Erro budget: nenhuma linha vÃ¡lida encontrada." });
                 }
             } catch (err) { setAlert({ type: 'error', message: "Falha ao ler arquivo de budget." }); }
         };
@@ -1273,7 +1027,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
         });
         await savePlanning(recordsToSave, user);
         setSaving(false);
-        setAlert({ type: 'success', message: submitPending ? 'Planejamento submetido para aprovação!' : 'Rascunho salvo!' });
+        setAlert({ type: 'success', message: submitPending ? 'Planejamento submetido para aprovaÃ§Ã£o!' : 'Rascunho salvo!' });
     };
 
     const handleEmployeeClick = (emp: { nome: string; chapa: string }) => {
@@ -1281,22 +1035,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
         setModalOpen(true);
     };
 
-    // FILTERED TEAMS
-    // displayTeams was moved above to be accessible by handleTeamPlanSave
-
-    // Colaboradores disponíveis para adicionar à equipe selecionada
-    // Filtrados pelo CC da equipe e excluindo quem já é membro
-    const availableForTeam = useMemo(() => {
-        if (!addMemberTeamId) return uniqueEmployees;
-        const team = teams.find(t => t.id === addMemberTeamId);
-        if (!team) return uniqueEmployees;
-        return uniqueEmployees.filter(e =>
-            e.cc === team.costCenter && !team.memberChapas.includes(e.chapa)
-        );
-    }, [addMemberTeamId, teams, uniqueEmployees]);
-
-    // Mapa chapa→nome para o TeamPlanModal
-    // Usa a lista bruta de employees como fonte primária para garantir cobertura total e consulta o Global Dictionary
+    // Mapa chapa→nome para o CostCenterPlanModal
     const memberNames = useMemo(() => {
         const map: Record<string, string> = {};
         globalEmployees.forEach(e => { if (e.chapa && e.nome) map[e.chapa] = e.nome; });
@@ -1305,7 +1044,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
         return map;
     }, [globalEmployees, employees, uniqueEmployees]);
 
-    // Mapa chapa→cargo para o TeamPlanModal
+    // Mapa chapa→cargo para o CostCenterPlanModal
     const memberFuncoes = useMemo(() => {
         const map: Record<string, string> = {};
         globalEmployees.forEach(e => { if (e.chapa && e.funcao) map[e.chapa] = e.funcao; });
@@ -1313,8 +1052,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
         return map;
     }, [globalEmployees, employees]);
 
-
-    const teamPlanModalTeam = displayTeams.find(t => t.id === teamPlanModalId) || null;
+    const ccPlanModalData = displayCostCenters.find(cc => cc.costCenter === ccPlanModalId) || null;
 
     return (
         <div className="space-y-6">
@@ -1327,33 +1065,18 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                     setBudgets(storedBudgets);
                 }}
             />
-            <CreateTeamModal
-                isOpen={isCreateTeamOpen}
-                onClose={() => setIsCreateTeamOpen(false)}
-                onSave={handleCreateTeam}
-                costCenters={costCenters}
-            />
-
-            <AddMemberModal
-                isOpen={!!addMemberTeamId}
-                onClose={() => setAddMemberTeamId(null)}
-                onAdd={handleAddMembers}
-                availableEmployees={availableForTeam}
-            />
-
-            {teamPlanModalTeam && (
-                <TeamPlanModal
-                    isOpen={!!teamPlanModalId}
-                    onClose={() => setTeamPlanModalId(null)}
-                    team={teamPlanModalTeam}
+            {ccPlanModalData && (
+                <CostCenterPlanModal
+                    isOpen={!!ccPlanModalId}
+                    onClose={() => setCcPlanModalId(null)}
+                    costCenter={ccPlanModalData.costCenter}
+                    memberChapas={ccPlanModalData.memberChapas}
                     memberNames={memberNames}
                     memberFuncoes={memberFuncoes}
                     plans={plans}
-                    salaries={salaries}
                     periodStart={periodStart}
                     periodEnd={periodEnd}
-                    onSave={handleTeamPlanSave}
-                    onRemoveMember={handleRemoveMember}
+                    onSave={handleCostCenterPlanSave}
                     planStatuses={planStatuses}
                     canOverrideLock={(user.role === 'CH_ADMIN' || user.role === 'CH_APPROVER')}
                 />
@@ -1433,7 +1156,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                         onClick={() => setActiveSubTab('PLANNING')}
                         className={`flex-1 py-4 text-sm font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeSubTab === 'PLANNING' ? 'bg-blue-600 text-white shadow-inner' : 'text-slate-500 hover:bg-slate-50'}`}
                     >
-                        <LayoutList size={18} /> Elaboração de Escalas
+                        <LayoutList size={18} /> ElaboraÃ§Ã£o de Escalas
                     </button>
                     <button
                         onClick={() => {
@@ -1442,15 +1165,15 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                         }}
                         className={`flex-1 py-4 text-sm font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeSubTab === 'APPROVAL' ? 'bg-indigo-600 text-white shadow-inner' : 'text-slate-500 hover:bg-slate-50'}`}
                     >
-                        <CheckCircle2 size={18} /> Aprovação / Liberação
+                        <CheckCircle2 size={18} /> AprovaÃ§Ã£o / LiberaÃ§Ã£o
                     </button>
                 </div>
             )}
 
             {activeSubTab === 'APPROVAL' ? (
                 <ApprovalPanel
-                    records={displayTeams.map(team => {
-                        const teamEmployees = team.memberChapas
+                    records={displayCostCenters.map(cc => {
+                        const ccEmployees = cc.memberChapas
                             .map(chapa => getEmpObj(chapa))
                             .filter(e => !!e);
 
@@ -1468,7 +1191,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                             status: string;
                         }> = [];
 
-                        teamEmployees.forEach((emp: any) => {
+                        ccEmployees.forEach((emp: any) => {
                             const salary = salaries[emp.chapa];
                             if (mode === 'MONTHLY') {
                                 const hours = plans[emp.chapa] || 0;
@@ -1495,9 +1218,9 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                                     if (st === 'draft' && hours > 0) hasDraft = true;
                                     if (hours > 0) {
                                         detailRows.push({
-                                            id: `${team.id}_${key}`,
+                                            id: `${cc.id}_${key}`,
                                             date: dateKey,
-                                            teamName: team.name,
+                                            teamName: `CC ${cc.costCenter}`,
                                             employeeName: emp.nome,
                                             employeeRole: memberFuncoes[emp.chapa] || 'Sem funcao',
                                             hours,
@@ -1509,18 +1232,18 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                             }
                         });
 
-                        const teamStatus = hasPending ? 'pending' : (hasDraft ? 'draft' : 'approved');
+                        const ccStatus = hasPending ? 'pending' : (hasDraft ? 'draft' : 'approved');
 
                         return {
-                            id: team.id,
-                            description: team.name,
-                            costCenter: team.costCenter,
-                            headcount: team.memberChapas.length,
+                            id: cc.id,
+                            description: `Centro de Custo ${cc.costCenter}`,
+                            costCenter: cc.costCenter,
+                            headcount: cc.memberChapas.length,
                             plannedHours: totalHours,
                             customEstCost: totalCost,
-                            estStatus: teamStatus,
+                            estStatus: ccStatus,
                             date: selectedMonth,
-                            shift: team.managerName || 'Integral',
+                            shift: 'Integral',
                             detailRows
                         };
                     })}
@@ -1533,7 +1256,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                     <div className="p-4 bg-gray-50 border-b border-gray-100 flex flex-col xl:flex-row items-center justify-between gap-6">
                         <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto">
                             <div className="flex flex-col">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Mês de Referência</label>
+                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">MÃªs de ReferÃªncia</label>
                                 <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium" />
                             </div>
 
@@ -1555,7 +1278,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
 
                             <div className="flex bg-gray-200 p-1 rounded-lg self-end h-[42px]">
                                 <button onClick={() => setMode('MONTHLY')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all uppercase ${mode === 'MONTHLY' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}>Mensal</button>
-                                <button onClick={() => setMode('DAILY')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all uppercase ${mode === 'DAILY' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}>Diário</button>
+                                <button onClick={() => setMode('DAILY')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all uppercase ${mode === 'DAILY' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}>DiÃ¡rio</button>
                             </div>
 
                             {mode === 'DAILY' && (
@@ -1566,12 +1289,6 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                                 </div>
                             )}
 
-                            <button onClick={() => setIsCreateTeamOpen(true)} className="bg-white text-blue-600 border border-blue-200 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-tight hover:bg-blue-50 transition-colors flex items-center gap-2 shadow-sm">
-                                <Plus size={16} /> Nova Equipe
-                            </button>
-                            <button onClick={handleClonePreviousMonth} className="bg-white text-emerald-600 border border-emerald-200 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-tight hover:bg-emerald-50 transition-colors flex items-center gap-2 shadow-sm">
-                                <Users size={16} /> Copiar Mês Anterior
-                            </button>
                         </div>
 
                         <div className="flex flex-wrap gap-3 w-full xl:w-auto justify-end">
@@ -1579,7 +1296,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                                 <>
                                     <input type="file" ref={salaryInputRef} onChange={handleSalaryImport} accept=".xlsx,.xls,.csv,.txt" className="hidden" />
                                     <button onClick={() => salaryInputRef.current?.click()} className="bg-white text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-indigo-50 flex items-center gap-2 shadow-sm">
-                                        <FileUp size={16} /> Salários
+                                        <FileUp size={16} /> SalÃ¡rios
                                     </button>
                                     <input type="file" ref={budgetInputRef} onChange={handleBudgetImport} accept=".xlsx,.xls" className="hidden" />
                                     <button onClick={() => budgetInputRef.current?.click()} className="bg-white text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-indigo-50 flex items-center gap-2 shadow-sm">
@@ -1594,7 +1311,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                                 <Save size={18} /> Salvar Rascunho
                             </button>
                             <button onClick={() => {
-                                if (window.confirm("Atenção: Enviar os dados limitará a edição futura desses centros de custo. Deseja prosseguir?")) {
+                                if (window.confirm("AtenÃ§Ã£o: Enviar os dados limitarÃ¡ a ediÃ§Ã£o futura desses centros de custo. Deseja prosseguir?")) {
                                     handleSave(true);
                                 }
                             }} disabled={saving} className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-bold uppercase hover:bg-blue-700 transition flex items-center gap-2 shadow-md">
@@ -1605,52 +1322,64 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
 
                     <div className="p-6 bg-gray-50 min-h-[400px]">
                         <PlanningTable
-                            records={displayTeams.map(team => {
-                                const teamEmployees = team.memberChapas
+                            records={displayCostCenters.map(cc => {
+                                const ccEmployees = cc.memberChapas
                                     .map(chapa => getEmpObj(chapa))
                                     .filter(e => !!e);
 
                                 let totalHours = 0;
                                 let totalCost = 0;
 
-                                teamEmployees.forEach((emp: any) => {
+                                const memberRecords = ccEmployees.map((emp: any) => {
+                                    let empHours = 0;
+                                    let empCost = 0;
                                     const salary = salaries[emp.chapa];
+
                                     if (mode === 'MONTHLY') {
                                         const hours = plans[emp.chapa] || 0;
-                                        totalHours += hours;
-                                        if (salary) totalCost += (salary / 220) * 1.6 * hours;
+                                        empHours += hours;
+                                        if (salary) empCost += (salary / 220) * 1.6 * hours;
                                     } else {
                                         const curr = new Date(periodStart);
                                         while (curr <= periodEnd) {
                                             const key = `${emp.chapa}_${formatDateKey(curr)}`;
                                             const hours = plans[key] || 0;
-                                            totalHours += hours;
+                                            empHours += hours;
                                             if (salary && hours > 0) {
                                                 const isSunday = curr.getDay() === 0;
                                                 const baseHour = salary / 220;
                                                 const multiplier = isSunday ? 2.0 : 1.6;
-                                                totalCost += baseHour * multiplier * hours;
+                                                empCost += baseHour * multiplier * hours;
                                             }
                                             curr.setDate(curr.getDate() + 1);
                                         }
                                     }
+
+                                    totalHours += empHours;
+                                    totalCost += empCost;
+
+                                    return {
+                                        id: `${cc.costCenter}_${emp.chapa}`,
+                                        description: emp.nome,
+                                        chapa: emp.chapa,
+                                        plannedHours: empHours,
+                                        customEstCost: empCost
+                                    };
                                 });
 
                                 return {
-                                    id: team.id,
-                                    description: team.name,
-                                    costCenter: team.costCenter,
-                                    headcount: team.memberChapas.length,
+                                    id: cc.id,
+                                    description: `Centro de Custo ${cc.costCenter}`,
+                                    costCenter: cc.costCenter,
+                                    headcount: cc.memberChapas.length,
                                     plannedHours: totalHours,
                                     customEstCost: totalCost,
                                     date: selectedMonth,
-                                    shift: team.managerName || 'Integral'
+                                    shift: 'Integral',
+                                    members: memberRecords
                                 };
                             })}
-                            onDelete={handleDeleteTeam}
-                            onAddMember={setAddMemberTeamId}
-                            onPlanTeam={setTeamPlanModalId}
-                            salariesMap={salaries}
+                            onPlanCC={setCcPlanModalId}
                         />
                     </div>
                 </div>
@@ -1660,3 +1389,6 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
 };
 
 export default Planning;
+
+
+

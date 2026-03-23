@@ -1,18 +1,18 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, SalaryRecord, WorkTeam, TeamAllocation } from '../types';
+﻿import React, { useMemo, useState, useEffect } from 'react';
+import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, SalaryRecord } from '../types';
 import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, AlertTriangle, Moon, Scale, Percent, ArrowUpRight, ArrowDownRight, X, User, Users, DollarSign, ListFilter, ShieldAlert, Zap, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { formatDecimalHours } from '../utils/formatters';
-import { getPlanning, getSalariesSync, getBudgetsSync, saveBudgets, getTeams, getTeamsSync, getTeamAllocationsSync, getTeamAllocations, getAllPlanningRecords, getGlobalEmployeesAsync, getGlobalEmployeesSync } from '../services/planning';
+import { getPlanning, getSalariesSync, getBudgetsSync, saveBudgets, getAllPlanningRecords, getGlobalEmployeesAsync, getGlobalEmployeesSync } from '../services/planning';
 import { getCCName, getCCRegional, normalizeCC } from '../data/ccMaster';
 import { isRecordInHumanCapitalScope } from '../utils/scopeFilters';
 
 interface DashboardProps {
   data: OvertimeRecord[];              // dados filtrados (regional, CC, etc.)
-  allData?: OvertimeRecord[];          // todos os dados do escopo — para resolver nomes de CC via SECAO
-  regional?: string;                   // filtro de regional ativo (é applicado no ccSummary)
-  /** Todos os monthKeys (YYYY-MM) cobertos pelo período filtrado */
+  allData?: OvertimeRecord[];          // todos os dados do escopo â€” para resolver nomes de CC via SECAO
+  regional?: string;                   // filtro de regional ativo (Ã© applicado no ccSummary)
+  /** Todos os monthKeys (YYYY-MM) cobertos pelo perÃ­odo filtrado */
   budgetMonthKeys: string[];
-  /** Callback: clique em colaborador no modal de função → navega para aba Histórico */
+  /** Callback: clique em colaborador no modal de funÃ§Ã£o â†’ navega para aba HistÃ³rico */
   onNavigateToEmployee?: (name: string, chapa: string) => void;
   selectedMonth: string;
   user: UserProfile | null;
@@ -34,10 +34,10 @@ interface DashboardMetrics {
 interface TreeNode {
   id: string;
   name: string;
-  type: 'GLOBAL' | 'REGIONAL' | 'CC' | 'TEAM' | 'PERSON';
+  type: 'REGIONAL' | 'CC' | 'PERSON';
   metrics: DashboardMetrics;
   children: TreeNode[];
-  chapa?: string; // Apenas para nós PERSON
+  chapa?: string; // Apenas para nÃ³s PERSON
 }
 
 type ViewMode = 'hours' | 'finance';
@@ -51,7 +51,7 @@ const TreeGridHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
           <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
             <Building2 size={20} />
           </div>
-          <h3 className="text-lg font-bold text-slate-800">Entendendo a Visão Analítica Executiva</h3>
+          <h3 className="text-lg font-bold text-slate-800">Entendendo a VisÃ£o AnalÃ­tica Executiva</h3>
         </div>
         <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
           <X size={20} />
@@ -61,21 +61,21 @@ const TreeGridHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
         <p>Esta tabela (Tree Grid) permite uma auditoria Top-Down (de cima para baixo) dos seus passivos trabalhistas.</p>
 
         <div className="space-y-3">
-          <div className="flex gap-3"><div className="mt-1"><Zap size={18} className="text-indigo-500" /></div><div><strong className="text-slate-800">Visão Operacional:</strong> Focada em descobrir a CAUSA do problema. Mostra as horas planejadas vs reais e o raio-x exato de onde essas horas vieram (60%, 100%, Interjornada ou Noturno).</div></div>
+          <div className="flex gap-3"><div className="mt-1"><Zap size={18} className="text-indigo-500" /></div><div><strong className="text-slate-800">VisÃ£o Operacional:</strong> Focada em descobrir a CAUSA do problema. Mostra as horas planejadas vs reais e o raio-x exato de onde essas horas vieram (60%, 100%, Interjornada ou Noturno).</div></div>
 
-          <div className="flex gap-3"><div className="mt-1"><Wallet size={18} className="text-emerald-500" /></div><div><strong className="text-slate-800">Visão Financeira:</strong> Focada na dor no bolso. Oculta o volume de horas e foca exclusivamente no Custo Estimado e no Budget (Orçamento) disponível.</div></div>
+          <div className="flex gap-3"><div className="mt-1"><Wallet size={18} className="text-emerald-500" /></div><div><strong className="text-slate-800">VisÃ£o Financeira:</strong> Focada na dor no bolso. Oculta o volume de horas e foca exclusivamente no Custo Estimado e no Budget (OrÃ§amento) disponÃ­vel.</div></div>
 
           <div className="flex gap-3"><div className="mt-1"><AlertTriangle size={18} className="text-amber-500" /></div><div>
-            <strong className="text-slate-800">Como o Risco é Calculado?</strong> Não é apenas uma soma. É um algoritmo ponderado pela gravidade da infração dividido pelo tamanho da equipa:<br />
+            <strong className="text-slate-800">Como o Risco Ã© Calculado?</strong> NÃ£o Ã© apenas uma soma. Ã‰ um algoritmo ponderado pela gravidade da infraÃ§Ã£o dividido pelo tamanho da equipa:<br />
             <ul className="list-disc pl-5 mt-2 space-y-1 text-slate-500">
-              <li><strong className="text-slate-700">HE 60%:</strong> Peso 1.0 (Risco Padrão)</li>
+              <li><strong className="text-slate-700">HE 60%:</strong> Peso 1.0 (Risco PadrÃ£o)</li>
               <li><strong className="text-slate-700">HE 100%:</strong> Peso 2.5 (Risco Alto)</li>
               <li><strong className="text-slate-700">Noturno:</strong> Peso 0.5 (Risco Baixo)</li>
-              <li><strong className="text-slate-700">Interjornada:</strong> Peso 5.0 (Risco Crítico CLT)</li>
+              <li><strong className="text-slate-700">Interjornada:</strong> Peso 5.0 (Risco CrÃ­tico CLT)</li>
             </ul>
           </div></div>
 
-          <div className="flex gap-3"><div className="mt-1"><span className="px-1.5 py-0.5 rounded font-bold text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-100">%</span></div><div><strong className="text-slate-800">Impacto %:</strong> Mostra a representatividade daquela linha em relação ao nível superior. Ex: Quantos % da dor de cabeça da Regional Leste vêm da obra X.</div></div>
+          <div className="flex gap-3"><div className="mt-1"><span className="px-1.5 py-0.5 rounded font-bold text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-100">%</span></div><div><strong className="text-slate-800">Impacto %:</strong> Mostra a representatividade daquela linha em relaÃ§Ã£o ao nÃ­vel superior. Ex: Quantos % da dor de cabeÃ§a da Regional Leste vÃªm da obra X.</div></div>
         </div>
       </div>
       <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
@@ -101,7 +101,7 @@ const FunctionDetailModal: React.FC<{
         <div className="bg-blue-600 p-6 flex justify-between items-center text-white shrink-0 relative z-30">
           <div>
             <h3 className="text-xl font-bold">{functionName}</h3>
-            <p className="text-blue-100 text-sm opacity-90">Colaboradores vinculados a esta função</p>
+            <p className="text-blue-100 text-sm opacity-90">Colaboradores vinculados a esta funÃ§Ã£o</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors">
             <X size={24} />
@@ -131,7 +131,7 @@ const FunctionDetailModal: React.FC<{
                     <button
                       onClick={() => { onNavigateToEmployee(emp.name, emp.chapa); onClose(); }}
                       className="font-medium text-blue-700 hover:underline hover:text-blue-900 text-left transition-colors group flex items-center gap-1"
-                      title="Ver histórico deste colaborador"
+                      title="Ver histÃ³rico deste colaborador"
                     >
                       {emp.name}
                       <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
@@ -184,7 +184,7 @@ const CostCenterDetailModal: React.FC<{
               <h3 className="text-xl font-bold">{ccName}</h3>
               <span className="bg-white/20 px-2 py-0.5 rounded text-xs font-mono">{ccCode}</span>
             </div>
-            <p className="text-indigo-100 text-sm opacity-90">Breakdown por Funções</p>
+            <p className="text-indigo-100 text-sm opacity-90">Breakdown por FunÃ§Ãµes</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors">
             <X size={24} />
@@ -195,7 +195,7 @@ const CostCenterDetailModal: React.FC<{
           <table className="w-full text-left text-sm text-gray-600 border-collapse">
             <thead className="sticky top-0 z-20 shadow-sm">
               <tr className="bg-gray-100">
-                <th className="px-4 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Função</th>
+                <th className="px-4 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">FunÃ§Ã£o</th>
                 {viewMode === 'hours' ? (
                   <>
                     <th className="px-4 py-4 text-right text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Plan.</th>
@@ -257,7 +257,7 @@ const CostCenterDetailModal: React.FC<{
         <div className="p-5 bg-gray-50 border-t border-gray-100 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-2">
             <Briefcase size={14} className="text-gray-400" />
-            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">{data.length} FUNÇÕES NESTE CENTRO DE CUSTO</span>
+            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">{data.length} FUNÃ‡Ã•ES NESTE CENTRO DE CUSTO</span>
           </div>
         </div>
       </div>
@@ -269,16 +269,12 @@ const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHour
   const [isExpanded, setIsExpanded] = React.useState(level === 0);
   const hasChildren = node.children && node.children.length > 0;
 
-  const isGlobal = level === 0;
-  const isRegional = level === 1;
-  const isCC = level === 2;
-  const isTeam = level === 3;
+  const isRegional = level === 0;
+  const isCC = level === 1;
 
   const getIcon = () => {
-    if (isGlobal) return <Building2 size={16} className="text-indigo-600" />;
-    if (isRegional) return <Briefcase size={16} className="text-blue-600" />;
-    if (isCC) return <Building2 size={16} className="text-slate-500" />;
-    if (node.type === 'TEAM') return <Users size={16} className="text-emerald-500" />;
+    if (isRegional) return <Building2 size={16} className="text-indigo-600" />;
+    if (isCC) return <Briefcase size={16} className="text-blue-600" />;
     return <User size={16} className="text-slate-400" />; // PERSON
   };
 
@@ -289,7 +285,7 @@ const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHour
     return v.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
   };
 
-  // Nó PERSON: folha, sem expansão
+  // NÃ³ PERSON: folha, sem expansÃ£o
   if (node.type === 'PERSON') {
     return (
       <div
@@ -345,14 +341,10 @@ const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHour
   const diffCost = node.metrics.totalCost - node.metrics.budgetCost;
   const impactPct = parentTotalHours && parentTotalHours > 0 ? ((node.metrics.total / parentTotalHours) * 100).toFixed(1) : '100';
 
-  // Cores dinâmicas por nível para facilitar o entendimento da hierarquia
-  const rowBgClass = isGlobal
+  // Cores dinÃ¢micas por nÃ­vel para facilitar o entendimento da hierarquia
+  const rowBgClass = isRegional
     ? 'bg-slate-200/80 hover:bg-slate-300/80 border-slate-300'
-    : isRegional
-      ? 'bg-slate-100/50 hover:bg-slate-200/50 border-slate-200'
-      : isCC
-        ? 'bg-white hover:bg-slate-50 border-slate-100'
-        : 'bg-slate-50/50 hover:bg-slate-100/50 border-slate-50 border-l-2 border-l-emerald-500';
+    : 'bg-slate-100/50 hover:bg-slate-200/50 border-slate-200';
 
   return (
     <React.Fragment>
@@ -376,7 +368,7 @@ const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHour
         <div className="flex items-center gap-4 justify-end shrink-0">
           <div className="w-16 flex justify-center">
             {level > 0 ? (
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${isRegional ? 'text-indigo-800 bg-indigo-100 border-indigo-200' : isCC ? 'text-indigo-700 bg-indigo-50 border-indigo-100' : 'text-emerald-700 bg-emerald-50 border-emerald-100'}`} title={`Representa ${impactPct}% ${isRegional ? 'da DR' : isCC ? 'da Regional' : 'da Obra'}`}>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${isCC ? 'text-indigo-700 bg-indigo-50 border-indigo-100' : 'text-emerald-700 bg-emerald-50 border-emerald-100'}`} title={`Representa ${impactPct}% ${isCC ? 'da Regional' : 'do nível superior'}`}>
                 {impactPct}%
               </span>
             ) : <span className="text-[10px] text-slate-400">-</span>}
@@ -392,7 +384,7 @@ const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHour
               <span className="text-slate-400 w-12 text-right" title="Planejado">{formatDecimalHours(node.metrics.plannedHours)}</span>
               <span className="text-slate-200">|</span>
               <span className="font-bold text-slate-800 w-12 text-right" title="Real">{formatDecimalHours(node.metrics.total)}</span>
-              <span className={`w-14 text-right font-black ${diffHours > 0 ? 'text-rose-500' : 'text-emerald-500'}`} title="Diferença">
+              <span className={`w-14 text-right font-black ${diffHours > 0 ? 'text-rose-500' : 'text-emerald-500'}`} title="DiferenÃ§a">
                 {diffHours > 0 ? '+' : ''}{formatDecimalHours(diffHours)}
               </span>
             </div>
@@ -443,11 +435,9 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
   const [funcViewMode, setFuncViewMode] = useState<ViewMode>('hours');
   const [treeViewMode, setTreeViewMode] = React.useState<'financial' | 'operational'>('financial');
   const [showTreeHelp, setShowTreeHelp] = React.useState(false);
-  const [teams, setTeams] = useState<WorkTeam[]>(() => getTeamsSync());
-  const [allocations, setAllocations] = useState<TeamAllocation[]>([]);
 
   const planningRecords = useMemo(() => getAllPlanningRecords().filter(p => !p.status || p.status === 'approved'), []);
-  // Filtra budgets pelos monthKeys cobertos pelo período atual
+  // Filtra budgets pelos monthKeys cobertos pelo perÃ­odo atual
   const budgets = useMemo(() => {
     const all = getBudgetsSync();
     if (!budgetMonthKeys || budgetMonthKeys.length === 0) return all;
@@ -466,10 +456,6 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
     // Background refresh for global employees
     getGlobalEmployeesAsync().then(emps => setGlobalEmployees(emps)).catch(console.error);
-
-    // Background refresh for teams and allocations
-    getTeams(user).then(t => setTeams(t));
-    getTeamAllocations(selectedMonth, user).then(a => setAllocations(a));
   }, [selectedMonth, user, budgetMonthKeys]);
 
   const metrics = useMemo(() => {
@@ -550,7 +536,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
   // normalizeCC e getCCName/getCCRegional agora vem do ccMaster centralizado
 
-  // Lookup SECAO do TOTVS como complemento ao ccMaster (preenche nomes ainda não mapeados)
+  // Lookup SECAO do TOTVS como complemento ao ccMaster (preenche nomes ainda nÃ£o mapeados)
   const ccSecaoMap = useMemo(() => {
     const map: Record<string, string> = {};
     (allData ?? data).forEach(r => {
@@ -560,19 +546,19 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     return map;
   }, [allData, data]);
 
-  /** Nome resolvido: ccMaster > TOTVS SECAO > código bruto */
+  /** Nome resolvido: ccMaster > TOTVS SECAO > cÃ³digo bruto */
   const resolveName = (rawCC: string): string => {
     const norm = normalizeCC(rawCC);
     const masterName = getCCName(rawCC);
     if (masterName !== rawCC) return masterName; // ccMaster tem o nome
-    return ccSecaoMap[norm] || rawCC;             // fallback: SECAO ou o próprio código
+    return ccSecaoMap[norm] || rawCC;             // fallback: SECAO ou o prÃ³prio cÃ³digo
   };
 
 
   const ccSummary = useMemo(() => {
     const map: Record<string, { real: number; planned: number; name: string; realCost: number; plannedCost: number; budget: number }> = {};
 
-    // Orçamentos: filtrar por regional se ativo
+    // OrÃ§amentos: filtrar por regional se ativo
     budgets.forEach(b => {
       const ccRegional = getCCRegional(b.costCenter);
       if (regional && ccRegional !== regional) return; // filtro regional
@@ -581,7 +567,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       map[cc].budget += b.value;
     });
 
-    // Dados TOTVS (já filtrados pelo HumanCapitalDashboard)
+    // Dados TOTVS (jÃ¡ filtrados pelo HumanCapitalDashboard)
     data.forEach(r => {
       const cc = normalizeCC(r.CODCCUSTO || 'S/ CC');
       const reg = getCCRegional(r.CODCCUSTO || '');
@@ -629,7 +615,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     const chapaToFunc: Record<string, string> = {};
 
     data.forEach(r => {
-      const f = r.FUNCAO || 'S/ Função';
+      const f = r.FUNCAO || 'S/ FunÃ§Ã£o';
       chapaToFunc[r.CHAPA] = f;
       if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0 };
       const hours = (Number(r.HORAS) || 0);
@@ -704,7 +690,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
     // Get real functions for this CC
     data.filter(r => r.CODCCUSTO === selectedCcModal).forEach(r => {
-      const f = r.FUNCAO || 'S/ Função';
+      const f = r.FUNCAO || 'S/ FunÃ§Ã£o';
       chapaToFunc[r.CHAPA] = f;
       if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0, he60: 0, he100: 0, interjornada: 0, night: 0 };
       const hours = (Number(r.HORAS) || 0);
@@ -736,7 +722,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
     // Get planned functions for this CC
     planningRecords.filter(p => p.costCenter === selectedCcModal).forEach(p => {
-      const f = chapaToFunc[p.chapa] || 'S/ Função';
+      const f = chapaToFunc[p.chapa] || 'S/ FunÃ§Ã£o';
       if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0, he60: 0, he100: 0, interjornada: 0, night: 0 };
       map[f].planned += p.plannedHours;
       const sal = salariesMap[p.chapa];
@@ -751,48 +737,27 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
   }, [data, planningRecords, selectedCcModal, salariesMap]);
 
   const hierarchicalData = useMemo(() => {
-    // Carrega as equipes e alocações locais para a resposta imediata, atualizado pelo useEffect
-    const allTeams = teams;
-
-    // Obter alocações baseadas no mês selecionado da view
-    const allAllocations = allocations.filter(a => a.monthKey === selectedMonth);
-
-    // Lookup: cc normalizado → lista de WorkTeams daquele CC
-    const ccTeams = new Map<string, WorkTeam[]>();
-    allTeams.forEach(t => {
-      const cc = normalizeCC(t.costCenter);
-      if (!ccTeams.has(cc)) ccTeams.set(cc, []);
-      ccTeams.get(cc)!.push(t);
-    });
-
-    // Lookup: "cc|chapa" → WorkTeam (qual equipe a chapa pertence dentro de um CC no mês ativo)
-    const chapaTeamKey = (cc: string, chapa: string) => `${cc}|${chapa}`;
-    const chapaToTeam = new Map<string, WorkTeam>();
-
-    allTeams.forEach(t => {
-      const alloc = allAllocations.find(a => a.teamId === t.id);
-      if (alloc) {
-        const cc = normalizeCC(t.costCenter);
-        alloc.chapas.forEach(chapa => {
-          chapaToTeam.set(chapaTeamKey(cc, chapa), t);
-        });
-      }
-    });
-
-    // Mapa de nome por chapa (para exibição nos nós PERSON)
+    // Mapa de nome por chapa para exibir no nível PERSON
     const chapaToName = new Map<string, string>();
     globalEmployees.forEach(e => { if (e.chapa && e.nome) chapaToName.set(e.chapa, e.nome); });
     data.forEach(r => { if (r.CHAPA && r.NOME) chapaToName.set(r.CHAPA, r.NOME); });
 
-    // Estrutura de acumulação
     type PersonAcc = { name: string; metrics: any };
-    type TeamAcc = { name: string; metrics: any; persons: Map<string, PersonAcc> };
-    type CcAcc = { name: string; metrics: any; teams: Map<string, TeamAcc>; persons: Map<string, PersonAcc> };
+    type CcAcc = { name: string; metrics: any; persons: Map<string, PersonAcc> };
     type RegAcc = { metrics: any; ccs: Map<string, CcAcc> };
 
-    const newM = () => ({ headcount: new Set<string>(), he60: 0, he100: 0, inter: 0, noturno: 0, total: 0, totalCost: 0, plannedHours: 0, budgetCost: 0 });
+    const newM = () => ({
+      headcount: new Set<string>(),
+      he60: 0,
+      he100: 0,
+      inter: 0,
+      noturno: 0,
+      total: 0,
+      totalCost: 0,
+      plannedHours: 0,
+      budgetCost: 0
+    });
 
-    const globalMetrics = newM();
     const regionalMap = new Map<string, RegAcc>();
 
     const getRegData = (reg: string): RegAcc => {
@@ -801,23 +766,27 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     };
 
     const getCcData = (regData: RegAcc, cc: string, ccName: string): CcAcc => {
-      if (!regData.ccs.has(cc)) regData.ccs.set(cc, { name: ccName, metrics: newM(), teams: new Map(), persons: new Map() });
+      if (!regData.ccs.has(cc)) regData.ccs.set(cc, { name: ccName, metrics: newM(), persons: new Map() });
       return regData.ccs.get(cc)!;
     };
 
-    const getTeamAcc = (ccData: CcAcc, teamId: string, teamName: string): TeamAcc => {
-      if (!ccData.teams.has(teamId)) ccData.teams.set(teamId, { name: teamName, metrics: newM(), persons: new Map() });
-      return ccData.teams.get(teamId)!;
-    };
-
-    const getPersonAcc = (container: { persons: Map<string, PersonAcc> }, chapa: string): PersonAcc => {
-      if (!container.persons.has(chapa)) {
-        container.persons.set(chapa, { name: chapaToName.get(chapa) || chapa, metrics: newM() });
+    const getPersonAcc = (ccData: CcAcc, chapa: string): PersonAcc => {
+      if (!ccData.persons.has(chapa)) {
+        ccData.persons.set(chapa, { name: chapaToName.get(chapa) || chapa, metrics: newM() });
       }
-      return container.persons.get(chapa)!;
+      return ccData.persons.get(chapa)!;
     };
 
-    const addHours = (m: any, chapa: string, hours: number, isHE60: boolean, isHE100: boolean, isInter: boolean, isNoturno: boolean, cost: number) => {
+    const addHours = (
+      m: any,
+      chapa: string,
+      hours: number,
+      isHE60: boolean,
+      isHE100: boolean,
+      isInter: boolean,
+      isNoturno: boolean,
+      cost: number
+    ) => {
       m.headcount.add(chapa);
       if (isHE60) m.he60 += hours;
       if (isHE100) m.he100 += hours;
@@ -827,36 +796,17 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       m.totalCost += cost;
     };
 
-    // 0. ESTRUTURA SOBERANA (Gavetas de Equipes/Alocações)
-    allAllocations.forEach(alloc => {
-      const t = allTeams.find(t => t.id === alloc.teamId);
-      if (!t) return;
+    const addPlan = (m: any, chapa: string, plannedHours: number) => {
+      m.headcount.add(chapa);
+      m.plannedHours += plannedHours;
+    };
 
-      const rawCC = t.costCenter;
-      const cc = normalizeCC(rawCC);
-      const reg = getCCRegional(rawCC) || 'Sem Regional';
-
-      // Scope Check
-      if (!isRecordInHumanCapitalScope(user, rawCC)) return;
-
-      const ccName = getCCName(rawCC) || resolveName(rawCC);
-      const regData = getRegData(reg);
-      const ccData = getCcData(regData, cc, ccName);
-      const teamAcc = getTeamAcc(ccData, t.id, t.name);
-
-      alloc.chapas.forEach(chapa => {
-        getPersonAcc(teamAcc, chapa);
-      });
-    });
-
-    // 1. DADOS REAIS
+    // 1) Dados reais: acumula direto em REGIONAL > CC > PERSON
     data.forEach(r => {
       const rawCC = r.CODCCUSTO || 'S/ CC';
       const cc = normalizeCC(rawCC);
       const reg = getCCRegional(rawCC) || 'Sem Regional';
-
-      // Scope Check
-      const isExternalToScope = !isRecordInHumanCapitalScope(user, rawCC);
+      if (!isRecordInHumanCapitalScope(user, rawCC)) return;
 
       const hours = Number(r.HORAS) || 0;
       const evt = (r.EVENTO || '').toUpperCase();
@@ -866,8 +816,6 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       const isNoturno = evt.includes('NOTURNO') || evt.includes('20');
       if (!isHE60 && !isHE100 && !isInter && !isNoturno) return;
 
-      if (!chapaToName.has(r.CHAPA)) chapaToName.set(r.CHAPA, r.NOME || r.CHAPA);
-
       const sal = salariesMap[r.CHAPA] || 0;
       const baseHour = sal / 220;
       let cost = 0;
@@ -876,118 +824,79 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       if (isNoturno) cost = baseHour * 0.2 * hours;
       if (isHE60 || isHE100) cost += cost / 6;
 
-      if (isExternalToScope) return;
-
-      addHours(globalMetrics, r.CHAPA, hours, isHE60, isHE100, isInter, isNoturno, cost);
-
       const ccName = getCCName(rawCC) || resolveName(rawCC);
       const regData = getRegData(reg);
       const ccData = getCcData(regData, cc, ccName);
-      const hasTeams = (ccTeams.get(cc)?.length ?? 0) > 0;
+      const personAcc = getPersonAcc(ccData, r.CHAPA);
 
       addHours(regData.metrics, r.CHAPA, hours, isHE60, isHE100, isInter, isNoturno, cost);
       addHours(ccData.metrics, r.CHAPA, hours, isHE60, isHE100, isInter, isNoturno, cost);
-
-      if (hasTeams) {
-        const wt = chapaToTeam.get(chapaTeamKey(cc, r.CHAPA));
-        const teamAcc = getTeamAcc(ccData, wt ? wt.id : `${cc}-sem-equipe`, wt ? wt.name : 'Sem Equipe Designada');
-        addHours(teamAcc.metrics, r.CHAPA, hours, isHE60, isHE100, isInter, isNoturno, cost);
-        const personAcc = getPersonAcc(teamAcc, r.CHAPA);
-        addHours(personAcc.metrics, r.CHAPA, hours, isHE60, isHE100, isInter, isNoturno, cost);
-      } else {
-        const personAcc = getPersonAcc(ccData, r.CHAPA);
-        addHours(personAcc.metrics, r.CHAPA, hours, isHE60, isHE100, isInter, isNoturno, cost);
-      }
+      addHours(personAcc.metrics, r.CHAPA, hours, isHE60, isHE100, isInter, isNoturno, cost);
     });
 
-    // 2. DADOS PLANEJADOS
+    // 2) Dados planejados: vincula direto em REGIONAL > CC > PERSON
     planningRecords.forEach(p => {
       const rawCC = p.costCenter || 'S/ CC';
       const cc = normalizeCC(rawCC);
       const reg = getCCRegional(rawCC) || 'Sem Regional';
-
-      // Scope Check
-      const isExternalToScope = !isRecordInHumanCapitalScope(user, rawCC);
-
-      const addPlan = (m: any) => { m.plannedHours += p.plannedHours; };
-
-      if (isExternalToScope) return;
-
-      addPlan(globalMetrics);
+      if (!isRecordInHumanCapitalScope(user, rawCC)) return;
 
       const ccName = getCCName(rawCC) || resolveName(rawCC);
       const regData = getRegData(reg);
       const ccData = getCcData(regData, cc, ccName);
-      const hasTeams = (ccTeams.get(cc)?.length ?? 0) > 0;
+      const personAcc = getPersonAcc(ccData, p.chapa);
 
-      addPlan(regData.metrics);
-      addPlan(ccData.metrics);
-
-      if (hasTeams) {
-        const wt = chapaToTeam.get(chapaTeamKey(cc, p.chapa));
-        const teamAcc = getTeamAcc(ccData, wt ? wt.id : `${cc}-sem-equipe`, wt ? wt.name : 'Sem Equipe Designada');
-        addPlan(teamAcc.metrics);
-        const personAcc = getPersonAcc(teamAcc, p.chapa);
-        addPlan(personAcc.metrics);
-      } else {
-        const personAcc = getPersonAcc(ccData, p.chapa);
-        addPlan(personAcc.metrics);
-      }
+      addPlan(regData.metrics, p.chapa, p.plannedHours);
+      addPlan(ccData.metrics, p.chapa, p.plannedHours);
+      addPlan(personAcc.metrics, p.chapa, p.plannedHours);
     });
 
-    // 3. BUDGET (fica no nível CC e acima)
+    // 3) Budget acumulado em REGIONAL > CC
     budgets.forEach(b => {
       const rawCC = b.costCenter || 'S/ CC';
       const cc = normalizeCC(rawCC);
       const reg = getCCRegional(rawCC) || 'Sem Regional';
-
-      // Scope Check
-      const isExternalToScope = !isRecordInHumanCapitalScope(user, rawCC);
-
-      if (isExternalToScope) return;
-
-      globalMetrics.budgetCost += b.value;
+      if (!isRecordInHumanCapitalScope(user, rawCC)) return;
 
       const ccName = getCCName(rawCC) || resolveName(rawCC);
       const regData = getRegData(reg);
       const ccData = getCcData(regData, cc, ccName);
-      [regData.metrics, ccData.metrics].forEach(m => { m.budgetCost += b.value; });
+      regData.metrics.budgetCost += b.value;
+      ccData.metrics.budgetCost += b.value;
     });
 
     const calcRisk = (m: any) => ((m.he100 * 2.5) + (m.he60 * 1.0) + (m.inter * 5.0) + (m.noturno * 0.5)) / (m.headcount.size || 1);
 
     const buildPersonNodes = (persons: Map<string, PersonAcc>, baseId: string): TreeNode[] =>
-      Array.from(persons.entries()).map(([chapa, p]) => ({
-        id: `${baseId}-${chapa}`, name: p.name, type: 'PERSON' as const, chapa,
-        metrics: { ...p.metrics, headcount: 1, riskIndex: calcRisk(p.metrics) },
-        children: []
-      })).sort((a, b) => b.metrics.total - a.metrics.total);
+      Array.from(persons.entries())
+        .map(([chapa, p]) => ({
+          id: `${baseId}-${chapa}`,
+          name: p.name,
+          type: 'PERSON' as const,
+          chapa,
+          metrics: { ...p.metrics, headcount: 1, riskIndex: calcRisk(p.metrics) },
+          children: []
+        }))
+        .sort((a, b) => b.metrics.total - a.metrics.total);
 
-    const root: TreeNode = {
-      id: 'global', name: 'DR Construtora (Global)', type: 'GLOBAL',
-      metrics: { ...globalMetrics, headcount: globalMetrics.headcount.size, riskIndex: calcRisk(globalMetrics) },
-      children: Array.from(regionalMap.entries()).map(([regName, regData]) => ({
-        id: regName, name: regName, type: 'REGIONAL' as const,
+    return Array.from(regionalMap.entries())
+      .map(([regName, regData]) => ({
+        id: regName,
+        name: regName,
+        type: 'REGIONAL' as const,
         metrics: { ...regData.metrics, headcount: regData.metrics.headcount.size, riskIndex: calcRisk(regData.metrics) },
-        children: Array.from(regData.ccs.entries()).map(([ccCode, ccData]) => {
-          const hasTeams = ccData.teams.size > 0;
-          return {
-            id: ccCode, name: `${ccCode} - ${ccData.name}`, type: 'CC' as const,
+        children: Array.from(regData.ccs.entries())
+          .map(([ccCode, ccData]) => ({
+            id: ccCode,
+            name: `${ccCode} - ${ccData.name}`,
+            type: 'CC' as const,
             metrics: { ...ccData.metrics, headcount: ccData.metrics.headcount.size, riskIndex: calcRisk(ccData.metrics) },
-            children: hasTeams
-              ? Array.from(ccData.teams.entries()).map(([teamId, teamData]) => ({
-                id: teamId, name: teamData.name, type: 'TEAM' as const,
-                metrics: { ...teamData.metrics, headcount: teamData.metrics.headcount.size, riskIndex: calcRisk(teamData.metrics) },
-                children: buildPersonNodes(teamData.persons, teamId)
-              })).sort((a, b) => b.metrics.riskIndex - a.metrics.riskIndex)
-              : buildPersonNodes(ccData.persons, ccCode)
-          };
-        }).sort((a, b) => b.metrics.riskIndex - a.metrics.riskIndex)
-      })).sort((a, b) => b.metrics.riskIndex - a.metrics.riskIndex)
-    };
-
-    return [root];
-  }, [data, planningRecords, budgets, salariesMap, selectedMonth, user]);
+            children: buildPersonNodes(ccData.persons, ccCode)
+          }))
+          .sort((a, b) => b.metrics.riskIndex - a.metrics.riskIndex)
+      }))
+      .sort((a, b) => b.metrics.riskIndex - a.metrics.riskIndex);
+  }, [data, planningRecords, budgets, salariesMap, user, globalEmployees]);
 
   const ToggleButtons = ({ mode, setMode }: { mode: ViewMode, setMode: (m: ViewMode) => void }) => (
     <div className="flex bg-gray-200 p-1 rounded-xl h-9">
@@ -1025,10 +934,10 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
         viewMode={ccViewMode}
       />
 
-      {/* ── 4 MEGA CARDS ── */}
+      {/* â”€â”€ 4 MEGA CARDS â”€â”€ */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
 
-        {/* 1. Orçamento */}
+        {/* 1. OrÃ§amento */}
         {(() => {
           const budgetM = metrics.totalBudget / 1_000_000;
           const usedPct = metrics.totalBudget > 0 ? Math.min((metrics.totalRealCost / metrics.totalBudget) * 100, 200) : 0;
@@ -1039,7 +948,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 rounded-lg bg-indigo-600 text-white shadow"><Wallet size={14} /></div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Orçamento</span>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">OrÃ§amento</span>
                 </div>
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${isOver ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
                   {isOver ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
@@ -1149,7 +1058,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
           );
         })()}
 
-        {/* 4. Eficiência do Planejamento */}
+        {/* 4. EficiÃªncia do Planejamento */}
         {(() => {
           const eficiencia = metrics.totalPlannedHours > 0
             ? Math.min((metrics.realTotalHE / metrics.totalPlannedHours) * 100, 200)
@@ -1164,10 +1073,10 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md transition-all">
               <div className="flex items-center gap-2">
                 <div className="p-1.5 rounded-lg bg-violet-600 text-white shadow"><Zap size={14} /></div>
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Eficiência</span>
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">EficiÃªncia</span>
               </div>
               <div>
-                <p className="text-[9px] text-gray-400 uppercase font-bold">Eficiência do Planejamento</p>
+                <p className="text-[9px] text-gray-400 uppercase font-bold">EficiÃªncia do Planejamento</p>
                 <p className={`text-3xl font-black font-mono leading-tight ${efColor}`}>
                   {eficiencia.toFixed(1)}%
                 </p>
@@ -1199,14 +1108,14 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
       </div>
 
-      {/* Visão Analítica Hierárquica (Tree Grid) */}
+      {/* VisÃ£o AnalÃ­tica HierÃ¡rquica (Tree Grid) */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col mt-8 animate-fade-in relative">
         {showTreeHelp && <TreeGridHelpModal onClose={() => setShowTreeHelp(false)} />}
 
         <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Building2 size={18} className="text-indigo-600" />
-            <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Visão Analítica Executiva (Plan vs Real)</h3>
+            <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">VisÃ£o AnalÃ­tica Executiva (Plan vs Real)</h3>
             <button onClick={() => setShowTreeHelp(true)} className="ml-2 text-slate-400 hover:text-indigo-500 transition-colors p-1" title="Como ler esta tabela?">
               <Info size={16} />
             </button>
@@ -1223,7 +1132,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
             <span className="flex-1">Estrutura Organizacional</span>
             <div className="flex items-center gap-4 justify-end shrink-0">
               <span className="w-16 text-center" title="Impacto percentual no pai">Impacto</span>
-              <span className="w-16 text-center" title="Número de Pessoas">Efetivo</span>
+              <span className="w-16 text-center" title="NÃºmero de Pessoas">Efetivo</span>
 
               {treeViewMode === 'operational' && (
                 <span className="w-[240px] text-center text-slate-600 bg-slate-200/50 py-1.5 rounded-md border border-slate-200/50 transition-all">Volume de Horas (Plan | Real | Dif)</span>
@@ -1249,3 +1158,5 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 };
 
 export default Dashboard;
+
+

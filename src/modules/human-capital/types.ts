@@ -82,21 +82,6 @@ export interface BudgetRecord {
     value: number;
 }
 
-export interface WorkTeam {
-    id: string;
-    name: string;
-    costCenter: string;
-    managerName?: string;
-    memberChapas?: string[]; // Legado, migrando para TeamAllocation
-}
-
-export interface TeamAllocation {
-    id: string;
-    teamId: string;
-    monthKey: string; // 'YYYY-MM'
-    chapas: string[];
-}
-
 export interface ManualEmployee {
     id: string; // UUID
     chapa: string; // Unique identifier (manual: M-UUID or custom)
