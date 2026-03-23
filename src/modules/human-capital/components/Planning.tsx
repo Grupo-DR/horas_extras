@@ -1,10 +1,10 @@
-﻿import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { OvertimeRecord, UserProfile, PlanningRecord, SalaryAllocation, BudgetRecord, ManualEmployee, GlobalEmployee } from '../types';
 import { savePlanning, getPlanning, saveSalaries, getSalariesSync, saveBudgets, getBudgetsSync, getAllBudgetsAsync, deleteBudgets, deleteAllBudgets, saveGlobalEmployees, getGlobalEmployeesAsync, getGlobalEmployeesSync } from '../services/planning';
 import { canApprove } from '../../iam/types';
 import { ApprovalPanel } from './ApprovalPanel';
 
-import { Users, Clock, Wallet, TrendingUp, Calculator, CheckCircle2, AlertTriangle, X, ChevronLeft, ChevronRight, Save, FileUp, ArrowUpRight, ArrowDownRight, LayoutList, Trash2 } from 'lucide-react';
+import { Users, Wallet, TrendingUp, Calculator, CheckCircle2, AlertTriangle, X, ChevronLeft, ChevronRight, Save, FileUp, ArrowUpRight, ArrowDownRight, LayoutList, Trash2 } from 'lucide-react';
 import { formatDecimalHours, parseTimeToDecimal } from '../utils/formatters';
 import * as XLSX from 'xlsx';
 import { PlanningTable } from './PlanningTable';
@@ -33,7 +33,7 @@ const formatDateKey = (date: Date): string => {
 };
 
 const MONTH_NAMES = [
-    "Janeiro", "Fevereiro", "MarÃ§o", "Abril", "Maio", "Junho",
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
     "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
 ];
 
@@ -94,7 +94,7 @@ const EmployeeCalendarModal: React.FC<{
                 <div className="bg-blue-600 p-6 flex justify-between items-center text-white shrink-0">
                     <div>
                         <h3 className="text-xl font-bold">{employeeName}</h3>
-                        <p className="text-blue-100 text-sm">Chapa: {chapa} â€¢ PerÃ­odo: {periodStart.toLocaleDateString('pt-BR')} a {periodEnd.toLocaleDateString('pt-BR')}</p>
+                        <p className="text-blue-100 text-sm">Chapa: {chapa} • Período: {periodStart.toLocaleDateString('pt-BR')} a {periodEnd.toLocaleDateString('pt-BR')}</p>
                     </div>
                     <div className="text-right flex gap-6">
                         <div>
@@ -115,7 +115,7 @@ const EmployeeCalendarModal: React.FC<{
 
                 <div className="p-6 overflow-y-auto bg-gray-50 flex-1">
                     <div className="grid grid-cols-7 gap-2 mb-2 text-center">
-                        {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'SÃ¡b'].map(d => (
+                        {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
                             <div key={d} className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{d}</div>
                         ))}
                     </div>
@@ -162,7 +162,7 @@ const EmployeeCalendarModal: React.FC<{
                 <div className="p-4 bg-gray-100 border-t border-gray-200 text-center">
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest flex items-center justify-center gap-2">
                         <CheckCircle2 size={12} className="text-emerald-500" />
-                        VisualizaÃ§Ã£o de Planejamento Detalhado por Dia
+                        Visualização de Planejamento Detalhado por Dia
                     </p>
                 </div>
             </div>
@@ -199,7 +199,7 @@ const BudgetManagerModal: React.FC<{
     }, [allBudgets]);
 
     const handleDelete = async (monthKey: string) => {
-        if (!window.confirm(`Excluir TODOS os registros de budget de ${monthKey}? Esta aÃ§Ã£o nÃ£o pode ser desfeita.`)) return;
+        if (!window.confirm(`Excluir TODOS os registros de budget de ${monthKey}? Esta ação não pode ser desfeita.`)) return;
         setDeleting(monthKey);
         try {
             await deleteBudgets(monthKey, user);
@@ -210,7 +210,7 @@ const BudgetManagerModal: React.FC<{
     };
 
     const handleDeleteAll = async () => {
-        if (!window.confirm(`Excluir TODOS os ${grouped.length} perÃ­odos de budget? Esta aÃ§Ã£o nÃ£o pode ser desfeita.`)) return;
+        if (!window.confirm(`Excluir TODOS os ${grouped.length} períodos de budget? Esta ação não pode ser desfeita.`)) return;
         setDeleting('__all__');
         try {
             await deleteAllBudgets(user);
@@ -228,7 +228,7 @@ const BudgetManagerModal: React.FC<{
                 <div className="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white shrink-0">
                     <div>
                         <h3 className="text-lg font-bold">Gerenciar Budgets</h3>
-                        <p className="text-indigo-200 text-xs">{grouped.length} perÃ­odos importados</p>
+                        <p className="text-indigo-200 text-xs">{grouped.length} períodos importados</p>
                     </div>
                     <div className="flex items-center gap-2">
                         {grouped.length > 0 && (
@@ -261,8 +261,8 @@ const BudgetManagerModal: React.FC<{
                         <table className="w-full text-sm">
                             <thead className="bg-gray-50 border-b border-gray-100 sticky top-0">
                                 <tr>
-                                    <th className="px-5 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">PerÃ­odo</th>
-                                    <th className="px-5 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">CompetÃªncia</th>
+                                    <th className="px-5 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">Período</th>
+                                    <th className="px-5 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">Competência</th>
                                     <th className="px-5 py-3 text-right text-[10px] font-bold text-gray-400 uppercase tracking-wider">Qtd. CCs</th>
                                     <th className="px-5 py-3 text-right text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Budget</th>
                                     <th className="px-5 py-3"></th>
@@ -282,7 +282,7 @@ const BudgetManagerModal: React.FC<{
                                                 onClick={() => handleDelete(g.monthKey)}
                                                 disabled={deleting === g.monthKey}
                                                 className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40"
-                                                title="Excluir perÃ­odo"
+                                                title="Excluir período"
                                             >
                                                 {deleting === g.monthKey
                                                     ? <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
@@ -297,7 +297,7 @@ const BudgetManagerModal: React.FC<{
                 </div>
 
                 <div className="px-6 py-3 bg-gray-50 border-t border-gray-100 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                    A exclusÃ£o remove todos os Centros de Custo do perÃ­odo selecionado do Firestore e do cache local.
+                    A exclusão remove todos os Centros de Custo do período selecionado do Firestore e do cache local.
                 </div>
             </div>
         </div>
@@ -488,7 +488,6 @@ const CostCenterPlanModal: React.FC<{
 };
 
 const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees }) => {
-    const [mode, setMode] = useState<'MONTHLY' | 'DAILY'>('DAILY');
     const [selectedMonth, setSelectedMonth] = useState<string>(() => {
         const now = new Date();
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -634,18 +633,18 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
             const endMonthStr = formatDateKey(periodEnd).slice(0, 7);
 
             // Fetch for all accessible to user
-            const recs1 = await getPlanning(undefined, startMonthStr, mode === 'MONTHLY' ? 'MONTHLY' : 'DAILY');
+            const recs1 = await getPlanning(undefined, startMonthStr, 'DAILY');
             records = [...recs1];
 
             if (startMonthStr !== endMonthStr) {
-                const recs2 = await getPlanning(undefined, endMonthStr, mode === 'MONTHLY' ? 'MONTHLY' : 'DAILY');
+                const recs2 = await getPlanning(undefined, endMonthStr, 'DAILY');
                 records = [...records, ...recs2];
             }
 
             const planMap: Record<string, number> = {};
             const statusMap: Record<string, string> = {};
             records.forEach(r => {
-                const key = mode === 'MONTHLY' ? r.chapa : `${r.chapa}_${r.date}`;
+                const key = `${r.chapa}_${r.date}`;
                 planMap[key] = r.plannedHours;
                 statusMap[key] = r.status || 'approved'; // Retrocompatibilidade global
             });
@@ -653,7 +652,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
             setPlanStatuses(statusMap);
         };
         loadPlans();
-    }, [mode, selectedMonth, periodStart, periodEnd, user]);
+    }, [selectedMonth, periodStart, periodEnd, user]);
 
     const displayCostCenters = useMemo(() => {
         const ccMap = new Map<string, { id: string; costCenter: string; memberChapas: string[]; regional: string }>();
@@ -698,9 +697,9 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
             const startMonthStr = formatDateKey(periodStart).slice(0, 7);
             const endMonthStr = formatDateKey(periodEnd).slice(0, 7);
 
-            let allRecs = await getPlanning(undefined, startMonthStr, mode === 'MONTHLY' ? 'MONTHLY' : 'DAILY');
+            let allRecs = await getPlanning(undefined, startMonthStr, 'DAILY');
             if (startMonthStr !== endMonthStr) {
-                const recs2 = await getPlanning(undefined, endMonthStr, mode === 'MONTHLY' ? 'MONTHLY' : 'DAILY');
+                const recs2 = await getPlanning(undefined, endMonthStr, 'DAILY');
                 allRecs = [...allRecs, ...recs2];
             }
 
@@ -720,10 +719,9 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
             await savePlanning(approvedRecs, user);
 
             // Refresh local state
-            const newPlans = { ...plans };
             const newStatuses = { ...planStatuses };
             approvedRecs.forEach(r => {
-                const key = mode === 'MONTHLY' ? r.chapa : `${r.chapa}_${r.date}`;
+                const key = `${r.chapa}_${r.date}`;
                 newStatuses[key] = 'approved';
             });
             setPlanStatuses(newStatuses);
@@ -743,9 +741,9 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
             const startMonthStr = formatDateKey(periodStart).slice(0, 7);
             const endMonthStr = formatDateKey(periodEnd).slice(0, 7);
 
-            let allRecs = await getPlanning(undefined, startMonthStr, mode === 'MONTHLY' ? 'MONTHLY' : 'DAILY');
+            let allRecs = await getPlanning(undefined, startMonthStr, 'DAILY');
             if (startMonthStr !== endMonthStr) {
-                const recs2 = await getPlanning(undefined, endMonthStr, mode === 'MONTHLY' ? 'MONTHLY' : 'DAILY');
+                const recs2 = await getPlanning(undefined, endMonthStr, 'DAILY');
                 allRecs = [...allRecs, ...recs2];
             }
 
@@ -760,7 +758,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
             // Refresh local state
             const newStatuses = { ...planStatuses };
             rejectedRecs.forEach(r => {
-                const key = mode === 'MONTHLY' ? r.chapa : `${r.chapa}_${r.date}`;
+                const key = `${r.chapa}_${r.date}`;
                 newStatuses[key] = 'draft';
             });
             setPlanStatuses(newStatuses);
@@ -827,24 +825,18 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
 
         filteredEmployeesForStats.forEach(emp => {
             const salary = salaries[emp.chapa];
-            if (mode === 'MONTHLY') {
-                const hours = plans[emp.chapa] || 0;
+            const curr = new Date(periodStart);
+            while (curr <= periodEnd) {
+                const key = `${emp.chapa}_${formatDateKey(curr)}`;
+                const hours = plans[key] || 0;
                 totalHours += hours;
-                if (salary) totalValue += (salary / 220) * 1.6 * hours;
-            } else {
-                const curr = new Date(periodStart);
-                while (curr <= periodEnd) {
-                    const key = `${emp.chapa}_${formatDateKey(curr)}`;
-                    const hours = plans[key] || 0;
-                    totalHours += hours;
-                    if (salary && hours > 0) {
-                        const isSunday = curr.getDay() === 0;
-                        const baseHour = salary / 220;
-                        const multiplier = isSunday ? 2.0 : 1.6;
-                        totalValue += baseHour * multiplier * hours;
-                    }
-                    curr.setDate(curr.getDate() + 1);
+                if (salary && hours > 0) {
+                    const isSunday = curr.getDay() === 0;
+                    const baseHour = salary / 220;
+                    const multiplier = isSunday ? 2.0 : 1.6;
+                    totalValue += baseHour * multiplier * hours;
                 }
+                curr.setDate(curr.getDate() + 1);
             }
         });
         return { totalHours, totalValue };
@@ -888,12 +880,6 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
         return days;
     }, [currentWeekStart]);
 
-    const handlePlanChange = (chapa: string, dateKey: string, value: string) => {
-        const decimalValue = parseTimeToDecimal(value);
-        const key = mode === 'MONTHLY' ? chapa : `${chapa}_${dateKey}`;
-        setPlans(prev => ({ ...prev, [key]: decimalValue }));
-    };
-
     const handleSalaryImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -914,12 +900,12 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
 
                 const headers = (json[0] as any[]).map(h => String(h).toUpperCase().trim());
                 const idxChapa = headers.findIndex(h => h.includes('CHAPA'));
-                const idxSalario = headers.findIndex(h => h.includes('SALÃRIO') || h.includes('SALARIO'));
-                const idxMes = headers.findIndex(h => h.includes('MÃŠS') || h.includes('MES'));
+                const idxSalario = headers.findIndex(h => h.includes('SALÁRIO') || h.includes('SALARIO'));
+                const idxMes = headers.findIndex(h => h.includes('MÊS') || h.includes('MES'));
                 const idxStatus = headers.findIndex(h => h.includes('STATUS'));
 
                 if (idxChapa === -1 || idxSalario === -1 || idxMes === -1 || idxStatus === -1) {
-                    setAlert({ type: 'error', message: "Colunas obrigatÃ³rias nÃ£o encontradas: Chapa, SalÃ¡rio, MÃªs, Status." });
+                    setAlert({ type: 'error', message: "Colunas obrigatórias não encontradas: Chapa, Salário, Mês, Status." });
                     return;
                 }
 
@@ -954,12 +940,12 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                 if (count > 0) {
                     saveSalaries(salaryAllocations, user);
                     setSalaries(salaryMap);
-                    setAlert({ type: 'success', message: `${count} salÃ¡rios importados!` });
+                    setAlert({ type: 'success', message: `${count} salários importados!` });
                 } else {
-                    setAlert({ type: 'error', message: "Nenhum registro vÃ¡lido encontrado." });
+                    setAlert({ type: 'error', message: "Nenhum registro válido encontrado." });
                 }
 
-            } catch (err) { console.error(err); setAlert({ type: 'error', message: "Erro na importaÃ§Ã£o" }); }
+            } catch (err) { console.error(err); setAlert({ type: 'error', message: "Erro na importação" }); }
         };
         reader.readAsBinaryString(file);
         if (salaryInputRef.current) salaryInputRef.current.value = '';
@@ -980,7 +966,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                 let count = 0;
 
                 json.forEach((row: any, index: number) => {
-                    if (index === 0 && (String(row[0]).toLowerCase().includes('mÃªs'))) return;
+                    if (index === 0 && (String(row[0]).toLowerCase().includes('mês'))) return;
                     const monthName = String(row[0] || '').trim();
                     const costCenter = String(row[1] || '').trim().replace(/\./g, ''); // normaliza: remove pontos
                     let budgetVal = row[2];
@@ -1007,7 +993,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                     });
                     setAlert({ type: 'success', message: `${count} registros de budget importados!` });
                 } else {
-                    setAlert({ type: 'error', message: "Erro budget: nenhuma linha vÃ¡lida encontrada." });
+                    setAlert({ type: 'error', message: "Erro budget: nenhuma linha válida encontrada." });
                 }
             } catch (err) { setAlert({ type: 'error', message: "Falha ao ler arquivo de budget." }); }
         };
@@ -1017,36 +1003,28 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
 
     const handleSave = async (submitPending: boolean = false) => {
         setSaving(true);
-        const statusFlag: 'draft' | 'pending' = submitPending ? 'pending' : 'draft';
         const recordsToSave: PlanningRecord[] = [];
         uniqueEmployees.forEach(emp => {
-            if (mode === 'MONTHLY') {
-                const hours = plans[emp.chapa];
+            const curr = new Date(periodStart);
+            while (curr <= periodEnd) {
+                const dateKey = formatDateKey(curr);
+                const key = `${emp.chapa}_${dateKey}`;
+                const hours = plans[key];
                 if (hours !== undefined) {
-                    recordsToSave.push({ id: `${emp.chapa}_MONTHLY_${selectedMonth}`, chapa: emp.chapa, nome: emp.nome, costCenter: emp.cc, date: selectedMonth, type: 'MONTHLY', plannedHours: hours, status: statusFlag });
+                    const hasRange = !!planRangeStart && !!planRangeEnd;
+                    const isWithinRange = hasRange ? (dateKey >= planRangeStart && dateKey <= planRangeEnd) : true;
+                    const originalStatus = (planStatuses[key] as PlanningRecord['status']) || 'draft';
+                    const finalStatus: PlanningRecord['status'] = submitPending
+                        ? (isWithinRange ? 'pending' : originalStatus)
+                        : 'draft';
+                    recordsToSave.push({ id: `${emp.chapa}_DAILY_${dateKey}`, chapa: emp.chapa, nome: emp.nome, costCenter: emp.cc, date: dateKey, type: 'DAILY', plannedHours: hours, status: finalStatus });
                 }
-            } else {
-                const curr = new Date(periodStart);
-                while (curr <= periodEnd) {
-                    const dateKey = formatDateKey(curr);
-                    const key = `${emp.chapa}_${dateKey}`;
-                    const hours = plans[key];
-                    if (hours !== undefined) {
-                        const hasRange = !!planRangeStart && !!planRangeEnd;
-                        const isWithinRange = hasRange ? (dateKey >= planRangeStart && dateKey <= planRangeEnd) : true;
-                        const originalStatus = (planStatuses[key] as PlanningRecord['status']) || 'draft';
-                        const finalStatus: PlanningRecord['status'] = submitPending
-                            ? (isWithinRange ? 'pending' : originalStatus)
-                            : 'draft';
-                        recordsToSave.push({ id: `${emp.chapa}_DAILY_${dateKey}`, chapa: emp.chapa, nome: emp.nome, costCenter: emp.cc, date: dateKey, type: 'DAILY', plannedHours: hours, status: finalStatus });
-                    }
-                    curr.setDate(curr.getDate() + 1);
-                }
+                curr.setDate(curr.getDate() + 1);
             }
         });
         await savePlanning(recordsToSave, user);
         setSaving(false);
-        setAlert({ type: 'success', message: submitPending ? 'Planejamento submetido para aprovaÃ§Ã£o!' : 'Rascunho salvo!' });
+        setAlert({ type: 'success', message: submitPending ? 'Planejamento submetido para aprovação!' : 'Rascunho salvo!' });
     };
 
     const handleEmployeeClick = (emp: { nome: string; chapa: string }) => {
@@ -1177,16 +1155,13 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                         onClick={() => setActiveSubTab('PLANNING')}
                         className={`flex-1 py-4 text-sm font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeSubTab === 'PLANNING' ? 'bg-blue-600 text-white shadow-inner' : 'text-slate-500 hover:bg-slate-50'}`}
                     >
-                        <LayoutList size={18} /> ElaboraÃ§Ã£o de Escalas
+                        <LayoutList size={18} /> Elaboração de Escalas
                     </button>
                     <button
-                        onClick={() => {
-                            setMode('DAILY');
-                            setActiveSubTab('APPROVAL');
-                        }}
+                        onClick={() => setActiveSubTab('APPROVAL')}
                         className={`flex-1 py-4 text-sm font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeSubTab === 'APPROVAL' ? 'bg-indigo-600 text-white shadow-inner' : 'text-slate-500 hover:bg-slate-50'}`}
                     >
-                        <CheckCircle2 size={18} /> AprovaÃ§Ã£o / LiberaÃ§Ã£o
+                        <CheckCircle2 size={18} /> Aprovação / Liberação
                     </button>
                 </div>
             )}
@@ -1214,42 +1189,33 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
 
                         ccEmployees.forEach((emp: any) => {
                             const salary = salaries[emp.chapa];
-                            if (mode === 'MONTHLY') {
-                                const hours = plans[emp.chapa] || 0;
+                            const curr = new Date(periodStart);
+                            while (curr <= periodEnd) {
+                                const dateKey = formatDateKey(curr);
+                                const key = `${emp.chapa}_${dateKey}`;
+                                const hours = plans[key] || 0;
                                 totalHours += hours;
-                                if (salary) totalCost += (salary / 220) * 1.6 * hours;
-                                const st = planStatuses[emp.chapa] || 'approved';
+                                if (salary && hours > 0) {
+                                    const isSunday = curr.getDay() === 0;
+                                    const baseHour = salary / 220;
+                                    const multiplier = isSunday ? 2.0 : 1.6;
+                                    totalCost += baseHour * multiplier * hours;
+                                }
+                                const st = planStatuses[key] || 'approved';
                                 if (st === 'pending') hasPending = true;
                                 if (st === 'draft' && hours > 0) hasDraft = true;
-                            } else {
-                                const curr = new Date(periodStart);
-                                while (curr <= periodEnd) {
-                                    const dateKey = formatDateKey(curr);
-                                    const key = `${emp.chapa}_${dateKey}`;
-                                    const hours = plans[key] || 0;
-                                    totalHours += hours;
-                                    if (salary && hours > 0) {
-                                        const isSunday = curr.getDay() === 0;
-                                        const baseHour = salary / 220;
-                                        const multiplier = isSunday ? 2.0 : 1.6;
-                                        totalCost += baseHour * multiplier * hours;
-                                    }
-                                    const st = planStatuses[key] || 'approved';
-                                    if (st === 'pending') hasPending = true;
-                                    if (st === 'draft' && hours > 0) hasDraft = true;
-                                    if (hours > 0) {
-                                        detailRows.push({
-                                            id: `${cc.id}_${key}`,
-                                            date: dateKey,
-                                            ccName: `CC ${cc.costCenter}`,
-                                            employeeName: emp.nome,
-                                            employeeRole: memberFuncoes[emp.chapa] || 'Sem funcao',
-                                            hours,
-                                            status: st
-                                        });
-                                    }
-                                    curr.setDate(curr.getDate() + 1);
+                                if (hours > 0) {
+                                    detailRows.push({
+                                        id: `${cc.id}_${key}`,
+                                        date: dateKey,
+                                        ccName: `CC ${cc.costCenter}`,
+                                        employeeName: emp.nome,
+                                        employeeRole: memberFuncoes[emp.chapa] || 'Sem função',
+                                        hours,
+                                        status: st
+                                    });
                                 }
+                                curr.setDate(curr.getDate() + 1);
                             }
                         });
 
@@ -1270,27 +1236,26 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                     })}
                     onApprove={handleApproveCC}
                     onReject={handleRejectCC}
-                    mode={mode}
+                    mode="DAILY"
                 />
             ) : (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="p-4 bg-gray-50 border-b border-gray-100 flex flex-col xl:flex-row items-center justify-between gap-6">
                         <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto">
                             <div className="flex flex-col">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">MÃªs de ReferÃªncia</label>
+                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Mês de Referência</label>
                                 <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium" />
                             </div>
 
                             <div className="flex flex-col">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">InÃ­cio (Envio)</label>
+                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Início (Envio)</label>
                                 <input
                                     type="date"
                                     value={planRangeStart}
                                     onChange={(e) => setPlanRangeStart(e.target.value)}
                                     min={formatDateKey(periodStart)}
                                     max={formatDateKey(periodEnd)}
-                                    disabled={mode === 'MONTHLY'}
-                                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium disabled:bg-gray-100 disabled:text-gray-400"
+                                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium"
                                 />
                             </div>
 
@@ -1302,8 +1267,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                                     onChange={(e) => setPlanRangeEnd(e.target.value)}
                                     min={formatDateKey(periodStart)}
                                     max={formatDateKey(periodEnd)}
-                                    disabled={mode === 'MONTHLY'}
-                                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium disabled:bg-gray-100 disabled:text-gray-400"
+                                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium"
                                 />
                             </div>
 
@@ -1323,18 +1287,11 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                                 </select>
                             </div>
 
-                            <div className="flex bg-gray-200 p-1 rounded-lg self-end h-[42px]">
-                                <button onClick={() => setMode('MONTHLY')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all uppercase ${mode === 'MONTHLY' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}>Mensal</button>
-                                <button onClick={() => setMode('DAILY')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all uppercase ${mode === 'DAILY' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}>DiÃ¡rio</button>
+                            <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-gray-200 self-end h-[42px]">
+                                <button onClick={() => changeWeek('prev')} className="p-1.5 hover:bg-gray-100 rounded-lg"><ChevronLeft size={16} /></button>
+                                <span className="font-bold text-gray-700 text-[11px] min-w-[150px] text-center">{weekDays[0].toLocaleDateString('pt-BR')} - {weekDays[6].toLocaleDateString('pt-BR')}</span>
+                                <button onClick={() => changeWeek('next')} className="p-1.5 hover:bg-gray-100 rounded-lg"><ChevronRight size={16} /></button>
                             </div>
-
-                            {mode === 'DAILY' && (
-                                <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-gray-200 self-end h-[42px]">
-                                    <button onClick={() => changeWeek('prev')} className="p-1.5 hover:bg-gray-100 rounded-lg"><ChevronLeft size={16} /></button>
-                                    <span className="font-bold text-gray-700 text-[11px] min-w-[150px] text-center">{weekDays[0].toLocaleDateString('pt-BR')} - {weekDays[6].toLocaleDateString('pt-BR')}</span>
-                                    <button onClick={() => changeWeek('next')} className="p-1.5 hover:bg-gray-100 rounded-lg"><ChevronRight size={16} /></button>
-                                </div>
-                            )}
 
                         </div>
 
@@ -1343,7 +1300,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                                 <>
                                     <input type="file" ref={salaryInputRef} onChange={handleSalaryImport} accept=".xlsx,.xls,.csv,.txt" className="hidden" />
                                     <button onClick={() => salaryInputRef.current?.click()} className="bg-white text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-indigo-50 flex items-center gap-2 shadow-sm">
-                                        <FileUp size={16} /> SalÃ¡rios
+                                        <FileUp size={16} /> Salários
                                     </button>
                                     <input type="file" ref={budgetInputRef} onChange={handleBudgetImport} accept=".xlsx,.xls" className="hidden" />
                                     <button onClick={() => budgetInputRef.current?.click()} className="bg-white text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-indigo-50 flex items-center gap-2 shadow-sm">
@@ -1384,24 +1341,18 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                                     let empCost = 0;
                                     const salary = salaries[emp.chapa];
 
-                                    if (mode === 'MONTHLY') {
-                                        const hours = plans[emp.chapa] || 0;
+                                    const curr = new Date(periodStart);
+                                    while (curr <= periodEnd) {
+                                        const key = `${emp.chapa}_${formatDateKey(curr)}`;
+                                        const hours = plans[key] || 0;
                                         empHours += hours;
-                                        if (salary) empCost += (salary / 220) * 1.6 * hours;
-                                    } else {
-                                        const curr = new Date(periodStart);
-                                        while (curr <= periodEnd) {
-                                            const key = `${emp.chapa}_${formatDateKey(curr)}`;
-                                            const hours = plans[key] || 0;
-                                            empHours += hours;
-                                            if (salary && hours > 0) {
-                                                const isSunday = curr.getDay() === 0;
-                                                const baseHour = salary / 220;
-                                                const multiplier = isSunday ? 2.0 : 1.6;
-                                                empCost += baseHour * multiplier * hours;
-                                            }
-                                            curr.setDate(curr.getDate() + 1);
+                                        if (salary && hours > 0) {
+                                            const isSunday = curr.getDay() === 0;
+                                            const baseHour = salary / 220;
+                                            const multiplier = isSunday ? 2.0 : 1.6;
+                                            empCost += baseHour * multiplier * hours;
                                         }
+                                        curr.setDate(curr.getDate() + 1);
                                     }
 
                                     totalHours += empHours;
