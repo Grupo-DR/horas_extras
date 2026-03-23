@@ -315,10 +315,12 @@ const CostCenterPlanModal: React.FC<{
     plans: Record<string, number>;
     periodStart: Date;
     periodEnd: Date;
+    planRangeStart: string;
+    planRangeEnd: string;
     onSave: (costCenter: string, localNums: Record<string, number>) => Promise<void>;
     planStatuses: Record<string, string>;
     canOverrideLock: boolean;
-}> = ({ isOpen, onClose, costCenter, memberChapas, memberNames, memberFuncoes, plans, periodStart, periodEnd, onSave, planStatuses, canOverrideLock }) => {
+}> = ({ isOpen, onClose, costCenter, memberChapas, memberNames, memberFuncoes, plans, periodStart, periodEnd, planRangeStart, planRangeEnd, onSave, planStatuses, canOverrideLock }) => {
     const [saving, setSaving] = useState(false);
     const [localValues, setLocalValues] = useState<Record<string, string>>({});
 
@@ -427,10 +429,12 @@ const CostCenterPlanModal: React.FC<{
                                                 const isSat = day.getDay() === 6;
                                                 const hasValue = parseTimeToDecimal(strVal) > 0;
                                                 const recordStatus = planStatuses[key] || 'approved';
-                                                const isLocked = !canOverrideLock && (recordStatus === 'approved' || recordStatus === 'pending');
+                                                const hasRange = !!planRangeStart && !!planRangeEnd;
+                                                const isOutsideRange = hasRange && (dk < planRangeStart || dk > planRangeEnd);
+                                                const isLocked = (!canOverrideLock && (recordStatus === 'approved' || recordStatus === 'pending')) || isOutsideRange;
 
                                                 return (
-                                                    <td key={dk} className={`px-0.5 py-1 text-center ${isSun ? 'bg-red-50' : isSat ? 'bg-orange-50' : ''}`}>
+                                                    <td key={dk} className={`px-0.5 py-1 text-center ${isSun ? 'bg-red-50' : isSat ? 'bg-orange-50' : ''} ${isOutsideRange ? 'opacity-40 bg-slate-100' : ''}`}>
                                                         <input
                                                             type="text"
                                                             value={strVal}
@@ -438,10 +442,11 @@ const CostCenterPlanModal: React.FC<{
                                                             className={`w-10 text-center text-[11px] border rounded px-1 py-0.5 outline-none font-mono transition-colors
                                                                 ${hasValue ? 'border-blue-300 bg-blue-50 text-blue-800 font-bold' : 'border-gray-200 bg-white text-gray-300'}
                                                                 ${isLocked ? 'cursor-not-allowed opacity-60 bg-gray-100 ring-1 ring-gray-300' : 'focus:ring-1 focus:ring-blue-400'}
+                                                                ${isOutsideRange ? 'opacity-40 bg-slate-100 border-slate-200 text-slate-400' : ''}
                                                             `}
                                                             placeholder="--"
                                                             disabled={isLocked}
-                                                            title={isLocked ? `Status: ${recordStatus}. Apenas aprovadores podem editar.` : undefined}
+                                                            title={isOutsideRange ? 'Bloqueado: Fora do período selecionado' : (isLocked ? `Status: ${recordStatus}. Apenas aprovadores podem editar.` : undefined)}
                                                         />
                                                     </td>
                                                 );
@@ -502,6 +507,14 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
         const start = new Date(year, month - 2, 21);
         return { periodStart: start, periodEnd: end };
     }, [selectedMonth]);
+
+    const [planRangeStart, setPlanRangeStart] = useState<string>('');
+    const [planRangeEnd, setPlanRangeEnd] = useState<string>('');
+
+    useEffect(() => {
+        setPlanRangeStart(formatDateKey(periodStart));
+        setPlanRangeEnd(formatDateKey(periodEnd));
+    }, [periodStart, periodEnd]);
 
     const [currentWeekStart, setCurrentWeekStart] = useState<Date>(periodStart);
     useEffect(() => { setCurrentWeekStart(periodStart); }, [periodStart]);
@@ -1019,7 +1032,13 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                     const key = `${emp.chapa}_${dateKey}`;
                     const hours = plans[key];
                     if (hours !== undefined) {
-                        recordsToSave.push({ id: `${emp.chapa}_DAILY_${dateKey}`, chapa: emp.chapa, nome: emp.nome, costCenter: emp.cc, date: dateKey, type: 'DAILY', plannedHours: hours, status: statusFlag });
+                        const hasRange = !!planRangeStart && !!planRangeEnd;
+                        const isWithinRange = hasRange ? (dateKey >= planRangeStart && dateKey <= planRangeEnd) : true;
+                        const originalStatus = (planStatuses[key] as PlanningRecord['status']) || 'draft';
+                        const finalStatus: PlanningRecord['status'] = submitPending
+                            ? (isWithinRange ? 'pending' : originalStatus)
+                            : 'draft';
+                        recordsToSave.push({ id: `${emp.chapa}_DAILY_${dateKey}`, chapa: emp.chapa, nome: emp.nome, costCenter: emp.cc, date: dateKey, type: 'DAILY', plannedHours: hours, status: finalStatus });
                     }
                     curr.setDate(curr.getDate() + 1);
                 }
@@ -1076,6 +1095,8 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                     plans={plans}
                     periodStart={periodStart}
                     periodEnd={periodEnd}
+                    planRangeStart={planRangeStart}
+                    planRangeEnd={planRangeEnd}
                     onSave={handleCostCenterPlanSave}
                     planStatuses={planStatuses}
                     canOverrideLock={(user.role === 'CH_ADMIN' || user.role === 'CH_APPROVER')}
@@ -1261,6 +1282,32 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                             </div>
 
                             <div className="flex flex-col">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">InÃ­cio (Envio)</label>
+                                <input
+                                    type="date"
+                                    value={planRangeStart}
+                                    onChange={(e) => setPlanRangeStart(e.target.value)}
+                                    min={formatDateKey(periodStart)}
+                                    max={formatDateKey(periodEnd)}
+                                    disabled={mode === 'MONTHLY'}
+                                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium disabled:bg-gray-100 disabled:text-gray-400"
+                                />
+                            </div>
+
+                            <div className="flex flex-col">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Fim (Envio)</label>
+                                <input
+                                    type="date"
+                                    value={planRangeEnd}
+                                    onChange={(e) => setPlanRangeEnd(e.target.value)}
+                                    min={formatDateKey(periodStart)}
+                                    max={formatDateKey(periodEnd)}
+                                    disabled={mode === 'MONTHLY'}
+                                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium disabled:bg-gray-100 disabled:text-gray-400"
+                                />
+                            </div>
+
+                            <div className="flex flex-col">
                                 <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Regional</label>
                                 <select value={regionalFilter} onChange={(e) => setRegionalFilter(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-w-[140px] font-medium">
                                     <option value="">Todas</option>
@@ -1311,7 +1358,9 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                                 <Save size={18} /> Salvar Rascunho
                             </button>
                             <button onClick={() => {
-                                if (window.confirm("AtenÃ§Ã£o: Enviar os dados limitarÃ¡ a ediÃ§Ã£o futura desses centros de custo. Deseja prosseguir?")) {
+                                const submitStart = planRangeStart || formatDateKey(periodStart);
+                                const submitEnd = planRangeEnd || formatDateKey(periodEnd);
+                                if (window.confirm(`Atenção: os dias entre ${submitStart} e ${submitEnd} serão submetidos para aprovação. Os demais dias permanecerão em rascunho/abertos. Deseja prosseguir?`)) {
                                     handleSave(true);
                                 }
                             }} disabled={saving} className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-bold uppercase hover:bg-blue-700 transition flex items-center gap-2 shadow-md">
