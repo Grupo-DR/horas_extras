@@ -56,6 +56,17 @@ const getInitialFilters = (): FilterState => {
   };
 };
 
+const parseFilterDate = (dateString: string, fallback: Date): Date => {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, (month || 1) - 1, day || 1, 12, 0, 0, 0);
+  }
+
+  const parsed = new Date(dateString);
+  if (isNaN(parsed.getTime())) return fallback;
+  return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate(), 12, 0, 0, 0);
+};
+
 const HumanCapitalDashboard: React.FC = () => {
   const { profile, hasModuleAccess, logout: signOut, isProfileLoading } = useAuth();
   const navigate = useNavigate();
@@ -290,6 +301,18 @@ const HumanCapitalDashboard: React.FC = () => {
     });
   }, [scopedData, filters]);
 
+  const comparisonPeriod = useMemo(() => {
+    const today = new Date();
+    const start = parseFilterDate(filters.startDate, today);
+    const end = parseFilterDate(filters.endDate, start);
+
+    if (end < start) {
+      return { periodStart: end, periodEnd: start };
+    }
+
+    return { periodStart: start, periodEnd: end };
+  }, [filters.startDate, filters.endDate]);
+
   const clearFilters = () => {
     setFilters(getInitialFilters());
   };
@@ -388,6 +411,8 @@ const HumanCapitalDashboard: React.FC = () => {
                   }}
                   selectedMonth={`${filters.year}-${filters.month}`}
                   user={effectiveUser}
+                  periodStart={comparisonPeriod.periodStart}
+                  periodEnd={comparisonPeriod.periodEnd}
                 />
               );
             })()}
@@ -395,8 +420,11 @@ const HumanCapitalDashboard: React.FC = () => {
             {activeTab === Tab.ANALYSIS && (
               <AnalysisPanel
                 data={filteredData}
+                allData={scopedData}
                 realOvertime={filteredRealOvertime}
                 selectedYear={filters.year}
+                periodStart={comparisonPeriod.periodStart}
+                periodEnd={comparisonPeriod.periodEnd}
               />
             )}
             {activeTab === Tab.PLANNING && (effectiveUser.isSuperAdmin || canPlan(effectiveUser.role)) && <Planning user={effectiveUser} employees={scopedData} manualEmployees={manualEmployees} />}

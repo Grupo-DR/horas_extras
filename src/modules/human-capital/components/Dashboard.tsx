@@ -5,6 +5,7 @@ import { formatDecimalHours } from '../utils/formatters';
 import { getPlanning, getSalariesSync, getBudgetsSync, saveBudgets, getAllPlanningRecords, getGlobalEmployeesAsync, getGlobalEmployeesSync } from '../services/planning';
 import { getCCName, getCCRegional, normalizeCC } from '../data/ccMaster';
 import { isRecordInHumanCapitalScope } from '../utils/scopeFilters';
+import EmployeeDailyComparisonModal from './EmployeeDailyComparisonModal';
 
 interface DashboardProps {
   data: OvertimeRecord[];              // dados filtrados (regional, CC, etc.)
@@ -16,6 +17,8 @@ interface DashboardProps {
   onNavigateToEmployee?: (name: string, chapa: string) => void;
   selectedMonth: string;
   user: UserProfile | null;
+  periodStart: Date;
+  periodEnd: Date;
 }
 
 interface DashboardMetrics {
@@ -91,8 +94,8 @@ const FunctionDetailModal: React.FC<{
   onClose: () => void;
   functionName: string;
   employees: { name: string; cc: string; chapa: string; he60: number; he100: number; interjornada: number; night: number }[];
-  onNavigateToEmployee: (name: string, chapa: string) => void;
-}> = ({ isOpen, onClose, functionName, employees, onNavigateToEmployee }) => {
+  onOpenComparison: (name: string, chapa: string) => void;
+}> = ({ isOpen, onClose, functionName, employees, onOpenComparison }) => {
   if (!isOpen) return null;
 
   return (
@@ -129,12 +132,12 @@ const FunctionDetailModal: React.FC<{
                   <td className="px-4 py-3 font-mono text-gray-400 text-xs">{emp.chapa}</td>
                   <td className="px-4 py-3">
                     <button
-                      onClick={() => { onNavigateToEmployee(emp.name, emp.chapa); onClose(); }}
-                      className="font-medium text-blue-700 hover:underline hover:text-blue-900 text-left transition-colors group flex items-center gap-1"
-                      title="Ver histÃ³rico deste colaborador"
+                      onClick={() => onOpenComparison(emp.name, emp.chapa)}
+                      className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center gap-1"
+                      title="Abrir raio-x diário deste colaborador"
                     >
                       {emp.name}
-                      <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
+                      <ArrowUpRight size={12} className="opacity-60 shrink-0" />
                     </button>
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-blue-600">{formatDecimalHours(emp.he60)}</td>
@@ -424,17 +427,19 @@ const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHour
   );
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMonthKeys, onNavigateToEmployee, selectedMonth, user }) => {
+const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMonthKeys, selectedMonth, user, periodStart, periodEnd }) => {
   const [ccSearch, setCcSearch] = useState('');
   const [funcSearch, setFuncSearch] = useState('');
   const [salariesMap, setSalariesMap] = useState<Record<string, number>>({});
   const [globalEmployees, setGlobalEmployees] = useState<import('../types').GlobalEmployee[]>(() => getGlobalEmployeesSync());
   const [selectedFuncModal, setSelectedFuncModal] = useState<string | null>(null);
   const [selectedCcModal, setSelectedCcModal] = useState<string | null>(null);
+  const [comparisonModalData, setComparisonModalData] = useState<{ isOpen: boolean; employeeName: string; chapa: string } | null>(null);
   const [ccViewMode, setCcViewMode] = useState<ViewMode>('hours');
   const [funcViewMode, setFuncViewMode] = useState<ViewMode>('hours');
   const [treeViewMode, setTreeViewMode] = React.useState<'financial' | 'operational'>('financial');
   const [showTreeHelp, setShowTreeHelp] = React.useState(false);
+  const realRecords = allData ?? data;
 
   const planningRecords = useMemo(() => getAllPlanningRecords().filter(p => !p.status || p.status === 'approved'), []);
   // Filtra budgets pelos monthKeys cobertos pelo perÃ­odo atual
@@ -922,7 +927,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
         onClose={() => setSelectedFuncModal(null)}
         functionName={selectedFuncModal || ''}
         employees={funcDetailData}
-        onNavigateToEmployee={onNavigateToEmployee ?? (() => { })}
+        onOpenComparison={(employeeName, chapa) => setComparisonModalData({ isOpen: true, employeeName, chapa })}
       />
 
       <CostCenterDetailModal
@@ -933,6 +938,19 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
         data={ccDetailData}
         viewMode={ccViewMode}
       />
+
+      {comparisonModalData && (
+        <EmployeeDailyComparisonModal
+          isOpen={comparisonModalData.isOpen}
+          onClose={() => setComparisonModalData(null)}
+          employeeName={comparisonModalData.employeeName}
+          chapa={comparisonModalData.chapa}
+          periodStart={periodStart}
+          periodEnd={periodEnd}
+          plannedRecords={planningRecords}
+          realRecords={realRecords}
+        />
+      )}
 
       {/* â”€â”€ 4 MEGA CARDS â”€â”€ */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">

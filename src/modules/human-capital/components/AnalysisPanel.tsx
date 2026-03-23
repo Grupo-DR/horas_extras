@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { OvertimeRecord } from '../types';
+import { OvertimeRecord, PlanningRecord } from '../types';
 import { RealOvertimeRecord } from '../data/realOvertime';
 import {
     AlertTriangle, Building2, Scale, Users, CheckCircle2,
@@ -7,6 +7,8 @@ import {
     MapPin, Briefcase, ShieldAlert, X, ChevronDown, Info
 } from 'lucide-react';
 import { getCCName, getCCRegional } from '../data/ccMaster';
+import EmployeeDailyComparisonModal from './EmployeeDailyComparisonModal';
+import { getAllPlanningRecords } from '../services/planning';
 import {
     ResponsiveContainer, ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid,
     Tooltip, Legend, Cell, LabelList, BarChart, ReferenceLine
@@ -14,45 +16,14 @@ import {
 
 interface AnalysisPanelProps {
     data: OvertimeRecord[];
+    allData?: OvertimeRecord[];
     selectedYear: string;
     realOvertime: RealOvertimeRecord[];
+    periodStart: Date;
+    periodEnd: Date;
 }
 
-export const formatDecimalToTime = (decimalHours: number): string => {
-    if (isNaN(decimalHours) || decimalHours === null) return "00:00";
-    const isNegative = decimalHours < 0;
-    const absHours = Math.abs(decimalHours);
-    const h = Math.floor(absHours);
-    const m = Math.round((absHours - h) * 60);
-    const finalH = h + Math.floor(m / 60);
-    const finalM = m % 60;
-    const sign = isNegative ? "-" : "";
-    return `${sign}${String(finalH).padStart(2, '0')}:${String(finalM).padStart(2, '0')}`;
-};
 
-export const getPayrollMonthKey = (dateString: string): string => {
-    if (!dateString) return '';
-    const dateObj = new Date(dateString);
-    if (isNaN(dateObj.getTime())) return '';
-
-    const year = dateObj.getFullYear();
-    const month = dateObj.getMonth(); // 0 to 11
-    const day = dateObj.getDate();
-
-    let payrollYear = year;
-    let payrollMonth = month;
-
-    if (day >= 21) {
-        payrollMonth += 1;
-        if (payrollMonth > 11) {
-            payrollMonth = 0;
-            payrollYear += 1;
-        }
-    }
-
-    // Retorna YYYY-MM numerado de 01 a 12
-    return `${payrollYear}-${String(payrollMonth + 1).padStart(2, '0')}-Payroll`;
-};
 
 // ────────────────────────────────────────────────────────────
 export const isExtraEvent = (evento?: string): boolean => {
@@ -701,11 +672,12 @@ const PressureHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 // ────────────────────────────────────────────────────────────
 // Sub-componente: Tabela Detalhada por Colaborador
 // ────────────────────────────────────────────────────────────
-const EmployeeTable: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
+const EmployeeTable: React.FC<{ data: OvertimeRecord[]; onEmployeeClick: (name: string, chapa: string) => void }> = ({ data, onEmployeeClick }) => {
     const [search, setSearch] = useState('');
 
     const employeeSummary = useMemo(() => {
         const map: Record<string, {
+            chapa: string;
             name: string;
             cc: string;
             he60: number;
@@ -721,6 +693,7 @@ const EmployeeTable: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
 
             if (!map[chapa]) {
                 map[chapa] = {
+                    chapa,
                     name: normalizeName(r.NOME),
                     cc: normalizeCC(r.CODCCUSTO),
                     he60: 0,
@@ -753,7 +726,7 @@ const EmployeeTable: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
             .filter(emp => {
                 if (!search) return true;
                 const s = search.toLowerCase();
-                return emp.name.toLowerCase().includes(s) || emp.cc.toLowerCase().includes(s);
+                return emp.name.toLowerCase().includes(s) || emp.cc.toLowerCase().includes(s) || emp.chapa.toLowerCase().includes(s);
             })
             .sort((a, b) => b.total - a.total);
     }, [data, search]);
@@ -792,7 +765,15 @@ const EmployeeTable: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
                     <tbody className="divide-y divide-slate-100">
                         {employeeSummary.map((emp, idx) => (
                             <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                                <td className="px-6 py-3 font-semibold text-slate-800 text-xs">{emp.name}</td>
+                                <td className="px-6 py-3">
+                                    <button
+                                        onClick={() => onEmployeeClick(emp.name, emp.chapa)}
+                                        className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center gap-1 text-xs"
+                                        title="Abrir raio-x diário do colaborador"
+                                    >
+                                        {emp.name}
+                                    </button>
+                                </td>
                                 <td className="px-6 py-3">
                                     <span className="font-mono text-[10px] text-slate-400">{emp.cc}</span>
                                 </td>
@@ -1148,11 +1129,12 @@ const ComplianceTable: React.FC<{ data: OvertimeRecord[]; onRowClick?: (cc: stri
 // ────────────────────────────────────────────────────────────
 // Sub-componente: Modal de Detalhamento Diário (Drill-down)
 // ────────────────────────────────────────────────────────────
-const DailyDrilldownModal: React.FC<{ date: string | null; data: OvertimeRecord[]; onClose: () => void }> = ({ date, data, onClose }) => {
+const DailyDrilldownModal: React.FC<{ date: string | null; data: OvertimeRecord[]; onClose: () => void; onEmployeeClick: (name: string, chapa: string) => void }> = ({ date, data, onClose, onEmployeeClick }) => {
     const { listData, totals } = useMemo(() => {
         if (!date) return { listData: [], totals: { he60: 0, he100: 0, inter: 0, noturnas: 0, total: 0 } };
 
         const map: Record<string, {
+            chapa: string;
             name: string;
             cc: string;
             he60: number;
@@ -1170,6 +1152,7 @@ const DailyDrilldownModal: React.FC<{ date: string | null; data: OvertimeRecord[
 
             if (!map[chapa]) {
                 map[chapa] = {
+                    chapa,
                     name: normalizeName(r.NOME),
                     cc: normalizeCC(r.CODCCUSTO),
                     he60: 0,
@@ -1255,7 +1238,15 @@ const DailyDrilldownModal: React.FC<{ date: string | null; data: OvertimeRecord[
                         <tbody className="divide-y divide-slate-100">
                             {listData.map((emp, idx) => (
                                 <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                                    <td className="px-6 py-3 font-semibold text-slate-800 text-xs">{emp.name}</td>
+                                    <td className="px-6 py-3">
+                                        <button
+                                            onClick={() => onEmployeeClick(emp.name, emp.chapa)}
+                                            className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center gap-1 text-xs"
+                                            title="Abrir raio-x diário do colaborador"
+                                        >
+                                            {emp.name}
+                                        </button>
+                                    </td>
                                     <td className="px-6 py-3">
                                         <span className="font-mono text-[10px] text-slate-400">{emp.cc}</span>
                                     </td>
@@ -1282,11 +1273,12 @@ const DailyDrilldownModal: React.FC<{ date: string | null; data: OvertimeRecord[
 // ────────────────────────────────────────────────────────────
 // Sub-componente: Modal Genérico de Colaboradores (Drill-down)
 // ────────────────────────────────────────────────────────────
-const EmployeeListDrilldownModal: React.FC<{ title: string; chapas: string[]; data: OvertimeRecord[]; onClose: () => void }> = ({ title, chapas, data, onClose }) => {
+const EmployeeListDrilldownModal: React.FC<{ title: string; chapas: string[]; data: OvertimeRecord[]; onClose: () => void; onEmployeeClick: (name: string, chapa: string) => void }> = ({ title, chapas, data, onClose, onEmployeeClick }) => {
     const { listData, totals } = useMemo(() => {
         if (!chapas || chapas.length === 0) return { listData: [], totals: { he60: 0, he100: 0, inter: 0, noturnas: 0, total: 0 } };
 
         const map: Record<string, {
+            chapa: string;
             name: string;
             cc: string;
             he60: number;
@@ -1302,6 +1294,7 @@ const EmployeeListDrilldownModal: React.FC<{ title: string; chapas: string[]; da
 
             if (!map[chapa]) {
                 map[chapa] = {
+                    chapa,
                     name: normalizeName(r.NOME),
                     cc: normalizeCC(r.CODCCUSTO),
                     he60: 0,
@@ -1385,7 +1378,15 @@ const EmployeeListDrilldownModal: React.FC<{ title: string; chapas: string[]; da
                         <tbody className="divide-y divide-slate-100">
                             {listData.map((emp, idx) => (
                                 <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                                    <td className="px-6 py-3 font-semibold text-slate-800 text-xs">{emp.name}</td>
+                                    <td className="px-6 py-3">
+                                        <button
+                                            onClick={() => onEmployeeClick(emp.name, emp.chapa)}
+                                            className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center gap-1 text-xs"
+                                            title="Abrir raio-x diário do colaborador"
+                                        >
+                                            {emp.name}
+                                        </button>
+                                    </td>
                                     <td className="px-6 py-3">
                                         <span className="font-mono text-[10px] text-slate-400">{emp.cc}</span>
                                     </td>
@@ -1412,7 +1413,7 @@ const EmployeeListDrilldownModal: React.FC<{ title: string; chapas: string[]; da
 // ────────────────────────────────────────────────────────────
 // Sub-componente: Modal Master-Detail de Compliance Trabalhista
 // ────────────────────────────────────────────────────────────
-const ComplianceDrilldownModal: React.FC<{ cc: string; ccName: string; data: OvertimeRecord[]; onClose: () => void }> = ({ cc, ccName, data, onClose }) => {
+const ComplianceDrilldownModal: React.FC<{ cc: string; ccName: string; data: OvertimeRecord[]; onClose: () => void; onEmployeeClick: (name: string, chapa: string) => void }> = ({ cc, ccName, data, onClose, onEmployeeClick }) => {
     const [expandedChapa, setExpandedChapa] = useState<string | null>(null);
 
     const { offenders, totals } = useMemo(() => {
@@ -1557,7 +1558,18 @@ const ComplianceDrilldownModal: React.FC<{ cc: string; ccName: string; data: Ove
                                         className={`transition-colors cursor-pointer ${expandedChapa === emp.chapa ? 'bg-indigo-50/50' : 'hover:bg-slate-50/80'}`}
                                         onClick={() => setExpandedChapa(expandedChapa === emp.chapa ? null : emp.chapa)}
                                     >
-                                        <td className="px-6 py-4 font-semibold text-slate-800 text-xs">{emp.name}</td>
+                                        <td className="px-6 py-4">
+                                            <button
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    onEmployeeClick(emp.name, emp.chapa);
+                                                }}
+                                                className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center gap-1 text-xs"
+                                                title="Abrir raio-x diário do colaborador"
+                                            >
+                                                {emp.name}
+                                            </button>
+                                        </td>
                                         <td className="px-6 py-4 text-center font-mono tracking-tight font-bold text-slate-900">{formatDecimalToTime(emp.total)}</td>
                                         <td className="px-6 py-4 text-center">
                                             {emp.dailyViolations.length > 0 ? (
@@ -1633,10 +1645,20 @@ const ComplianceDrilldownModal: React.FC<{ cc: string; ccName: string; data: Ove
 // ────────────────────────────────────────────────────────────
 // Componente principal
 // ────────────────────────────────────────────────────────────
-const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
+const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, allData, periodStart, periodEnd }) => {
     const [drilldownDate, setDrilldownDate] = useState<string | null>(null);
     const [listDrilldown, setListDrilldown] = useState<{ title: string; chapas: string[] } | null>(null);
     const [complianceDrilldown, setComplianceDrilldown] = useState<{ cc: string; ccName: string } | null>(null);
+    const [comparisonModalData, setComparisonModalData] = useState<{ isOpen: boolean; employeeName: string; chapa: string } | null>(null);
+    const realRecords = allData ?? data;
+    const planningRecords = useMemo<PlanningRecord[]>(
+        () => getAllPlanningRecords().filter(record => !record.status || record.status === 'approved'),
+        []
+    );
+
+    const handleEmployeeClick = (employeeName: string, chapa: string) => {
+        setComparisonModalData({ isOpen: true, employeeName, chapa });
+    };
 
     // Calculando métricas gerais para os top cards de anomalia e interjornada
     const metrics = useMemo(() => {
@@ -1699,10 +1721,15 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
             <PressureMap data={data} />
 
             {/* Tabela de Colaboradores */}
-            <EmployeeTable data={data} />
+            <EmployeeTable data={data} onEmployeeClick={handleEmployeeClick} />
 
             {/* Modal de Drill-down Diário */}
-            <DailyDrilldownModal date={drilldownDate} data={data} onClose={() => setDrilldownDate(null)} />
+            <DailyDrilldownModal
+                date={drilldownDate}
+                data={data}
+                onClose={() => setDrilldownDate(null)}
+                onEmployeeClick={handleEmployeeClick}
+            />
 
             {/* Modal Genérico de Drill-down */}
             {listDrilldown && (
@@ -1711,6 +1738,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
                     chapas={listDrilldown.chapas}
                     data={data}
                     onClose={() => setListDrilldown(null)}
+                    onEmployeeClick={handleEmployeeClick}
                 />
             )}
 
@@ -1721,6 +1749,19 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data }) => {
                     ccName={complianceDrilldown.ccName}
                     data={data}
                     onClose={() => setComplianceDrilldown(null)}
+                    onEmployeeClick={handleEmployeeClick}
+                />
+            )}
+            {comparisonModalData && (
+                <EmployeeDailyComparisonModal
+                    isOpen={comparisonModalData.isOpen}
+                    onClose={() => setComparisonModalData(null)}
+                    employeeName={comparisonModalData.employeeName}
+                    chapa={comparisonModalData.chapa}
+                    periodStart={periodStart}
+                    periodEnd={periodEnd}
+                    plannedRecords={planningRecords}
+                    realRecords={realRecords}
                 />
             )}
         </div>
