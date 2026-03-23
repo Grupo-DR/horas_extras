@@ -1,5 +1,5 @@
 
-import { PlanningRecord, BudgetRecord, SalaryAllocation, UserProfile } from '../types';
+import { PlanningRecord, BudgetRecord, SalaryAllocation, UserProfile, HeadcountRecord, HeadcountUploadMeta } from '../types';
 import * as FirestoreService from './firestoreCH';
 
 // Cache in-memory to avoid excessive reads during session if needed, 
@@ -324,5 +324,71 @@ export const getGlobalEmployeesAsync = async (): Promise<import('../types').Glob
         throw new Error("Offline");
     } catch (error) {
         return getGlobalEmployeesSync();
+    }
+};
+
+// --- HEADCOUNT ---
+
+const HC_CACHE_KEY = 'hc_headcount_v1';
+
+/** Leitura síncrona do cache local de headcount. */
+export const getHeadcountSync = (): HeadcountRecord[] => {
+    try {
+        const data = localStorage.getItem(HC_CACHE_KEY);
+        if (data) return (JSON.parse(data) || []) as HeadcountRecord[];
+    } catch (e) {
+        console.error('Error reading local headcount cache:', e);
+    }
+    return [];
+};
+
+/**
+ * Persiste registros de headcount no Firestore e atualiza o cache local.
+ * Segue o mesmo padrão de saveBudgets/saveSalaries.
+ */
+export const saveHeadcount = async (
+    records: HeadcountRecord[],
+    meta: HeadcountUploadMeta,
+    user: UserProfile
+): Promise<void> => {
+    try {
+        if (isOnline()) {
+            await FirestoreService.upsertHeadcountRecords(records, meta, user);
+        } else {
+            console.warn('Offline: headcount salvo somente no cache local.');
+        }
+        // Cache local: merge por uploadId para evitar duplicatas
+        const current = getHeadcountSync() as Array<HeadcountRecord & { _uploadId?: string }>;
+        const merged = current.filter(r => r._uploadId !== meta.uploadId);
+        const tagged = records.map(r => ({ ...r, _uploadId: meta.uploadId }));
+        localStorage.setItem(HC_CACHE_KEY, JSON.stringify([...merged, ...tagged]));
+    } catch (e) {
+        console.error('Save Headcount Failed:', e);
+        // Fallback ao cache local
+        const current = getHeadcountSync() as Array<HeadcountRecord & { _uploadId?: string }>;
+        const merged = current.filter(r => r._uploadId !== meta.uploadId);
+        const tagged = records.map(r => ({ ...r, _uploadId: meta.uploadId }));
+        localStorage.setItem(HC_CACHE_KEY, JSON.stringify([...merged, ...tagged]));
+        throw e;
+    }
+};
+
+/**
+ * Busca registros de headcount do Firestore com fallback ao cache local.
+ * Se dateRef for fornecido, retorna apenas os vigentes naquela data.
+ */
+export const getHeadcount = async (dateRef?: string): Promise<HeadcountRecord[]> => {
+    try {
+        if (isOnline()) {
+            const rows = await FirestoreService.getHeadcountRecords(dateRef);
+            localStorage.setItem(HC_CACHE_KEY, JSON.stringify(rows));
+            return rows;
+        }
+        throw new Error('Offline');
+    } catch (error) {
+        console.warn('Headcount: usando cache local', error);
+        const all = getHeadcountSync();
+        if (!dateRef) return all;
+        return all.filter(r => r.dataInicio <= dateRef && r.dataFim >= dateRef);
     }
 };

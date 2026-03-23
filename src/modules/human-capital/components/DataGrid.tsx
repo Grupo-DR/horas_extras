@@ -1,40 +1,61 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { OvertimeRecord } from '../types';
-import { ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, Search, Filter } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, Search, Filter, ToggleLeft, ToggleRight, Eye } from 'lucide-react';
 import { formatDecimalHours } from '../utils/formatters';
 
 interface DataGridProps {
+    /** Base ajustada (rateada pelo headcount) — exibida por padrão */
     data: OvertimeRecord[];
+    /**
+     * Base bruta original (TOTVS sem rateio) — quando fornecida,
+     * ativa o toggle de auditoria no cabeçalho da tabela.
+     */
+    rawData?: OvertimeRecord[];
 }
 
-const DataGrid: React.FC<DataGridProps> = ({ data }) => {
+const DataGrid: React.FC<DataGridProps> = ({ data, rawData }) => {
     const [currentPage, setCurrentPage] = useState(1);
     const [nameFilter, setNameFilter] = useState('');
     const [eventFilter, setEventFilter] = useState('');
+    /** true = exibindo dado ajustado; false = exibindo dado bruto */
+    const [showAdjusted, setShowAdjusted] = useState(true);
     const itemsPerPage = 10;
+
+    const hasRawToggle = Boolean(rawData && rawData.length > 0 && rawData !== data);
+
+    /** Conjunto ativo: ajustado ou bruto */
+    const activeData = useMemo(() => {
+        if (!hasRawToggle || showAdjusted) return data;
+        return rawData!;
+    }, [data, rawData, showAdjusted, hasRawToggle]);
 
     // Computed filtered data
     const filteredData = useMemo(() => {
-        return data.filter(record => {
+        return activeData.filter(record => {
             const matchesName = record.NOME.toLowerCase().includes(nameFilter.toLowerCase()) ||
                 record.CHAPA.includes(nameFilter);
             const matchesEvent = eventFilter === '' || record.EVENTO === eventFilter;
             return matchesName && matchesEvent;
         });
-    }, [data, nameFilter, eventFilter]);
+    }, [activeData, nameFilter, eventFilter]);
 
     // Unique event types for the dropdown
     const uniqueEvents = useMemo(() => {
         const events = new Set<string>();
-        data.forEach(r => events.add(r.EVENTO));
+        activeData.forEach(r => events.add(r.EVENTO));
         return Array.from(events).sort();
-    }, [data]);
+    }, [activeData]);
 
     // Reset pagination when data or filters change
     useEffect(() => {
         setCurrentPage(1);
     }, [filteredData.length]);
+
+    // Reset to adjusted view when headcount is removed
+    useEffect(() => {
+        if (!hasRawToggle) setShowAdjusted(true);
+    }, [hasRawToggle]);
 
     const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage));
     const paginatedData = filteredData.slice(
@@ -55,41 +76,81 @@ const DataGrid: React.FC<DataGridProps> = ({ data }) => {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col">
             {/* Filtros Internos do Grid */}
             <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row gap-4 justify-between items-center rounded-t-2xl">
-                <div className="relative w-full sm:w-72">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-                    <input
-                        type="text"
-                        placeholder="Buscar por nome ou chapa..."
-                        className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                        value={nameFilter}
-                        onChange={(e) => setNameFilter(e.target.value)}
-                    />
+                <div className="flex items-center gap-3 flex-1">
+                    <div className="relative w-full sm:w-72">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                        <input
+                            type="text"
+                            placeholder="Buscar por nome ou chapa..."
+                            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            value={nameFilter}
+                            onChange={(e) => setNameFilter(e.target.value)}
+                        />
+                    </div>
+                    <div className="relative w-full sm:w-64">
+                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                        <select
+                            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white cursor-pointer"
+                            value={eventFilter}
+                            onChange={(e) => setEventFilter(e.target.value)}
+                        >
+                            <option value="">Todos os Eventos</option>
+                            {uniqueEvents.map(evt => (
+                                <option key={evt} value={evt}>{evt}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
-                <div className="relative w-full sm:w-64">
-                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-                    <select
-                        className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white cursor-pointer"
-                        value={eventFilter}
-                        onChange={(e) => setEventFilter(e.target.value)}
-                    >
-                        <option value="">Todos os Eventos</option>
-                        {uniqueEvents.map(evt => (
-                            <option key={evt} value={evt}>{evt}</option>
-                        ))}
-                    </select>
-                </div>
+
+                {/* Toggle de auditoria — visível apenas quando headcount está ativo */}
+                {hasRawToggle && (
+                    <div className="flex items-center gap-2 shrink-0 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
+                        <Eye size={13} className="text-slate-400 shrink-0" />
+                        <span className="text-xs font-medium text-slate-500">Base:</span>
+                        <button
+                            onClick={() => setShowAdjusted(a => !a)}
+                            className={`flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded-lg transition-all ${
+                                showAdjusted
+                                    ? 'bg-emerald-100 text-emerald-700'
+                                    : 'bg-amber-100 text-amber-700'
+                            }`}
+                            title={showAdjusted ? 'Mostrando base ajustada pelo headcount. Clique para ver o bruto.' : 'Mostrando base bruta da TOTVS. Clique para ver o ajustado.'}
+                        >
+                            {showAdjusted ? (
+                                <><ToggleRight size={13} /> Ajustado</>
+                            ) : (
+                                <><ToggleLeft size={13} /> Bruto TOTVS</>
+                            )}
+                        </button>
+                    </div>
+                )}
             </div>
 
+            {/* Banner de contexto quando em modo bruto */}
+            {hasRawToggle && !showAdjusted && (
+                <div className="px-6 py-2.5 bg-amber-50 border-b border-amber-200 text-xs text-amber-700 flex items-center gap-2">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    <span><strong>Modo auditoria:</strong> exibindo dado bruto da TOTVS — horas podem estar duplicadas por CC. Alterne para "Ajustado" para ver a base correta.</span>
+                </div>
+            )}
+
             <div className="overflow-x-auto">
-
-
                 <table className="w-full text-left text-sm text-gray-600">
                     <thead className="bg-gray-50 text-gray-500 font-bold uppercase text-[10px] tracking-wider border-b border-gray-100">
                         <tr>
                             <th className="px-6 py-4">Chapa</th>
                             <th className="px-6 py-4">Nome</th>
                             <th className="px-6 py-4">Função</th>
-                            <th className="px-6 py-4">CC</th>
+                            <th className="px-6 py-4">
+                                CC
+                                {hasRawToggle && (
+                                    <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[8px] font-bold ${showAdjusted ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
+                                        {showAdjusted ? 'HC' : 'TOTVS'}
+                                    </span>
+                                )}
+                            </th>
                             <th className="px-6 py-4">Evento</th>
                             <th className="px-6 py-4">Data</th>
                             <th className="px-6 py-4 text-right">Horas</th>

@@ -98,3 +98,70 @@ export interface GlobalEmployee {
     costCenter: string;
     updatedAt?: string | number | any; // To allow for Firebase Timestamps
 }
+
+// ─── Headcount Upload ────────────────────────────────────────────────────────
+
+/**
+ * Uma linha normalizada do Excel de headcount.
+ * Representa a alocação de um colaborador em um CC por um período de vigência.
+ */
+export interface HeadcountRecord {
+    /** YYYY-MM-DD */
+    dataInicio: string;
+    /** YYYY-MM-DD */
+    dataFim: string;
+    chapa: string;
+    centroCusto: string;
+    /** Percentual de alocação: 0 < distribuicao ≤ 1 */
+    distribuicao: number;
+}
+
+/**
+ * Categoria do erro para facilitar filtragem na UI.
+ * - 'structural': erros de formato/campo da planilha
+ * - 'business': violações de regra de negócio (soma ≠ 1 por chapa+dia)
+ */
+export type HeadcountErrorKind = 'structural' | 'business';
+
+/** Um erro encontrado durante o parse ou validação do headcount. */
+export interface HeadcountValidationError {
+    kind: HeadcountErrorKind;
+    /** Número da linha no Excel (1-based, incluindo cabeçalho), ou undefined para erros globais */
+    row?: number;
+    /** Chapa envolvida, quando aplicável */
+    chapa?: string;
+    /** Data envolvida (YYYY-MM-DD), quando aplicável */
+    date?: string;
+    message: string;
+}
+
+/** Status possíveis durante o fluxo de upload */
+export type HeadcountUploadStatus = 'idle' | 'parsing' | 'validating' | 'ready' | 'saving' | 'saved' | 'error';
+
+/** Metadados rastreáveis de um upload confirmado */
+export interface HeadcountUploadMeta {
+    uploadId: string;     // UUID gerado no momento do upload
+    uploadedAt: string;   // ISO 8601
+    uploadedBy: string;   // email do usuário
+    recordCount: number;  // número de registros salvos com sucesso
+}
+
+/** Resultado agregado da pipeline parse → normalizar → validar */
+export interface HeadcountUploadResult {
+    /** Registros que passaram em todas as validações estruturais */
+    validRecords: HeadcountRecord[];
+    /** Registros que falharam em validação estrutural (mantidos para exibição de erros) */
+    invalidRecords: HeadcountRecord[];
+    structuralErrors: HeadcountValidationError[];
+    businessErrors: HeadcountValidationError[];
+    /** Total de linhas de dados lidas do Excel (excluindo cabeçalho) */
+    totalRows: number;
+    /** Data mais antiga de data_inicio entre os registros válidos */
+    periodStart?: string;
+    /** Data mais recente de data_fim entre os registros válidos */
+    periodEnd?: string;
+    /** Chapas únicas com pelo menos um registro válido */
+    uniqueChapas: number;
+    /** true se não há nenhum erro de negócio (pode haver linhas estruturalmente inválidas) */
+    isBusinessValid: boolean;
+}

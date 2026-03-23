@@ -8,6 +8,8 @@ import AnalysisPanel from '@/src/modules/human-capital/components/AnalysisPanel'
 import FilterBar, { FilterState } from '@/src/modules/human-capital/components/FilterBar';
 import ProfileManager from '@/src/modules/iam/components/ProfileManager';
 import Planning from '@/src/modules/human-capital/components/Planning';
+import HeadcountUpload from '@/src/modules/human-capital/components/HeadcountUpload';
+import HeadcountGovernance from '@/src/modules/human-capital/components/HeadcountGovernance';
 import { canManageProfiles, canPlan } from '../iam/types';
 import { formatDateForApi } from '@/src/modules/human-capital/utils/formatters';
 import { LayoutDashboard, Table, Settings, CheckCircle2, AlertTriangle, Sparkles, CalendarRange, UserCog, Lock, BarChart3 } from 'lucide-react';
@@ -18,7 +20,8 @@ import { realOvertimeData, RealOvertimeRecord } from '@/src/modules/human-capita
 import { getManualEmployees, upsertManualEmployee } from '@/src/modules/human-capital/services/firestoreCH';
 import { CreateEmployeeModal } from '@/src/modules/human-capital/components/CreateEmployeeModal';
 import { getCCRegional } from '@/src/modules/human-capital/data/ccMaster';
-import { saveGlobalEmployees, getGlobalEmployeesSync } from '@/src/modules/human-capital/services/planning';
+import { saveGlobalEmployees, getGlobalEmployeesSync, getHeadcountSync } from '@/src/modules/human-capital/services/planning';
+import { gerarOvertimeRateado } from '@/src/modules/human-capital/utils/headcountRateio';
 
 // Configuração padrão da API TOTVS
 const DEFAULT_CONFIG: ApiConfig = {
@@ -243,13 +246,29 @@ const HumanCapitalDashboard: React.FC = () => {
     });
   }, [effectiveUser]);
 
+  /**
+   * Headcount do cache local (sincronizado apos cada upload confirmado).
+   */
+  const headcountRecords = useMemo(() => getHeadcountSync(), [data]);
+
+  /**
+   * Base rateada: aplica o motor de headcount sobre o dado bruto TOTVS.
+   *  - Chapas COM headcount vigente: CC = headcount, HORAS = horas x distribuicao
+   *  - Chapas SEM headcount: mantidas como bruto (CC = TOTVS original, auditavel)
+   *  - Sem headcount importado: retorna `data` inalterado (fallback transparente)
+   */
+  const ratedData = useMemo(
+    () => gerarOvertimeRateado(data, headcountRecords),
+    [data, headcountRecords]
+  );
+
   const scopedData = useMemo(() => {
     if (!effectiveUser) return [];
-    if (!data) return [];
+    if (!ratedData) return [];
     const scope = effectiveUser.scope;
-    if (!scope || scope.type === 'ALL') return data;
+    if (!scope || scope.type === 'ALL') return ratedData;
 
-    return data.filter(item => {
+    return ratedData.filter(item => {
       const cc = item.CODCCUSTO || '';
       const regional = getRegional(cc);
       const normalizedCC = cc.replace(/\./g, '');
@@ -257,7 +276,7 @@ const HumanCapitalDashboard: React.FC = () => {
       if (scope.type === 'COST_CENTER') return scope.costCenters.includes(normalizedCC);
       return false;
     });
-  }, [data, effectiveUser]);
+  }, [ratedData, effectiveUser]);
 
   const filterOptions = useMemo(() => {
     const functions = new Set<string>();
@@ -362,9 +381,19 @@ const HumanCapitalDashboard: React.FC = () => {
               {activeTab === Tab.SETTINGS && 'Configuração do Sistema'}
             </h2>
           </div>
-          <div className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide flex items-center space-x-1.5 shadow-sm ${status === 'success' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}`}>
-            {status === 'success' ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
-            <span>{status === 'success' ? 'Conectado TOTVS' : 'Modo Simulação'}</span>
+          <div className="flex items-center gap-3">
+            {/* Badge status TOTVS */}
+            <div className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide flex items-center space-x-1.5 shadow-sm ${status === 'success' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}`}>
+              {status === 'success' ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
+              <span>{status === 'success' ? 'Conectado TOTVS' : 'Modo Simulação'}</span>
+            </div>
+            {/* Badge status Headcount */}
+            <div className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide flex items-center space-x-1.5 shadow-sm ${headcountRecords.length > 0 ? 'bg-teal-100 text-teal-700 border border-teal-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
+              {headcountRecords.length > 0
+                ? <><CheckCircle2 size={14} /><span>HC Ativo · {headcountRecords.length} reg.</span></>
+                : <><AlertTriangle size={14} /><span>Sem Headcount</span></>
+              }
+            </div>
           </div>
         </header>
 
@@ -416,7 +445,7 @@ const HumanCapitalDashboard: React.FC = () => {
                 />
               );
             })()}
-            {activeTab === Tab.DATA && <DataGrid data={filteredData} />}
+            {activeTab === Tab.DATA && <DataGrid data={filteredData} rawData={headcountRecords.length > 0 ? data : undefined} />}
             {activeTab === Tab.ANALYSIS && (
               <AnalysisPanel
                 data={filteredData}
@@ -430,9 +459,31 @@ const HumanCapitalDashboard: React.FC = () => {
             {activeTab === Tab.PLANNING && (effectiveUser.isSuperAdmin || canPlan(effectiveUser.role)) && <Planning user={effectiveUser} employees={scopedData} manualEmployees={manualEmployees} />}
             {activeTab === Tab.PROFILES && canManageProfiles(profile) && <ProfileManager />}
             {activeTab === Tab.SETTINGS && (
-              <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center text-gray-500">
-                <Settings className="mx-auto mb-4 text-gray-300" size={48} />
-                <p>Configurações de conexão são gerenciadas centralmente pelo Admin.</p>
+              <div className="space-y-6">
+                {/* Governança do headcount ativo */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                  <h3 className="text-base font-semibold text-slate-800 mb-1">Status do Headcount</h3>
+                  <p className="text-sm text-slate-500 mb-5">
+                    Rastreabilidade do headcount ativo e diagnóstico de conservação de horas.
+                  </p>
+                  <HeadcountGovernance
+                    headcountRecords={headcountRecords}
+                    rawData={data}
+                    onClear={() => {
+                      try { localStorage.removeItem('hc_headcount_cache'); } catch (_) {}
+                      window.location.reload();
+                    }}
+                    onRefresh={() => window.location.reload()}
+                  />
+                </div>
+                {/* Upload / atualização */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                  <h3 className="text-base font-semibold text-slate-800 mb-1">Headcount por Centro de Custo</h3>
+                  <p className="text-sm text-slate-500 mb-5">
+                    Importe a tabela de distribuição de colaboradores por CC para corrigir o rateio de horas reais.
+                  </p>
+                  <HeadcountUpload user={effectiveUser} />
+                </div>
               </div>
             )}
 

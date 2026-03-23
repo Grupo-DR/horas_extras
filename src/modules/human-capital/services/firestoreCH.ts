@@ -1,13 +1,14 @@
 
 import { db } from '@/services/firebaseConfig';
 import { collection, doc, writeBatch, query, where, getDocs, addDoc, Timestamp, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
-import { BudgetRecord, SalaryAllocation, PlanningRecord, UserProfile, ManualEmployee } from '../types';
+import { BudgetRecord, SalaryAllocation, PlanningRecord, UserProfile, ManualEmployee, HeadcountRecord, HeadcountUploadMeta } from '../types';
 import { Scope } from '../../iam/types';
 
 const COL_BUDGETS = 'hc_budgets';
 const COL_SALARIES = 'hc_salary_allocations';
 const COL_PLANNING = 'hc_planning_records';
 const COL_AUDIT = 'hc_audit_logs';
+const COL_HEADCOUNT = 'hc_headcount';
 
 interface LegacyWorkTeam {
     id: string;
@@ -322,4 +323,64 @@ export const getGlobalEmployees = async () => {
     const q = query(collection(db, COL_GLOBAL_EMPLOYEES));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(d => d.data() as import('../types').GlobalEmployee);
+};
+
+// --- HEADCOUNT ---
+
+/**
+ * Salva (upsert) registros de headcount no Firestore.
+ * ID composto: hc_{uploadId}_{chapa}_{centroCusto}_{dataInicio}
+ */
+export const upsertHeadcountRecords = async (
+    records: HeadcountRecord[],
+    meta: HeadcountUploadMeta,
+    user: UserProfile
+): Promise<void> => {
+    const CHUNK = 400;
+    for (let i = 0; i < records.length; i += CHUNK) {
+        const batch = writeBatch(db);
+        records.slice(i, i + CHUNK).forEach(r => {
+            const id = `hc_${meta.uploadId}_${r.chapa}_${r.centroCusto}_${r.dataInicio}`;
+            const ref = doc(db, COL_HEADCOUNT, id);
+            batch.set(ref, {
+                ...r,
+                uploadId: meta.uploadId,
+                uploadedAt: meta.uploadedAt,
+                updatedAt: Timestamp.now(),
+                updatedBy: user.email,
+            }, { merge: true });
+        });
+        await batch.commit();
+    }
+    await writeAudit('HEADCOUNT_UPLOAD', {
+        uploadId: meta.uploadId,
+        recordCount: meta.recordCount,
+        uploadedAt: meta.uploadedAt,
+    }, user);
+};
+
+/**
+ * Retorna todos os registros de headcount.
+ * Se dateRef for fornecido, filtra pelos registros vigentes naquela data.
+ */
+export const getHeadcountRecords = async (dateRef?: string): Promise<HeadcountRecord[]> => {
+    const q = query(collection(db, COL_HEADCOUNT));
+    const snapshot = await getDocs(q);
+    const all = snapshot.docs.map(d => d.data() as HeadcountRecord & { uploadId?: string });
+    if (!dateRef) return all;
+    return all.filter(r => r.dataInicio <= dateRef && r.dataFim >= dateRef);
+};
+
+/**
+ * Remove todos os registros de headcount de um uploadId específico.
+ */
+export const deleteHeadcountByUploadId = async (uploadId: string): Promise<void> => {
+    const q = query(collection(db, COL_HEADCOUNT), where('uploadId', '==', uploadId));
+    const snapshot = await getDocs(q);
+    const CHUNK = 400;
+    for (let i = 0; i < snapshot.docs.length; i += CHUNK) {
+        const batch = writeBatch(db);
+        snapshot.docs.slice(i, i + CHUNK).forEach(d => batch.delete(d.ref));
+        await batch.commit();
+    }
 };
