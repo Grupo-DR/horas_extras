@@ -27,7 +27,7 @@ export type RequiredColumn = typeof REQUIRED_COLUMNS[number];
 
 /**
  * Linha bruta vinda do xlsx antes de qualquer validação ou transformação.
- * Os valores são string | number | undefined porque o xlsx pode retornar qualquer um desses.
+ * Os valores são string | number | Date | undefined porque o xlsx pode retornar qualquer um desses.
  */
 export interface RawHeadcountRow {
     rowIndex: number; // 1-based, excluindo cabeçalho (ex.: linha 2 do Excel = rowIndex 1)
@@ -51,26 +51,64 @@ export interface ParsedExcelResult {
 // ─── Helpers de data ─────────────────────────────────────────────────────────
 
 /**
- * Converte a representação de data do xlsx para 'YYYY-MM-DD'.
- * O xlsx pode retornar:
- *  - number serial do Excel (ex.: 45000)
- *  - string no formato 'DD/MM/YYYY', 'YYYY-MM-DD', 'M/D/YYYY', etc.
+ * Converte serial numérico do Excel para Date usando a época padrão 1900.
+ *
+ * O Excel usa 30/Dez/1899 como dia zero (com o bug do dia 29/Fev/1900 já
+ * embutido na biblioteca xlsx). Usando aritmética direta evitamos dependência
+ * de XLSX.SSF.parse_date_code, que pode ter comportamento inconsistente.
+ *
+ * @param serial  Número inteiro do serial Excel (ex.: 46077 → 2026-02-12)
+ */
+const excelSerialToDate = (serial: number): Date => {
+    // Epoch Excel: 30/Dez/1899, UTC para evitar problemas de DST
+    const MS_PER_DAY = 86400000;
+    const EXCEL_EPOCH_MS = Date.UTC(1899, 11, 30); // 30 Dec 1899
+    return new Date(EXCEL_EPOCH_MS + serial * MS_PER_DAY);
+};
+
+/**
+ * Extrai ano/mês/dia de um objeto Date sem depender do timezone local.
+ * Usa UTC para evitar que datas viradas à meia-noite UTC apareçam no dia errado.
+ */
+const dateToYMD = (d: Date): string => {
+    const y = String(d.getUTCFullYear()).padStart(4, '0');
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+};
+
+/**
+ * Converte qualquer representação de data vinda do Excel para 'YYYY-MM-DD'.
+ *
+ * Aceita (em ordem de prioridade):
+ *  1. `Date`   — já convertido pelo xlsx com cellDates:true (caminho preferencial)
+ *  2. `number` — serial numérico do Excel (fallback quando cellDates:false)
+ *  3. `string` — 'YYYY-MM-DD', 'DD/MM/YYYY', 'M/D/YYYY', ou qualquer formato
+ *                  parseável pelo Date nativo
+ *
+ * Retorna `null` se o valor não for convertível.
  */
 export const normalizeExcelDate = (raw: unknown): string | null => {
     if (raw === null || raw === undefined || raw === '') return null;
 
-    // Número serial do Excel
-    if (typeof raw === 'number') {
-        // XLSX.SSF.parse_date_code devolve { y, m, d, H, M, S }
-        const dateJs = XLSX.SSF.parse_date_code(raw);
-        if (!dateJs) return null;
-        const y = String(dateJs.y).padStart(4, '0');
-        const m = String(dateJs.m).padStart(2, '0');
-        const d = String(dateJs.d).padStart(2, '0');
-        return `${y}-${m}-${d}`;
+    // ── Caso 1: Date (gerado pelo xlsx com cellDates: true) ──────────────────
+    if (raw instanceof Date) {
+        if (isNaN(raw.getTime())) return null;
+        return dateToYMD(raw);
     }
 
+    // ── Caso 2: número (serial do Excel) ─────────────────────────────────────
+    if (typeof raw === 'number') {
+        // Guarda contra seriais absurdos (< 1 ou > 2958465 = 31/Dez/9999)
+        if (raw < 1 || raw > 2958465) return null;
+        const d = excelSerialToDate(raw);
+        if (isNaN(d.getTime())) return null;
+        return dateToYMD(d);
+    }
+
+    // ── Caso 3: string ────────────────────────────────────────────────────────
     const s = String(raw).trim();
+    if (!s) return null;
 
     // Já está em YYYY-MM-DD
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
@@ -89,24 +127,25 @@ export const normalizeExcelDate = (raw: unknown): string | null => {
         return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
     }
 
-    // Tenta Date nativo como último recurso
-    const d = new Date(s);
-    if (!isNaN(d.getTime())) {
-        const y = String(d.getFullYear()).padStart(4, '0');
-        const mo = String(d.getMonth() + 1).padStart(2, '0');
-        const dd = String(d.getDate()).padStart(2, '0');
-        return `${y}-${mo}-${dd}`;
+    // Último recurso: Date nativo (ISO 8601 completo, RFC 2822, etc.)
+    const parsed = new Date(s);
+    if (!isNaN(parsed.getTime())) {
+        return dateToYMD(parsed);
     }
 
     return null;
 };
 
-/** Valida se uma string 'YYYY-MM-DD' representa uma data real e plausível (> 2000) */
+/**
+ * Valida se uma string 'YYYY-MM-DD' representa uma data real e plausível.
+ * Ano permitido: 2000 – 2150 (inclui datas de fim de contrato de longo prazo).
+ */
 export const isValidDateString = (s: string | null): s is string => {
     if (!s) return false;
     const [y, m, d] = s.split('-').map(Number);
     if (!y || !m || !d) return false;
-    if (y < 2000 || y > 2100) return false;
+    // Janela ampliada para 2000–2150 para acomodar contratos de vigência longa
+    if (y < 2000 || y > 2150) return false;
     if (m < 1 || m > 12) return false;
     if (d < 1 || d > 31) return false;
     const dt = new Date(y, m - 1, d);
@@ -128,11 +167,16 @@ const normalizeHeader = (h: string): string =>
  * Lê um arquivo Excel (.xlsx / .xls / .csv aceitos pela lib xlsx)
  * e retorna os dados brutos com mapa de colunas encontradas.
  *
+ * Usa `cellDates: true` para que o xlsx converta células do tipo data
+ * diretamente em objetos JS `Date`, evitando ambiguidade de seriais numéricos.
+ *
  * NÃO valida – apenas estrutura os dados para a camada de validação.
  */
 export const parseHeadcountXlsx = async (file: File): Promise<ParsedExcelResult> => {
     const buffer = await file.arrayBuffer();
-    const workbook = XLSX.read(buffer, { type: 'array', cellDates: false });
+    // cellDates: true → datas do Excel são convertidas para JS Date automaticamente
+    // raw: false      → strings são pré-processadas (trimmed, coerção de tipo)
+    const workbook = XLSX.read(buffer, { type: 'array', cellDates: true, raw: false });
 
     // Usa a primeira aba
     const sheetName = workbook.SheetNames[0];
