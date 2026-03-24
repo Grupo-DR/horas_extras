@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+﻿import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { OvertimeRecord, UserProfile, PlanningRecord, SalaryAllocation, BudgetRecord, ManualEmployee, GlobalEmployee } from '../types';
 import { savePlanning, getPlanning, saveSalaries, getSalariesSync, saveBudgets, getBudgetsSync, getAllBudgetsAsync, deleteBudgets, deleteAllBudgets, saveGlobalEmployees, getGlobalEmployeesAsync, getGlobalEmployeesSync } from '../services/planning';
 import { canApprove } from '../../iam/types';
@@ -646,7 +646,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
             records.forEach(r => {
                 const key = `${r.chapa}_${r.date}`;
                 planMap[key] = r.plannedHours;
-                statusMap[key] = r.status || 'approved'; // Retrocompatibilidade global
+                statusMap[key] = r.status || 'draft'; // Sem status = rascunho (editavel)
             });
             setPlans(planMap);
             setPlanStatuses(statusMap);
