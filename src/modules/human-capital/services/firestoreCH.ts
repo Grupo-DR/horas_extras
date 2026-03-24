@@ -384,3 +384,66 @@ export const deleteHeadcountByUploadId = async (uploadId: string): Promise<void>
         await batch.commit();
     }
 };
+
+/**
+ * [REPLACE MODE - ETAPA A]
+ * Remove TODOS os registros de headcount da colecao hc_headcount, sem filtro por uploadId.
+ * Garante que nenhum headcount residual de uploads anteriores permaneca ativo.
+ */
+export const clearAllHeadcountRecords = async (): Promise<void> => {
+    const snapshot = await getDocs(collection(db, COL_HEADCOUNT));
+    if (snapshot.empty) return;
+    const CHUNK = 400;
+    for (let i = 0; i < snapshot.docs.length; i += CHUNK) {
+        const batch = writeBatch(db);
+        snapshot.docs.slice(i, i + CHUNK).forEach(d => batch.delete(d.ref));
+        await batch.commit();
+    }
+};
+
+/**
+ * [REPLACE MODE - OPERACAO PRINCIPAL]
+ * Substitui COMPLETAMENTE o headcount no Firestore.
+ *
+ * Etapa A - Remove todos os registros existentes (clearAllHeadcountRecords).
+ * Etapa B - Insere os novos registros em batch sem merge (escrita limpa).
+ * Etapa C - Grava log de auditoria com action 'HEADCOUNT_REPLACE'.
+ *
+ * IDs de documento nao incluem uploadId para evitar acumulo entre uploads.
+ * Nunca ha dois conjuntos de headcount coexistentes apos esta operacao.
+ */
+export const replaceHeadcountRecords = async (
+    records: HeadcountRecord[],
+    meta: HeadcountUploadMeta,
+    user: UserProfile
+): Promise<void> => {
+    // Etapa A: remocao total
+    await clearAllHeadcountRecords();
+
+    // Etapa B: insercao do novo lote sem merge
+    const CHUNK = 400;
+    for (let i = 0; i < records.length; i += CHUNK) {
+        const batch = writeBatch(db);
+        records.slice(i, i + CHUNK).forEach(r => {
+            // ID deterministico sem prefixo de uploadId para evitar acumulo
+            const id = `hc_${r.chapa}_${r.centroCusto}_${r.dataInicio}`;
+            const ref = doc(db, COL_HEADCOUNT, id);
+            batch.set(ref, {
+                ...r,
+                uploadId: meta.uploadId,
+                uploadedAt: meta.uploadedAt,
+                updatedAt: Timestamp.now(),
+                updatedBy: user.email,
+            });
+        });
+        await batch.commit();
+    }
+
+    // Etapa C: auditoria
+    await writeAudit('HEADCOUNT_REPLACE', {
+        uploadId: meta.uploadId,
+        recordCount: meta.recordCount,
+        uploadedAt: meta.uploadedAt,
+        replacedAt: new Date().toISOString(),
+    }, user);
+};

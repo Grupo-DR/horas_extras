@@ -392,3 +392,29 @@ export const getHeadcount = async (dateRef?: string): Promise<HeadcountRecord[]>
         return all.filter(r => r.dataInicio <= dateRef && r.dataFim >= dateRef);
     }
 };
+
+// --- HEADCOUNT (REPLACE MODE) ---
+
+/**
+ * Substitui COMPLETAMENTE o headcount no Firestore e no cache local.
+ *
+ * Firestore: chama replaceHeadcountRecords (delete-all -> insert-new -> audit).
+ * Cache local: sobrescreve completamente o localStorage sem merge.
+ *
+ * Use esta funcao em vez de saveHeadcount para todos os fluxos de upload confirmado.
+ */
+export const replaceHeadcount = async (
+    records: HeadcountRecord[],
+    meta: HeadcountUploadMeta,
+    user: UserProfile
+): Promise<void> => {
+    if (isOnline()) {
+        await FirestoreService.replaceHeadcountRecords(records, meta, user);
+    } else {
+        console.warn('Offline: headcount substituido somente no cache local.');
+    }
+
+    // Substituicao completa do cache local (sem merge)
+    const tagged = records.map(r => ({ ...r, _uploadId: meta.uploadId }));
+    localStorage.setItem(HC_CACHE_KEY, JSON.stringify(tagged));
+};
