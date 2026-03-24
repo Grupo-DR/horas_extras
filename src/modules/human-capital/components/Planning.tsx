@@ -437,7 +437,7 @@ const CostCenterPlanModal: React.FC<{
                                                 const isSun = day.getDay() === 0;
                                                 const isSat = day.getDay() === 6;
                                                 const hasValue = parseTimeToDecimal(strVal) > 0;
-                                                const recordStatus = planStatuses[`${chapa}_${costCenter}_${dk}`] || 'approved';
+                                                const recordStatus = planStatuses[`${chapa}_${costCenter}_${dk}`] || 'draft';
                                                 const hasRange = !!planRangeStart && !!planRangeEnd;
                                                 const isOutsideRange = hasRange && (dk < planRangeStart || dk > planRangeEnd);
                                                 const isLocked = (!canOverrideLock && (recordStatus === 'approved' || recordStatus === 'pending')) || isOutsideRange;
