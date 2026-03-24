@@ -456,7 +456,7 @@ const HumanCapitalDashboard: React.FC = () => {
                 periodEnd={comparisonPeriod.periodEnd}
               />
             )}
-            {activeTab === Tab.PLANNING && (effectiveUser.isSuperAdmin || canPlan(effectiveUser.role)) && <Planning user={effectiveUser} employees={scopedData} manualEmployees={manualEmployees} />}
+            {activeTab === Tab.PLANNING && (effectiveUser.isSuperAdmin || canPlan(effectiveUser.role)) && <Planning user={effectiveUser} employees={scopedData} manualEmployees={manualEmployees} headcountRecords={headcountRecords} />}
             {activeTab === Tab.PROFILES && canManageProfiles(profile) && <ProfileManager />}
             {activeTab === Tab.SETTINGS && (
               <div className="space-y-6">

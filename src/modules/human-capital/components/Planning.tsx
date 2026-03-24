@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { OvertimeRecord, UserProfile, PlanningRecord, SalaryAllocation, BudgetRecord, ManualEmployee, GlobalEmployee } from '../types';
+import { OvertimeRecord, UserProfile, PlanningRecord, SalaryAllocation, BudgetRecord, ManualEmployee, GlobalEmployee, HeadcountRecord } from '../types';
 import { savePlanning, getPlanning, saveSalaries, getSalariesSync, saveBudgets, getBudgetsSync, getAllBudgetsAsync, deleteBudgets, deleteAllBudgets, saveGlobalEmployees, getGlobalEmployeesAsync, getGlobalEmployeesSync } from '../services/planning';
 import { canApprove } from '../../iam/types';
 import { ApprovalPanel } from './ApprovalPanel';
@@ -41,6 +41,7 @@ interface PlanningProps {
     user: UserProfile;
     employees: OvertimeRecord[];
     manualEmployees: ManualEmployee[];
+    headcountRecords?: HeadcountRecord[];
 }
 
 const EmployeeCalendarModal: React.FC<{
@@ -70,8 +71,12 @@ const EmployeeCalendarModal: React.FC<{
 
     const calculation = useMemo(() => {
         return daysInPeriod.reduce((acc, day) => {
-            const key = `${chapa}_${formatDateKey(day)}`;
-            const hours = plans[key] || 0;
+            const dateKey = formatDateKey(day);
+            // Sum hours across all cost centers for this chapa on this day
+            const hours = Object.entries(plans).reduce((sum, [k, v]) => {
+                if (k.startsWith(`${chapa}_`) && k.endsWith(`_${dateKey}`)) return sum + v;
+                return sum;
+            }, 0);
             const isSunday = day.getDay() === 0;
 
             let value = 0;
@@ -126,8 +131,11 @@ const EmployeeCalendarModal: React.FC<{
 
                         {daysInPeriod.map(day => {
                             const dateKey = formatDateKey(day);
-                            const key = `${chapa}_${dateKey}`;
-                            const hours = plans[key] || 0;
+                            // Sum hours across all cost centers for rendering
+                            const hours = Object.entries(plans).reduce((sum, [k, v]) => {
+                                if (k.startsWith(`${chapa}_`) && k.endsWith(`_${dateKey}`)) return sum + v;
+                                return sum;
+                            }, 0);
                             const isWeekend = day.getDay() === 0 || day.getDay() === 6;
                             const isSunday = day.getDay() === 0;
 
@@ -337,7 +345,8 @@ const CostCenterPlanModal: React.FC<{
         memberChapas.forEach(chapa => {
             days.forEach(day => {
                 const dk = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
-                const h = plans[`${chapa}_${dk}`];
+                const key = `${chapa}_${costCenter}_${dk}`;
+                const h = plans[key];
                 if (h && h > 0) init[`${chapa}_${dk}`] = formatDecimalHours(h);
             });
         });
@@ -360,7 +369,7 @@ const CostCenterPlanModal: React.FC<{
         memberChapas.forEach(chapa => {
             days.forEach(day => {
                 const dk = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
-                numericMap[`${chapa}_${dk}`] = parseTimeToDecimal(localValues[`${chapa}_${dk}`] || '0');
+                numericMap[`${chapa}_${costCenter}_${dk}`] = parseTimeToDecimal(localValues[`${chapa}_${dk}`] || '0');
             });
         });
         await onSave(costCenter, numericMap);
@@ -428,7 +437,7 @@ const CostCenterPlanModal: React.FC<{
                                                 const isSun = day.getDay() === 0;
                                                 const isSat = day.getDay() === 6;
                                                 const hasValue = parseTimeToDecimal(strVal) > 0;
-                                                const recordStatus = planStatuses[key] || 'approved';
+                                                const recordStatus = planStatuses[`${chapa}_${costCenter}_${dk}`] || 'approved';
                                                 const hasRange = !!planRangeStart && !!planRangeEnd;
                                                 const isOutsideRange = hasRange && (dk < planRangeStart || dk > planRangeEnd);
                                                 const isLocked = (!canOverrideLock && (recordStatus === 'approved' || recordStatus === 'pending')) || isOutsideRange;
@@ -487,7 +496,7 @@ const CostCenterPlanModal: React.FC<{
     );
 };
 
-const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees }) => {
+const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, headcountRecords = [] }) => {
     const [selectedMonth, setSelectedMonth] = useState<string>(() => {
         const now = new Date();
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -545,18 +554,37 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
 
     const uniqueEmployees = useMemo(() => {
         const map = new Map<string, { nome: string; cc: string; chapa: string; regional: string }>();
+
+        const dictName = new Map<string, string>();
+        globalEmployees.forEach(e => { if (e.nome) dictName.set(e.chapa, e.nome); });
+        employees.forEach(e => { if (e.NOME) dictName.set(e.CHAPA, e.NOME); });
+
+        headcountRecords.forEach(h => {
+             if (h.dataInicio <= planRangeEnd && h.dataFim >= planRangeStart) {
+                 const key = `${h.chapa}_${h.centroCusto}`;
+                 if (!map.has(key)) {
+                     const name = dictName.get(h.chapa) || `Colaborador (Chapa ${h.chapa})`;
+                     map.set(key, { nome: name, cc: h.centroCusto, chapa: h.chapa, regional: getRegional(h.centroCusto) });
+                 }
+             }
+        });
+
         employees.forEach(e => {
-            if (!map.has(e.CHAPA)) {
-                map.set(e.CHAPA, { nome: e.NOME, cc: e.CODCCUSTO, chapa: e.CHAPA, regional: getRegional(e.CODCCUSTO) });
+            const key = `${e.CHAPA}_${e.CODCCUSTO}`;
+            if (!map.has(key)) {
+                map.set(key, { nome: e.NOME, cc: e.CODCCUSTO, chapa: e.CHAPA, regional: getRegional(e.CODCCUSTO) });
             }
         });
+
         manualEmployees.forEach(m => {
-            if (!map.has(m.chapa)) {
-                map.set(m.chapa, { nome: m.name, cc: m.costCenter, chapa: m.chapa, regional: getRegional(m.costCenter) });
+            const key = `${m.chapa}_${m.costCenter}`;
+            if (!map.has(key)) {
+                map.set(key, { nome: m.name, cc: m.costCenter, chapa: m.chapa, regional: getRegional(m.costCenter) });
             }
         });
+
         return Array.from(map.values()).sort((a, b) => a.nome.localeCompare(b.nome));
-    }, [employees, manualEmployees]);
+    }, [employees, manualEmployees, headcountRecords, globalEmployees, planRangeStart, planRangeEnd]);
 
     // Derived Lists
     const costCenters = useMemo(() => {
@@ -644,7 +672,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
             const planMap: Record<string, number> = {};
             const statusMap: Record<string, string> = {};
             records.forEach(r => {
-                const key = `${r.chapa}_${r.date}`;
+                const key = `${r.chapa}_${r.costCenter}_${r.date}`;
                 planMap[key] = r.plannedHours;
                 statusMap[key] = r.status || 'draft'; // Sem status = rascunho (editavel)
             });
@@ -721,7 +749,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
             // Refresh local state
             const newStatuses = { ...planStatuses };
             approvedRecs.forEach(r => {
-                const key = `${r.chapa}_${r.date}`;
+                const key = `${r.chapa}_${r.costCenter}_${r.date}`;
                 newStatuses[key] = 'approved';
             });
             setPlanStatuses(newStatuses);
@@ -758,7 +786,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
             // Refresh local state
             const newStatuses = { ...planStatuses };
             rejectedRecs.forEach(r => {
-                const key = `${r.chapa}_${r.date}`;
+                const key = `${r.chapa}_${r.costCenter}_${r.date}`;
                 newStatuses[key] = 'draft';
             });
             setPlanStatuses(newStatuses);
@@ -786,11 +814,11 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
             const curr = new Date(periodStart);
             while (curr <= periodEnd) {
                 const dateKey = formatDateKey(curr);
-                const key = `${chapa}_${dateKey}`;
+                const key = `${chapa}_${costCenter}_${dateKey}`;
                 const hours = mergedPlans[key];
                 if (hours !== undefined) {
                     recordsToSave.push({
-                        id: `${chapa}_DAILY_${dateKey}`,
+                        id: `${chapa}_${costCenter}_DAILY_${dateKey}`,
                         chapa,
                         nome: emp.nome,
                         costCenter,
@@ -827,7 +855,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
             const salary = salaries[emp.chapa];
             const curr = new Date(periodStart);
             while (curr <= periodEnd) {
-                const key = `${emp.chapa}_${formatDateKey(curr)}`;
+                const key = `${emp.chapa}_${emp.cc}_${formatDateKey(curr)}`;
                 const hours = plans[key] || 0;
                 totalHours += hours;
                 if (salary && hours > 0) {
@@ -1008,7 +1036,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
             const curr = new Date(periodStart);
             while (curr <= periodEnd) {
                 const dateKey = formatDateKey(curr);
-                const key = `${emp.chapa}_${dateKey}`;
+                const key = `${emp.chapa}_${emp.cc}_${dateKey}`;
                 const hours = plans[key];
                 if (hours !== undefined) {
                     const hasRange = !!planRangeStart && !!planRangeEnd;
@@ -1017,7 +1045,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                     const finalStatus: PlanningRecord['status'] = submitPending
                         ? (isWithinRange ? 'pending' : originalStatus)
                         : 'draft';
-                    recordsToSave.push({ id: `${emp.chapa}_DAILY_${dateKey}`, chapa: emp.chapa, nome: emp.nome, costCenter: emp.cc, date: dateKey, type: 'DAILY', plannedHours: hours, status: finalStatus });
+                    recordsToSave.push({ id: `${emp.chapa}_${emp.cc}_DAILY_${dateKey}`, chapa: emp.chapa, nome: emp.nome, costCenter: emp.cc, date: dateKey, type: 'DAILY', plannedHours: hours, status: finalStatus });
                 }
                 curr.setDate(curr.getDate() + 1);
             }
@@ -1192,7 +1220,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees })
                             const curr = new Date(periodStart);
                             while (curr <= periodEnd) {
                                 const dateKey = formatDateKey(curr);
-                                const key = `${emp.chapa}_${dateKey}`;
+                                const key = `${emp.chapa}_${emp.cc}_${dateKey}`;
                                 const hours = plans[key] || 0;
                                 totalHours += hours;
                                 if (salary && hours > 0) {
