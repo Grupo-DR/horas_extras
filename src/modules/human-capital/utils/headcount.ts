@@ -36,6 +36,8 @@ export interface RawHeadcountRow {
     chapa?: unknown;
     centro_custo?: unknown;
     distribuicao?: unknown;
+    nome?: unknown;
+    funcao?: unknown;
 }
 
 /** Resultado da leitura bruta do Excel antes da normalização */
@@ -197,13 +199,15 @@ export const parseHeadcountXlsx = async (file: File): Promise<ParsedExcelResult>
     const headerRow = (raw[0] as unknown[]).map(h => normalizeHeader(String(h ?? '')));
     const foundColumns = new Set(headerRow.filter(h => h !== ''));
 
-    // Mapeia índice de cada coluna necessária
-    const colIndex: Record<RequiredColumn, number> = {
+    // Mapeia índice de cada coluna necessária e opcional
+    const colIndex: Record<string, number> = {
         data_inicio: headerRow.indexOf('data_inicio'),
         data_fim: headerRow.indexOf('data_fim'),
         chapa: headerRow.indexOf('chapa'),
         centro_custo: headerRow.indexOf('centro_custo'),
         distribuicao: headerRow.indexOf('distribuicao'),
+        nome: headerRow.indexOf('nome'),
+        funcao: headerRow.indexOf('funcao'),
     };
 
     // Linhas de dados (índice 1 em diante)
@@ -218,12 +222,15 @@ export const parseHeadcountXlsx = async (file: File): Promise<ParsedExcelResult>
                 chapa: colIndex.chapa >= 0 ? row[colIndex.chapa] : undefined,
                 centro_custo: colIndex.centro_custo >= 0 ? row[colIndex.centro_custo] : undefined,
                 distribuicao: colIndex.distribuicao >= 0 ? row[colIndex.distribuicao] : undefined,
+                nome: colIndex.nome >= 0 ? row[colIndex.nome] : undefined,
+                funcao: colIndex.funcao >= 0 ? row[colIndex.funcao] : undefined,
             };
         })
         // Remove linhas completamente vazias
         .filter(r =>
             r.data_inicio !== '' || r.data_fim !== '' ||
-            r.chapa !== '' || r.centro_custo !== '' || r.distribuicao !== ''
+            r.chapa !== '' || r.centro_custo !== '' || r.distribuicao !== '' ||
+            r.nome !== '' || r.funcao !== ''
         );
 
     return { foundColumns, rows, totalRows: rows.length };
@@ -242,6 +249,8 @@ export const normalizeHeadcountRow = (row: RawHeadcountRow): HeadcountRecord | n
     const chapa = String(row.chapa ?? '').trim().toUpperCase();
     const centroCusto = String(row.centro_custo ?? '').trim().toUpperCase();
     const distribuicao = Number(row.distribuicao);
+    const nome = row.nome ? String(row.nome).trim() : undefined;
+    const funcao = row.funcao ? String(row.funcao).trim() : undefined;
 
     if (
         !isValidDateString(dataInicio) ||
@@ -253,7 +262,7 @@ export const normalizeHeadcountRow = (row: RawHeadcountRow): HeadcountRecord | n
         return null;
     }
 
-    return { dataInicio, dataFim, chapa, centroCusto, distribuicao };
+    return { dataInicio, dataFim, chapa, centroCusto, distribuicao, nome, funcao };
 };
 
 // ─── Utilidade: gerar todos os dias de um período ─────────────────────────────

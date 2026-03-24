@@ -114,6 +114,10 @@ export interface HeadcountRecord {
     centroCusto: string;
     /** Percentual de alocação: 0 < distribuicao ≤ 1 */
     distribuicao: number;
+    /** Opcional: lido do Excel quando a coluna 'nome' estiver presente */
+    nome?: string;
+    /** Opcional: lido do Excel quando a coluna 'funcao' estiver presente */
+    funcao?: string;
 }
 
 /**

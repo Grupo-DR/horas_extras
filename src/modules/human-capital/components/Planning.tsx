@@ -558,12 +558,15 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
         const dictName = new Map<string, string>();
         globalEmployees.forEach(e => { if (e.nome) dictName.set(e.chapa, e.nome); });
         employees.forEach(e => { if (e.NOME) dictName.set(e.CHAPA, e.NOME); });
+        manualEmployees.forEach(m => { if (m.name) dictName.set(m.chapa, m.name); });
 
         headcountRecords.forEach(h => {
              if (h.dataInicio <= planRangeEnd && h.dataFim >= planRangeStart) {
                  const key = `${h.chapa}_${h.centroCusto}`;
                  if (!map.has(key)) {
-                     const name = dictName.get(h.chapa) || `Colaborador (Chapa ${h.chapa})`;
+                     const name = h.nome || dictName.get(h.chapa) || `Colaborador (Chapa ${h.chapa})`;
+                     // We also store h.funcao if needed in the future, but currently map doesn't expect it,
+                     // so we just pass name. If the map interface changes, we add it.
                      map.set(key, { nome: name, cc: h.centroCusto, chapa: h.chapa, regional: getRegional(h.centroCusto) });
                  }
              }
