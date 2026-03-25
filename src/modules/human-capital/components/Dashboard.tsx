@@ -10,10 +10,10 @@ import EmployeeDailyComparisonModal from './EmployeeDailyComparisonModal';
 interface DashboardProps {
   data: OvertimeRecord[];              // dados filtrados (regional, CC, etc.)
   allData?: OvertimeRecord[];          // todos os dados do escopo â€” para resolver nomes de CC via SECAO
-  regional?: string;                   // filtro de regional ativo (Ã© applicado no ccSummary)
-  /** Todos os monthKeys (YYYY-MM) cobertos pelo perÃ­odo filtrado */
+  regional?: string;                   // filtro de regional ativo (é aplicado no ccSummary)
+  /** Todos os monthKeys (YYYY-MM) cobertos pelo período filtrado */
   budgetMonthKeys: string[];
-  /** Callback: clique em colaborador no modal de funÃ§Ã£o â†’ navega para aba HistÃ³rico */
+  /** Callback: clique em colaborador no modal de função → navega para aba Histórico */
   onNavigateToEmployee?: (name: string, chapa: string) => void;
   selectedMonth: string;
   user: UserProfile | null;
@@ -40,7 +40,7 @@ interface TreeNode {
   type: 'REGIONAL' | 'CC' | 'PERSON';
   metrics: DashboardMetrics;
   children: TreeNode[];
-  chapa?: string; // Apenas para nÃ³s PERSON
+  chapa?: string; // Apenas para nós PERSON
 }
 
 type ViewMode = 'hours' | 'finance';
@@ -54,7 +54,7 @@ const TreeGridHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
           <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
             <Building2 size={20} />
           </div>
-          <h3 className="text-lg font-bold text-slate-800">Entendendo a VisÃ£o AnalÃ­tica Executiva</h3>
+          <h3 className="text-lg font-bold text-slate-800">Entendendo a Visão Analítica Executiva</h3>
         </div>
         <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
           <X size={20} />
@@ -64,21 +64,21 @@ const TreeGridHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
         <p>Esta tabela (Tree Grid) permite uma auditoria Top-Down (de cima para baixo) dos seus passivos trabalhistas.</p>
 
         <div className="space-y-3">
-          <div className="flex gap-3"><div className="mt-1"><Zap size={18} className="text-indigo-500" /></div><div><strong className="text-slate-800">VisÃ£o Operacional:</strong> Focada em descobrir a CAUSA do problema. Mostra as horas planejadas vs reais e o raio-x exato de onde essas horas vieram (60%, 100%, Interjornada ou Noturno).</div></div>
+          <div className="flex gap-3"><div className="mt-1"><Zap size={18} className="text-indigo-500" /></div><div><strong className="text-slate-800">Visão Operacional:</strong> Focada em descobrir a CAUSA do problema. Mostra as horas planejadas vs reais e o raio-x exato de onde essas horas vieram (60%, 100%, Interjornada ou Noturno).</div></div>
 
-          <div className="flex gap-3"><div className="mt-1"><Wallet size={18} className="text-emerald-500" /></div><div><strong className="text-slate-800">VisÃ£o Financeira:</strong> Focada na dor no bolso. Oculta o volume de horas e foca exclusivamente no Custo Estimado e no Budget (OrÃ§amento) disponÃ­vel.</div></div>
+          <div className="flex gap-3"><div className="mt-1"><Wallet size={18} className="text-emerald-500" /></div><div><strong className="text-slate-800">Visão Financeira:</strong> Focada na dor no bolso. Oculta o volume de horas e foca exclusivamente no Custo Estimado e no Budget (Orçamento) disponível.</div></div>
 
           <div className="flex gap-3"><div className="mt-1"><AlertTriangle size={18} className="text-amber-500" /></div><div>
-            <strong className="text-slate-800">Como o Risco Ã© Calculado?</strong> NÃ£o Ã© apenas uma soma. Ã‰ um algoritmo ponderado pela gravidade da infraÃ§Ã£o dividido pelo tamanho da equipa:<br />
+            <strong className="text-slate-800">Como o Risco é Calculado?</strong> Não é apenas uma soma. É um algoritmo ponderado pela gravidade da infração dividido pelo tamanho da equipa:<br />
             <ul className="list-disc pl-5 mt-2 space-y-1 text-slate-500">
-              <li><strong className="text-slate-700">HE 60%:</strong> Peso 1.0 (Risco PadrÃ£o)</li>
+              <li><strong className="text-slate-700">HE 60%:</strong> Peso 1.0 (Risco Padrão)</li>
               <li><strong className="text-slate-700">HE 100%:</strong> Peso 2.5 (Risco Alto)</li>
               <li><strong className="text-slate-700">Noturno:</strong> Peso 0.5 (Risco Baixo)</li>
-              <li><strong className="text-slate-700">Interjornada:</strong> Peso 5.0 (Risco CrÃ­tico CLT)</li>
+              <li><strong className="text-slate-700">Interjornada:</strong> Peso 5.0 (Risco Crítico CLT)</li>
             </ul>
           </div></div>
 
-          <div className="flex gap-3"><div className="mt-1"><span className="px-1.5 py-0.5 rounded font-bold text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-100">%</span></div><div><strong className="text-slate-800">Impacto %:</strong> Mostra a representatividade daquela linha em relaÃ§Ã£o ao nÃ­vel superior. Ex: Quantos % da dor de cabeÃ§a da Regional Leste vÃªm da obra X.</div></div>
+          <div className="flex gap-3"><div className="mt-1"><span className="px-1.5 py-0.5 rounded font-bold text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-100">%</span></div><div><strong className="text-slate-800">Impacto %:</strong> Mostra a representatividade daquela linha em relação ao nível superior. Ex: Quantos % da dor de cabeça da Regional Leste vêm da obra X.</div></div>
         </div>
       </div>
       <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
@@ -104,7 +104,7 @@ const FunctionDetailModal: React.FC<{
         <div className="bg-blue-600 p-6 flex justify-between items-center text-white shrink-0 relative z-30">
           <div>
             <h3 className="text-xl font-bold">{functionName}</h3>
-            <p className="text-blue-100 text-sm opacity-90">Colaboradores vinculados a esta funÃ§Ã£o</p>
+            <p className="text-blue-100 text-sm opacity-90">Colaboradores vinculados a esta função</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors">
             <X size={24} />
@@ -187,7 +187,7 @@ const CostCenterDetailModal: React.FC<{
               <h3 className="text-xl font-bold">{ccName}</h3>
               <span className="bg-white/20 px-2 py-0.5 rounded text-xs font-mono">{ccCode}</span>
             </div>
-            <p className="text-indigo-100 text-sm opacity-90">Breakdown por FunÃ§Ãµes</p>
+            <p className="text-indigo-100 text-sm opacity-90">Breakdown por Funções</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors">
             <X size={24} />
@@ -198,7 +198,7 @@ const CostCenterDetailModal: React.FC<{
           <table className="w-full text-left text-sm text-gray-600 border-collapse">
             <thead className="sticky top-0 z-20 shadow-sm">
               <tr className="bg-gray-100">
-                <th className="px-4 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">FunÃ§Ã£o</th>
+                <th className="px-4 py-4 text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Função</th>
                 {viewMode === 'hours' ? (
                   <>
                     <th className="px-4 py-4 text-right text-gray-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200">Plan.</th>
@@ -260,7 +260,7 @@ const CostCenterDetailModal: React.FC<{
         <div className="p-5 bg-gray-50 border-t border-gray-100 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-2">
             <Briefcase size={14} className="text-gray-400" />
-            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">{data.length} FUNÃ‡Ã•ES NESTE CENTRO DE CUSTO</span>
+            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">{data.length} FUNÇÕES NESTE CENTRO DE CUSTO</span>
           </div>
         </div>
       </div>
@@ -288,7 +288,7 @@ const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHour
     return v.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
   };
 
-  // NÃ³ PERSON: folha, sem expansÃ£o
+  // Nó PERSON: folha, sem expansão
   if (node.type === 'PERSON') {
     return (
       <div
@@ -344,7 +344,7 @@ const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHour
   const diffCost = node.metrics.totalCost - node.metrics.budgetCost;
   const impactPct = parentTotalHours && parentTotalHours > 0 ? ((node.metrics.total / parentTotalHours) * 100).toFixed(1) : '100';
 
-  // Cores dinÃ¢micas por nÃ­vel para facilitar o entendimento da hierarquia
+  // Cores dinâmicas por nível para facilitar o entendimento da hierarquia
   const rowBgClass = isRegional
     ? 'bg-slate-200/80 hover:bg-slate-300/80 border-slate-300'
     : 'bg-slate-100/50 hover:bg-slate-200/50 border-slate-200';
@@ -387,7 +387,7 @@ const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHour
               <span className="text-slate-400 w-12 text-right" title="Planejado">{formatDecimalHours(node.metrics.plannedHours)}</span>
               <span className="text-slate-200">|</span>
               <span className="font-bold text-slate-800 w-12 text-right" title="Real">{formatDecimalHours(node.metrics.total)}</span>
-              <span className={`w-14 text-right font-black ${diffHours > 0 ? 'text-rose-500' : 'text-emerald-500'}`} title="DiferenÃ§a">
+              <span className={`w-14 text-right font-black ${diffHours > 0 ? 'text-rose-500' : 'text-emerald-500'}`} title="Diferença">
                 {diffHours > 0 ? '+' : ''}{formatDecimalHours(diffHours)}
               </span>
             </div>
@@ -547,7 +547,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
   // normalizeCC e getCCName/getCCRegional agora vem do ccMaster centralizado
 
-  // Lookup SECAO do TOTVS como complemento ao ccMaster (preenche nomes ainda nÃ£o mapeados)
+  // Lookup SECAO do TOTVS como complemento ao ccMaster (preenche nomes ainda não mapeados)
   const ccSecaoMap = useMemo(() => {
     const map: Record<string, string> = {};
     (allData ?? data).forEach(r => {
@@ -557,19 +557,19 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     return map;
   }, [allData, data]);
 
-  /** Nome resolvido: ccMaster > TOTVS SECAO > cÃ³digo bruto */
+  /** Nome resolvido: ccMaster > TOTVS SECAO > código bruto */
   const resolveName = (rawCC: string): string => {
     const norm = normalizeCC(rawCC);
     const masterName = getCCName(rawCC);
     if (masterName !== rawCC) return masterName; // ccMaster tem o nome
-    return ccSecaoMap[norm] || rawCC;             // fallback: SECAO ou o prÃ³prio cÃ³digo
+    return ccSecaoMap[norm] || rawCC;             // fallback: SECAO ou o próprio código
   };
 
 
   const ccSummary = useMemo(() => {
     const map: Record<string, { real: number; planned: number; name: string; realCost: number; plannedCost: number; budget: number }> = {};
 
-    // OrÃ§amentos: filtrar por regional se ativo
+    // Orçamentos: filtrar por regional se ativo
     budgets.forEach(b => {
       const ccRegional = getCCRegional(b.costCenter);
       if (regional && ccRegional !== regional) return; // filtro regional
@@ -578,7 +578,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       map[cc].budget += b.value;
     });
 
-    // Dados TOTVS (jÃ¡ filtrados pelo HumanCapitalDashboard)
+    // Dados TOTVS (já filtrados pelo HumanCapitalDashboard)
     data.forEach(r => {
       const cc = normalizeCC(r.CODCCUSTO || 'S/ CC');
       const reg = getCCRegional(r.CODCCUSTO || '');
@@ -626,7 +626,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     const chapaToFunc: Record<string, string> = {};
 
     data.forEach(r => {
-      const f = r.FUNCAO || 'S/ FunÃ§Ã£o';
+      const f = r.FUNCAO || 'S/ Função';
       chapaToFunc[r.CHAPA] = f;
       if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0 };
       const hours = (Number(r.HORAS) || 0);
@@ -701,7 +701,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
     // Get real functions for this CC
     data.filter(r => r.CODCCUSTO === selectedCcModal).forEach(r => {
-      const f = r.FUNCAO || 'S/ FunÃ§Ã£o';
+      const f = r.FUNCAO || 'S/ Função';
       chapaToFunc[r.CHAPA] = f;
       if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0, he60: 0, he100: 0, interjornada: 0, night: 0 };
       const hours = (Number(r.HORAS) || 0);
@@ -961,7 +961,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       {/* â”€â”€ 4 MEGA CARDS â”€â”€ */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
 
-        {/* 1. OrÃ§amento */}
+        {/* 1. Orçamento */}
         {(() => {
           const budgetM = metrics.totalBudget / 1_000_000;
           const usedPct = metrics.totalBudget > 0 ? Math.min((metrics.totalRealCost / metrics.totalBudget) * 100, 200) : 0;
@@ -972,7 +972,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 rounded-lg bg-indigo-600 text-white shadow"><Wallet size={14} /></div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">OrÃ§amento</span>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Orçamento</span>
                 </div>
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${isOver ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
                   {isOver ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
@@ -1082,7 +1082,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
           );
         })()}
 
-        {/* 4. EficiÃªncia do Planejamento */}
+        {/* 4. Eficiência do Planejamento */}
         {(() => {
           const eficiencia = metrics.totalPlannedHours > 0
             ? Math.min((metrics.realTotalHE / metrics.totalPlannedHours) * 100, 200)
@@ -1097,10 +1097,10 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md transition-all">
               <div className="flex items-center gap-2">
                 <div className="p-1.5 rounded-lg bg-violet-600 text-white shadow"><Zap size={14} /></div>
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">EficiÃªncia</span>
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Eficiência</span>
               </div>
               <div>
-                <p className="text-[9px] text-gray-400 uppercase font-bold">EficiÃªncia do Planejamento</p>
+                <p className="text-[9px] text-gray-400 uppercase font-bold">Eficiência do Planejamento</p>
                 <p className={`text-3xl font-black font-mono leading-tight ${efColor}`}>
                   {eficiencia.toFixed(1)}%
                 </p>
@@ -1132,14 +1132,14 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
       </div>
 
-      {/* VisÃ£o AnalÃ­tica HierÃ¡rquica (Tree Grid) */}
+      {/* Visão Analítica Hierárquica (Tree Grid) */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col mt-8 animate-fade-in relative">
         {showTreeHelp && <TreeGridHelpModal onClose={() => setShowTreeHelp(false)} />}
 
         <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Building2 size={18} className="text-indigo-600" />
-            <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">VisÃ£o AnalÃ­tica Executiva (Plan vs Real)</h3>
+            <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Visão Analítica Executiva (Plan vs Real)</h3>
             <button onClick={() => setShowTreeHelp(true)} className="ml-2 text-slate-400 hover:text-indigo-500 transition-colors p-1" title="Como ler esta tabela?">
               <Info size={16} />
             </button>
@@ -1156,7 +1156,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
             <span className="flex-1">Estrutura Organizacional</span>
             <div className="flex items-center gap-4 justify-end shrink-0">
               <span className="w-16 text-center" title="Impacto percentual no pai">Impacto</span>
-              <span className="w-16 text-center" title="NÃºmero de Pessoas">Efetivo</span>
+              <span className="w-16 text-center" title="Número de Pessoas">Efetivo</span>
 
               {treeViewMode === 'operational' && (
                 <span className="w-[240px] text-center text-slate-600 bg-slate-200/50 py-1.5 rounded-md border border-slate-200/50 transition-all">Volume de Horas (Plan | Real | Dif)</span>
