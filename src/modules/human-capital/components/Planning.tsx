@@ -1374,7 +1374,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
 
                                     const curr = new Date(periodStart);
                                     while (curr <= periodEnd) {
-                                        const key = `${emp.chapa}_${formatDateKey(curr)}`;
+                                        const key = `${emp.chapa}_${cc.costCenter}_${formatDateKey(curr)}`;
                                         const hours = plans[key] || 0;
                                         empHours += hours;
                                         if (salary && hours > 0) {
