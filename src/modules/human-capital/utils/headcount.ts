@@ -38,6 +38,7 @@ export interface RawHeadcountRow {
     distribuicao?: unknown;
     nome?: unknown;
     funcao?: unknown;
+    salario?: unknown;
 }
 
 /** Resultado da leitura bruta do Excel antes da normalização */
@@ -208,6 +209,7 @@ export const parseHeadcountXlsx = async (file: File): Promise<ParsedExcelResult>
         distribuicao: headerRow.indexOf('distribuicao'),
         nome: headerRow.indexOf('nome'),
         funcao: headerRow.indexOf('funcao'),
+        salario: headerRow.indexOf('salario'),
     };
 
     // Linhas de dados (índice 1 em diante)
@@ -224,13 +226,14 @@ export const parseHeadcountXlsx = async (file: File): Promise<ParsedExcelResult>
                 distribuicao: colIndex.distribuicao >= 0 ? row[colIndex.distribuicao] : undefined,
                 nome: colIndex.nome >= 0 ? row[colIndex.nome] : undefined,
                 funcao: colIndex.funcao >= 0 ? row[colIndex.funcao] : undefined,
+                salario: colIndex.salario >= 0 ? row[colIndex.salario] : undefined,
             };
         })
         // Remove linhas completamente vazias
         .filter(r =>
             r.data_inicio !== '' || r.data_fim !== '' ||
             r.chapa !== '' || r.centro_custo !== '' || r.distribuicao !== '' ||
-            r.nome !== '' || r.funcao !== ''
+            r.nome !== '' || r.funcao !== '' || r.salario !== ''
         );
 
     return { foundColumns, rows, totalRows: rows.length };
@@ -252,6 +255,17 @@ export const normalizeHeadcountRow = (row: RawHeadcountRow): HeadcountRecord | n
     const nome = row.nome ? String(row.nome).trim() : undefined;
     const funcao = row.funcao ? String(row.funcao).trim() : undefined;
 
+    let salario: number | undefined = undefined;
+    if (row.salario !== undefined && row.salario !== null && row.salario !== '') {
+        if (typeof row.salario === 'number') {
+            salario = row.salario;
+        } else {
+            const s = String(row.salario).replace('R$', '').replace(/\./g, '').replace(',', '.').trim();
+            const parsed = parseFloat(s);
+            if (!isNaN(parsed)) salario = parsed;
+        }
+    }
+
     if (
         !isValidDateString(dataInicio) ||
         !isValidDateString(dataFim) ||
@@ -262,7 +276,7 @@ export const normalizeHeadcountRow = (row: RawHeadcountRow): HeadcountRecord | n
         return null;
     }
 
-    return { dataInicio, dataFim, chapa, centroCusto, distribuicao, nome, funcao };
+    return { dataInicio, dataFim, chapa, centroCusto, distribuicao, nome, funcao, salario };
 };
 
 // ─── Utilidade: gerar todos os dias de um período ─────────────────────────────

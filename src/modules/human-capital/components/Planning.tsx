@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { OvertimeRecord, UserProfile, PlanningRecord, SalaryAllocation, BudgetRecord, ManualEmployee, GlobalEmployee, HeadcountRecord } from '../types';
 import { savePlanning, getPlanning, saveSalaries, getSalariesSync, saveBudgets, getBudgetsSync, getAllBudgetsAsync, deleteBudgets, deleteAllBudgets, saveGlobalEmployees, getGlobalEmployeesAsync, getGlobalEmployeesSync } from '../services/planning';
 import { canApprove } from '../../iam/types';
@@ -1327,7 +1327,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                         </div>
 
                         <div className="flex flex-wrap gap-3 w-full xl:w-auto justify-end">
-                            {(user.role === 'CH_ADMIN') && (
+                            {(user.role === 'CH_ADMIN' || user.role === 'CH_APPROVER' || user.role === 'CH_COSTCENTER_PLANNER') && (
                                 <>
                                     <input type="file" ref={salaryInputRef} onChange={handleSalaryImport} accept=".xlsx,.xls,.csv,.txt" className="hidden" />
                                     <button onClick={() => salaryInputRef.current?.click()} className="bg-white text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-indigo-50 flex items-center gap-2 shadow-sm">

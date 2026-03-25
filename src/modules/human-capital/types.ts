@@ -118,6 +118,8 @@ export interface HeadcountRecord {
     nome?: string;
     /** Opcional: lido do Excel quando a coluna 'funcao' estiver presente */
     funcao?: string;
+    /** Opcional: lido do Excel quando a coluna 'salario' estiver presente */
+    salario?: number;
 }
 
 /**

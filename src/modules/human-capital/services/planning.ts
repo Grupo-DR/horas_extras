@@ -417,4 +417,27 @@ export const replaceHeadcount = async (
     // Substituicao completa do cache local (sem merge)
     const tagged = records.map(r => ({ ...r, _uploadId: meta.uploadId }));
     localStorage.setItem(HC_CACHE_KEY, JSON.stringify(tagged));
+
+    // Extrair e salvar salarios contidos no headcount
+    const salaryAllocations: import('../types').SalaryAllocation[] = [];
+    const chapaSet = new Set<string>();
+
+    records.forEach(r => {
+        if (r.salario && r.salario > 0 && !chapaSet.has(r.chapa)) {
+            chapaSet.add(r.chapa);
+            const monthKey = r.dataInicio.substring(0, 7); // yyyy-mm
+            salaryAllocations.push({
+                monthKey,
+                chapa: r.chapa,
+                salary: r.salario,
+                allocation: 1.0,
+                costCenter: r.centroCusto,
+                status: 'A'
+            });
+        }
+    });
+
+    if (salaryAllocations.length > 0) {
+        await saveSalaries(salaryAllocations, user);
+    }
 };
