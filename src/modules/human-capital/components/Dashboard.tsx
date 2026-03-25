@@ -1,8 +1,8 @@
-﻿import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, SalaryRecord } from '../types';
 import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, AlertTriangle, Moon, Scale, Percent, ArrowUpRight, ArrowDownRight, X, User, Users, DollarSign, ListFilter, ShieldAlert, Zap, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { formatDecimalHours } from '../utils/formatters';
-import { getPlanning, getSalariesSync, getBudgetsSync, saveBudgets, getAllPlanningRecords, getGlobalEmployeesAsync, getGlobalEmployeesSync } from '../services/planning';
+import { getPlanning, getSalariesSync, getBudgetsSync, saveBudgets, getAllPlanningRecords, getGlobalEmployeesAsync, getGlobalEmployeesSync, getAllBudgetsAsync } from '../services/planning';
 import { getCCName, getCCRegional, normalizeCC } from '../data/ccMaster';
 import { isRecordInHumanCapitalScope } from '../utils/scopeFilters';
 import EmployeeDailyComparisonModal from './EmployeeDailyComparisonModal';
@@ -442,13 +442,19 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
   const realRecords = allData ?? data;
 
   const planningRecords = useMemo(() => getAllPlanningRecords().filter(p => !p.status || p.status === 'approved'), []);
-  // Filtra budgets pelos monthKeys cobertos pelo perÃ­odo atual
+
+  const [allBudgets, setAllBudgets] = useState<import('../types').BudgetRecord[]>([]);
+  useEffect(() => {
+      setAllBudgets(getBudgetsSync());
+      getAllBudgetsAsync().then(setAllBudgets).catch(console.error);
+  }, []);
+
+  // Filtra budgets pelos monthKeys cobertos pelo período atual
   const budgets = useMemo(() => {
-    const all = getBudgetsSync();
-    if (!budgetMonthKeys || budgetMonthKeys.length === 0) return all;
+    if (!budgetMonthKeys || budgetMonthKeys.length === 0) return allBudgets;
     const keySet = new Set(budgetMonthKeys);
-    return all.filter(b => keySet.has(b.monthKey));
-  }, [budgetMonthKeys]);
+    return allBudgets.filter(b => keySet.has(b.monthKey));
+  }, [allBudgets, budgetMonthKeys]);
 
   useEffect(() => {
     const loadSalaries = () => {

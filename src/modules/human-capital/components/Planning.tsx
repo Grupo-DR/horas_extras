@@ -607,6 +607,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
 
         const storedBudgets = getBudgetsSync();
         setBudgets(storedBudgets);
+        getAllBudgetsAsync().then(setBudgets).catch(console.error);
 
         // Background refresh for global employees
         getGlobalEmployeesAsync().then(emps => setGlobalEmployees(emps)).catch(console.error);
@@ -1327,7 +1328,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                         </div>
 
                         <div className="flex flex-wrap gap-3 w-full xl:w-auto justify-end">
-                            {(user.role === 'CH_ADMIN' || user.role === 'CH_APPROVER' || user.role === 'CH_COSTCENTER_PLANNER') && (
+                            {(['CH_ADMIN', 'CH_APPROVER', 'CH_COSTCENTER_PLANNER', 'DEV_MASTER', 'MASTER'].includes(user.role as string)) && (
                                 <>
                                     <input type="file" ref={salaryInputRef} onChange={handleSalaryImport} accept=".xlsx,.xls,.csv,.txt" className="hidden" />
                                     <button onClick={() => salaryInputRef.current?.click()} className="bg-white text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-indigo-50 flex items-center gap-2 shadow-sm">
