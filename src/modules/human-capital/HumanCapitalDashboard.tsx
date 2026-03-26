@@ -22,6 +22,7 @@ import { CreateEmployeeModal } from '@/src/modules/human-capital/components/Crea
 import { getCCRegional } from '@/src/modules/human-capital/data/ccMaster';
 import { saveGlobalEmployees, getGlobalEmployeesSync, getHeadcountSync } from '@/src/modules/human-capital/services/planning';
 import { gerarOvertimeRateado } from '@/src/modules/human-capital/utils/headcountRateio';
+import { formatDateKey, getPayrollCompetencyMonthKey, getPayrollCompetencyMonthKeysForRange } from '@/src/modules/human-capital/utils/overtime';
 
 // Configuração padrão da API TOTVS
 const DEFAULT_CONFIG: ApiConfig = {
@@ -58,6 +59,9 @@ const getInitialFilters = (): FilterState => {
     dateMode: 'CUSTOM'
   };
 };
+
+const normalizeDateMode = (mode: FilterState['dateMode']): 'PAYROLL' | 'ANNUAL' | 'CUSTOM' =>
+  mode === 'ANNUAL' || mode === 'CUSTOM' ? mode : 'PAYROLL';
 
 const parseFilterDate = (dateString: string, fallback: Date): Date => {
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
@@ -332,6 +336,50 @@ const HumanCapitalDashboard: React.FC = () => {
     return { periodStart: start, periodEnd: end };
   }, [filters.startDate, filters.endDate]);
 
+  const normalizedDateMode = useMemo(() => normalizeDateMode(filters.dateMode), [filters.dateMode]);
+
+  const normalizedRangeStartDate = useMemo(
+    () => formatDateKey(comparisonPeriod.periodStart),
+    [comparisonPeriod.periodStart]
+  );
+
+  const normalizedRangeEndDate = useMemo(
+    () => formatDateKey(comparisonPeriod.periodEnd),
+    [comparisonPeriod.periodEnd]
+  );
+
+  const budgetMonthKeys = useMemo(() => {
+    if (normalizedDateMode === 'ANNUAL') {
+      return Array.from({ length: 12 }, (_, i) =>
+        `${filters.year}-${String(i + 1).padStart(2, '0')}`
+      );
+    }
+
+    if (normalizedDateMode === 'PAYROLL') {
+      const monthKey = getPayrollCompetencyMonthKey(normalizedRangeEndDate) || `${filters.year}-${filters.month}`;
+      return monthKey ? [monthKey] : [];
+    }
+
+    return getPayrollCompetencyMonthKeysForRange(normalizedRangeStartDate, normalizedRangeEndDate);
+  }, [normalizedDateMode, filters.year, filters.month, normalizedRangeStartDate, normalizedRangeEndDate]);
+
+  const selectedMonthKey = useMemo(() => {
+    if (normalizedDateMode === 'CUSTOM') {
+      const customKeys = getPayrollCompetencyMonthKeysForRange(normalizedRangeStartDate, normalizedRangeEndDate);
+      if (customKeys.length === 1) return customKeys[0];
+
+      return getPayrollCompetencyMonthKey(normalizedRangeEndDate)
+        || customKeys[customKeys.length - 1]
+        || `${filters.year}-${filters.month}`;
+    }
+
+    if (normalizedDateMode === 'ANNUAL') {
+      return `${filters.year}-12`;
+    }
+
+    return getPayrollCompetencyMonthKey(normalizedRangeEndDate) || `${filters.year}-${filters.month}`;
+  }, [normalizedDateMode, normalizedRangeStartDate, normalizedRangeEndDate, filters.year, filters.month]);
+
   const clearFilters = () => {
     setFilters(getInitialFilters());
   };
@@ -403,48 +451,23 @@ const HumanCapitalDashboard: React.FC = () => {
           )}
 
           <div className="mt-5 animate-in fade-in duration-500 slide-in-from-bottom-2">
-            {activeTab === Tab.DASHBOARD && (() => {
-              // Compute all monthKeys covered by the active filter
-              const buildMonthKeys = (): string[] => {
-                const { dateMode, year, endDate, startDate } = filters;
-                if (dateMode === 'ANNUAL') {
-                  // All 12 months of the selected year
-                  return Array.from({ length: 12 }, (_, i) =>
-                    `${year}-${String(i + 1).padStart(2, '0')}`
-                  );
-                }
-                if (dateMode === 'PAYROLL' || dateMode === 'CALENDAR') {
-                  // Single month: the payment/end month
-                  return [endDate.substring(0, 7)];
-                }
-                // CUSTOM: all months between startDate and endDate
-                const keys: string[] = [];
-                const [sy, sm] = startDate.substring(0, 7).split('-').map(Number);
-                const [ey, em] = endDate.substring(0, 7).split('-').map(Number);
-                let cy = sy; let cm = sm;
-                while (cy < ey || (cy === ey && cm <= em)) {
-                  keys.push(`${cy}-${String(cm).padStart(2, '0')}`);
-                  cm++; if (cm > 12) { cm = 1; cy++; }
-                }
-                return keys;
-              };
-              return (
-                <Dashboard
-                  data={filteredData}
-                  allData={scopedData}
-                  regional={filters.regional}
-                  budgetMonthKeys={buildMonthKeys()}
-                  onNavigateToEmployee={(name) => {
-                    setFilters(prev => ({ ...prev, searchTerm: name }));
-                    setActiveTab(Tab.DATA);
-                  }}
-                  selectedMonth={`${filters.year}-${filters.month}`}
-                  user={effectiveUser}
-                  periodStart={comparisonPeriod.periodStart}
-                  periodEnd={comparisonPeriod.periodEnd}
-                />
-              );
-            })()}
+            {activeTab === Tab.DASHBOARD && (
+              <Dashboard
+                data={filteredData}
+                allData={scopedData}
+                regional={filters.regional}
+                budgetMonthKeys={budgetMonthKeys}
+                dateMode={normalizedDateMode}
+                onNavigateToEmployee={(name) => {
+                  setFilters(prev => ({ ...prev, searchTerm: name }));
+                  setActiveTab(Tab.DATA);
+                }}
+                selectedMonth={selectedMonthKey}
+                user={effectiveUser}
+                periodStart={comparisonPeriod.periodStart}
+                periodEnd={comparisonPeriod.periodEnd}
+              />
+            )}
             {activeTab === Tab.DATA && <DataGrid data={filteredData} rawData={headcountRecords.length > 0 ? data : undefined} />}
             {activeTab === Tab.ANALYSIS && (
               <AnalysisPanel

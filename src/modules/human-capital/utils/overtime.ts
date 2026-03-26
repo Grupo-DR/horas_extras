@@ -17,6 +17,9 @@ export const parseDateKey = (dateKey: string): Date => {
     return new Date(year, (month || 1) - 1, day || 1, 12, 0, 0, 0);
 };
 
+const PAYROLL_COMPETENCY_START_DAY = 21;
+const PAYROLL_COMPETENCY_END_DAY = 20;
+
 export const toDateKey = (dateInput?: string | Date | null): string => {
     if (!dateInput) return '';
 
@@ -53,6 +56,76 @@ export const getPayrollCompetencyMonthKey = (dateString: string): string => {
     }
 
     return `${payrollYear}-${String(payrollMonth + 1).padStart(2, '0')}`;
+};
+
+const parseMonthKey = (monthKey: string): { year: number; month: number } | null => {
+    const match = monthKey.trim().match(/^(\d{4})-(\d{2})$/);
+    if (!match) return null;
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    if (!year || month < 1 || month > 12) return null;
+
+    return { year, month };
+};
+
+export interface PayrollCompetencyRange {
+    monthKey: string;
+    startDate: string;
+    endDate: string;
+}
+
+export const getPayrollCompetencyRange = (monthKey: string): PayrollCompetencyRange | null => {
+    const parsed = parseMonthKey(monthKey);
+    if (!parsed) return null;
+
+    const start = new Date(parsed.year, parsed.month - 2, PAYROLL_COMPETENCY_START_DAY, 12, 0, 0, 0);
+    const end = new Date(parsed.year, parsed.month - 1, PAYROLL_COMPETENCY_END_DAY, 12, 0, 0, 0);
+
+    return {
+        monthKey: `${parsed.year}-${String(parsed.month).padStart(2, '0')}`,
+        startDate: formatDateKey(start),
+        endDate: formatDateKey(end),
+    };
+};
+
+const getInclusiveRangeDays = (startDate: string, endDate: string): number => {
+    const start = parseDateKey(startDate);
+    const end = parseDateKey(endDate);
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return 0;
+
+    const diffMs = end.getTime() - start.getTime();
+    return Math.floor(diffMs / 86400000) + 1;
+};
+
+export const getDateRangeOverlapDays = (
+    firstStartDate: string,
+    firstEndDate: string,
+    secondStartDate: string,
+    secondEndDate: string
+): number => {
+    const firstStart = toDateKey(firstStartDate);
+    const firstEnd = toDateKey(firstEndDate);
+    const secondStart = toDateKey(secondStartDate);
+    const secondEnd = toDateKey(secondEndDate);
+
+    if (!firstStart || !firstEnd || !secondStart || !secondEnd) return 0;
+
+    const overlapStart = firstStart > secondStart ? firstStart : secondStart;
+    const overlapEnd = firstEnd < secondEnd ? firstEnd : secondEnd;
+
+    return getInclusiveRangeDays(overlapStart, overlapEnd);
+};
+
+export const getPayrollCompetencyOverlapDays = (
+    monthKey: string,
+    startDate: string,
+    endDate: string
+): number => {
+    const range = getPayrollCompetencyRange(monthKey);
+    if (!range) return 0;
+
+    return getDateRangeOverlapDays(range.startDate, range.endDate, startDate, endDate);
 };
 
 export const getPayrollMonthKey = (dateString: string): string => {

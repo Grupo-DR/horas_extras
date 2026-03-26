@@ -6,7 +6,7 @@ import { getSalariesForMonthKeys, getSalariesSync, getBudgetsSync, getAllPlannin
 import { getCCName, getCCRegional, normalizeCC } from '../data/ccMaster';
 import { getPeriodStats } from '../utils/dateUtils';
 import { isRecordInHumanCapitalScope } from '../utils/scopeFilters';
-import { getPayrollCompetencyMonthKey } from '../utils/overtime';
+import { formatDateKey, getDateRangeOverlapDays, getPayrollCompetencyMonthKey, getPayrollCompetencyRange, toDateKey } from '../utils/overtime';
 import EmployeeDailyComparisonModal from './EmployeeDailyComparisonModal';
 
 interface DashboardProps {
@@ -15,6 +15,7 @@ interface DashboardProps {
   regional?: string;                   // filtro de regional ativo (é aplicado no ccSummary)
   /** Todos os monthKeys (YYYY-MM) cobertos pelo período filtrado */
   budgetMonthKeys: string[];
+  dateMode: 'PAYROLL' | 'ANNUAL' | 'CUSTOM';
   /** Callback: clique em colaborador no modal de função → navega para aba Histórico */
   onNavigateToEmployee?: (name: string, chapa: string) => void;
   selectedMonth: string;
@@ -46,6 +47,18 @@ interface TreeNode {
 }
 
 type ViewMode = 'hours' | 'finance';
+
+const formatMonthKeyLabel = (monthKey: string): string => {
+  const [year, month] = monthKey.split('-').map(Number);
+  if (!year || !month) return monthKey;
+
+  const label = new Date(year, month - 1, 1).toLocaleString('pt-BR', {
+    month: 'short',
+    year: 'numeric',
+  });
+
+  return label.replace('.', '');
+};
 
 const TreeGridHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
   <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -429,7 +442,7 @@ const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHour
   );
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMonthKeys, selectedMonth, user, periodStart, periodEnd }) => {
+const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMonthKeys, dateMode, selectedMonth, user, periodStart, periodEnd }) => {
   const [ccSearch, setCcSearch] = useState('');
   const [funcSearch, setFuncSearch] = useState('');
   const [salariesMap, setSalariesMap] = useState<Record<string, number>>({});
@@ -443,10 +456,25 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
   const [treeViewMode, setTreeViewMode] = React.useState<'financial' | 'operational'>('financial');
   const [showTreeHelp, setShowTreeHelp] = React.useState(false);
   const realRecords = allData ?? data;
+  const periodStartKey = useMemo(() => formatDateKey(periodStart), [periodStart]);
+  const periodEndKey = useMemo(() => formatDateKey(periodEnd), [periodEnd]);
 
-  const planningRecords = useMemo(() => getAllPlanningRecords().filter(p => !p.status || p.status === 'approved'), []);
+  const planningRecords = useMemo(
+    () => getAllPlanningRecords().filter(p => !p.status || p.status === 'approved'),
+    []
+  );
 
-  const [allBudgets, setAllBudgets] = useState<import('../types').BudgetRecord[]>([]);
+  const filteredPlanningRecords = useMemo(
+    () =>
+      planningRecords.filter(p => {
+        if (p.type !== 'DAILY') return false;
+        const planningDateKey = toDateKey(p.date);
+        return !!planningDateKey && planningDateKey >= periodStartKey && planningDateKey <= periodEndKey;
+      }),
+    [planningRecords, periodStartKey, periodEndKey]
+  );
+
+  const [allBudgets, setAllBudgets] = useState<BudgetRecord[]>([]);
   useEffect(() => {
       setAllBudgets(getBudgetsSync());
       getAllBudgetsAsync().then(setAllBudgets).catch(console.error);
@@ -459,6 +487,42 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     return allBudgets.filter(b => keySet.has(b.monthKey));
   }, [allBudgets, budgetMonthKeys]);
 
+  const getBudgetValueForActivePeriod = (budget: BudgetRecord): number => {
+    if (dateMode !== 'CUSTOM') return budget.value;
+
+    const competencyRange = getPayrollCompetencyRange(budget.monthKey);
+    if (!competencyRange) return 0;
+
+    const totalDays = getDateRangeOverlapDays(
+      competencyRange.startDate,
+      competencyRange.endDate,
+      competencyRange.startDate,
+      competencyRange.endDate
+    );
+    if (totalDays <= 0) return 0;
+
+    const coveredDays = getDateRangeOverlapDays(
+      competencyRange.startDate,
+      competencyRange.endDate,
+      periodStartKey,
+      periodEndKey
+    );
+    if (coveredDays <= 0) return 0;
+
+    return budget.value * (coveredDays / totalDays);
+  };
+
+  const effectiveBudgets = useMemo(
+    () =>
+      budgets
+        .map(budget => ({
+          ...budget,
+          effectiveValue: getBudgetValueForActivePeriod(budget),
+        }))
+        .filter(budget => budget.effectiveValue > 0),
+    [budgets, dateMode, periodStartKey, periodEndKey]
+  );
+
   const relevantSalaryMonthKeys = useMemo(() => {
     const keys = new Set<string>();
     budgetMonthKeys?.forEach(monthKey => {
@@ -469,8 +533,12 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       const monthKey = getPayrollCompetencyMonthKey(record.DATA);
       if (monthKey) keys.add(monthKey);
     });
+    filteredPlanningRecords.forEach(record => {
+      const monthKey = getPayrollCompetencyMonthKey(record.date);
+      if (monthKey) keys.add(monthKey);
+    });
     return Array.from(keys).sort();
-  }, [budgetMonthKeys, selectedMonth, data]);
+  }, [budgetMonthKeys, selectedMonth, data, filteredPlanningRecords]);
 
   useEffect(() => {
     const applySalaryState = (records: ReturnType<typeof getSalariesSync>) => {
@@ -509,13 +577,108 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     };
   }, [relevantSalaryMonthKeys, user]);
 
-  const getActualSalary = (chapa: string, date: string): number => {
-    const monthKey = getPayrollCompetencyMonthKey(date) || selectedMonth;
-    return salaryMapsByMonth[monthKey]?.[chapa] ?? salariesMap[chapa] ?? 0;
+  const getSalaryForMonthKey = (chapa: string, monthKey: string): number => {
+    const exactSalary = monthKey ? salaryMapsByMonth[monthKey]?.[chapa] : undefined;
+    if (typeof exactSalary === 'number') return exactSalary;
+
+    return relevantSalaryMonthKeys.length <= 1 ? (salariesMap[chapa] ?? 0) : 0;
   };
 
-  const getPlannedSalary = (chapa: string): number =>
-    salaryMapsByMonth[selectedMonth]?.[chapa] ?? salariesMap[chapa] ?? 0;
+  const getActualSalary = (chapa: string, date: string): number => {
+    const monthKey = getPayrollCompetencyMonthKey(date) || selectedMonth;
+    return getSalaryForMonthKey(chapa, monthKey);
+  };
+
+  const getPlannedSalary = (chapa: string, date: string): number => {
+    const monthKey = getPayrollCompetencyMonthKey(date) || selectedMonth;
+    return getSalaryForMonthKey(chapa, monthKey);
+  };
+
+  const hasExactSalaryForMonthKey = (chapa: string, monthKey: string): boolean =>
+    typeof (monthKey ? salaryMapsByMonth[monthKey]?.[chapa] : undefined) === 'number';
+
+  const customCompetencySummary = useMemo(() => {
+    if (dateMode !== 'CUSTOM') return [];
+
+    return budgetMonthKeys
+      .map(monthKey => {
+        const competencyRange = getPayrollCompetencyRange(monthKey);
+        if (!competencyRange) return null;
+
+        const coveredDays = getDateRangeOverlapDays(
+          competencyRange.startDate,
+          competencyRange.endDate,
+          periodStartKey,
+          periodEndKey
+        );
+        const totalDays = getDateRangeOverlapDays(
+          competencyRange.startDate,
+          competencyRange.endDate,
+          competencyRange.startDate,
+          competencyRange.endDate
+        );
+        const effectiveBudget = effectiveBudgets
+          .filter(budget => budget.monthKey === monthKey)
+          .reduce((acc, budget) => acc + budget.effectiveValue, 0);
+
+        return {
+          monthKey,
+          label: formatMonthKeyLabel(monthKey),
+          coveredDays,
+          totalDays,
+          effectiveBudget,
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => !!item && item.coveredDays > 0);
+  }, [dateMode, budgetMonthKeys, periodStartKey, periodEndKey, budgets, effectiveBudgets]);
+
+  const salaryCoverageAlert = useMemo(() => {
+    const missingActual = new Map<string, { monthKey: string; chapa: string; nome: string }>();
+    const missingPlanned = new Map<string, { monthKey: string; chapa: string; nome: string }>();
+
+    data.forEach(record => {
+      const monthKey = getPayrollCompetencyMonthKey(record.DATA) || selectedMonth;
+      if (!monthKey || hasExactSalaryForMonthKey(record.CHAPA, monthKey)) return;
+
+      const key = `${monthKey}__${record.CHAPA}`;
+      if (!missingActual.has(key)) {
+        missingActual.set(key, {
+          monthKey,
+          chapa: record.CHAPA,
+          nome: record.NOME || record.CHAPA,
+        });
+      }
+    });
+
+    filteredPlanningRecords.forEach(record => {
+      const monthKey = getPayrollCompetencyMonthKey(record.date) || selectedMonth;
+      if (!monthKey || hasExactSalaryForMonthKey(record.chapa, monthKey)) return;
+
+      const key = `${monthKey}__${record.chapa}`;
+      if (!missingPlanned.has(key)) {
+        missingPlanned.set(key, {
+          monthKey,
+          chapa: record.chapa,
+          nome: record.nome || record.chapa,
+        });
+      }
+    });
+
+    const uniqueMissing = new Map<string, { monthKey: string; chapa: string; nome: string }>();
+    missingActual.forEach((value, key) => uniqueMissing.set(key, value));
+    missingPlanned.forEach((value, key) => {
+      if (!uniqueMissing.has(key)) uniqueMissing.set(key, value);
+    });
+
+    const preview = Array.from(uniqueMissing.values()).slice(0, 4);
+
+    return {
+      total: uniqueMissing.size,
+      actualCount: missingActual.size,
+      plannedCount: missingPlanned.size,
+      preview,
+    };
+  }, [data, filteredPlanningRecords, salaryMapsByMonth, selectedMonth]);
 
   const metrics = useMemo(() => {
     let realHE60Hours = 0;
@@ -562,13 +725,13 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     let totalPlannedHours = 0;
     let totalPlannedValueHE = 0;
 
-    planningRecords.forEach(p => {
+    filteredPlanningRecords.forEach(p => {
       if (p.type === 'DAILY') {
         const rawCC = p.costCenter || '';
         if (!isRecordInHumanCapitalScope(user, rawCC)) return;
 
         totalPlannedHours += p.plannedHours;
-        const sal = getPlannedSalary(p.chapa);
+        const sal = getPlannedSalary(p.chapa, p.date);
         if (sal && p.plannedHours > 0) {
           const isSundayOrHoliday = new Date(p.date).getDay() === 0 || false; // Simplificação aqui, mas o ideal é usar dateUtils
           // Nota: O planejamento já aplica multiplicadores (1.6/2.0) mas o DSR é sobre o Valor Final das Extras
@@ -582,9 +745,9 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     const plannedValueDSR = divisor > 0 ? (totalPlannedValueHE / divisor) * multiplier : 0;
     const totalPlannedValue = totalPlannedValueHE + plannedValueDSR;
 
-    const totalBudget = budgets.reduce((acc, b) => {
+    const totalBudget = effectiveBudgets.reduce((acc, b) => {
       if (!isRecordInHumanCapitalScope(user, b.costCenter || '')) return acc;
-      return acc + b.value;
+      return acc + b.effectiveValue;
     }, 0);
 
     return {
@@ -601,7 +764,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       totalBudget,
       periodStats: { businessDays, sunHolidays }
     };
-  }, [data, planningRecords, budgets, salariesMap, salaryMapsByMonth, selectedMonth, user]);
+  }, [data, filteredPlanningRecords, effectiveBudgets, relevantSalaryMonthKeys, salariesMap, salaryMapsByMonth, selectedMonth, user, periodStart, periodEnd]);
 
   // normalizeCC e getCCName/getCCRegional agora vem do ccMaster centralizado
 
@@ -628,12 +791,12 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     const map: Record<string, { real: number; planned: number; name: string; realCost: number; plannedCost: number; budget: number }> = {};
 
     // Orçamentos: filtrar por regional se ativo
-    budgets.forEach(b => {
+    effectiveBudgets.forEach(b => {
       const ccRegional = getCCRegional(b.costCenter);
       if (regional && ccRegional !== regional) return; // filtro regional
       const cc = normalizeCC(b.costCenter);
       if (!map[cc]) map[cc] = { real: 0, planned: 0, name: resolveName(b.costCenter), realCost: 0, plannedCost: 0, budget: 0 };
-      map[cc].budget += b.value;
+      map[cc].budget += b.effectiveValue;
     });
 
     // Dados TOTVS (já filtrados pelo HumanCapitalDashboard)
@@ -660,14 +823,14 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     });
 
     // Planejamento: filtrar por regional se ativo
-    planningRecords.forEach(p => {
+    filteredPlanningRecords.forEach(p => {
       if (!isRecordInHumanCapitalScope(user, p.costCenter || '')) return;
       const ccRegional = getCCRegional(p.costCenter || '');
       if (regional && ccRegional !== regional) return; // filtro regional
       const cc = normalizeCC(p.costCenter || 'S/ CC');
       if (!map[cc]) map[cc] = { real: 0, planned: 0, name: resolveName(p.costCenter || cc), realCost: 0, plannedCost: 0, budget: 0 };
       map[cc].planned += p.plannedHours;
-      const sal = getPlannedSalary(p.chapa);
+      const sal = getPlannedSalary(p.chapa, p.date);
       if (sal && p.plannedHours > 0) {
         const isSunday = new Date(p.date).getDay() === 0;
         map[cc].plannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
@@ -677,7 +840,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     const list = Object.entries(map).map(([cc, s]) => ({ cc, ...s }))
       .sort((a, b) => b.real - a.real);
     return ccSearch ? list.filter(x => x.cc.includes(ccSearch) || x.name.toLowerCase().includes(ccSearch.toLowerCase())) : list;
-  }, [data, planningRecords, ccSearch, budgets, salariesMap, salaryMapsByMonth, selectedMonth, regional, user, ccSecaoMap]);
+  }, [data, filteredPlanningRecords, ccSearch, effectiveBudgets, relevantSalaryMonthKeys, salariesMap, salaryMapsByMonth, selectedMonth, regional, user, ccSecaoMap]);
 
   const funcSummary = useMemo(() => {
     const map: Record<string, { real: number; planned: number; realCost: number; plannedCost: number }> = {};
@@ -701,7 +864,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       }
     });
 
-    planningRecords.forEach(p => {
+    filteredPlanningRecords.forEach(p => {
       const rawCC = p.costCenter || '';
       const cc = normalizeCC(rawCC);
       const reg = getCCRegional(rawCC);
@@ -712,7 +875,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       const f = chapaToFunc[p.chapa] || 'Indefinido';
       if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0 };
       map[f].planned += p.plannedHours;
-      const sal = getPlannedSalary(p.chapa);
+      const sal = getPlannedSalary(p.chapa, p.date);
       if (sal && p.plannedHours > 0) {
         const isSunday = new Date(p.date).getDay() === 0;
         map[f].plannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
@@ -723,7 +886,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       .sort((a, b) => b.real - a.real);
 
     return funcSearch ? list.filter(x => x.name.toLowerCase().includes(funcSearch.toLowerCase())) : list;
-  }, [data, planningRecords, funcSearch, salariesMap, salaryMapsByMonth, selectedMonth, user]);
+  }, [data, filteredPlanningRecords, funcSearch, relevantSalaryMonthKeys, salariesMap, salaryMapsByMonth, selectedMonth, user]);
 
   const funcDetailData = useMemo(() => {
     if (!selectedFuncModal) return [];
@@ -790,11 +953,11 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     });
 
     // Get planned functions for this CC
-    planningRecords.filter(p => p.costCenter === selectedCcModal).forEach(p => {
+    filteredPlanningRecords.filter(p => p.costCenter === selectedCcModal).forEach(p => {
       const f = chapaToFunc[p.chapa] || 'S/ FunÃ§Ã£o';
       if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0, he60: 0, he100: 0, interjornada: 0, night: 0 };
       map[f].planned += p.plannedHours;
-      const sal = getPlannedSalary(p.chapa);
+      const sal = getPlannedSalary(p.chapa, p.date);
       if (sal && p.plannedHours > 0) {
         const isSunday = new Date(p.date).getDay() === 0;
         map[f].plannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
@@ -803,7 +966,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
     return Object.entries(map).map(([name, s]) => ({ name, ...s }))
       .sort((a, b) => b.real - a.real);
-  }, [data, planningRecords, selectedCcModal, salariesMap, salaryMapsByMonth, selectedMonth]);
+  }, [data, filteredPlanningRecords, selectedCcModal, relevantSalaryMonthKeys, salariesMap, salaryMapsByMonth, selectedMonth]);
 
   const hierarchicalData = useMemo(() => {
     // Mapa de nome por chapa para exibir no nível PERSON
@@ -904,7 +1067,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     });
 
     // 2) Dados planejados: vincula direto em REGIONAL > CC > PERSON
-    planningRecords.forEach(p => {
+    filteredPlanningRecords.forEach(p => {
       const rawCC = p.costCenter || 'S/ CC';
       const cc = normalizeCC(rawCC);
       const reg = getCCRegional(rawCC) || 'Sem Regional';
@@ -921,7 +1084,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     });
 
     // 3) Budget acumulado em REGIONAL > CC
-    budgets.forEach(b => {
+    effectiveBudgets.forEach(b => {
       const rawCC = b.costCenter || 'S/ CC';
       const cc = normalizeCC(rawCC);
       const reg = getCCRegional(rawCC) || 'Sem Regional';
@@ -930,8 +1093,8 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       const ccName = getCCName(rawCC) || resolveName(rawCC);
       const regData = getRegData(reg);
       const ccData = getCcData(regData, cc, ccName);
-      regData.metrics.budgetCost += b.value;
-      ccData.metrics.budgetCost += b.value;
+      regData.metrics.budgetCost += b.effectiveValue;
+      ccData.metrics.budgetCost += b.effectiveValue;
     });
 
     const calcRisk = (m: any) => ((m.he100 * 2.5) + (m.he60 * 1.0) + (m.inter * 5.0) + (m.noturno * 0.5)) / (m.headcount.size || 1);
@@ -965,7 +1128,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
           .sort((a, b) => b.metrics.riskIndex - a.metrics.riskIndex)
       }))
       .sort((a, b) => b.metrics.riskIndex - a.metrics.riskIndex);
-  }, [data, planningRecords, budgets, salariesMap, salaryMapsByMonth, selectedMonth, user, globalEmployees]);
+  }, [data, filteredPlanningRecords, effectiveBudgets, relevantSalaryMonthKeys, salariesMap, salaryMapsByMonth, selectedMonth, user, globalEmployees]);
 
   const ToggleButtons = ({ mode, setMode }: { mode: ViewMode, setMode: (m: ViewMode) => void }) => (
     <div className="flex bg-gray-200 p-1 rounded-xl h-9">
@@ -1011,12 +1174,51 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
           chapa={comparisonModalData.chapa}
           periodStart={periodStart}
           periodEnd={periodEnd}
-          plannedRecords={planningRecords}
+          plannedRecords={filteredPlanningRecords}
           realRecords={realRecords}
         />
       )}
 
       {/* â”€â”€ 4 MEGA CARDS â”€â”€ */}
+      {dateMode === 'CUSTOM' && customCompetencySummary.length > 0 && (
+        <div className="bg-sky-50 border border-sky-200 rounded-xl px-4 py-3 flex flex-col gap-2">
+          <div className="flex items-center gap-2 text-sky-800">
+            <Info size={14} />
+            <span className="text-[11px] font-bold uppercase tracking-wide">Competências consideradas no período personalizado</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {customCompetencySummary.map(item => (
+              <div key={item.monthKey} className="px-2.5 py-1.5 rounded-lg bg-white border border-sky-200 text-[11px] text-slate-600 shadow-sm">
+                <span className="font-bold text-sky-700">{item.label}</span>
+                <span>{` · ${item.coveredDays}/${item.totalDays} dias`}</span>
+                <span>{` · R$ ${item.effectiveBudget.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}`}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {salaryCoverageAlert.total > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex flex-col gap-2">
+          <div className="flex items-center gap-2 text-amber-800">
+            <AlertTriangle size={14} />
+            <span className="text-[11px] font-bold uppercase tracking-wide">Salários ausentes na competência correta</span>
+          </div>
+          <p className="text-[11px] text-amber-900">
+            {salaryCoverageAlert.total} combinação(ões) chapa + competência ficaram sem salário exato. O custo dessas ocorrências pode ficar zerado até a competência ser carregada corretamente.
+          </p>
+          <div className="flex flex-wrap gap-2 text-[10px] text-amber-800">
+            <span className="px-2 py-1 rounded-md bg-white border border-amber-200 font-semibold">Real: {salaryCoverageAlert.actualCount}</span>
+            <span className="px-2 py-1 rounded-md bg-white border border-amber-200 font-semibold">Planejado: {salaryCoverageAlert.plannedCount}</span>
+            {salaryCoverageAlert.preview.map(item => (
+              <span key={`${item.monthKey}_${item.chapa}`} className="px-2 py-1 rounded-md bg-white border border-amber-200">
+                {item.monthKey} · {item.chapa} · {item.nome}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
 
         {/* 1. Orçamento */}
@@ -1025,6 +1227,10 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
           const usedPct = metrics.totalBudget > 0 ? Math.min((metrics.totalRealCost / metrics.totalBudget) * 100, 200) : 0;
           const devioPct = metrics.totalBudget > 0 ? ((metrics.totalRealCost - metrics.totalBudget) / metrics.totalBudget) * 100 : 0;
           const isOver = metrics.totalRealCost > metrics.totalBudget;
+          const budgetTitle = dateMode === 'CUSTOM' ? 'Budget Rateado do Período' : 'Budget da Competência';
+          const budgetHint = dateMode === 'CUSTOM'
+            ? `${customCompetencySummary.length} competência(s) rateadas`
+            : 'Competência selecionada';
           return (
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md transition-all">
               <div className="flex items-center justify-between">
@@ -1038,10 +1244,11 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
                 </span>
               </div>
               <div>
-                <p className="text-[9px] text-gray-400 uppercase font-bold">Budget Total</p>
+                <p className="text-[9px] text-gray-400 uppercase font-bold">{budgetTitle}</p>
                 <p className="text-xl font-black text-gray-900 font-mono leading-tight">
                   R$ {budgetM >= 1 ? `${budgetM.toFixed(2)}M` : metrics.totalBudget.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
                 </p>
+                <p className="text-[9px] text-gray-400 mt-0.5">{budgetHint}</p>
               </div>
               <div className="space-y-1">
                 <div className="flex justify-between text-[9px] font-bold text-gray-400 uppercase">
@@ -1176,7 +1383,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
                 </div>
                 <div>
                   <div className="flex justify-between text-[9px] font-bold text-gray-400 mb-0.5">
-                    <span>Custo Real / Budget</span>
+                    <span>{dateMode === 'CUSTOM' ? 'Custo Real / Budget Rateado' : 'Custo Real / Budget'}</span>
                     <span>{budgetEfic.toFixed(0)}%</span>
                   </div>
                   <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
