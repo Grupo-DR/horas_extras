@@ -67,6 +67,36 @@ export const normalizeFunction = (funcao?: string): string => funcao ? funcao.tr
 export const normalizeName = (nome?: string): string => nome ? nome.trim().toUpperCase() : 'S/ NOME';
 export const normalizeChapa = (chapa?: string): string => chapa ? chapa.trim().toUpperCase() : '';
 
+const buildExtraHoursAggregations = (data: OvertimeRecord[]) => {
+    const dailyHours: Record<string, number> = {};
+    const monthlyHours: Record<string, number> = {};
+    const empToCC: Record<string, string> = {};
+
+    data.forEach(record => {
+        const chapa = normalizeChapa(record.CHAPA);
+        if (!chapa) return;
+
+        const cc = normalizeCC(record.CODCCUSTO);
+        empToCC[chapa] = cc;
+
+        if (!isExtraEvent(record.EVENTO) || !record.DATA) return;
+
+        const hours = Number(record.HORAS) || 0;
+        const dateObj = new Date(record.DATA);
+        if (isNaN(dateObj.getTime())) return;
+
+        const dayKey = dateObj.toISOString().split('T')[0];
+        const payrollKey = getPayrollMonthKey(record.DATA);
+        const dailyCompositeKey = `${chapa}|${dayKey}`;
+        const monthlyCompositeKey = `${chapa}|${payrollKey}`;
+
+        dailyHours[dailyCompositeKey] = (dailyHours[dailyCompositeKey] || 0) + hours;
+        monthlyHours[monthlyCompositeKey] = (monthlyHours[monthlyCompositeKey] || 0) + hours;
+    });
+
+    return { dailyHours, monthlyHours, empToCC };
+};
+
 // ────────────────────────────────────────────────────────────
 // Sub-componente: Custom Outlier Label
 // ────────────────────────────────────────────────────────────
@@ -1939,16 +1969,19 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, allData, periodStar
 
     // Calculando métricas gerais para os top cards de anomalia e interjornada
     const metrics = useMemo(() => {
-        let jornadasLongas = 0;
+        const { dailyHours } = buildExtraHoursAggregations(data);
+        let dailyExtraViolations = 0;
         let interjornadas = 0;
 
+        Object.values(dailyHours).forEach(hours => {
+            if (hours > 2) dailyExtraViolations += 1;
+        });
+
         data.forEach(r => {
-            const hours = Number(r.HORAS) || 0;
-            if (isExtraEvent(r.EVENTO) && hours > 10) jornadasLongas++;
             if (isInterjornadaEvent(r.EVENTO)) interjornadas++;
         });
 
-        return { jornadasLongas, interjornadas };
+        return { dailyExtraViolations, interjornadas };
     }, [data]);
 
     return (
@@ -1960,11 +1993,11 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, allData, periodStar
                         <AlertTriangle size={22} />
                     </div>
                     <div>
-                        <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Anomalias de Jornada (&gt;10h)</p>
-                        <h3 className="text-2xl font-bold tracking-tight text-slate-800 font-mono">{metrics.jornadasLongas}</h3>
+                        <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">ViolaÃ§Ãµes DiÃ¡rias de HE (&gt;2h)</p>
+                        <h3 className="text-2xl font-bold tracking-tight text-slate-800 font-mono">{metrics.dailyExtraViolations}</h3>
                         <div className="flex items-center gap-1 text-[10px] text-rose-500 font-semibold mt-0.5">
                             <Zap size={10} />
-                            <span>ALTO RISCO TRABALHISTA</span>
+                            <span>LIMITE CLT DE HORA EXTRA</span>
                         </div>
                     </div>
                 </div>
