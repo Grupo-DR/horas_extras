@@ -1,7 +1,7 @@
 
 import { PlanningRecord, BudgetRecord, SalaryAllocation, UserProfile, HeadcountRecord, HeadcountUploadMeta } from '../types';
 import * as FirestoreService from './firestoreCH';
-import { getPayrollCompetencyMonthKeysForRange } from '../utils/overtime';
+import { getPayrollCompetencyMonthKey, getPayrollCompetencyMonthKeysForRange } from '../utils/overtime';
 
 // Cache in-memory to avoid excessive reads during session if needed, 
 // though we primarily trust Firestore or fallback to localStorage.
@@ -50,22 +50,49 @@ const buildSalaryAllocationsFromHeadcount = (records: HeadcountRecord[]): Salary
     records.forEach(record => {
         if (!record.salario || record.salario <= 0) return;
 
-        const monthKeys = getPayrollCompetencyMonthKeysForRange(record.dataInicio, record.dataFim);
-        monthKeys.forEach(monthKey => {
-            const allocation: SalaryAllocation = {
-                monthKey,
-                chapa: record.chapa,
-                salary: record.salario!,
-                allocation: record.distribuicao || 1,
-                costCenter: record.centroCusto,
-                status: 'A'
-            };
+        // Salário do headcount deve cair em uma única competência de folha.
+        // A referência mais estável para isso é a data final da vigência do lote.
+        const monthKey =
+            getPayrollCompetencyMonthKey(record.dataFim) ||
+            getPayrollCompetencyMonthKey(record.dataInicio) ||
+            record.dataFim.substring(0, 7) ||
+            record.dataInicio.substring(0, 7);
 
-            allocations.set(getSalaryAllocationId(allocation), allocation);
-        });
+        if (!monthKey) return;
+
+        const allocation: SalaryAllocation = {
+            monthKey,
+            chapa: record.chapa,
+            salary: record.salario!,
+            allocation: record.distribuicao || 1,
+            costCenter: record.centroCusto,
+            status: 'A'
+        };
+
+        allocations.set(getSalaryAllocationId(allocation), allocation);
     });
 
     return Array.from(allocations.values());
+};
+
+const getSalaryReplaceMonthKeysFromHeadcount = (records: HeadcountRecord[]): string[] => {
+    const keys = new Set<string>();
+
+    records.forEach(record => {
+        getPayrollCompetencyMonthKeysForRange(record.dataInicio, record.dataFim)
+            .forEach(monthKey => keys.add(monthKey));
+
+        [
+            getPayrollCompetencyMonthKey(record.dataInicio),
+            getPayrollCompetencyMonthKey(record.dataFim),
+            record.dataInicio?.substring(0, 7),
+            record.dataFim?.substring(0, 7)
+        ]
+            .filter(Boolean)
+            .forEach(monthKey => keys.add(monthKey as string));
+    });
+
+    return Array.from(keys);
 };
 
 // --- PLANNING ---
@@ -503,9 +530,7 @@ export const replaceHeadcount = async (
 
     // Salários passam a ter fonte única: upload de headcount com coluna `salario`.
     const salaryAllocations = buildSalaryAllocationsFromHeadcount(records);
-    const replaceMonthKeys = Array.from(new Set(
-        records.flatMap(record => getPayrollCompetencyMonthKeysForRange(record.dataInicio, record.dataFim))
-    ));
+    const replaceMonthKeys = getSalaryReplaceMonthKeysFromHeadcount(records);
     if (replaceMonthKeys.length > 0) {
         await saveSalaries(salaryAllocations, user, { replaceMonthKeys });
     }
