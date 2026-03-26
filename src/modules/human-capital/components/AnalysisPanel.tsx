@@ -106,6 +106,14 @@ const CustomOutlierLabel = (props: any) => {
 
     if (!entry || !entry.isOutlier) return null;
 
+    const label = formatDecimalToTime(Number(value));
+    const xCenter = Number(x) + Number(width) / 2;
+    const rawY = Number(y);
+    const labelY = rawY < 22 ? rawY + 14 : rawY - 8;
+    const boxWidth = Math.max((label.length * 7) + 12, 54);
+    const boxX = xCenter - (boxWidth / 2);
+    const boxY = labelY - 9;
+
     return (
         <text
             x={Number(x) + Number(width) / 2}
@@ -233,6 +241,66 @@ const TrendTooltip: React.FC<{ active?: boolean; payload?: any[] }> = ({ active,
                     <span className="font-mono text-slate-700">{formatDecimalToTime(point.realNoturno)}</span>
                 </div>
             </div>
+        </div>
+    );
+};
+
+const TrendOutlierLabel: React.FC<{ x?: number; y?: number; width?: number; value?: number }> = ({ x = 0, y = 0, width = 0, value = 0 }) => {
+    const label = formatDecimalToTime(Number(value) || 0);
+    const xCenter = Number(x) + (Number(width) / 2);
+    const rawY = Number(y);
+    const labelY = rawY < 22 ? rawY + 14 : rawY - 8;
+    const boxWidth = Math.max((label.length * 7) + 12, 54);
+    const boxX = xCenter - (boxWidth / 2);
+    const boxY = labelY - 9;
+
+    return (
+        <g>
+            <rect
+                x={boxX}
+                y={boxY}
+                width={boxWidth}
+                height={16}
+                rx={8}
+                fill="rgba(255,255,255,0.96)"
+                stroke="#e11d48"
+                strokeWidth={1}
+            />
+            <text
+                x={xCenter}
+                y={labelY}
+                fill="#e11d48"
+                fontSize={10}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fontWeight="bold"
+            >
+                {label}
+            </text>
+        </g>
+    );
+};
+
+const TrendLegend: React.FC<{ showPlanned: boolean }> = ({ showPlanned }) => {
+    const items = [
+        { label: 'Realizado · Dia útil', color: '#6366f1', kind: 'dot' as const },
+        { label: 'Realizado · Final de semana', color: '#f59e0b', kind: 'dot' as const },
+        { label: 'Outlier', color: '#e11d48', kind: 'dot' as const },
+        ...(showPlanned ? [{ label: 'Planejado', color: '#059669', kind: 'line' as const }] : [])
+    ];
+
+    return (
+        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-slate-500">
+            {items.map(item => (
+                <div key={item.label} className="flex items-center gap-2">
+                    {item.kind === 'line' ? (
+                        <span className="block h-[3px] w-5 rounded-full" style={{ backgroundColor: item.color }} />
+                    ) : (
+                        <span className="block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                    )}
+                    <span>{item.label}</span>
+                </div>
+            ))}
         </div>
     );
 };
@@ -513,6 +581,11 @@ const TrendAnalysisEnhanced: React.FC<{
     }, [data, referenceData, planningRecords, filters, periodStart, periodEnd]);
 
     const hasAnyValue = chartData.some(item => item.realTotal > 0 || (typeof item.planned === 'number' && item.planned > 0));
+    const hasPlannedLegend = chartData.some(item => typeof item.planned === 'number');
+    const yAxisMax = chartData.reduce((max, item) => {
+        const planned = typeof item.planned === 'number' ? item.planned : 0;
+        return Math.max(max, item.realTotal, planned);
+    }, 0);
     if (!hasAnyValue) return null;
 
     return (
@@ -521,19 +594,20 @@ const TrendAnalysisEnhanced: React.FC<{
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-2">
                         <TrendingUp size={18} className="text-blue-500" />
-                        <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">AnÃ¡lise de TendÃªncia Temporal</h3>
+                        <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">{'An\u00e1lise de Tend\u00eancia Temporal'}</h3>
                     </div>
                     <button
                         onClick={() => setShowHelp(true)}
                         className="text-slate-400 hover:text-slate-600 transition-colors p-1"
-                        title="Como ler este grÃ¡fico?"
+                        title={'Como ler este gr\u00e1fico?'}
                     >
                         <Info size={18} />
                     </button>
                 </div>
+                <TrendLegend showPlanned={hasPlannedLegend} />
                 <div className="h-[300px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={chartData}>
+                        <ComposedChart data={chartData} margin={{ top: 28, right: 12, left: 0, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                             <XAxis
                                 dataKey="displayDate"
@@ -546,10 +620,10 @@ const TrendAnalysisEnhanced: React.FC<{
                                 tick={{ fontSize: 11, fill: '#94a3b8' }}
                                 axisLine={false}
                                 tickLine={false}
+                                domain={[0, Math.max(Math.ceil(yAxisMax * 1.12), 1)]}
                                 label={{ value: 'Horas', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: '#94a3b8' } }}
                             />
                             <Tooltip content={<TrendTooltip />} />
-                            <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', color: '#64748b', paddingTop: '10px' }} />
 
                             <Bar
                                 dataKey="realTotal"
@@ -562,14 +636,19 @@ const TrendAnalysisEnhanced: React.FC<{
                                         onDayClick(entry.date);
                                     }
                                 }}
-                            >
+                                >
                                 {chartData.map((entry, index) => (
                                     <Cell
                                         key={`cell-${index}`}
                                         fill={entry.isOutlier ? '#e11d48' : entry.isWeekend ? '#f59e0b' : '#6366f1'}
                                     />
                                 ))}
-                                <LabelList dataKey="realTotal" content={<CustomOutlierLabel chartData={chartData} />} />
+                                <LabelList
+                                    dataKey="realTotal"
+                                    content={(props: any) => (
+                                        props?.payload?.isOutlier ? <TrendOutlierLabel {...props} /> : null
+                                    )}
+                                />
                             </Bar>
 
                             {chartData.some(entry => typeof entry.planned === 'number') && (
@@ -1993,7 +2072,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, allData, periodStar
                         <AlertTriangle size={22} />
                     </div>
                     <div>
-                        <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">ViolaÃ§Ãµes DiÃ¡rias de HE (&gt;2h)</p>
+                        <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">{'Viola\u00e7\u00f5es Di\u00e1rias de HE (>2h)'}</p>
                         <h3 className="text-2xl font-bold tracking-tight text-slate-800 font-mono">{metrics.dailyExtraViolations}</h3>
                         <div className="flex items-center gap-1 text-[10px] text-rose-500 font-semibold mt-0.5">
                             <Zap size={10} />
@@ -2007,11 +2086,11 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, allData, periodStar
                         <Scale size={22} />
                     </div>
                     <div>
-                        <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Violações de Interjornada</p>
+                        <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">{'Viola\u00e7\u00f5es de Interjornada'}</p>
                         <h3 className="text-2xl font-bold tracking-tight text-slate-800 font-mono">{metrics.interjornadas}</h3>
                         <div className="flex items-center gap-1 text-[10px] text-amber-600 font-semibold mt-0.5">
                             <Layers size={10} />
-                            <span>NECESSITA AJUSTE DE ESCALA</span>
+                            <span>{'Intervalo m\u00ednimo de 11 horas entre jornadas'}</span>
                         </div>
                     </div>
                 </div>
