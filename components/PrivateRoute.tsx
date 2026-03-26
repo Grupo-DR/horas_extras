@@ -10,6 +10,7 @@ interface PrivateRouteProps {
 export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, requiredModule }) => {
     const { isAuthenticated, loading, user, profile, hasModuleAccess } = useAuth();
     const location = useLocation();
+    const isAccountRoute = location.pathname === '/config/account';
 
     if (loading) {
         return (
@@ -24,8 +25,14 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, requiredMo
     }
 
     // Force Password Change / Account Activation
-    if (user?.mustChangePassword && location.pathname !== '/config/account') {
+    if (user?.mustChangePassword && !isAccountRoute) {
         return <Navigate to="/config/account" replace />;
+    }
+
+    // Account settings are global and must remain reachable even when the user
+    // does not have access to the commercial shell that declares this route.
+    if (isAccountRoute) {
+        return children ? <>{children}</> : <Outlet />;
     }
 
     // Module-level access guard

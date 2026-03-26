@@ -2,14 +2,12 @@ import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Lock, Check, AlertCircle, Camera } from 'lucide-react';
 import { toast } from 'sonner';
-import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, getAuth } from 'firebase/auth';
+import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { auth } from '../../services/firebaseConfig';
-import { useNavigate } from 'react-router-dom';
 import { updateUserProfile } from '../../src/modules/iam/profileService';
 
 export const AccountSettings: React.FC = () => {
-    const { user, logout, refreshProfile } = useAuth();
-    const navigate = useNavigate();
+    const { user, refreshProfile } = useAuth();
 
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
@@ -91,13 +89,15 @@ export const AccountSettings: React.FC = () => {
                 await updateUserProfile(user.id, { status: 'active' });
             }
 
+            await refreshProfile();
+
             toast.success('Senha alterada com sucesso!');
 
             // Optional: Logout or stay logged in? Usually stay logged in.
             // But if it was a forced change, maybe we redirect or just show success.
             // If it was forced, we redirect home.
             if (user.mustChangePassword) {
-                navigate('/');
+                window.location.assign('/');
             } else {
                 // Clear fields
                 setCurrentPassword('');
