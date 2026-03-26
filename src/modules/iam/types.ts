@@ -14,6 +14,8 @@ export type CHRole =
     | 'CH_APPROVER'           // Type 04: Approver Level
     | 'CH_AUDITOR_VIEWER';    // Type 05: All + Read Only
 
+type HCLegacyRole = CHRole | 'DEV_MASTER' | 'MASTER';
+
 export type ConstructionRole =
     | 'CONSTRUCTION_ADMIN'
     | 'CONSTRUCTION_MANAGER'
@@ -90,4 +92,19 @@ export const canReadAll = (role?: CHRole): boolean => {
 export const canApprove = (role?: CHRole): boolean => {
     if (!role) return false;
     return ['CH_ADMIN', 'CH_APPROVER'].includes(role);
+};
+
+export const canAccessSettings = (role?: HCLegacyRole): boolean => {
+    if (!role) return false;
+    return ['CH_ADMIN', 'DEV_MASTER', 'MASTER'].includes(role);
+};
+
+export const canManageHeadcount = (role?: HCLegacyRole): boolean => {
+    if (!role) return false;
+    return ['CH_ADMIN', 'DEV_MASTER', 'MASTER'].includes(role);
+};
+
+export const canManageBudgets = (role?: HCLegacyRole): boolean => {
+    if (!role) return false;
+    return ['CH_ADMIN', 'DEV_MASTER', 'MASTER'].includes(role);
 };

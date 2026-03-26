@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, ManualEmployee, GlobalEmployee, HeadcountRecord } from '../types';
 import { savePlanning, getPlanning, getSalaries, getSalariesSync, saveBudgets, getBudgetsSync, getAllBudgetsAsync, deleteBudgets, deleteAllBudgets, saveGlobalEmployees, getGlobalEmployeesAsync, getGlobalEmployeesSync } from '../services/planning';
-import { canApprove } from '../../iam/types';
+import { canApprove, canManageBudgets } from '../../iam/types';
 import { ApprovalPanel } from './ApprovalPanel';
 
 import { Users, Wallet, TrendingUp, Calculator, CheckCircle2, AlertTriangle, X, ChevronLeft, ChevronRight, Save, FileUp, ArrowUpRight, ArrowDownRight, LayoutList, Trash2 } from 'lucide-react';
@@ -533,6 +533,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
     const [budgets, setBudgets] = useState<BudgetRecord[]>([]);
     const [saving, setSaving] = useState(false);
     const [alert, setAlert] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+    const canManagePlanningBudgets = user.isSuperAdmin || canManageBudgets(user.role);
 
     const [ccPlanModalId, setCcPlanModalId] = useState<string | null>(null);
 
@@ -1278,7 +1279,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                         </div>
 
                         <div className="flex flex-wrap gap-3 w-full xl:w-auto justify-end">
-                            {(['CH_ADMIN', 'CH_APPROVER', 'CH_COSTCENTER_PLANNER', 'DEV_MASTER', 'MASTER'].includes(user.role as string)) && (
+                            {canManagePlanningBudgets && (
                                 <>
                                     <input type="file" ref={budgetInputRef} onChange={handleBudgetImport} accept=".xlsx,.xls" className="hidden" />
                                     <button onClick={() => budgetInputRef.current?.click()} className="bg-white text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-indigo-50 flex items-center gap-2 shadow-sm">

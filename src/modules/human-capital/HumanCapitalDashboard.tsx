@@ -10,7 +10,7 @@ import ProfileManager from '@/src/modules/iam/components/ProfileManager';
 import Planning from '@/src/modules/human-capital/components/Planning';
 import HeadcountUpload from '@/src/modules/human-capital/components/HeadcountUpload';
 import HeadcountGovernance from '@/src/modules/human-capital/components/HeadcountGovernance';
-import { canManageProfiles, canPlan } from '../iam/types';
+import { canAccessSettings, canManageHeadcount, canManageProfiles, canPlan } from '../iam/types';
 import { formatDateForApi } from '@/src/modules/human-capital/utils/formatters';
 import { LayoutDashboard, Table, Settings, CheckCircle2, AlertTriangle, Sparkles, CalendarRange, UserCog, Lock, BarChart3 } from 'lucide-react';
 import { ApiConfig, OvertimeRecord, FetchStatus, UserProfile, ManualEmployee, GlobalEmployee } from '@/src/modules/human-capital/types';
@@ -121,6 +121,14 @@ const HumanCapitalDashboard: React.FC = () => {
       }
     }
   }, [isProfileLoading, hasModuleAccess, navigate]);
+
+  useEffect(() => {
+    if (!effectiveUser) return;
+
+    if (activeTab === Tab.SETTINGS && !(effectiveUser.isSuperAdmin || canAccessSettings(effectiveUser.role))) {
+      setActiveTab(Tab.DASHBOARD);
+    }
+  }, [activeTab, effectiveUser]);
 
   // CORREÇÃO CRÍTICA: Adicionado dependência de filtros de data para recarregar API
   useEffect(() => {
@@ -398,9 +406,11 @@ const HumanCapitalDashboard: React.FC = () => {
     ];
     if (effectiveUser.isSuperAdmin || canPlan(effectiveUser.role)) items.push({ key: Tab.PLANNING, label: "Planejamento", icon: CalendarRange, onClick: () => setActiveTab(Tab.PLANNING), isActive: activeTab === Tab.PLANNING });
     if (canManageProfiles(profile)) items.push({ key: Tab.PROFILES, label: "Gestão de Usuários", icon: UserCog, onClick: () => setActiveTab(Tab.PROFILES), isActive: activeTab === Tab.PROFILES });
-    items.push({ key: Tab.SETTINGS, label: "Configurações", icon: Settings, onClick: () => setActiveTab(Tab.SETTINGS), isActive: activeTab === Tab.SETTINGS });
+    if (effectiveUser.isSuperAdmin || canAccessSettings(effectiveUser.role)) {
+      items.push({ key: Tab.SETTINGS, label: "Configurações", icon: Settings, onClick: () => setActiveTab(Tab.SETTINGS), isActive: activeTab === Tab.SETTINGS });
+    }
     return items;
-  }, [effectiveUser, activeTab]);
+  }, [effectiveUser, activeTab, profile]);
 
   if (isProfileLoading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="animate-pulse text-blue-600 font-medium">Carregando perfil...</div></div>;
   if (!hasModuleAccess('human_capital')) return <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-gray-500 gap-4"><Lock size={48} className="text-gray-300" /><h2 className="text-xl font-bold">Acesso Restrito</h2><p>Seu perfil não possui acesso ao módulo Capital Humano.</p><button onClick={() => navigate('/')} className="text-blue-600 underline text-sm">Voltar ao início</button></div>;
@@ -482,7 +492,7 @@ const HumanCapitalDashboard: React.FC = () => {
             )}
             {activeTab === Tab.PLANNING && (effectiveUser.isSuperAdmin || canPlan(effectiveUser.role)) && <Planning user={effectiveUser} employees={scopedData} manualEmployees={manualEmployees} headcountRecords={headcountRecords} />}
             {activeTab === Tab.PROFILES && canManageProfiles(profile) && <ProfileManager />}
-            {activeTab === Tab.SETTINGS && (
+            {activeTab === Tab.SETTINGS && (effectiveUser.isSuperAdmin || canManageHeadcount(effectiveUser.role)) && (
               <div className="space-y-6">
                 {/* Governança do headcount ativo */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
