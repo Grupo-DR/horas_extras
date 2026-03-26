@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import {
     formatDecimalToTime,
+    formatDateKey,
     getPayrollMonthKey
 } from '../utils/overtime';
 import { OvertimeRecord, PlanningRecord } from '../types';
 import { RealOvertimeRecord } from '../data/realOvertime';
+import type { FilterState } from './FilterBar';
 import {
     AlertTriangle, Building2, Scale, Users, CheckCircle2,
     Search, TrendingUp, BarChart3, PieChart, Activity, Layers, Moon, Zap, ArrowUpRight,
@@ -25,6 +27,7 @@ interface AnalysisPanelProps {
     realOvertime: RealOvertimeRecord[];
     periodStart: Date;
     periodEnd: Date;
+    filters: FilterState;
 }
 
 
@@ -107,19 +110,19 @@ const TrendHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     <div className="flex items-start gap-3">
                         <div className="text-xl mt-0.5">🟦</div>
                         <div>
-                            <strong className="text-slate-800">Barras Azuis (Dias Úteis):</strong> Representam o volume de horas extras realizadas de segunda a sexta-feira.
+                            <strong className="text-slate-800">Barras Azuis (Dias Úteis):</strong> Representam o total de horas realizadas no dia, somando horas extras, interjornada e adicional noturno.
                         </div>
                     </div>
                     <div className="flex items-start gap-3">
                         <div className="text-xl mt-0.5">🟧</div>
                         <div>
-                            <strong className="text-slate-800">Barras Laranjas (Finais de Semana):</strong> Destacam horas extras realizadas aos sábados e domingos. Serve como alerta visual de exaustão da equipa e custos adicionais (HE 100%).
+                            <strong className="text-slate-800">Barras Laranjas (Finais de Semana):</strong> Destacam dias de sábado e domingo para facilitar a leitura de picos operacionais fora da rotina.
                         </div>
                     </div>
                     <div className="flex items-start gap-3">
-                        <div className="text-xl mt-0.5">📈</div>
+                        <div className="text-xl mt-0.5">📉</div>
                         <div>
-                            <strong className="text-slate-800">Linha Tracejada (Média Móvel):</strong> É a média de horas dos últimos 7 dias. Ela suaviza os picos diários e mostra a "verdadeira tendência" de crescimento ou queda da operação.
+                            <strong className="text-slate-800">Linha Verde (Planejado):</strong> Mostra quantas horas estavam previstas para cada dia. Quando a barra fica acima da linha, houve estouro do planejamento.
                         </div>
                     </div>
                     <div className="flex items-start gap-3">
@@ -146,7 +149,73 @@ const TrendHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 // ────────────────────────────────────────────────────────────
 // Sub-componente: Gráfico de Tendência (Trend Analysis)
 // ────────────────────────────────────────────────────────────
-const TrendAnalysis: React.FC<{ data: OvertimeRecord[]; onDayClick?: (date: string) => void }> = ({ data, onDayClick }) => {
+const TrendTooltip: React.FC<{ active?: boolean; payload?: any[] }> = ({ active, payload }) => {
+    const point = payload?.[0]?.payload;
+    if (!active || !point) return null;
+
+    const hasPlanned = typeof point.planned === 'number';
+    const delta = hasPlanned ? point.realTotal - point.planned : null;
+
+    return (
+        <div className="rounded-xl border border-slate-200 bg-white/95 p-3 shadow-xl backdrop-blur-sm min-w-[220px]">
+            <div className="mb-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Data</p>
+                <p className="text-sm font-semibold text-slate-800">
+                    {new Date(`${point.date}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}
+                </p>
+            </div>
+            <div className="space-y-1.5 text-xs">
+                <div className="flex items-center justify-between gap-4">
+                    <span className="text-slate-500">Realizado</span>
+                    <span className="font-mono font-bold text-slate-800">{formatDecimalToTime(point.realTotal)}</span>
+                </div>
+                {hasPlanned && (
+                    <div className="flex items-center justify-between gap-4">
+                        <span className="text-emerald-600">Planejado</span>
+                        <span className="font-mono font-bold text-emerald-700">{formatDecimalToTime(point.planned)}</span>
+                    </div>
+                )}
+                {delta !== null && (
+                    <div className="flex items-center justify-between gap-4">
+                        <span className="text-slate-500">Desvio</span>
+                        <span className={`font-mono font-bold ${delta > 0 ? 'text-rose-600' : delta < 0 ? 'text-emerald-600' : 'text-slate-700'}`}>
+                            {formatDecimalToTime(delta)}
+                        </span>
+                    </div>
+                )}
+            </div>
+            <div className="my-2 border-t border-slate-100" />
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
+                <div className="flex items-center justify-between gap-3">
+                    <span className="text-blue-600">HE 60%</span>
+                    <span className="font-mono text-slate-700">{formatDecimalToTime(point.real60)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                    <span className="text-rose-600">HE 100%</span>
+                    <span className="font-mono text-slate-700">{formatDecimalToTime(point.real100)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                    <span className="text-amber-600">Inter.</span>
+                    <span className="font-mono text-slate-700">{formatDecimalToTime(point.realInter)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                    <span className="text-purple-600">Noturno</span>
+                    <span className="font-mono text-slate-700">{formatDecimalToTime(point.realNoturno)}</span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const TrendAnalysis: React.FC<{
+    data: OvertimeRecord[];
+    referenceData: OvertimeRecord[];
+    planningRecords: PlanningRecord[];
+    filters: FilterState;
+    periodStart: Date;
+    periodEnd: Date;
+    onDayClick?: (date: string) => void;
+}> = ({ data, referenceData, planningRecords, filters, periodStart, periodEnd, onDayClick }) => {
     const [showHelp, setShowHelp] = useState(false);
 
     const chartData = useMemo(() => {
@@ -281,6 +350,210 @@ const TrendAnalysis: React.FC<{ data: OvertimeRecord[]; onDayClick?: (date: stri
                                 strokeDasharray="5 5"
                                 dot={false}
                             />
+                        </ComposedChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+            {showHelp && <TrendHelpModal onClose={() => setShowHelp(false)} />}
+        </>
+    );
+};
+
+const TrendAnalysisEnhanced: React.FC<{
+    data: OvertimeRecord[];
+    referenceData: OvertimeRecord[];
+    planningRecords: PlanningRecord[];
+    filters: FilterState;
+    periodStart: Date;
+    periodEnd: Date;
+    onDayClick?: (date: string) => void;
+}> = ({ data, referenceData, planningRecords, filters, periodStart, periodEnd, onDayClick }) => {
+    const [showHelp, setShowHelp] = useState(false);
+
+    const chartData = useMemo(() => {
+        const shouldShowPlanned = !filters.type;
+        const map: Record<string, {
+            date: string;
+            real60: number;
+            real100: number;
+            realInter: number;
+            realNoturno: number;
+            realTotal: number;
+            planned: number;
+        }> = {};
+
+        const start = new Date(periodStart.getFullYear(), periodStart.getMonth(), periodStart.getDate(), 12, 0, 0, 0);
+        const end = new Date(periodEnd.getFullYear(), periodEnd.getMonth(), periodEnd.getDate(), 12, 0, 0, 0);
+        const cursor = new Date(start);
+
+        while (cursor <= end) {
+            const key = formatDateKey(cursor);
+            map[key] = {
+                date: key,
+                real60: 0,
+                real100: 0,
+                realInter: 0,
+                realNoturno: 0,
+                realTotal: 0,
+                planned: 0
+            };
+            cursor.setDate(cursor.getDate() + 1);
+        }
+
+        data.forEach(record => {
+            if (!record.DATA) return;
+
+            const dateObj = new Date(record.DATA);
+            if (isNaN(dateObj.getTime())) return;
+
+            const dateKey = dateObj.toISOString().split('T')[0];
+            if (!map[dateKey]) return;
+
+            const hours = Number(record.HORAS) || 0;
+
+            if (isExtra100Event(record.EVENTO)) {
+                map[dateKey].real100 += hours;
+                map[dateKey].realTotal += hours;
+            } else if (isExtra60Event(record.EVENTO)) {
+                map[dateKey].real60 += hours;
+                map[dateKey].realTotal += hours;
+            } else if (isInterjornadaEvent(record.EVENTO)) {
+                map[dateKey].realInter += hours;
+                map[dateKey].realTotal += hours;
+            } else if (isNoturnoEvent(record.EVENTO)) {
+                map[dateKey].realNoturno += hours;
+                map[dateKey].realTotal += hours;
+            }
+        });
+
+        if (shouldShowPlanned) {
+            const chapaToFunction = new Map<string, string>();
+            referenceData.forEach(record => {
+                if (record.CHAPA && record.FUNCAO) chapaToFunction.set(record.CHAPA, record.FUNCAO);
+            });
+
+            planningRecords.forEach(record => {
+                if (record.type !== 'DAILY') return;
+                if (!record.date || !map[record.date]) return;
+
+                const searchTerm = filters.searchTerm.trim().toLowerCase();
+                if (searchTerm) {
+                    const matchesName = (record.nome || '').toLowerCase().includes(searchTerm);
+                    const matchesChapa = (record.chapa || '').toLowerCase().includes(searchTerm);
+                    if (!matchesName && !matchesChapa) return;
+                }
+
+                if (filters.costCenter && normalizeCC(record.costCenter) !== normalizeCC(filters.costCenter)) return;
+                if (filters.regional && getCCRegional(record.costCenter || '') !== filters.regional) return;
+
+                if (filters.function) {
+                    const mappedFunction = normalizeFunction(chapaToFunction.get(record.chapa));
+                    if (mappedFunction !== normalizeFunction(filters.function)) return;
+                }
+
+                map[record.date].planned += Number(record.plannedHours) || 0;
+            });
+        }
+
+        const sorted = Object.values(map).sort((a, b) => a.date.localeCompare(b.date));
+        const nonZeroTotals = sorted.map(item => item.realTotal).filter(total => total > 0).sort((a, b) => a - b);
+        let outlierThreshold = Infinity;
+
+        if (nonZeroTotals.length > 0) {
+            const q1Index = Math.floor(nonZeroTotals.length * 0.25);
+            const q3Index = Math.floor(nonZeroTotals.length * 0.75);
+            const q1 = nonZeroTotals[q1Index];
+            const q3 = nonZeroTotals[q3Index];
+            const iqr = q3 - q1;
+            outlierThreshold = q3 + (1.5 * iqr);
+        }
+
+        return sorted.map(item => {
+            const dateObj = new Date(`${item.date}T12:00:00`);
+            const dayOfWeek = dateObj.getDay();
+
+            return {
+                ...item,
+                displayDate: dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+                isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
+                isOutlier: item.realTotal > outlierThreshold && item.realTotal > 8,
+                planned: shouldShowPlanned ? item.planned : null
+            };
+        });
+    }, [data, referenceData, planningRecords, filters, periodStart, periodEnd]);
+
+    const hasAnyValue = chartData.some(item => item.realTotal > 0 || (typeof item.planned === 'number' && item.planned > 0));
+    if (!hasAnyValue) return null;
+
+    return (
+        <>
+            <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-md shadow-slate-200/50">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-2">
+                        <TrendingUp size={18} className="text-blue-500" />
+                        <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">AnÃ¡lise de TendÃªncia Temporal</h3>
+                    </div>
+                    <button
+                        onClick={() => setShowHelp(true)}
+                        className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+                        title="Como ler este grÃ¡fico?"
+                    >
+                        <Info size={18} />
+                    </button>
+                </div>
+                <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={chartData}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                            <XAxis
+                                dataKey="displayDate"
+                                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                                axisLine={false}
+                                tickLine={false}
+                            />
+                            <YAxis
+                                tickFormatter={formatDecimalToTime}
+                                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                                axisLine={false}
+                                tickLine={false}
+                                label={{ value: 'Horas', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: '#94a3b8' } }}
+                            />
+                            <Tooltip content={<TrendTooltip />} />
+                            <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', color: '#64748b', paddingTop: '10px' }} />
+
+                            <Bar
+                                dataKey="realTotal"
+                                name="Realizado"
+                                radius={[4, 4, 0, 0]}
+                                opacity={0.85}
+                                cursor={onDayClick ? 'pointer' : 'default'}
+                                onClick={(entry: any) => {
+                                    if (onDayClick && entry && entry.date) {
+                                        onDayClick(entry.date);
+                                    }
+                                }}
+                            >
+                                {chartData.map((entry, index) => (
+                                    <Cell
+                                        key={`cell-${index}`}
+                                        fill={entry.isOutlier ? '#e11d48' : entry.isWeekend ? '#f59e0b' : '#6366f1'}
+                                    />
+                                ))}
+                                <LabelList dataKey="realTotal" content={<CustomOutlierLabel chartData={chartData} />} />
+                            </Bar>
+
+                            {chartData.some(entry => typeof entry.planned === 'number') && (
+                                <Line
+                                    type="monotone"
+                                    dataKey="planned"
+                                    name="Planejado"
+                                    stroke="#059669"
+                                    strokeWidth={3}
+                                    dot={false}
+                                    activeDot={{ r: 4, fill: '#059669' }}
+                                    connectNulls={false}
+                                />
+                            )}
                         </ComposedChart>
                     </ResponsiveContainer>
                 </div>
@@ -1649,7 +1922,7 @@ const ComplianceDrilldownModal: React.FC<{ cc: string; ccName: string; data: Ove
 // ────────────────────────────────────────────────────────────
 // Componente principal
 // ────────────────────────────────────────────────────────────
-const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, allData, periodStart, periodEnd }) => {
+const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, allData, periodStart, periodEnd, filters }) => {
     const [drilldownDate, setDrilldownDate] = useState<string | null>(null);
     const [listDrilldown, setListDrilldown] = useState<{ title: string; chapas: string[] } | null>(null);
     const [complianceDrilldown, setComplianceDrilldown] = useState<{ cc: string; ccName: string } | null>(null);
@@ -1712,7 +1985,15 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, allData, periodStar
             </div>
 
             {/* Gráficos Full Width */}
-            <TrendAnalysis data={data} onDayClick={setDrilldownDate} />
+            <TrendAnalysisEnhanced
+                data={data}
+                referenceData={realRecords}
+                planningRecords={planningRecords}
+                filters={filters}
+                periodStart={periodStart}
+                periodEnd={periodEnd}
+                onDayClick={setDrilldownDate}
+            />
             <ConcentrationPareto data={data} onBarClick={(title, chapas) => setListDrilldown({ title, chapas })} />
 
             {/* Grid 50/50: Histograma e Compliance */}

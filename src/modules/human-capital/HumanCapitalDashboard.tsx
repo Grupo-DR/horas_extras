@@ -454,6 +454,7 @@ const HumanCapitalDashboard: React.FC = () => {
                 selectedYear={filters.year}
                 periodStart={comparisonPeriod.periodStart}
                 periodEnd={comparisonPeriod.periodEnd}
+                filters={filters}
               />
             )}
             {activeTab === Tab.PLANNING && (effectiveUser.isSuperAdmin || canPlan(effectiveUser.role)) && <Planning user={effectiveUser} employees={scopedData} manualEmployees={manualEmployees} headcountRecords={headcountRecords} />}
