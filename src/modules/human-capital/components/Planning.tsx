@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { OvertimeRecord, UserProfile, PlanningRecord, SalaryAllocation, BudgetRecord, ManualEmployee, GlobalEmployee, HeadcountRecord } from '../types';
-import { savePlanning, getPlanning, saveSalaries, getSalariesSync, saveBudgets, getBudgetsSync, getAllBudgetsAsync, deleteBudgets, deleteAllBudgets, saveGlobalEmployees, getGlobalEmployeesAsync, getGlobalEmployeesSync } from '../services/planning';
+import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, ManualEmployee, GlobalEmployee, HeadcountRecord } from '../types';
+import { savePlanning, getPlanning, getSalaries, getSalariesSync, saveBudgets, getBudgetsSync, getAllBudgetsAsync, deleteBudgets, deleteAllBudgets, saveGlobalEmployees, getGlobalEmployeesAsync, getGlobalEmployeesSync } from '../services/planning';
 import { canApprove } from '../../iam/types';
 import { ApprovalPanel } from './ApprovalPanel';
 
@@ -542,7 +542,6 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
     // Global Employees Dictionary
     const [globalEmployees, setGlobalEmployees] = useState<GlobalEmployee[]>(() => getGlobalEmployeesSync());
 
-    const salaryInputRef = useRef<HTMLInputElement>(null);
     const budgetInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -598,13 +597,35 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
         return Array.from(new Set(uniqueEmployees.map(e => e.regional).filter(Boolean))).sort();
     }, [uniqueEmployees]);
 
-    // Load Data
-    useEffect(() => {
-        const storedSalaries = getSalariesSync();
+    const buildSalaryMap = (salaryRows: ReturnType<typeof getSalariesSync>): Record<string, number> => {
         const sMap: Record<string, number> = {};
-        storedSalaries.forEach(s => sMap[s.chapa] = s.salary);
-        setSalaries(sMap);
+        salaryRows.forEach(s => {
+            if (!sMap[s.chapa] || s.salary > sMap[s.chapa]) {
+                sMap[s.chapa] = s.salary;
+            }
+        });
+        return sMap;
+    };
 
+    useEffect(() => {
+        setSalaries(buildSalaryMap(getSalariesSync(selectedMonth)));
+
+        let cancelled = false;
+        getSalaries(selectedMonth, user)
+            .then(rows => {
+                if (!cancelled) {
+                    setSalaries(buildSalaryMap(rows));
+                }
+            })
+            .catch(error => console.error('Error loading salaries for planning:', error));
+
+        return () => {
+            cancelled = true;
+        };
+    }, [selectedMonth, user]);
+
+    // Load reference data
+    useEffect(() => {
         const storedBudgets = getBudgetsSync();
         setBudgets(storedBudgets);
         getAllBudgetsAsync().then(setBudgets).catch(console.error);
@@ -911,77 +932,6 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
         }
         return days;
     }, [currentWeekStart]);
-
-    const handleSalaryImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            try {
-                const data = event.target?.result;
-                const workbook = XLSX.read(data, { type: 'binary' });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-                const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-                if (json.length === 0) {
-                    setAlert({ type: 'error', message: "Arquivo vazio." });
-                    return;
-                }
-
-                const headers = (json[0] as any[]).map(h => String(h).toUpperCase().trim());
-                const idxChapa = headers.findIndex(h => h.includes('CHAPA'));
-                const idxSalario = headers.findIndex(h => h.includes('SALÁRIO') || h.includes('SALARIO'));
-                const idxMes = headers.findIndex(h => h.includes('MÊS') || h.includes('MES'));
-                const idxStatus = headers.findIndex(h => h.includes('STATUS'));
-
-                if (idxChapa === -1 || idxSalario === -1 || idxMes === -1 || idxStatus === -1) {
-                    setAlert({ type: 'error', message: "Colunas obrigatórias não encontradas: Chapa, Salário, Mês, Status." });
-                    return;
-                }
-
-                const salaryAllocations: SalaryAllocation[] = [];
-                const salaryMap: Record<string, number> = { ...salaries };
-                let count = 0;
-                const currentYear = new Date().getFullYear();
-
-                for (let i = 1; i < json.length; i++) {
-                    const row = json[i] as any[];
-                    if (!row || row.length === 0) continue;
-                    const chapa = String(row[idxChapa] || '').trim();
-                    const status = String(row[idxStatus] || '').trim().toUpperCase();
-                    const mesName = String(row[idxMes] || '').trim();
-                    let salaryVal = row[idxSalario];
-
-                    if (status !== 'A') continue;
-                    if (typeof salaryVal === 'string') salaryVal = parseFloat(salaryVal.replace('R$', '').replace(/\./g, '').replace(',', '.').trim());
-
-                    if (chapa && mesName && !isNaN(salaryVal)) {
-                        const monthIndex = MONTH_NAMES.findIndex(m => m.toLowerCase() === mesName.toLowerCase());
-                        if (monthIndex === -1) continue;
-                        const monthKey = `${currentYear}-${String(monthIndex + 1).padStart(2, '0')}`;
-                        const emp = employees.find(e => e.CHAPA === chapa);
-                        const costCenter = emp?.CODCCUSTO || 'UNKNOWN';
-                        if (monthKey === selectedMonth) salaryMap[chapa] = salaryVal;
-                        salaryAllocations.push({ monthKey, chapa, salary: salaryVal, allocation: 1.0, costCenter, status: 'A' });
-                        count++;
-                    }
-                }
-
-                if (count > 0) {
-                    saveSalaries(salaryAllocations, user);
-                    setSalaries(salaryMap);
-                    setAlert({ type: 'success', message: `${count} salários importados!` });
-                } else {
-                    setAlert({ type: 'error', message: "Nenhum registro válido encontrado." });
-                }
-
-            } catch (err) { console.error(err); setAlert({ type: 'error', message: "Erro na importação" }); }
-        };
-        reader.readAsBinaryString(file);
-        if (salaryInputRef.current) salaryInputRef.current.value = '';
-    };
 
     const handleBudgetImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -1330,10 +1280,6 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                         <div className="flex flex-wrap gap-3 w-full xl:w-auto justify-end">
                             {(['CH_ADMIN', 'CH_APPROVER', 'CH_COSTCENTER_PLANNER', 'DEV_MASTER', 'MASTER'].includes(user.role as string)) && (
                                 <>
-                                    <input type="file" ref={salaryInputRef} onChange={handleSalaryImport} accept=".xlsx,.xls,.csv,.txt" className="hidden" />
-                                    <button onClick={() => salaryInputRef.current?.click()} className="bg-white text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-indigo-50 flex items-center gap-2 shadow-sm">
-                                        <FileUp size={16} /> Salários
-                                    </button>
                                     <input type="file" ref={budgetInputRef} onChange={handleBudgetImport} accept=".xlsx,.xls" className="hidden" />
                                     <button onClick={() => budgetInputRef.current?.click()} className="bg-white text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-indigo-50 flex items-center gap-2 shadow-sm">
                                         <FileUp size={16} /> Importar Budget
@@ -1343,6 +1289,9 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                                     </button>
                                 </>
                             )}
+                            <div className="self-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                                Salários vêm do headcount ativo
+                            </div>
                             <button onClick={() => handleSave(false)} disabled={saving} className="bg-gray-100 text-gray-700 px-6 py-2.5 rounded-lg text-sm font-bold uppercase hover:bg-gray-200 transition flex items-center gap-2 shadow-sm">
                                 <Save size={18} /> Salvar Rascunho
                             </button>

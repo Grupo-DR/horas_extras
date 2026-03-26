@@ -143,6 +143,23 @@ export const getSalaryAllocationsByMonthKey = async (monthKey: string, scope?: S
     return snapshot.docs.map(d => d.data() as SalaryAllocation);
 };
 
+export const deleteSalaryAllocationsByMonthKeys = async (monthKeys: string[]): Promise<void> => {
+    const keys = Array.from(new Set((monthKeys || []).filter(Boolean)));
+    if (keys.length === 0) return;
+
+    for (const monthKey of keys) {
+        const q = query(collection(db, COL_SALARIES), where('monthKey', '==', monthKey));
+        const snapshot = await getDocs(q);
+        const CHUNK = 400;
+
+        for (let i = 0; i < snapshot.docs.length; i += CHUNK) {
+            const batch = writeBatch(db);
+            snapshot.docs.slice(i, i + CHUNK).forEach(d => batch.delete(d.ref));
+            await batch.commit();
+        }
+    }
+};
+
 // --- PLANNING ---
 
 export const upsertPlanningRecords = async (records: PlanningRecord[], user: UserProfile) => {

@@ -32,7 +32,7 @@ export const toDateKey = (dateInput?: string | Date | null): string => {
     return isNaN(parsed.getTime()) ? '' : formatDateKey(parsed);
 };
 
-export const getPayrollMonthKey = (dateString: string): string => {
+export const getPayrollCompetencyMonthKey = (dateString: string): string => {
     const dateKey = toDateKey(dateString);
     if (!dateKey) return '';
 
@@ -52,7 +52,44 @@ export const getPayrollMonthKey = (dateString: string): string => {
         }
     }
 
-    return `${payrollYear}-${String(payrollMonth + 1).padStart(2, '0')}-Payroll`;
+    return `${payrollYear}-${String(payrollMonth + 1).padStart(2, '0')}`;
+};
+
+export const getPayrollMonthKey = (dateString: string): string => {
+    const monthKey = getPayrollCompetencyMonthKey(dateString);
+    if (!monthKey) return '';
+
+    return `${monthKey}-Payroll`;
+};
+
+export const getPayrollCompetencyMonthKeysForRange = (startDate: string, endDate: string): string[] => {
+    const startKey = toDateKey(startDate);
+    const endKey = toDateKey(endDate);
+    if (!startKey || !endKey) return [];
+
+    const start = parseDateKey(startKey);
+    const end = parseDateKey(endKey);
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) return [];
+
+    const keys = new Set<string>();
+    const cursor = new Date(start);
+    cursor.setHours(12, 0, 0, 0);
+
+    let guard = 0;
+    while (cursor <= end && guard < 48) {
+        const monthKey = getPayrollCompetencyMonthKey(formatDateKey(cursor));
+        if (monthKey) keys.add(monthKey);
+
+        if (cursor.getDate() < 21) {
+            cursor.setDate(21);
+        } else {
+            cursor.setMonth(cursor.getMonth() + 1, 1);
+        }
+        cursor.setHours(12, 0, 0, 0);
+        guard += 1;
+    }
+
+    return Array.from(keys).sort();
 };
 
 export const isExtraEvent = (evento?: string): boolean => {

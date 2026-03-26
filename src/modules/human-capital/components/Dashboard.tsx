@@ -1,10 +1,12 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, SalaryRecord } from '../types';
+import { OvertimeRecord, UserProfile, BudgetRecord } from '../types';
 import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, AlertTriangle, Moon, Scale, Percent, ArrowUpRight, ArrowDownRight, X, User, Users, DollarSign, ListFilter, ShieldAlert, Zap, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { formatDecimalHours } from '../utils/formatters';
-import { getPlanning, getSalariesSync, getBudgetsSync, saveBudgets, getAllPlanningRecords, getGlobalEmployeesAsync, getGlobalEmployeesSync, getAllBudgetsAsync } from '../services/planning';
+import { getSalariesForMonthKeys, getSalariesSync, getBudgetsSync, getAllPlanningRecords, getGlobalEmployeesAsync, getGlobalEmployeesSync, getAllBudgetsAsync } from '../services/planning';
 import { getCCName, getCCRegional, normalizeCC } from '../data/ccMaster';
+import { getPeriodStats } from '../utils/dateUtils';
 import { isRecordInHumanCapitalScope } from '../utils/scopeFilters';
+import { getPayrollCompetencyMonthKey } from '../utils/overtime';
 import EmployeeDailyComparisonModal from './EmployeeDailyComparisonModal';
 
 interface DashboardProps {
@@ -431,6 +433,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
   const [ccSearch, setCcSearch] = useState('');
   const [funcSearch, setFuncSearch] = useState('');
   const [salariesMap, setSalariesMap] = useState<Record<string, number>>({});
+  const [salaryMapsByMonth, setSalaryMapsByMonth] = useState<Record<string, Record<string, number>>>({});
   const [globalEmployees, setGlobalEmployees] = useState<import('../types').GlobalEmployee[]>(() => getGlobalEmployeesSync());
   const [selectedFuncModal, setSelectedFuncModal] = useState<string | null>(null);
   const [selectedCcModal, setSelectedCcModal] = useState<string | null>(null);
@@ -456,18 +459,63 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     return allBudgets.filter(b => keySet.has(b.monthKey));
   }, [allBudgets, budgetMonthKeys]);
 
+  const relevantSalaryMonthKeys = useMemo(() => {
+    const keys = new Set<string>();
+    budgetMonthKeys?.forEach(monthKey => {
+      if (monthKey) keys.add(monthKey);
+    });
+    if (selectedMonth) keys.add(selectedMonth);
+    data.forEach(record => {
+      const monthKey = getPayrollCompetencyMonthKey(record.DATA);
+      if (monthKey) keys.add(monthKey);
+    });
+    return Array.from(keys).sort();
+  }, [budgetMonthKeys, selectedMonth, data]);
+
   useEffect(() => {
-    const loadSalaries = () => {
-      const recs = getSalariesSync();
-      const sMap: Record<string, number> = {};
-      recs.forEach(r => sMap[r.chapa] = r.salary);
-      setSalariesMap(sMap);
+    const applySalaryState = (records: ReturnType<typeof getSalariesSync>) => {
+      const mergedMap: Record<string, number> = {};
+      const byMonth: Record<string, Record<string, number>> = {};
+
+      records.forEach(r => {
+        if (!byMonth[r.monthKey]) byMonth[r.monthKey] = {};
+        if (!byMonth[r.monthKey][r.chapa] || r.salary > byMonth[r.monthKey][r.chapa]) {
+          byMonth[r.monthKey][r.chapa] = r.salary;
+        }
+        if (!mergedMap[r.chapa] || r.salary > mergedMap[r.chapa]) {
+          mergedMap[r.chapa] = r.salary;
+        }
+      });
+
+      setSalaryMapsByMonth(byMonth);
+      setSalariesMap(mergedMap);
     };
-    loadSalaries();
+
+    applySalaryState(getSalariesSync(relevantSalaryMonthKeys));
+
+    let cancelled = false;
+    getSalariesForMonthKeys(relevantSalaryMonthKeys, user || undefined)
+      .then(rows => {
+        if (!cancelled) {
+          applySalaryState(rows);
+        }
+      })
+      .catch(error => console.error('Error loading salaries for dashboard:', error));
 
     // Background refresh for global employees
     getGlobalEmployeesAsync().then(emps => setGlobalEmployees(emps)).catch(console.error);
-  }, [selectedMonth, user, budgetMonthKeys]);
+    return () => {
+      cancelled = true;
+    };
+  }, [relevantSalaryMonthKeys, user]);
+
+  const getActualSalary = (chapa: string, date: string): number => {
+    const monthKey = getPayrollCompetencyMonthKey(date) || selectedMonth;
+    return salaryMapsByMonth[monthKey]?.[chapa] ?? salariesMap[chapa] ?? 0;
+  };
+
+  const getPlannedSalary = (chapa: string): number =>
+    salaryMapsByMonth[selectedMonth]?.[chapa] ?? salariesMap[chapa] ?? 0;
 
   const metrics = useMemo(() => {
     let realHE60Hours = 0;
@@ -482,7 +530,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     data.forEach(r => {
       const hours = Number(r.HORAS) || 0;
       const evt = (r.EVENTO || '').toUpperCase();
-      const sal = salariesMap[r.CHAPA] || 0;
+      const sal = getActualSalary(r.CHAPA, r.DATA);
       const baseHour = sal / 220;
 
       if (evt.includes('EXTRA')) {
@@ -502,28 +550,37 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     });
 
     const totalRealValueHE = realValue60 + realValue100;
-    const realValueDSR = totalRealValueHE / 6;
+
+    // Cálculo de DSR Dinâmico (Formula: (Valor / Dias Úteis) * (Dom + Feriados))
+    const { businessDays, sunHolidays } = getPeriodStats(periodStart, periodEnd);
+    const divisor = businessDays || 25; // fallback para evitar divisão por zero
+    const multiplier = sunHolidays || 5;
+
+    const realValueDSR = divisor > 0 ? (totalRealValueHE / divisor) * multiplier : 0;
     const totalRealCost = totalRealValueHE + realValueAdicNoturno + realValueDSR;
 
     let totalPlannedHours = 0;
-    let totalPlannedValue = 0;
+    let totalPlannedValueHE = 0;
 
     planningRecords.forEach(p => {
       if (p.type === 'DAILY') {
         const rawCC = p.costCenter || '';
-        const cc = normalizeCC(rawCC);
-        const reg = getCCRegional(rawCC);
-
         if (!isRecordInHumanCapitalScope(user, rawCC)) return;
 
         totalPlannedHours += p.plannedHours;
-        const sal = salariesMap[p.chapa];
+        const sal = getPlannedSalary(p.chapa);
         if (sal && p.plannedHours > 0) {
+          const isSundayOrHoliday = new Date(p.date).getDay() === 0 || false; // Simplificação aqui, mas o ideal é usar dateUtils
+          // Nota: O planejamento já aplica multiplicadores (1.6/2.0) mas o DSR é sobre o Valor Final das Extras
+          const baseHour = sal / 220;
           const isSunday = new Date(p.date).getDay() === 0;
-          totalPlannedValue += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
+          totalPlannedValueHE += baseHour * (isSunday ? 2.0 : 1.6) * p.plannedHours;
         }
       }
     });
+
+    const plannedValueDSR = divisor > 0 ? (totalPlannedValueHE / divisor) * multiplier : 0;
+    const totalPlannedValue = totalPlannedValueHE + plannedValueDSR;
 
     const totalBudget = budgets.reduce((acc, b) => {
       if (!isRecordInHumanCapitalScope(user, b.costCenter || '')) return acc;
@@ -541,9 +598,10 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       totalRealCost,
       totalPlannedHours,
       totalPlannedValue,
-      totalBudget
+      totalBudget,
+      periodStats: { businessDays, sunHolidays }
     };
-  }, [data, planningRecords, budgets, salariesMap, user]);
+  }, [data, planningRecords, budgets, salariesMap, salaryMapsByMonth, selectedMonth, user]);
 
   // normalizeCC e getCCName/getCCRegional agora vem do ccMaster centralizado
 
@@ -593,7 +651,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       const isOvertime = evt.includes('EXTRA') || evt.includes('INTER') || evt.includes('NOTURNO') || evt.includes('20');
       if (isOvertime) {
         map[cc].real += hours;
-        const sal = salariesMap[r.CHAPA] || 0;
+        const sal = getActualSalary(r.CHAPA, r.DATA);
         if (sal) {
           const isSunday = new Date(r.DATA).getDay() === 0;
           map[cc].realCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * hours;
@@ -609,7 +667,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       const cc = normalizeCC(p.costCenter || 'S/ CC');
       if (!map[cc]) map[cc] = { real: 0, planned: 0, name: resolveName(p.costCenter || cc), realCost: 0, plannedCost: 0, budget: 0 };
       map[cc].planned += p.plannedHours;
-      const sal = salariesMap[p.chapa];
+      const sal = getPlannedSalary(p.chapa);
       if (sal && p.plannedHours > 0) {
         const isSunday = new Date(p.date).getDay() === 0;
         map[cc].plannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
@@ -619,7 +677,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     const list = Object.entries(map).map(([cc, s]) => ({ cc, ...s }))
       .sort((a, b) => b.real - a.real);
     return ccSearch ? list.filter(x => x.cc.includes(ccSearch) || x.name.toLowerCase().includes(ccSearch.toLowerCase())) : list;
-  }, [data, planningRecords, ccSearch, budgets, salariesMap, regional, user, ccSecaoMap]);
+  }, [data, planningRecords, ccSearch, budgets, salariesMap, salaryMapsByMonth, selectedMonth, regional, user, ccSecaoMap]);
 
   const funcSummary = useMemo(() => {
     const map: Record<string, { real: number; planned: number; realCost: number; plannedCost: number }> = {};
@@ -635,7 +693,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       const isOvertime = evt.includes('EXTRA') || evt.includes('INTER') || evt.includes('NOTURNO') || evt.includes('20');
       if (isOvertime) {
         map[f].real += hours;
-        const sal = salariesMap[r.CHAPA] || 0;
+        const sal = getActualSalary(r.CHAPA, r.DATA);
         if (sal) {
           const isSunday = new Date(r.DATA).getDay() === 0;
           map[f].realCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * hours;
@@ -654,7 +712,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       const f = chapaToFunc[p.chapa] || 'Indefinido';
       if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0 };
       map[f].planned += p.plannedHours;
-      const sal = salariesMap[p.chapa];
+      const sal = getPlannedSalary(p.chapa);
       if (sal && p.plannedHours > 0) {
         const isSunday = new Date(p.date).getDay() === 0;
         map[f].plannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
@@ -665,7 +723,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       .sort((a, b) => b.real - a.real);
 
     return funcSearch ? list.filter(x => x.name.toLowerCase().includes(funcSearch.toLowerCase())) : list;
-  }, [data, planningRecords, funcSearch, salariesMap, user]);
+  }, [data, planningRecords, funcSearch, salariesMap, salaryMapsByMonth, selectedMonth, user]);
 
   const funcDetailData = useMemo(() => {
     if (!selectedFuncModal) return [];
@@ -723,7 +781,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
       if (isOvertime) {
         map[f].real += hours;
-        const sal = salariesMap[r.CHAPA] || 0;
+        const sal = getActualSalary(r.CHAPA, r.DATA);
         if (sal) {
           const isSunday = new Date(r.DATA).getDay() === 0;
           map[f].realCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * hours;
@@ -736,7 +794,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       const f = chapaToFunc[p.chapa] || 'S/ FunÃ§Ã£o';
       if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0, he60: 0, he100: 0, interjornada: 0, night: 0 };
       map[f].planned += p.plannedHours;
-      const sal = salariesMap[p.chapa];
+      const sal = getPlannedSalary(p.chapa);
       if (sal && p.plannedHours > 0) {
         const isSunday = new Date(p.date).getDay() === 0;
         map[f].plannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
@@ -745,7 +803,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
     return Object.entries(map).map(([name, s]) => ({ name, ...s }))
       .sort((a, b) => b.real - a.real);
-  }, [data, planningRecords, selectedCcModal, salariesMap]);
+  }, [data, planningRecords, selectedCcModal, salariesMap, salaryMapsByMonth, selectedMonth]);
 
   const hierarchicalData = useMemo(() => {
     // Mapa de nome por chapa para exibir no nível PERSON
@@ -827,7 +885,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       const isNoturno = evt.includes('NOTURNO') || evt.includes('20');
       if (!isHE60 && !isHE100 && !isInter && !isNoturno) return;
 
-      const sal = salariesMap[r.CHAPA] || 0;
+      const sal = getActualSalary(r.CHAPA, r.DATA);
       const baseHour = sal / 220;
       let cost = 0;
       if (isHE60) cost = baseHour * 1.6 * hours;
@@ -907,7 +965,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
           .sort((a, b) => b.metrics.riskIndex - a.metrics.riskIndex)
       }))
       .sort((a, b) => b.metrics.riskIndex - a.metrics.riskIndex);
-  }, [data, planningRecords, budgets, salariesMap, user, globalEmployees]);
+  }, [data, planningRecords, budgets, salariesMap, salaryMapsByMonth, selectedMonth, user, globalEmployees]);
 
   const ToggleButtons = ({ mode, setMode }: { mode: ViewMode, setMode: (m: ViewMode) => void }) => (
     <div className="flex bg-gray-200 p-1 rounded-xl h-9">
@@ -1071,7 +1129,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
                   <span className="text-sm font-black text-gray-800 font-mono">{formatDecimalHours(metrics.realAdicNoturnoHours)}</span>
                 </div>
                 <div className="flex items-center justify-between py-1">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5" title={`DSR = (Total HE / Semanas Úteis). Cálculo para o período: ${metrics.periodStats.businessDays} dias úteis e ${metrics.periodStats.sunHolidays} domingos/feriados.`}>
                     <Calculator size={12} className="text-orange-500" />
                     <span className="text-[10px] font-bold text-gray-500 uppercase">DSR Estimado</span>
                   </div>

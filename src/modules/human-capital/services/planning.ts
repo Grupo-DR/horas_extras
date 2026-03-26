@@ -1,6 +1,7 @@
 
 import { PlanningRecord, BudgetRecord, SalaryAllocation, UserProfile, HeadcountRecord, HeadcountUploadMeta } from '../types';
 import * as FirestoreService from './firestoreCH';
+import { getPayrollCompetencyMonthKeysForRange } from '../utils/overtime';
 
 // Cache in-memory to avoid excessive reads during session if needed, 
 // though we primarily trust Firestore or fallback to localStorage.
@@ -8,6 +9,64 @@ let planningCache: PlanningRecord[] = [];
 
 // Helper to check if online (rudimentary)
 const isOnline = () => navigator.onLine;
+
+const SALARY_CACHE_KEY = 'employee_salaries_v2';
+
+const normalizeMonthKeys = (monthKeys?: string | string[]): string[] => {
+    if (!monthKeys) return [];
+    const keys = Array.isArray(monthKeys) ? monthKeys : [monthKeys];
+    return Array.from(new Set(keys.filter(Boolean)));
+};
+
+const getSalaryAllocationId = (salary: SalaryAllocation): string =>
+    `${salary.monthKey}__${salary.chapa}__${salary.costCenter}`;
+
+const readSalaryCache = (): SalaryAllocation[] => {
+    try {
+        const data = localStorage.getItem(SALARY_CACHE_KEY);
+        if (data) return (JSON.parse(data) || []) as SalaryAllocation[];
+    } catch (e) {
+        console.error("Error reading local salaries:", e);
+    }
+    return [];
+};
+
+const writeSalaryCache = (salaries: SalaryAllocation[], replaceMonthKeys?: string[]) => {
+    const replaceSet = new Set(normalizeMonthKeys(replaceMonthKeys));
+    const retained = replaceSet.size > 0
+        ? readSalaryCache().filter(s => !replaceSet.has(s.monthKey))
+        : readSalaryCache();
+
+    const merged = new Map<string, SalaryAllocation>();
+    retained.forEach(s => merged.set(getSalaryAllocationId(s), s));
+    salaries.forEach(s => merged.set(getSalaryAllocationId(s), s));
+
+    localStorage.setItem(SALARY_CACHE_KEY, JSON.stringify(Array.from(merged.values())));
+};
+
+const buildSalaryAllocationsFromHeadcount = (records: HeadcountRecord[]): SalaryAllocation[] => {
+    const allocations = new Map<string, SalaryAllocation>();
+
+    records.forEach(record => {
+        if (!record.salario || record.salario <= 0) return;
+
+        const monthKeys = getPayrollCompetencyMonthKeysForRange(record.dataInicio, record.dataFim);
+        monthKeys.forEach(monthKey => {
+            const allocation: SalaryAllocation = {
+                monthKey,
+                chapa: record.chapa,
+                salary: record.salario!,
+                allocation: record.distribuicao || 1,
+                costCenter: record.centroCusto,
+                status: 'A'
+            };
+
+            allocations.set(getSalaryAllocationId(allocation), allocation);
+        });
+    });
+
+    return Array.from(allocations.values());
+};
 
 // --- PLANNING ---
 
@@ -97,15 +156,24 @@ export const getPlanning = async (
 
 // --- SALARIES ---
 
-export const saveSalaries = async (salaries: SalaryAllocation[], user: UserProfile) => {
+export const saveSalaries = async (
+    salaries: SalaryAllocation[],
+    user: UserProfile,
+    options?: { replaceMonthKeys?: string[] }
+) => {
+    const replaceMonthKeys = normalizeMonthKeys(options?.replaceMonthKeys);
+
     try {
         if (isOnline()) {
+            if (replaceMonthKeys.length > 0) {
+                await FirestoreService.deleteSalaryAllocationsByMonthKeys(replaceMonthKeys);
+            }
             await FirestoreService.upsertSalaryAllocations(salaries, user);
         }
-        localStorage.setItem('employee_salaries_v2', JSON.stringify(salaries));
+        writeSalaryCache(salaries, replaceMonthKeys);
     } catch (e) {
         console.error("Save Salaries Failed:", e);
-        localStorage.setItem('employee_salaries_v2', JSON.stringify(salaries));
+        writeSalaryCache(salaries, replaceMonthKeys);
     }
 };
 
@@ -116,18 +184,34 @@ export const getSalaries = async (monthKey: string, user?: UserProfile): Promise
     try {
         if (isOnline()) {
             const rows = await FirestoreService.getSalaryAllocationsByMonthKey(monthKey, user?.scope);
-            localStorage.setItem('employee_salaries_v2', JSON.stringify(rows));
+            writeSalaryCache(rows, [monthKey]);
             return rows;
         }
         throw new Error("Offline");
     } catch (error) {
         console.warn("Fetching salaries from Firestore failed or offline, checking local cache", error);
-        const data = localStorage.getItem('employee_salaries_v2');
-        if (data) {
-            const all = JSON.parse(data) as SalaryAllocation[];
-            return all.filter(s => s.monthKey === monthKey);
+        return readSalaryCache().filter(s => s.monthKey === monthKey);
+    }
+};
+
+export const getSalariesForMonthKeys = async (monthKeys: string[], user?: UserProfile): Promise<SalaryAllocation[]> => {
+    const keys = normalizeMonthKeys(monthKeys);
+    if (keys.length === 0) return [];
+
+    try {
+        if (isOnline()) {
+            const chunks = await Promise.all(
+                keys.map(monthKey => FirestoreService.getSalaryAllocationsByMonthKey(monthKey, user?.scope))
+            );
+            const rows = chunks.flat();
+            writeSalaryCache(rows, keys);
+            return rows;
         }
-        return [];
+        throw new Error("Offline");
+    } catch (error) {
+        console.warn("Fetching salaries for multiple monthKeys failed or offline, checking local cache", error);
+        const keySet = new Set(keys);
+        return readSalaryCache().filter(s => keySet.has(s.monthKey));
     }
 };
 
@@ -270,14 +354,13 @@ export const getBudgetsSync = (): BudgetRecord[] => {
     return [];
 };
 
-export const getSalariesSync = (): SalaryAllocation[] => {
-    try {
-        const data = localStorage.getItem('employee_salaries_v2');
-        if (data) return (JSON.parse(data) || []) as SalaryAllocation[];
-    } catch (e) {
-        console.error("Error reading local salaries:", e);
-    }
-    return [];
+export const getSalariesSync = (monthKeys?: string | string[]): SalaryAllocation[] => {
+    const keys = normalizeMonthKeys(monthKeys);
+    const all = readSalaryCache();
+    if (keys.length === 0) return all;
+
+    const keySet = new Set(keys);
+    return all.filter(s => keySet.has(s.monthKey));
 };
 
 // --- GLOBAL EMPLOYEES (DICTIONARY) ---
@@ -418,26 +501,12 @@ export const replaceHeadcount = async (
     const tagged = records.map(r => ({ ...r, _uploadId: meta.uploadId }));
     localStorage.setItem(HC_CACHE_KEY, JSON.stringify(tagged));
 
-    // Extrair e salvar salarios contidos no headcount
-    const salaryAllocations: import('../types').SalaryAllocation[] = [];
-    const chapaSet = new Set<string>();
-
-    records.forEach(r => {
-        if (r.salario && r.salario > 0 && !chapaSet.has(r.chapa)) {
-            chapaSet.add(r.chapa);
-            const monthKey = r.dataInicio.substring(0, 7); // yyyy-mm
-            salaryAllocations.push({
-                monthKey,
-                chapa: r.chapa,
-                salary: r.salario,
-                allocation: 1.0,
-                costCenter: r.centroCusto,
-                status: 'A'
-            });
-        }
-    });
-
-    if (salaryAllocations.length > 0) {
-        await saveSalaries(salaryAllocations, user);
+    // Salários passam a ter fonte única: upload de headcount com coluna `salario`.
+    const salaryAllocations = buildSalaryAllocationsFromHeadcount(records);
+    const replaceMonthKeys = Array.from(new Set(
+        records.flatMap(record => getPayrollCompetencyMonthKeysForRange(record.dataInicio, record.dataFim))
+    ));
+    if (replaceMonthKeys.length > 0) {
+        await saveSalaries(salaryAllocations, user, { replaceMonthKeys });
     }
 };

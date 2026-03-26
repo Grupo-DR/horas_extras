@@ -303,6 +303,9 @@ const HeadcountUpload: React.FC<HeadcountUploadProps> = ({ user }) => {
                         <p className="text-blue-600 text-xs">
                             A distribuição deve ser decimal (0.5, 0.33, 1) e a soma por colaborador + dia deve ser igual a 1.
                         </p>
+                        <p className="text-blue-600 text-xs">
+                            A coluna <span className="font-mono font-bold">salario</span> é opcional e, quando enviada, passa a ser a fonte oficial de salários do módulo.
+                        </p>
                         <p className="text-amber-600 text-xs font-medium mt-1">
                             ⚠️ Cada upload <strong>substitui completamente</strong> o headcount anterior.
                         </p>
@@ -396,6 +399,9 @@ const HeadcountUpload: React.FC<HeadcountUploadProps> = ({ user }) => {
                     <p className="text-lg font-bold text-slate-800">Headcount substituído com sucesso!</p>
                     <p className="text-sm text-slate-500 mt-1">
                         {result?.validRecords.length} registro(s) ativos no sistema. Headcount anterior removido.
+                    </p>
+                    <p className="text-sm text-slate-500">
+                        Salários do módulo foram sincronizados a partir da coluna <span className="font-mono">salario</span> quando presente no lote.
                     </p>
                 </div>
                 <button
