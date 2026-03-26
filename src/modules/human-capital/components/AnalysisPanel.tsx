@@ -1,5 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { formatDecimalToTime, getPayrollMonthKey } from '../utils/overtime';
+import {
+    formatDecimalToTime,
+    getPayrollMonthKey
+} from '../utils/overtime';
 import { OvertimeRecord, PlanningRecord } from '../types';
 import { RealOvertimeRecord } from '../data/realOvertime';
 import {
@@ -29,7 +32,7 @@ interface AnalysisPanelProps {
 // ────────────────────────────────────────────────────────────
 export const isExtraEvent = (evento?: string): boolean => {
     const evt = (evento || '').toUpperCase();
-    return evt.includes('EXTRA') || evt.includes('60') || evt.includes('100');
+    return evt.includes('EXTRA');
 };
 
 export const isExtra100Event = (evento?: string): boolean => {
@@ -39,7 +42,7 @@ export const isExtra100Event = (evento?: string): boolean => {
 
 export const isExtra60Event = (evento?: string): boolean => {
     const evt = (evento || '').toUpperCase();
-    return isExtraEvent(evt) && !evt.includes('100');
+    return isExtraEvent(evt) && evt.includes('60') && !evt.includes('100');
 };
 
 export const isInterjornadaEvent = (evento?: string): boolean => {
