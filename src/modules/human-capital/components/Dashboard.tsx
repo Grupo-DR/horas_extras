@@ -48,18 +48,6 @@ interface TreeNode {
 
 type ViewMode = 'hours' | 'finance';
 
-const formatMonthKeyLabel = (monthKey: string): string => {
-  const [year, month] = monthKey.split('-').map(Number);
-  if (!year || !month) return monthKey;
-
-  const label = new Date(year, month - 1, 1).toLocaleString('pt-BR', {
-    month: 'short',
-    year: 'numeric',
-  });
-
-  return label.replace('.', '');
-};
-
 const TreeGridHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
   <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
     <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
@@ -594,92 +582,6 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     return getSalaryForMonthKey(chapa, monthKey);
   };
 
-  const hasExactSalaryForMonthKey = (chapa: string, monthKey: string): boolean =>
-    typeof (monthKey ? salaryMapsByMonth[monthKey]?.[chapa] : undefined) === 'number';
-
-  const customCompetencySummary = useMemo(() => {
-    if (dateMode !== 'CUSTOM') return [];
-
-    return budgetMonthKeys
-      .map(monthKey => {
-        const competencyRange = getPayrollCompetencyRange(monthKey);
-        if (!competencyRange) return null;
-
-        const coveredDays = getDateRangeOverlapDays(
-          competencyRange.startDate,
-          competencyRange.endDate,
-          periodStartKey,
-          periodEndKey
-        );
-        const totalDays = getDateRangeOverlapDays(
-          competencyRange.startDate,
-          competencyRange.endDate,
-          competencyRange.startDate,
-          competencyRange.endDate
-        );
-        const effectiveBudget = effectiveBudgets
-          .filter(budget => budget.monthKey === monthKey)
-          .reduce((acc, budget) => acc + budget.effectiveValue, 0);
-
-        return {
-          monthKey,
-          label: formatMonthKeyLabel(monthKey),
-          coveredDays,
-          totalDays,
-          effectiveBudget,
-        };
-      })
-      .filter((item): item is NonNullable<typeof item> => !!item && item.coveredDays > 0);
-  }, [dateMode, budgetMonthKeys, periodStartKey, periodEndKey, budgets, effectiveBudgets]);
-
-  const salaryCoverageAlert = useMemo(() => {
-    const missingActual = new Map<string, { monthKey: string; chapa: string; nome: string }>();
-    const missingPlanned = new Map<string, { monthKey: string; chapa: string; nome: string }>();
-
-    data.forEach(record => {
-      const monthKey = getPayrollCompetencyMonthKey(record.DATA) || selectedMonth;
-      if (!monthKey || hasExactSalaryForMonthKey(record.CHAPA, monthKey)) return;
-
-      const key = `${monthKey}__${record.CHAPA}`;
-      if (!missingActual.has(key)) {
-        missingActual.set(key, {
-          monthKey,
-          chapa: record.CHAPA,
-          nome: record.NOME || record.CHAPA,
-        });
-      }
-    });
-
-    filteredPlanningRecords.forEach(record => {
-      const monthKey = getPayrollCompetencyMonthKey(record.date) || selectedMonth;
-      if (!monthKey || hasExactSalaryForMonthKey(record.chapa, monthKey)) return;
-
-      const key = `${monthKey}__${record.chapa}`;
-      if (!missingPlanned.has(key)) {
-        missingPlanned.set(key, {
-          monthKey,
-          chapa: record.chapa,
-          nome: record.nome || record.chapa,
-        });
-      }
-    });
-
-    const uniqueMissing = new Map<string, { monthKey: string; chapa: string; nome: string }>();
-    missingActual.forEach((value, key) => uniqueMissing.set(key, value));
-    missingPlanned.forEach((value, key) => {
-      if (!uniqueMissing.has(key)) uniqueMissing.set(key, value);
-    });
-
-    const preview = Array.from(uniqueMissing.values()).slice(0, 4);
-
-    return {
-      total: uniqueMissing.size,
-      actualCount: missingActual.size,
-      plannedCount: missingPlanned.size,
-      preview,
-    };
-  }, [data, filteredPlanningRecords, salaryMapsByMonth, selectedMonth]);
-
   const metrics = useMemo(() => {
     let realHE60Hours = 0;
     let realHE100Hours = 0;
@@ -1180,45 +1082,6 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       )}
 
       {/* â”€â”€ 4 MEGA CARDS â”€â”€ */}
-      {dateMode === 'CUSTOM' && customCompetencySummary.length > 0 && (
-        <div className="bg-sky-50 border border-sky-200 rounded-xl px-4 py-3 flex flex-col gap-2">
-          <div className="flex items-center gap-2 text-sky-800">
-            <Info size={14} />
-            <span className="text-[11px] font-bold uppercase tracking-wide">Competências consideradas no período personalizado</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {customCompetencySummary.map(item => (
-              <div key={item.monthKey} className="px-2.5 py-1.5 rounded-lg bg-white border border-sky-200 text-[11px] text-slate-600 shadow-sm">
-                <span className="font-bold text-sky-700">{item.label}</span>
-                <span>{` · ${item.coveredDays}/${item.totalDays} dias`}</span>
-                <span>{` · R$ ${item.effectiveBudget.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}`}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {salaryCoverageAlert.total > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex flex-col gap-2">
-          <div className="flex items-center gap-2 text-amber-800">
-            <AlertTriangle size={14} />
-            <span className="text-[11px] font-bold uppercase tracking-wide">Salários ausentes na competência correta</span>
-          </div>
-          <p className="text-[11px] text-amber-900">
-            {salaryCoverageAlert.total} combinação(ões) chapa + competência ficaram sem salário exato. O custo dessas ocorrências pode ficar zerado até a competência ser carregada corretamente.
-          </p>
-          <div className="flex flex-wrap gap-2 text-[10px] text-amber-800">
-            <span className="px-2 py-1 rounded-md bg-white border border-amber-200 font-semibold">Real: {salaryCoverageAlert.actualCount}</span>
-            <span className="px-2 py-1 rounded-md bg-white border border-amber-200 font-semibold">Planejado: {salaryCoverageAlert.plannedCount}</span>
-            {salaryCoverageAlert.preview.map(item => (
-              <span key={`${item.monthKey}_${item.chapa}`} className="px-2 py-1 rounded-md bg-white border border-amber-200">
-                {item.monthKey} · {item.chapa} · {item.nome}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
 
         {/* 1. Orçamento */}
@@ -1229,7 +1092,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
           const isOver = metrics.totalRealCost > metrics.totalBudget;
           const budgetTitle = dateMode === 'CUSTOM' ? 'Budget Rateado do Período' : 'Budget da Competência';
           const budgetHint = dateMode === 'CUSTOM'
-            ? `${customCompetencySummary.length} competência(s) rateadas`
+            ? 'Rateado pelos dias cobertos no período'
             : 'Competência selecionada';
           return (
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md transition-all">
