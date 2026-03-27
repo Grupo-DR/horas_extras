@@ -54,6 +54,16 @@ interface EmailDraftSummaryItem {
     totalCost: number;
 }
 
+interface EmailDraftEmployeeItem {
+    chapa: string;
+    name: string;
+    role: string;
+    costCenter: string;
+    costCenterName: string;
+    daysPlanned: number;
+    totalHours: number;
+}
+
 interface EmailDraftData {
     subject: string;
     body: string;
@@ -63,6 +73,7 @@ interface EmailDraftData {
     totalCost: number;
     totalHeadcount: number;
     items: EmailDraftSummaryItem[];
+    employees: EmailDraftEmployeeItem[];
 }
 
 const parseDateKeyLocal = (value: string): Date => {
@@ -346,6 +357,34 @@ const EmailDraftModal: React.FC<{
                                                     <td className="px-4 py-3 text-right text-slate-700 font-mono">{item.headcount}</td>
                                                     <td className="px-4 py-3 text-right text-slate-700 font-mono">{formatDecimalHours(item.totalHours)}</td>
                                                     <td className="px-4 py-3 text-right text-emerald-700 font-mono font-bold">{formatCurrencyBR(item.totalCost)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div>
+                                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Colaboradores Programados</p>
+                                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                                    <table className="w-full text-xs">
+                                        <thead className="bg-slate-100 text-slate-500">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left font-black uppercase tracking-wider text-[10px]">Colaborador</th>
+                                                <th className="px-4 py-3 text-left font-black uppercase tracking-wider text-[10px]">Funcao</th>
+                                                <th className="px-4 py-3 text-left font-black uppercase tracking-wider text-[10px]">Centro de Custo</th>
+                                                <th className="px-4 py-3 text-right font-black uppercase tracking-wider text-[10px]">Dias</th>
+                                                <th className="px-4 py-3 text-right font-black uppercase tracking-wider text-[10px]">Horas</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {draft.employees.map(employee => (
+                                                <tr key={`${employee.costCenter}_${employee.chapa}`}>
+                                                    <td className="px-4 py-3 text-slate-700 font-semibold">{employee.name}</td>
+                                                    <td className="px-4 py-3 text-slate-500">{employee.role}</td>
+                                                    <td className="px-4 py-3 text-slate-500">{employee.costCenter} - {employee.costCenterName}</td>
+                                                    <td className="px-4 py-3 text-right text-slate-700 font-mono">{employee.daysPlanned}</td>
+                                                    <td className="px-4 py-3 text-right text-slate-700 font-mono">{formatDecimalHours(employee.totalHours)}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -811,6 +850,14 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
         return Array.from(new Set(uniqueEmployees.map(e => e.regional).filter(Boolean))).sort();
     }, [uniqueEmployees]);
 
+    const employeeRoleByChapa = useMemo(() => {
+        const map: Record<string, string> = {};
+        globalEmployees.forEach(e => { if (e.chapa && e.funcao) map[e.chapa] = e.funcao; });
+        employees.forEach(e => { if (e.CHAPA && e.FUNCAO) map[e.CHAPA] = e.FUNCAO; });
+        manualEmployees.forEach(m => { if (m.chapa && m.role) map[m.chapa] = m.role; });
+        return map;
+    }, [globalEmployees, employees, manualEmployees]);
+
     const buildSalaryMap = (salaryRows: ReturnType<typeof getSalariesSync>): Record<string, number> => {
         const sMap: Record<string, number> = {};
         salaryRows.forEach(s => {
@@ -962,6 +1009,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
         const rangeStart = parseDateKeyLocal(submissionRange.start);
         const rangeEnd = parseDateKeyLocal(submissionRange.end);
         const overallMembers = new Set<string>();
+        const employeeItems: EmailDraftEmployeeItem[] = [];
 
         const summaryItems = displayCostCenters.map(cc => {
             let totalHours = 0;
@@ -971,6 +1019,8 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
             cc.memberChapas.forEach(chapa => {
                 const salary = salaries[chapa];
                 const cursor = new Date(rangeStart);
+                let employeeHours = 0;
+                const plannedDates = new Set<string>();
 
                 while (cursor <= rangeEnd) {
                     const dateKey = formatDateKey(cursor);
@@ -978,8 +1028,10 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
 
                     if (hours > 0) {
                         totalHours += hours;
+                        employeeHours += hours;
                         membersWithHours.add(chapa);
                         overallMembers.add(chapa);
+                        plannedDates.add(dateKey);
 
                         if (salary) {
                             const isSunday = cursor.getDay() === 0;
@@ -990,6 +1042,19 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                     }
 
                     cursor.setDate(cursor.getDate() + 1);
+                }
+
+                if (employeeHours > 0) {
+                    const employeeMeta = uniqueEmployees.find(e => e.chapa === chapa && e.cc === cc.costCenter);
+                    employeeItems.push({
+                        chapa,
+                        name: employeeMeta?.nome || `Colaborador ${chapa}`,
+                        role: employeeRoleByChapa[chapa] || 'Sem funcao cadastrada',
+                        costCenter: cc.costCenter,
+                        costCenterName: getCCName(cc.costCenter),
+                        daysPlanned: plannedDates.size,
+                        totalHours: employeeHours
+                    });
                 }
             });
 
@@ -1007,9 +1072,16 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
 
         const totalHours = summaryItems.reduce((sum, item) => sum + item.totalHours, 0);
         const totalCost = summaryItems.reduce((sum, item) => sum + item.totalCost, 0);
+        const sortedEmployees = [...employeeItems].sort((a, b) => {
+            if (a.costCenter === b.costCenter) return a.name.localeCompare(b.name);
+            return a.costCenter.localeCompare(b.costCenter);
+        });
 
         const summaryLines = summaryItems.map(item =>
-            `- ${item.costCenter} - ${item.costCenterName} | ${item.regional} | Efetivo: ${item.headcount} | Horas: ${formatDecimalHours(item.totalHours)} | Custo estimado: ${formatCurrencyBR(item.totalCost)}`
+            `- ${item.costCenter} - ${item.costCenterName} | ${item.regional} | Horas: ${formatDecimalHours(item.totalHours)} | Custo estimado: ${formatCurrencyBR(item.totalCost)}`
+        );
+        const employeeLines = sortedEmployees.map(employee =>
+            `- ${employee.name} | ${employee.role} | ${employee.daysPlanned} ${employee.daysPlanned === 1 ? 'dia programado' : 'dias programados'} | ${formatDecimalHours(employee.totalHours)} | ${employee.costCenter} - ${employee.costCenterName}`
         );
 
         const subject = `Solicitacao de acordo - Programacao de horas extras - ${monthLabel} - ${periodLabel}`;
@@ -1024,11 +1096,12 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
             `Periodo enviado para aprovacao: ${periodLabel}`,
             `Total planejado: ${formatDecimalHours(totalHours)}`,
             `Custo estimado total: ${formatCurrencyBR(totalCost)}`,
-            `Centros de custo envolvidos: ${summaryItems.length}`,
-            `Colaboradores envolvidos: ${overallMembers.size}`,
             '',
             'Resumo por centro de custo:',
             ...summaryLines,
+            '',
+            'Colaboradores programados:',
+            ...employeeLines,
             '',
             'Caso estejam de acordo, peco a aprovacao do planejamento no Portal Capital Humano.',
             '',
@@ -1044,9 +1117,10 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
             totalHours,
             totalCost,
             totalHeadcount: overallMembers.size,
-            items: summaryItems
+            items: summaryItems,
+            employees: sortedEmployees
         };
-    }, [displayCostCenters, plans, salaries, selectedMonth, submissionRange, user.email, user.name]);
+    }, [displayCostCenters, employeeRoleByChapa, plans, salaries, selectedMonth, submissionRange, uniqueEmployees, user.email, user.name]);
 
     // Helper to get Employee Object
     const getEmpObj = (chapa: string) => uniqueEmployees.find(e => e.chapa === chapa);
