@@ -973,6 +973,10 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
         manualEmployees.forEach(m => { if (m.name) dictName.set(m.chapa, m.name); });
 
         headcountRecords.forEach(h => {
+            if (h.chapa && String(h.chapa).includes('1846')) {
+                console.log("DIAGNOSTIC: 1846 found (raw chapa: " + h.chapa + "):", h);
+                console.log("DIAGNOSTIC: Range Check for " + h.chapa + ":", { dataInicio: h.dataInicio, planRangeEnd, dataFim: h.dataFim, planRangeStart });
+            }
              if (h.dataInicio <= planRangeEnd && h.dataFim >= planRangeStart) {
                  const key = `${h.chapa}_${h.centroCusto}`;
                  if (!map.has(key)) {

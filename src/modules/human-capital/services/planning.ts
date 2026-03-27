@@ -114,6 +114,14 @@ export const savePlanning = async (plans: PlanningRecord[], user: UserProfile): 
 };
 
 const updateLocalPlanningCache = (plans: PlanningRecord[]) => {
+    if (planningCache.length === 0) {
+        try {
+            const data = localStorage.getItem('hc_planning_records_v2');
+            if (data) planningCache = JSON.parse(data) || [];
+        } catch (e) {
+            console.error("Erro ao hidratar cache:", e);
+        }
+    }
     // Merge into local cache
     plans.forEach(plan => {
         const index = planningCache.findIndex(
