@@ -134,7 +134,18 @@ const updateLocalPlanningCache = (plans: PlanningRecord[]) => {
         }
     });
     // Persist to localStorage for offline survival
-    localStorage.setItem('hc_planning_records_v2', JSON.stringify(planningCache));
+    try {
+        localStorage.setItem('hc_planning_records_v2', JSON.stringify(planningCache));
+    } catch (e) {
+        if (e && typeof e === 'object' && ('name' in e && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22))) {
+            console.warn("Storage Quota Exceeded. Pruning planning cache...");
+            const pruned = [...planningCache].sort((a,b) => b.date.localeCompare(a.date)).slice(0, 8000);
+            try {
+                localStorage.setItem('hc_planning_records_v2', JSON.stringify(pruned));
+                planningCache = pruned;
+            } catch (r) {}
+        }
+    }
 };
 
 export const getPlanning = async (
