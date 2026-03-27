@@ -447,10 +447,40 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
   const periodStartKey = useMemo(() => formatDateKey(periodStart), [periodStart]);
   const periodEndKey = useMemo(() => formatDateKey(periodEnd), [periodEnd]);
 
-  const planningRecords = useMemo(
-    () => getAllPlanningRecords().filter(p => !p.status || p.status === 'approved'),
-    []
+  const [planningRecords, setPlanningRecords] = useState<import('../types').PlanningRecord[]>(() =>
+  getAllPlanningRecords().filter(p => !p.status || p.status === 'approved')
   );
+
+  // Sincronização automática com Firestore ao trocar de mês ou período
+  useEffect(() => {
+    let cancelled = false;
+
+    const refreshPlanning = async () => {
+      const keys = new Set<string>();
+      if (selectedMonth) keys.add(selectedMonth);
+      budgetMonthKeys?.forEach(k => keys.add(k));
+
+      // Dispara a busca para cada mês relevante
+      // getPlanning já cuida de atualizar o cache local internamente
+      for (const monthKey of Array.from(keys)) {
+        if (cancelled) return;
+        try {
+          await getPlanning(undefined, monthKey, 'DAILY', user || undefined);
+        } catch (e) {
+          console.error(`Falha ao sincronizar planejamento no Dashboard para ${monthKey}:`, e);
+        }
+      }
+
+      if (!cancelled) {
+        // Recarrega o estado das records a partir do cache agora atualizado
+        setPlanningRecords(getAllPlanningRecords().filter(p => !p.status || p.status === 'approved'));
+      }
+    };
+
+    void refreshPlanning();
+
+    return () => { cancelled = true; };
+  }, [selectedMonth, budgetMonthKeys, user]);
 
   const filteredPlanningRecords = useMemo(
     () =>
