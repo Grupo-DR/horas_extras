@@ -1243,13 +1243,13 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
         {/* 4. Eficiência do Planejamento */}
         {(() => {
           const eficiencia = metrics.totalPlannedHours > 0
-            ? Math.min((metrics.realTotalHE / metrics.totalPlannedHours) * 100, 200)
+            ? (metrics.realTotalHE / metrics.totalPlannedHours) * 100
             : 0;
           const efColor = eficiencia > 110 ? 'text-red-600' : eficiencia > 90 ? 'text-emerald-600' : 'text-amber-500';
           const barColor = eficiencia > 110 ? 'bg-red-500' : eficiencia > 90 ? 'bg-emerald-500' : 'bg-amber-400';
           const label = eficiencia > 110 ? 'Acima do Planejado' : eficiencia > 90 ? 'Dentro do Esperado' : 'Abaixo do Planejado';
           const budgetEfic = metrics.totalBudget > 0
-            ? Math.min((metrics.totalRealCost / metrics.totalBudget) * 100, 200)
+            ? (metrics.totalRealCost / metrics.totalBudget) * 100
             : 0;
           return (
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md transition-all">
