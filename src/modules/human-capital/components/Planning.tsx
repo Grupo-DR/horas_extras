@@ -573,6 +573,11 @@ const CostCenterPlanModal: React.FC<{
 }> = ({ isOpen, onClose, costCenter, memberChapas, memberNames, memberFuncoes, plans, periodStart, periodEnd, planRangeStart, planRangeEnd, onSave, planStatuses, canOverrideLock }) => {
     const [saving, setSaving] = useState(false);
     const [localValues, setLocalValues] = useState<Record<string, string>>({});
+    const [searchTerm, setSearchTerm] = useState('');
+    const [roleFilter, setRoleFilter] = useState('');
+    const [showOnlySelected, setShowOnlySelected] = useState(false);
+    const [showOnlyPlanned, setShowOnlyPlanned] = useState(false);
+    const [selectedMembers, setSelectedMembers] = useState<Record<string, boolean>>({});
 
     const days = useMemo(() => {
         const arr: Date[] = [];
@@ -595,14 +600,76 @@ const CostCenterPlanModal: React.FC<{
         setLocalValues(init);
     }, [isOpen, costCenter, memberChapas, days, plans]);
 
-    const getMemberTotal = (chapa: string): number =>
-        days.reduce((sum, day) => {
-            const dk = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
-            return sum + parseTimeToDecimal(localValues[`${chapa}_${dk}`] || '0');
-        }, 0);
+    useEffect(() => {
+        if (!isOpen) return;
+        setSearchTerm('');
+        setRoleFilter('');
+        setShowOnlySelected(false);
+        setShowOnlyPlanned(false);
+        setSelectedMembers({});
+    }, [isOpen, costCenter]);
+
+    const memberRoleLabels = useMemo(() => {
+        const map: Record<string, string> = {};
+        memberChapas.forEach(chapa => {
+            map[chapa] = memberFuncoes[chapa] || 'Sem funcao cadastrada';
+        });
+        return map;
+    }, [memberChapas, memberFuncoes]);
+
+    const roleOptions = useMemo(() => {
+        return Array.from(new Set(memberChapas.map(chapa => memberRoleLabels[chapa]).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+    }, [memberChapas, memberRoleLabels]);
+
+    const memberTotals = useMemo(() => {
+        const totals: Record<string, number> = {};
+        memberChapas.forEach(chapa => {
+            totals[chapa] = days.reduce((sum, day) => {
+                const dk = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+                return sum + parseTimeToDecimal(localValues[`${chapa}_${dk}`] || '0');
+            }, 0);
+        });
+        return totals;
+    }, [memberChapas, days, localValues]);
+
+    const visibleMemberChapas = useMemo(() => {
+        const normalizedSearch = searchTerm.trim().toLowerCase();
+
+        return memberChapas.filter(chapa => {
+            const name = (memberNames[chapa] || chapa).toLowerCase();
+            const role = memberRoleLabels[chapa];
+            const matchesSearch = !normalizedSearch || name.includes(normalizedSearch) || chapa.toLowerCase().includes(normalizedSearch);
+            const matchesRole = !roleFilter || role === roleFilter;
+            const matchesSelected = !showOnlySelected || !!selectedMembers[chapa];
+            const matchesPlanned = !showOnlyPlanned || (memberTotals[chapa] || 0) > 0;
+            return matchesSearch && matchesRole && matchesSelected && matchesPlanned;
+        });
+    }, [memberChapas, memberNames, memberRoleLabels, searchTerm, roleFilter, showOnlySelected, selectedMembers, showOnlyPlanned, memberTotals]);
+
+    const selectedCount = useMemo(() => {
+        return memberChapas.reduce((sum, chapa) => sum + (selectedMembers[chapa] ? 1 : 0), 0);
+    }, [memberChapas, selectedMembers]);
 
     const handleInputChange = (chapa: string, dk: string, value: string) => {
         setLocalValues(prev => ({ ...prev, [`${chapa}_${dk}`]: value }));
+    };
+
+    const toggleMemberSelection = (chapa: string) => {
+        setSelectedMembers(prev => ({ ...prev, [chapa]: !prev[chapa] }));
+    };
+
+    const handleSelectVisible = () => {
+        setSelectedMembers(prev => {
+            const next = { ...prev };
+            visibleMemberChapas.forEach(chapa => {
+                next[chapa] = true;
+            });
+            return next;
+        });
+    };
+
+    const handleClearSelection = () => {
+        setSelectedMembers({});
     };
 
     const handleSaveClick = async () => {
@@ -631,6 +698,78 @@ const CostCenterPlanModal: React.FC<{
                         </p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors"><X size={20} /></button>
+                </div>
+
+                <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 shrink-0">
+                    <div className="flex flex-col gap-3">
+                        <div className="flex flex-wrap items-end gap-3">
+                            <div className="flex flex-col">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1">Buscar</label>
+                                <input
+                                    type="text"
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                    placeholder="Nome ou chapa"
+                                    className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-w-[220px]"
+                                />
+                            </div>
+
+                            <div className="flex flex-col">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1">Funcao</label>
+                                <select
+                                    value={roleFilter}
+                                    onChange={e => setRoleFilter(e.target.value)}
+                                    className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-w-[220px]"
+                                >
+                                    <option value="">Todas</option>
+                                    {roleOptions.map(role => <option key={role} value={role}>{role}</option>)}
+                                </select>
+                            </div>
+
+                            <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm text-slate-700">
+                                <input
+                                    type="checkbox"
+                                    checked={showOnlySelected}
+                                    onChange={e => setShowOnlySelected(e.target.checked)}
+                                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                Somente selecionados
+                            </label>
+
+                            <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm text-slate-700">
+                                <input
+                                    type="checkbox"
+                                    checked={showOnlyPlanned}
+                                    onChange={e => setShowOnlyPlanned(e.target.checked)}
+                                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                Somente com horas
+                            </label>
+
+                            <button
+                                type="button"
+                                onClick={handleSelectVisible}
+                                disabled={visibleMemberChapas.length === 0}
+                                className="px-3 py-2 rounded-lg border border-blue-200 bg-white text-sm font-bold text-blue-700 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Selecionar visiveis
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={handleClearSelection}
+                                disabled={selectedCount === 0}
+                                className="px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Limpar selecao
+                            </button>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
+                            <span>{visibleMemberChapas.length} de {memberChapas.length} colaboradores visiveis • {selectedCount} selecionados</span>
+                            <span>Filtros e selecao afetam apenas a visualizacao. O salvamento preserva os demais colaboradores.</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-auto">
@@ -662,15 +801,36 @@ const CostCenterPlanModal: React.FC<{
                                 </tr>
                             </thead>
                             <tbody>
-                                {memberChapas.map(chapa => {
+                                {visibleMemberChapas.length === 0 && (
+                                    <tr>
+                                        <td colSpan={days.length + 2} className="px-4 py-10 text-center text-slate-400 font-medium">
+                                            Nenhum colaborador corresponde aos filtros aplicados.
+                                        </td>
+                                    </tr>
+                                )}
+
+                                {visibleMemberChapas.map(chapa => {
                                     const name = memberNames[chapa] || chapa;
-                                    const total = getMemberTotal(chapa);
+                                    const total = memberTotals[chapa] || 0;
                                     const isOver = total > 44;
+                                    const isSelected = !!selectedMembers[chapa];
                                     return (
-                                        <tr key={chapa} className="hover:bg-slate-50/70 border-b border-slate-100 group">
+                                        <tr key={chapa} className={`hover:bg-slate-50/70 border-b border-slate-100 group ${isSelected ? 'bg-blue-50/60' : ''}`}>
                                             <td className="sticky left-0 bg-white px-4 py-1.5 border-r border-slate-200 z-10">
-                                                <p className="font-bold text-slate-800 leading-tight">{name}</p>
-                                                <p className="text-[10px] text-slate-400 font-medium truncate max-w-[150px]">{memberFuncoes[chapa] || '—'}</p>
+                                                <div className="flex items-start gap-3">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isSelected}
+                                                        onChange={() => toggleMemberSelection(chapa)}
+                                                        className="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                                        title="Selecionar colaborador"
+                                                    />
+                                                    <div className="min-w-0">
+                                                        <p className="font-bold text-slate-800 leading-tight">{name}</p>
+                                                        <p className="text-[10px] text-slate-400 font-medium truncate max-w-[170px]">{memberRoleLabels[chapa]}</p>
+                                                        <p className="text-[10px] text-slate-300 font-mono">{chapa}</p>
+                                                    </div>
+                                                </div>
                                             </td>
                                             {days.map(day => {
                                                 const dk = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
