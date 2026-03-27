@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchOvertimeData } from '@/src/modules/human-capital/services/totvs';
 import Dashboard from '@/src/modules/human-capital/components/Dashboard';
@@ -13,14 +13,14 @@ import HeadcountGovernance from '@/src/modules/human-capital/components/Headcoun
 import { canAccessSettings, canManageHeadcount, canManageProfiles, canPlan } from '../iam/types';
 import { formatDateForApi } from '@/src/modules/human-capital/utils/formatters';
 import { LayoutDashboard, Table, Settings, CheckCircle2, AlertTriangle, Sparkles, CalendarRange, UserCog, Lock, BarChart3 } from 'lucide-react';
-import { ApiConfig, OvertimeRecord, FetchStatus, UserProfile, ManualEmployee, GlobalEmployee } from '@/src/modules/human-capital/types';
+import { ApiConfig, OvertimeRecord, FetchStatus, UserProfile, ManualEmployee, GlobalEmployee, HeadcountRecord } from '@/src/modules/human-capital/types';
 import { CorporateSidebar, SidebarItem } from '../../components/navigation/CorporateSidebar';
 import { useNavigate } from 'react-router-dom';
 import { realOvertimeData, RealOvertimeRecord } from '@/src/modules/human-capital/data/realOvertime';
 import { getManualEmployees, upsertManualEmployee } from '@/src/modules/human-capital/services/firestoreCH';
 import { CreateEmployeeModal } from '@/src/modules/human-capital/components/CreateEmployeeModal';
 import { getCCRegional } from '@/src/modules/human-capital/data/ccMaster';
-import { saveGlobalEmployees, getGlobalEmployeesSync, getHeadcountSync } from '@/src/modules/human-capital/services/planning';
+import { saveGlobalEmployees, getGlobalEmployeesSync, getHeadcountSync, getHeadcount, clearHeadcountCache } from '@/src/modules/human-capital/services/planning';
 import { gerarOvertimeRateado } from '@/src/modules/human-capital/utils/headcountRateio';
 import { formatDateKey, getPayrollCompetencyMonthKey, getPayrollCompetencyMonthKeysForRange } from '@/src/modules/human-capital/utils/overtime';
 
@@ -106,6 +106,7 @@ const HumanCapitalDashboard: React.FC = () => {
   const [manualEmployees, setManualEmployees] = useState<ManualEmployee[]>([]);
   const [isCreateEmployeeOpen, setIsCreateEmployeeOpen] = useState(false);
   const [globalEmployees, setGlobalEmployees] = useState<GlobalEmployee[]>(() => getGlobalEmployeesSync());
+  const [headcountRecords, setHeadcountRecords] = useState<HeadcountRecord[]>(() => getHeadcountSync());
 
   // ... (keeping other lines same if not part of this block, but mainly reverting the state init)
 
@@ -244,6 +245,23 @@ const HumanCapitalDashboard: React.FC = () => {
 
   const getRegional = (cc: string): string => getCCRegional(cc);
 
+  const syncHeadcountRecords = useCallback(async (options?: { clearCache?: boolean }) => {
+    if (options?.clearCache) {
+      clearHeadcountCache();
+    }
+
+    try {
+      const records = await getHeadcount();
+      setHeadcountRecords(records);
+      return records;
+    } catch (error) {
+      console.error('Erro ao sincronizar headcount:', error);
+      const fallback = getHeadcountSync();
+      setHeadcountRecords(fallback);
+      return fallback;
+    }
+  }, []);
+
   const filteredRealOvertime = useMemo(() => {
     if (!effectiveUser?.scope) return realOvertimeData;
     const scope = effectiveUser.scope;
@@ -258,10 +276,10 @@ const HumanCapitalDashboard: React.FC = () => {
     });
   }, [effectiveUser]);
 
-  /**
-   * Headcount do cache local (sincronizado apos cada upload confirmado).
-   */
-  const headcountRecords = useMemo(() => getHeadcountSync(), [data]);
+  useEffect(() => {
+    if (!effectiveUser) return;
+    void syncHeadcountRecords();
+  }, [effectiveUser, syncHeadcountRecords]);
 
   /**
    * Base rateada: aplica o motor de headcount sobre o dado bruto TOTVS.
@@ -503,11 +521,8 @@ const HumanCapitalDashboard: React.FC = () => {
                   <HeadcountGovernance
                     headcountRecords={headcountRecords}
                     rawData={data}
-                    onClear={() => {
-                      try { localStorage.removeItem('hc_headcount_cache'); } catch (_) {}
-                      window.location.reload();
-                    }}
-                    onRefresh={() => window.location.reload()}
+                    onClear={() => { void syncHeadcountRecords({ clearCache: true }); }}
+                    onRefresh={() => { void syncHeadcountRecords(); }}
                   />
                 </div>
                 {/* Upload / atualização */}
@@ -516,7 +531,10 @@ const HumanCapitalDashboard: React.FC = () => {
                   <p className="text-sm text-slate-500 mb-5">
                     Importe a tabela de distribuição de colaboradores por CC para corrigir o rateio de horas reais.
                   </p>
-                  <HeadcountUpload user={effectiveUser} />
+                  <HeadcountUpload
+                    user={effectiveUser}
+                    onSaved={() => { void syncHeadcountRecords(); }}
+                  />
                 </div>
               </div>
             )}

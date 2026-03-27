@@ -452,6 +452,15 @@ export const getHeadcountSync = (): HeadcountRecord[] => {
     return [];
 };
 
+/** Remove o cache local de headcount. Não altera o Firestore. */
+export const clearHeadcountCache = (): void => {
+    try {
+        localStorage.removeItem(HC_CACHE_KEY);
+    } catch (e) {
+        console.error('Error clearing local headcount cache:', e);
+    }
+};
+
 /**
  * Persiste registros de headcount no Firestore e atualiza o cache local.
  * Segue o mesmo padrão de saveBudgets/saveSalaries.

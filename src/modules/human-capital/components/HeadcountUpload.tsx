@@ -18,6 +18,7 @@ import { replaceHeadcount } from '../services/planning';
 
 interface HeadcountUploadProps {
     user: UserProfile;
+    onSaved?: () => void | Promise<void>;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -174,7 +175,7 @@ const ReplaceWarningModal: React.FC<{
 
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
-const HeadcountUpload: React.FC<HeadcountUploadProps> = ({ user }) => {
+const HeadcountUpload: React.FC<HeadcountUploadProps> = ({ user, onSaved }) => {
     const [status, setStatus] = useState<HeadcountUploadStatus>('idle');
     const [result, setResult] = useState<HeadcountUploadResult | null>(null);
     const [fileName, setFileName] = useState<string | null>(null);
@@ -272,6 +273,7 @@ const HeadcountUpload: React.FC<HeadcountUploadProps> = ({ user }) => {
         try {
             // Usa replaceHeadcount: delete-all → insert-new → atualiza cache local
             await replaceHeadcount(result.validRecords, meta, user);
+            await onSaved?.();
             setShowReplaceWarning(false);
             setIsReplacing(false);
             setStatus('saved');
