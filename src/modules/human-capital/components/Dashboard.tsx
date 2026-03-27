@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { OvertimeRecord, UserProfile, BudgetRecord } from '../types';
 import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, AlertTriangle, Moon, Scale, Percent, ArrowUpRight, ArrowDownRight, X, User, Users, DollarSign, ListFilter, ShieldAlert, Zap, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { formatDecimalHours } from '../utils/formatters';
-import { getSalariesForMonthKeys, getSalariesSync, getBudgetsSync, getAllPlanningRecords, getGlobalEmployeesAsync, getGlobalEmployeesSync, getAllBudgetsAsync } from '../services/planning';
+import { getSalariesForMonthKeys, getSalariesSync, getBudgetsSync, getAllPlanningRecords, getGlobalEmployeesAsync, getGlobalEmployeesSync, getAllBudgetsAsync, getPlanning } from '../services/planning';
 import { getCCName, getCCRegional, normalizeCC } from '../data/ccMaster';
 import { getPeriodStats } from '../utils/dateUtils';
 import { isRecordInHumanCapitalScope } from '../utils/scopeFilters';
