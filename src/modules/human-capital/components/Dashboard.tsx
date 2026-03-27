@@ -1162,7 +1162,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
         {/* 2. Horas Extras */}
         {(() => {
-          const devioPct = metrics.totalPlannedHours > 0 ? ((metrics.realTotalHE - metrics.totalPlannedHours) / metrics.totalPlannedHours) * 100 : 0;
+          const ratioPct = metrics.totalPlannedHours > 0 ? (metrics.realTotalHE / metrics.totalPlannedHours) * 100 : 0;
           const isOver = metrics.realTotalHE > metrics.totalPlannedHours;
           const pct60 = metrics.realTotalHE > 0 ? (metrics.realHE60Hours / metrics.realTotalHE) * 100 : 0;
           const pct100 = metrics.realTotalHE > 0 ? (metrics.realHE100Hours / metrics.realTotalHE) * 100 : 0;
@@ -1175,7 +1175,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
                 </div>
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${isOver ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
                   {isOver ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
-                  {Math.abs(devioPct).toFixed(1)}%
+                  {ratioPct.toFixed(1)}%
                 </span>
               </div>
               <div>
