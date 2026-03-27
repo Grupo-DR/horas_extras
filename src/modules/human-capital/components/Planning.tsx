@@ -3,8 +3,9 @@ import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, ManualEmploy
 import { savePlanning, getPlanning, getSalaries, getSalariesSync, saveBudgets, getBudgetsSync, getAllBudgetsAsync, deleteBudgets, deleteAllBudgets, saveGlobalEmployees, getGlobalEmployeesAsync, getGlobalEmployeesSync } from '../services/planning';
 import { canApprove, canManageBudgets } from '../../iam/types';
 import { ApprovalPanel } from './ApprovalPanel';
+import { getCCName } from '../data/ccMaster';
 
-import { Users, Wallet, TrendingUp, Calculator, CheckCircle2, AlertTriangle, X, ChevronLeft, ChevronRight, Save, FileUp, ArrowUpRight, ArrowDownRight, LayoutList, Trash2 } from 'lucide-react';
+import { Users, Wallet, TrendingUp, Calculator, CheckCircle2, AlertTriangle, X, ChevronLeft, ChevronRight, Save, FileUp, ArrowUpRight, ArrowDownRight, LayoutList, Trash2, Mail, Copy } from 'lucide-react';
 import { formatDecimalHours, parseTimeToDecimal } from '../utils/formatters';
 import * as XLSX from 'xlsx';
 import { PlanningTable } from './PlanningTable';
@@ -43,6 +44,57 @@ interface PlanningProps {
     manualEmployees: ManualEmployee[];
     headcountRecords?: HeadcountRecord[];
 }
+
+interface EmailDraftSummaryItem {
+    costCenter: string;
+    costCenterName: string;
+    regional: string;
+    headcount: number;
+    totalHours: number;
+    totalCost: number;
+}
+
+interface EmailDraftData {
+    subject: string;
+    body: string;
+    periodLabel: string;
+    monthLabel: string;
+    totalHours: number;
+    totalCost: number;
+    totalHeadcount: number;
+    items: EmailDraftSummaryItem[];
+}
+
+const parseDateKeyLocal = (value: string): Date => {
+    const [year, month, day] = value.split('-').map(Number);
+    return new Date(year, (month || 1) - 1, day || 1, 12, 0, 0, 0);
+};
+
+const formatDateBR = (value: string): string => {
+    if (!value) return '-';
+    return parseDateKeyLocal(value).toLocaleDateString('pt-BR');
+};
+
+const formatCurrencyBR = (value: number): string =>
+    `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const resolvePlanningRange = (
+    fallbackStart: string,
+    fallbackEnd: string,
+    selectedStart?: string,
+    selectedEnd?: string
+) => {
+    const rawStart = selectedStart || fallbackStart;
+    const rawEnd = selectedEnd || fallbackEnd;
+
+    if (!rawStart || !rawEnd) {
+        return { start: fallbackStart, end: fallbackEnd };
+    }
+
+    return rawStart <= rawEnd
+        ? { start: rawStart, end: rawEnd }
+        : { start: rawEnd, end: rawStart };
+};
 
 const EmployeeCalendarModal: React.FC<{
     isOpen: boolean;
@@ -173,6 +225,157 @@ const EmployeeCalendarModal: React.FC<{
                         Visualização de Planejamento Detalhado por Dia
                     </p>
                 </div>
+            </div>
+        </div>
+    );
+};
+
+const EmailDraftModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    draft: EmailDraftData | null;
+    onCopy: (text: string, label: string) => void | Promise<void>;
+}> = ({ isOpen, onClose, draft, onCopy }) => {
+    if (!isOpen) return null;
+
+    const fullEmailText = draft ? `Assunto: ${draft.subject}\n\n${draft.body}` : '';
+
+    return (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="bg-slate-900 px-6 py-4 flex justify-between items-center text-white shrink-0">
+                    <div>
+                        <h3 className="text-lg font-bold flex items-center gap-2">
+                            <Mail size={18} />
+                            Rascunho de E-mail
+                        </h3>
+                        <p className="text-slate-300 text-xs mt-0.5">
+                            Texto pronto para o gestor copiar e colar na solicitacao de aprovacao.
+                        </p>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Fechar">
+                        <X size={20} />
+                    </button>
+                </div>
+
+                {!draft ? (
+                    <div className="p-8 text-center text-slate-500">
+                        <Mail size={40} className="mx-auto mb-3 opacity-30" />
+                        <p className="font-bold text-slate-700">Nao ha dados suficientes para gerar o e-mail.</p>
+                        <p className="text-sm mt-1">Inclua horas no periodo selecionado e tente novamente.</p>
+                    </div>
+                ) : (
+                    <>
+                        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Competencia</span>
+                                <span className="text-sm font-bold text-slate-700">{draft.monthLabel}</span>
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Periodo</span>
+                                <span className="text-sm font-bold text-slate-700">{draft.periodLabel}</span>
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Horas</span>
+                                <span className="text-sm font-bold text-slate-700">{formatDecimalHours(draft.totalHours)}</span>
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Custo Estimado</span>
+                                <span className="text-sm font-bold text-emerald-700">{formatCurrencyBR(draft.totalCost)}</span>
+                            </div>
+                        </div>
+
+                        <div className="p-6 space-y-5 overflow-y-auto">
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between gap-4">
+                                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Assunto</label>
+                                    <button
+                                        onClick={() => onCopy(draft.subject, 'Assunto do e-mail')}
+                                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-bold hover:bg-slate-50"
+                                    >
+                                        <Copy size={14} />
+                                        Copiar assunto
+                                    </button>
+                                </div>
+                                <input
+                                    readOnly
+                                    value={draft.subject}
+                                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between gap-4">
+                                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Corpo</label>
+                                    <button
+                                        onClick={() => onCopy(draft.body, 'Corpo do e-mail')}
+                                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-bold hover:bg-slate-50"
+                                    >
+                                        <Copy size={14} />
+                                        Copiar corpo
+                                    </button>
+                                </div>
+                                <textarea
+                                    readOnly
+                                    value={draft.body}
+                                    rows={18}
+                                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none resize-none whitespace-pre-wrap"
+                                />
+                            </div>
+
+                            <div>
+                                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Resumo Consolidado</p>
+                                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                                    <table className="w-full text-xs">
+                                        <thead className="bg-slate-100 text-slate-500">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left font-black uppercase tracking-wider text-[10px]">Centro de Custo</th>
+                                                <th className="px-4 py-3 text-left font-black uppercase tracking-wider text-[10px]">Regional</th>
+                                                <th className="px-4 py-3 text-right font-black uppercase tracking-wider text-[10px]">Efetivo</th>
+                                                <th className="px-4 py-3 text-right font-black uppercase tracking-wider text-[10px]">Horas</th>
+                                                <th className="px-4 py-3 text-right font-black uppercase tracking-wider text-[10px]">Custo</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {draft.items.map(item => (
+                                                <tr key={item.costCenter}>
+                                                    <td className="px-4 py-3 text-slate-700 font-semibold">
+                                                        {item.costCenter} - {item.costCenterName}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-slate-500">{item.regional}</td>
+                                                    <td className="px-4 py-3 text-right text-slate-700 font-mono">{item.headcount}</td>
+                                                    <td className="px-4 py-3 text-right text-slate-700 font-mono">{formatDecimalHours(item.totalHours)}</td>
+                                                    <td className="px-4 py-3 text-right text-emerald-700 font-mono font-bold">{formatCurrencyBR(item.totalCost)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shrink-0">
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                Colaboradores envolvidos: {draft.totalHeadcount} | Centros de custo: {draft.items.length}
+                            </p>
+                            <div className="flex gap-2 w-full sm:w-auto">
+                                <button
+                                    onClick={onClose}
+                                    className="flex-1 sm:flex-none px-4 py-2 text-slate-500 font-bold text-sm hover:bg-slate-100 rounded-lg transition-colors"
+                                >
+                                    Fechar
+                                </button>
+                                <button
+                                    onClick={() => onCopy(fullEmailText, 'E-mail completo')}
+                                    className="flex-1 sm:flex-none px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <Copy size={15} />
+                                    Copiar e-mail completo
+                                </button>
+                            </div>
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );
@@ -524,6 +727,15 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
         setPlanRangeEnd(formatDateKey(periodEnd));
     }, [periodStart, periodEnd]);
 
+    const submissionRange = useMemo(() => {
+        return resolvePlanningRange(
+            formatDateKey(periodStart),
+            formatDateKey(periodEnd),
+            planRangeStart,
+            planRangeEnd
+        );
+    }, [periodStart, periodEnd, planRangeStart, planRangeEnd]);
+
     const [currentWeekStart, setCurrentWeekStart] = useState<Date>(periodStart);
     useEffect(() => { setCurrentWeekStart(periodStart); }, [periodStart]);
 
@@ -539,6 +751,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
 
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState<{ name: string, chapa: string } | null>(null);
+    const [isEmailDraftOpen, setIsEmailDraftOpen] = useState(false);
 
     // Global Employees Dictionary
     const [globalEmployees, setGlobalEmployees] = useState<GlobalEmployee[]>(() => getGlobalEmployeesSync());
@@ -740,6 +953,100 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
             })
             .sort((a, b) => a.costCenter.localeCompare(b.costCenter));
     }, [uniqueEmployees, ccFilter, regionalFilter, user]);
+
+    const emailDraft = useMemo<EmailDraftData | null>(() => {
+        const monthParts = selectedMonth.split('-');
+        const monthIndex = parseInt(monthParts[1], 10) - 1;
+        const monthLabel = `${MONTH_NAMES[monthIndex]}/${monthParts[0]}`;
+        const periodLabel = `${formatDateBR(submissionRange.start)} a ${formatDateBR(submissionRange.end)}`;
+        const rangeStart = parseDateKeyLocal(submissionRange.start);
+        const rangeEnd = parseDateKeyLocal(submissionRange.end);
+        const overallMembers = new Set<string>();
+
+        const summaryItems = displayCostCenters.map(cc => {
+            let totalHours = 0;
+            let totalCost = 0;
+            const membersWithHours = new Set<string>();
+
+            cc.memberChapas.forEach(chapa => {
+                const salary = salaries[chapa];
+                const cursor = new Date(rangeStart);
+
+                while (cursor <= rangeEnd) {
+                    const dateKey = formatDateKey(cursor);
+                    const hours = plans[`${chapa}_${cc.costCenter}_${dateKey}`] || 0;
+
+                    if (hours > 0) {
+                        totalHours += hours;
+                        membersWithHours.add(chapa);
+                        overallMembers.add(chapa);
+
+                        if (salary) {
+                            const isSunday = cursor.getDay() === 0;
+                            const baseHour = salary / 220;
+                            const multiplier = isSunday ? 2.0 : 1.6;
+                            totalCost += baseHour * multiplier * hours;
+                        }
+                    }
+
+                    cursor.setDate(cursor.getDate() + 1);
+                }
+            });
+
+            return {
+                costCenter: cc.costCenter,
+                costCenterName: getCCName(cc.costCenter),
+                regional: cc.regional,
+                headcount: membersWithHours.size,
+                totalHours,
+                totalCost
+            };
+        }).filter(item => item.totalHours > 0);
+
+        if (summaryItems.length === 0) return null;
+
+        const totalHours = summaryItems.reduce((sum, item) => sum + item.totalHours, 0);
+        const totalCost = summaryItems.reduce((sum, item) => sum + item.totalCost, 0);
+
+        const summaryLines = summaryItems.map(item =>
+            `- ${item.costCenter} - ${item.costCenterName} | ${item.regional} | Efetivo: ${item.headcount} | Horas: ${formatDecimalHours(item.totalHours)} | Custo estimado: ${formatCurrencyBR(item.totalCost)}`
+        );
+
+        const subject = `Solicitacao de acordo - Programacao de horas extras - ${monthLabel} - ${periodLabel}`;
+        const body = [
+            'Prezados,',
+            '',
+            `Informo que foi realizada a programacao de horas extras e solicito o de acordo para o periodo de ${periodLabel}.`,
+            '',
+            `Gestor solicitante: ${user.name}`,
+            `E-mail do gestor: ${user.email}`,
+            `Competencia de referencia: ${monthLabel}`,
+            `Periodo enviado para aprovacao: ${periodLabel}`,
+            `Total planejado: ${formatDecimalHours(totalHours)}`,
+            `Custo estimado total: ${formatCurrencyBR(totalCost)}`,
+            `Centros de custo envolvidos: ${summaryItems.length}`,
+            `Colaboradores envolvidos: ${overallMembers.size}`,
+            '',
+            'Resumo por centro de custo:',
+            ...summaryLines,
+            '',
+            'Caso estejam de acordo, peco a aprovacao do planejamento no Portal Capital Humano.',
+            '',
+            'Atenciosamente,',
+            user.name
+        ].join('\n');
+
+        return {
+            subject,
+            body,
+            periodLabel,
+            monthLabel,
+            totalHours,
+            totalCost,
+            totalHeadcount: overallMembers.size,
+            items: summaryItems
+        };
+    }, [displayCostCenters, plans, salaries, selectedMonth, submissionRange, user.email, user.name]);
 
     // Helper to get Employee Object
     const getEmpObj = (chapa: string) => uniqueEmployees.find(e => e.chapa === chapa);
@@ -985,29 +1292,79 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
     };
 
     const handleSave = async (submitPending: boolean = false) => {
+        if (submitPending && !emailDraft) {
+            setAlert({ type: 'error', message: 'Nao ha horas planejadas no intervalo selecionado para enviar para aprovacao.' });
+            return;
+        }
+
         setSaving(true);
         const recordsToSave: PlanningRecord[] = [];
-        uniqueEmployees.forEach(emp => {
-            const curr = new Date(periodStart);
-            while (curr <= periodEnd) {
-                const dateKey = formatDateKey(curr);
-                const key = `${emp.chapa}_${emp.cc}_${dateKey}`;
-                const hours = plans[key];
-                if (hours !== undefined) {
-                    const hasRange = !!planRangeStart && !!planRangeEnd;
-                    const isWithinRange = hasRange ? (dateKey >= planRangeStart && dateKey <= planRangeEnd) : true;
-                    const originalStatus = (planStatuses[key] as PlanningRecord['status']) || 'draft';
-                    const finalStatus: PlanningRecord['status'] = submitPending
-                        ? (isWithinRange ? 'pending' : originalStatus)
-                        : 'draft';
-                    recordsToSave.push({ id: `${emp.chapa}_${emp.cc}_DAILY_${dateKey}`, chapa: emp.chapa, nome: emp.nome, costCenter: emp.cc, date: dateKey, type: 'DAILY', plannedHours: hours, status: finalStatus });
+        const nextStatuses = { ...planStatuses };
+
+        try {
+            uniqueEmployees.forEach(emp => {
+                const curr = new Date(periodStart);
+                while (curr <= periodEnd) {
+                    const dateKey = formatDateKey(curr);
+                    const key = `${emp.chapa}_${emp.cc}_${dateKey}`;
+                    const hours = plans[key];
+
+                    if (hours !== undefined) {
+                        const isWithinRange = dateKey >= submissionRange.start && dateKey <= submissionRange.end;
+                        const originalStatus = (planStatuses[key] as PlanningRecord['status']) || 'draft';
+                        const finalStatus: PlanningRecord['status'] = submitPending
+                            ? (isWithinRange ? 'pending' : originalStatus)
+                            : ((originalStatus === 'approved' || originalStatus === 'pending') ? originalStatus : 'draft');
+
+                        recordsToSave.push({
+                            id: `${emp.chapa}_${emp.cc}_DAILY_${dateKey}`,
+                            chapa: emp.chapa,
+                            nome: emp.nome,
+                            costCenter: emp.cc,
+                            date: dateKey,
+                            type: 'DAILY',
+                            plannedHours: hours,
+                            status: finalStatus
+                        });
+
+                        nextStatuses[key] = finalStatus;
+                    }
+
+                    curr.setDate(curr.getDate() + 1);
                 }
-                curr.setDate(curr.getDate() + 1);
+            });
+
+            await savePlanning(recordsToSave, user);
+            setPlanStatuses(nextStatuses);
+            setAlert({ type: 'success', message: submitPending ? 'Planejamento submetido para aprovacao!' : 'Rascunho salvo!' });
+
+            if (submitPending) {
+                setIsEmailDraftOpen(true);
             }
-        });
-        await savePlanning(recordsToSave, user);
-        setSaving(false);
-        setAlert({ type: 'success', message: submitPending ? 'Planejamento submetido para aprovação!' : 'Rascunho salvo!' });
+        } catch (error) {
+            console.error(error);
+            setAlert({ type: 'error', message: 'Erro ao salvar planejamento.' });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleOpenEmailDraft = () => {
+        if (!emailDraft) {
+            setAlert({ type: 'error', message: 'Nao ha horas planejadas no intervalo selecionado para gerar o e-mail.' });
+            return;
+        }
+        setIsEmailDraftOpen(true);
+    };
+
+    const handleCopyEmailText = async (text: string, label: string) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            setAlert({ type: 'success', message: `${label} copiado com sucesso!` });
+        } catch (error) {
+            console.error(error);
+            setAlert({ type: 'error', message: `Nao foi possivel copiar ${label.toLowerCase()}.` });
+        }
     };
 
     const handleEmployeeClick = (emp: { nome: string; chapa: string }) => {
@@ -1076,6 +1433,13 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                     salary={salaries[selectedEmployee.chapa]}
                 />
             )}
+
+            <EmailDraftModal
+                isOpen={isEmailDraftOpen}
+                onClose={() => setIsEmailDraftOpen(false)}
+                draft={emailDraft}
+                onCopy={handleCopyEmailText}
+            />
 
             {alert && (
                 <div className={`fixed bottom-8 right-8 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border animate-bounce ${alert.type === 'success' ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-red-600 border-red-500 text-white'}`}>
@@ -1296,9 +1660,16 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                             <button onClick={() => handleSave(false)} disabled={saving} className="bg-gray-100 text-gray-700 px-6 py-2.5 rounded-lg text-sm font-bold uppercase hover:bg-gray-200 transition flex items-center gap-2 shadow-sm">
                                 <Save size={18} /> Salvar Rascunho
                             </button>
+                            <button
+                                onClick={handleOpenEmailDraft}
+                                disabled={!emailDraft}
+                                className="bg-white text-slate-700 border border-slate-200 px-4 py-2.5 rounded-lg text-sm font-bold uppercase hover:bg-slate-50 transition flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <Mail size={16} /> Gerar E-mail
+                            </button>
                             <button onClick={() => {
-                                const submitStart = planRangeStart || formatDateKey(periodStart);
-                                const submitEnd = planRangeEnd || formatDateKey(periodEnd);
+                                const submitStart = submissionRange.start;
+                                const submitEnd = submissionRange.end;
                                 if (window.confirm(`Atenção: os dias entre ${submitStart} e ${submitEnd} serão submetidos para aprovação. Os demais dias permanecerão em rascunho/abertos. Deseja prosseguir?`)) {
                                     handleSave(true);
                                 }
