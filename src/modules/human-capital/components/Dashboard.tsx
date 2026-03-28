@@ -448,7 +448,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
   const periodEndKey = useMemo(() => formatDateKey(periodEnd), [periodEnd]);
 
   const [planningRecords, setPlanningRecords] = useState<import('../types').PlanningRecord[]>(() =>
-  getAllPlanningRecords().filter(p => !p.status || p.status === 'approved')
+    getAllPlanningRecords().filter(p => !p.status || p.status === 'approved')
   );
 
   // Sincronização automática com Firestore ao trocar de mês ou período
@@ -460,20 +460,40 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       if (selectedMonth) keys.add(selectedMonth);
       budgetMonthKeys?.forEach(k => keys.add(k));
 
+      const monthKeysArray = Array.from(keys);
+      console.log(`DASHBOARD_PLANNING_SYNC: Iniciando sincronização para chaves:`, monthKeysArray);
+
+      const loaded: import('../types').PlanningRecord[] = [];
+
       // Dispara a busca para cada mês relevante
-      // getPlanning já cuida de atualizar o cache local internamente
-      for (const monthKey of Array.from(keys)) {
+      for (const monthKey of monthKeysArray) {
         if (cancelled) return;
         try {
-          await getPlanning(undefined, monthKey, 'DAILY', user || undefined);
+          const rows = await getPlanning(undefined, monthKey, 'DAILY', user || undefined);
+          console.log(`DASHBOARD_PLANNING_SYNC: Recebidos ${rows.length} registros para ${monthKey}`);
+          loaded.push(...rows);
         } catch (e) {
           console.error(`Falha ao sincronizar planejamento no Dashboard para ${monthKey}:`, e);
         }
       }
 
       if (!cancelled) {
-        // Recarrega o estado das records a partir do cache agora atualizado
-        setPlanningRecords(getAllPlanningRecords().filter(p => !p.status || p.status === 'approved'));
+        // Consolidação e Deduplicação em memória (Fonte: Resultado direto do serviço)
+        const dedup = new Map<string, import('../types').PlanningRecord>();
+        loaded.forEach(p => {
+          // Chave única estável: id ou combinação chapa+CC+data
+          const key = p.id || `${p.chapa}__${p.costCenter}__${p.date}__${p.type}`;
+          dedup.set(key, p);
+        });
+
+        const allRecords = Array.from(dedup.values());
+
+        // REGRA DE NEGÓCIO: Apenas aprovados no Dashboard
+        const approvedOnly = allRecords.filter(p => !p.status || p.status === 'approved');
+
+        console.log(`DASHBOARD_PLANNING_SYNC: Total consolidado: ${allRecords.length} | Aprovados: ${approvedOnly.length}`);
+        
+        setPlanningRecords(approvedOnly);
       }
     };
 
@@ -481,6 +501,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
     return () => { cancelled = true; };
   }, [selectedMonth, budgetMonthKeys, user]);
+
 
   const filteredPlanningRecords = useMemo(
     () =>
