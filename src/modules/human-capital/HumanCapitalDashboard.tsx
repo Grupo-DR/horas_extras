@@ -108,7 +108,6 @@ const HumanCapitalDashboard: React.FC = () => {
   const [globalEmployees, setGlobalEmployees] = useState<GlobalEmployee[]>(() => getGlobalEmployeesSync());
   const [headcountRecords, setHeadcountRecords] = useState<HeadcountRecord[]>(() => getHeadcountSync());
 
-  // ... (keeping other lines same if not part of this block, but mainly reverting the state init)
 
   const [showAiPanel, setShowAiPanel] = useState(false);
 
@@ -315,7 +314,6 @@ const HumanCapitalDashboard: React.FC = () => {
     const years = new Set<string>();
     const regionals = new Set<string>();
 
-    // Usa scopedData para gerar opções relevantes
     scopedData.forEach(item => {
       if (item.FUNCAO) functions.add(item.FUNCAO);
       if (item.CODCCUSTO) {

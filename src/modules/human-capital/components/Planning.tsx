@@ -1832,30 +1832,6 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                             </div>
 
                             <div className="flex flex-col">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Início (Envio)</label>
-                                <input
-                                    type="date"
-                                    value={planRangeStart}
-                                    onChange={(e) => setPlanRangeStart(e.target.value)}
-                                    min={formatDateKey(periodStart)}
-                                    max={formatDateKey(periodEnd)}
-                                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium"
-                                />
-                            </div>
-
-                            <div className="flex flex-col">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Fim (Envio)</label>
-                                <input
-                                    type="date"
-                                    value={planRangeEnd}
-                                    onChange={(e) => setPlanRangeEnd(e.target.value)}
-                                    min={formatDateKey(periodStart)}
-                                    max={formatDateKey(periodEnd)}
-                                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium"
-                                />
-                            </div>
-
-                            <div className="flex flex-col">
                                 <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Regional</label>
                                 <select value={regionalFilter} onChange={(e) => setRegionalFilter(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-w-[140px] font-medium">
                                     <option value="">Todas</option>
@@ -1870,13 +1846,6 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                                     {costCenters.map(cc => <option key={cc} value={cc}>{cc}</option>)}
                                 </select>
                             </div>
-
-                            <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-gray-200 self-end h-[42px]">
-                                <button onClick={() => changeWeek('prev')} className="p-1.5 hover:bg-gray-100 rounded-lg"><ChevronLeft size={16} /></button>
-                                <span className="font-bold text-gray-700 text-[11px] min-w-[150px] text-center">{weekDays[0].toLocaleDateString('pt-BR')} - {weekDays[6].toLocaleDateString('pt-BR')}</span>
-                                <button onClick={() => changeWeek('next')} className="p-1.5 hover:bg-gray-100 rounded-lg"><ChevronRight size={16} /></button>
-                            </div>
-
                         </div>
 
                         <div className="flex flex-wrap gap-3 w-full xl:w-auto justify-end">
@@ -1979,6 +1948,3 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
 };
 
 export default Planning;
-
-
-
