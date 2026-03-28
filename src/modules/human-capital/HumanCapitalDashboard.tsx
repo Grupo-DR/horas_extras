@@ -48,15 +48,15 @@ enum Tab {
 const getInitialFilters = (): FilterState => {
   return {
     searchTerm: '',
-    startDate: '2025-01-01',
-    endDate: '2026-12-31',
+    startDate: '2025-12-21',
+    endDate: '2026-01-20',
     function: '',
     costCenter: '',
     regional: '',
     type: '',
     year: '2026',
     month: '01',
-    dateMode: 'CUSTOM'
+    dateMode: 'PAYROLL'
   };
 };
 

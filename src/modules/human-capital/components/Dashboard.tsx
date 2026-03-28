@@ -272,7 +272,7 @@ const CostCenterDetailModal: React.FC<{
 };
 
 const HierarchicalRow: React.FC<{ node: TreeNode; level: number; parentTotalHours?: number; viewMode: 'financial' | 'operational' }> = ({ node, level, parentTotalHours, viewMode }) => {
-  const [isExpanded, setIsExpanded] = React.useState(level === 0);
+  const [isExpanded, setIsExpanded] = React.useState(false);
   const hasChildren = node.children && node.children.length > 0;
 
   const isRegional = level === 0;
