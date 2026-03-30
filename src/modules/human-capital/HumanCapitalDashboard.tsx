@@ -135,7 +135,7 @@ const HumanCapitalDashboard: React.FC = () => {
     if (effectiveUser) {
       loadData();
     }
-  }, [effectiveUser, filters.startDate, filters.endDate]);
+  }, [effectiveUser, filters.dateMode, filters.startDate, filters.endDate]);
 
   const loadData = async () => {
     setStatus('loading');
