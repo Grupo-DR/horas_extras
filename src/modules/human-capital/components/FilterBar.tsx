@@ -79,7 +79,10 @@ const FilterBar: React.FC<FilterBarProps> = ({ filters, setFilters, options, onC
         setFilters(prev => ({
             ...prev,
             dateMode: newMode,
-            ...calculateDates(prev.year, prev.month, newMode, prev),
+            ...calculateDates(prev.year, prev.month, newMode, {
+                startDate: prev.startDate,
+                endDate: prev.endDate,
+            }),
         }));
     };
 

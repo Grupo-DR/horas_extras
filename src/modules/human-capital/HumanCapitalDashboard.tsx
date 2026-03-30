@@ -112,6 +112,7 @@ const HumanCapitalDashboard: React.FC = () => {
   const [showAiPanel, setShowAiPanel] = useState(false);
 
   // Inicializa filtros com função helper
+  // Inicializa filtros com função helper
   const [filters, setFilters] = useState<FilterState>(getInitialFilters());
 
   useEffect(() => {
@@ -131,10 +132,21 @@ const HumanCapitalDashboard: React.FC = () => {
   }, [activeTab, effectiveUser]);
 
   // CORREÇÃO CRÍTICA: Adicionado dependência de filtros de data para recarregar API
+  // Otimização: Debounce para carga de dados no modo CUSTOM. 
+  // Imediato para PAYROLL/ANNUAL, atrasado para CUSTOM (evita spam de API ao digitar datas)
   useEffect(() => {
-    if (effectiveUser) {
+    if (!effectiveUser) return;
+
+    if (filters.dateMode !== 'CUSTOM') {
       loadData();
+      return;
     }
+
+    const timer = setTimeout(() => {
+      loadData();
+    }, 800);
+
+    return () => clearTimeout(timer);
   }, [effectiveUser, filters.dateMode, filters.startDate, filters.endDate]);
 
   const loadData = async () => {
