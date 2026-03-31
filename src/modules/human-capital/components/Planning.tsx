@@ -1,30 +1,15 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, ManualEmployee, GlobalEmployee, HeadcountRecord } from '../types';
 import { savePlanning, getPlanning, getSalaries, getSalariesSync, saveBudgets, getBudgetsSync, getAllBudgetsAsync, deleteBudgets, deleteAllBudgets, saveGlobalEmployees, getGlobalEmployeesAsync, getGlobalEmployeesSync } from '../services/planning';
 import { canApprove, canManageBudgets } from '../../iam/types';
 import { ApprovalPanel } from './ApprovalPanel';
-import { getCCName } from '../data/ccMaster';
+import { getCCName, getCCRegional } from '../data/ccMaster';
+import { isRecordInHumanCapitalScope } from '../utils/scopeFilters';
 
 import { Users, Wallet, TrendingUp, Calculator, CheckCircle2, AlertTriangle, X, ChevronLeft, ChevronRight, Save, FileUp, ArrowUpRight, ArrowDownRight, LayoutList, Trash2, Mail, Copy } from 'lucide-react';
 import { formatDecimalHours, parseTimeToDecimal } from '../utils/formatters';
 import * as XLSX from 'xlsx';
 import { PlanningTable } from './PlanningTable';
-
-// Constants for Regional Mapping based on the provided image
-const REGIONAL_MAP: Record<string, string> = {
-    '301201': 'Regional 01', '301502': 'Regional 01', '301503': 'Regional 01',
-    '302801': 'Regional 01', '304301': 'Regional 01', '304501': 'Regional 01',
-    '301804': 'Regional 02', '301805': 'Regional 02', '301806': 'Regional 02',
-    '301903': 'Regional 02', '304401': 'Regional 02', '304402': 'Regional 02',
-    '1001': 'Sede', '1002': 'Sede', '1003': 'Sede', '1004': 'Sede', '1005': 'Sede',
-    '10101': 'Sede', '10301': 'Sede', '10401': 'Sede', '10501': 'Sede', '10601': 'Sede',
-    '300001': 'Sede'
-};
-
-const getRegional = (cc: string): string => {
-    const normalized = cc.replace(/\./g, '');
-    return REGIONAL_MAP[normalized] || 'Outros';
-};
 
 const formatDateKey = (date: Date): string => {
     const year = date.getFullYear();
@@ -435,8 +420,8 @@ const BudgetManagerModal: React.FC<{
     useEffect(() => {
         if (!isOpen) return;
         setLoading(true);
-        getAllBudgetsAsync().then(b => { setAllBudgets(b); setLoading(false); });
-    }, [isOpen]);
+        getAllBudgetsAsync(user).then(b => { setAllBudgets(b); setLoading(false); });
+    }, [isOpen, user]);
 
     // Group by monthKey
     const grouped = useMemo(() => {
@@ -964,15 +949,25 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
         }
     }, [alert]);
 
+    const isAuthorizedCostCenter = useCallback(
+        (costCenter: string) => isRecordInHumanCapitalScope(user, costCenter),
+        [user]
+    );
+
     const uniqueEmployees = useMemo(() => {
         const map = new Map<string, { nome: string; cc: string; chapa: string; regional: string }>();
 
         const dictName = new Map<string, string>();
         globalEmployees.forEach(e => { if (e.nome) dictName.set(e.chapa, e.nome); });
         employees.forEach(e => { if (e.NOME) dictName.set(e.CHAPA, e.NOME); });
-        manualEmployees.forEach(m => { if (m.name) dictName.set(m.chapa, m.name); });
+        manualEmployees.forEach(m => {
+            if (m.name && isAuthorizedCostCenter(m.costCenter)) {
+                dictName.set(m.chapa, m.name);
+            }
+        });
 
         headcountRecords.forEach(h => {
+            if (!isAuthorizedCostCenter(h.centroCusto)) return;
             if (h.chapa && String(h.chapa).includes('1846')) {
                 console.log("DIAGNOSTIC: 1846 found (raw chapa: " + h.chapa + "):", h);
                 console.log("DIAGNOSTIC: Range Check for " + h.chapa + ":", { dataInicio: h.dataInicio, planRangeEnd, dataFim: h.dataFim, planRangeStart });
@@ -983,27 +978,29 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                      const name = h.nome || dictName.get(h.chapa) || `Colaborador (Chapa ${h.chapa})`;
                      // We also store h.funcao if needed in the future, but currently map doesn't expect it,
                      // so we just pass name. If the map interface changes, we add it.
-                     map.set(key, { nome: name, cc: h.centroCusto, chapa: h.chapa, regional: getRegional(h.centroCusto) });
+                     map.set(key, { nome: name, cc: h.centroCusto, chapa: h.chapa, regional: getCCRegional(h.centroCusto) });
                  }
              }
         });
 
         employees.forEach(e => {
+            if (!isAuthorizedCostCenter(e.CODCCUSTO)) return;
             const key = `${e.CHAPA}_${e.CODCCUSTO}`;
             if (!map.has(key)) {
-                map.set(key, { nome: e.NOME, cc: e.CODCCUSTO, chapa: e.CHAPA, regional: getRegional(e.CODCCUSTO) });
+                map.set(key, { nome: e.NOME, cc: e.CODCCUSTO, chapa: e.CHAPA, regional: getCCRegional(e.CODCCUSTO) });
             }
         });
 
         manualEmployees.forEach(m => {
+            if (!isAuthorizedCostCenter(m.costCenter)) return;
             const key = `${m.chapa}_${m.costCenter}`;
             if (!map.has(key)) {
-                map.set(key, { nome: m.name, cc: m.costCenter, chapa: m.chapa, regional: getRegional(m.costCenter) });
+                map.set(key, { nome: m.name, cc: m.costCenter, chapa: m.chapa, regional: getCCRegional(m.costCenter) });
             }
         });
 
         return Array.from(map.values()).sort((a, b) => a.nome.localeCompare(b.nome));
-    }, [employees, manualEmployees, headcountRecords, globalEmployees, planRangeStart, planRangeEnd]);
+    }, [employees, manualEmployees, headcountRecords, globalEmployees, planRangeStart, planRangeEnd, isAuthorizedCostCenter]);
 
     // Derived Lists
     const costCenters = useMemo(() => {
@@ -1018,9 +1015,13 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
         const map: Record<string, string> = {};
         globalEmployees.forEach(e => { if (e.chapa && e.funcao) map[e.chapa] = e.funcao; });
         employees.forEach(e => { if (e.CHAPA && e.FUNCAO) map[e.CHAPA] = e.FUNCAO; });
-        manualEmployees.forEach(m => { if (m.chapa && m.role) map[m.chapa] = m.role; });
+        manualEmployees.forEach(m => {
+            if (m.chapa && m.role && isAuthorizedCostCenter(m.costCenter)) {
+                map[m.chapa] = m.role;
+            }
+        });
         return map;
-    }, [globalEmployees, employees, manualEmployees]);
+    }, [globalEmployees, employees, manualEmployees, isAuthorizedCostCenter]);
 
     const buildSalaryMap = (salaryRows: ReturnType<typeof getSalariesSync>): Record<string, number> => {
         const sMap: Record<string, number> = {};
@@ -1033,7 +1034,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
     };
 
     useEffect(() => {
-        setSalaries(buildSalaryMap(getSalariesSync(selectedMonth)));
+        setSalaries(buildSalaryMap(getSalariesSync(selectedMonth).filter(s => isAuthorizedCostCenter(s.costCenter))));
 
         let cancelled = false;
         getSalaries(selectedMonth, user)
@@ -1047,17 +1048,17 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
         return () => {
             cancelled = true;
         };
-    }, [selectedMonth, user]);
+    }, [selectedMonth, user, isAuthorizedCostCenter]);
 
     // Load reference data
     useEffect(() => {
-        const storedBudgets = getBudgetsSync();
+        const storedBudgets = getBudgetsSync().filter(b => isAuthorizedCostCenter(b.costCenter));
         setBudgets(storedBudgets);
-        getAllBudgetsAsync().then(setBudgets).catch(console.error);
+        getAllBudgetsAsync(user).then(setBudgets).catch(console.error);
 
         // Background refresh for global employees
         getGlobalEmployeesAsync().then(emps => setGlobalEmployees(emps)).catch(console.error);
-    }, []);
+    }, [user, isAuthorizedCostCenter]);
 
     // UPSERT Global Employees silently
     useEffect(() => {
@@ -1083,6 +1084,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
         });
 
         manualEmployees.forEach(m => {
+            if (!isAuthorizedCostCenter(m.costCenter)) return;
             if (!m.chapa) return;
             const existing = currentGlobalMap.get(m.chapa);
             if (!existing || existing.nome !== m.name || existing.costCenter !== m.costCenter) {
@@ -1102,7 +1104,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                 setGlobalEmployees(Array.from(currentGlobalMap.values()));
             }).catch(console.error);
         }
-    }, [employees, manualEmployees, globalEmployees.length, user]);
+    }, [employees, manualEmployees, globalEmployees.length, user, isAuthorizedCostCenter]);
 
     useEffect(() => {
         const loadPlans = async () => {
@@ -1111,11 +1113,11 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
             const endMonthStr = formatDateKey(periodEnd).slice(0, 7);
 
             // Fetch for all accessible to user
-            const recs1 = await getPlanning(undefined, startMonthStr, 'DAILY');
+            const recs1 = await getPlanning(undefined, startMonthStr, 'DAILY', user);
             records = [...recs1];
 
             if (startMonthStr !== endMonthStr) {
-                const recs2 = await getPlanning(undefined, endMonthStr, 'DAILY');
+                const recs2 = await getPlanning(undefined, endMonthStr, 'DAILY', user);
                 records = [...records, ...recs2];
             }
 
@@ -1152,18 +1154,10 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
             .filter(cc => {
                 const matchesCC = !ccFilter || cc.costCenter === ccFilter;
                 const matchesRegional = !regionalFilter || cc.regional === regionalFilter;
-
-                if (user.role === 'CH_COSTCENTER_PLANNER') {
-                    const allowedCCs = user.scope?.type === 'COST_CENTER'
-                        ? user.scope.costCenters
-                        : [user.costCenter];
-                    return matchesCC && matchesRegional && allowedCCs.includes(cc.costCenter);
-                }
-
-                return matchesCC && matchesRegional;
+                return matchesCC && matchesRegional && isAuthorizedCostCenter(cc.costCenter);
             })
             .sort((a, b) => a.costCenter.localeCompare(b.costCenter));
-    }, [uniqueEmployees, ccFilter, regionalFilter, user]);
+    }, [uniqueEmployees, ccFilter, regionalFilter, isAuthorizedCostCenter]);
 
     const emailDraft = useMemo<EmailDraftData | null>(() => {
         const monthParts = selectedMonth.split('-');
@@ -1289,15 +1283,20 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
     const getEmpObj = (chapa: string) => uniqueEmployees.find(e => e.chapa === chapa);
 
     const handleApproveCC = async (cc: string) => {
+        if (!isAuthorizedCostCenter(cc)) {
+            setAlert({ type: 'error', message: 'Voce nao possui acesso a este Centro de Custo.' });
+            return;
+        }
+
         setSaving(true);
         try {
             // Get all records for this CC and Month that are 'pending'
             const startMonthStr = formatDateKey(periodStart).slice(0, 7);
             const endMonthStr = formatDateKey(periodEnd).slice(0, 7);
 
-            let allRecs = await getPlanning(undefined, startMonthStr, 'DAILY');
+            let allRecs = await getPlanning(undefined, startMonthStr, 'DAILY', user);
             if (startMonthStr !== endMonthStr) {
-                const recs2 = await getPlanning(undefined, endMonthStr, 'DAILY');
+                const recs2 = await getPlanning(undefined, endMonthStr, 'DAILY', user);
                 allRecs = [...allRecs, ...recs2];
             }
 
@@ -1334,14 +1333,19 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
     };
 
     const handleRejectCC = async (cc: string) => {
+        if (!isAuthorizedCostCenter(cc)) {
+            setAlert({ type: 'error', message: 'Voce nao possui acesso a este Centro de Custo.' });
+            return;
+        }
+
         setSaving(true);
         try {
             const startMonthStr = formatDateKey(periodStart).slice(0, 7);
             const endMonthStr = formatDateKey(periodEnd).slice(0, 7);
 
-            let allRecs = await getPlanning(undefined, startMonthStr, 'DAILY');
+            let allRecs = await getPlanning(undefined, startMonthStr, 'DAILY', user);
             if (startMonthStr !== endMonthStr) {
-                const recs2 = await getPlanning(undefined, endMonthStr, 'DAILY');
+                const recs2 = await getPlanning(undefined, endMonthStr, 'DAILY', user);
                 allRecs = [...allRecs, ...recs2];
             }
 
@@ -1371,6 +1375,11 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
     };
 
     const handleCostCenterPlanSave = async (costCenter: string, numericMap: Record<string, number>) => {
+        if (!isAuthorizedCostCenter(costCenter)) {
+            setAlert({ type: 'error', message: 'Voce nao possui acesso a este Centro de Custo.' });
+            return;
+        }
+
         const ccData = displayCostCenters.find(cc => cc.costCenter === costCenter);
         if (!ccData) return;
 
@@ -1412,10 +1421,9 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
             const reg = e.regional;
             const matchesCC = !ccFilter || e.cc === ccFilter;
             const matchesRegional = !regionalFilter || reg === regionalFilter;
-            const isAuthorized = user.role === 'CH_COSTCENTER_PLANNER' ? e.cc === user.costCenter : true;
-            return matchesCC && matchesRegional && isAuthorized;
+            return matchesCC && matchesRegional && isAuthorizedCostCenter(e.cc);
         });
-    }, [uniqueEmployees, ccFilter, regionalFilter, user]);
+    }, [uniqueEmployees, ccFilter, regionalFilter, isAuthorizedCostCenter]);
 
     const calculateTotalStats = () => {
         let totalHours = 0;
@@ -1450,11 +1458,10 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
         return budgets.reduce((acc, b) => {
             const matchesMonth = b.month.toLowerCase() === monthStr.toLowerCase();
             const matchesCC = !ccFilter || b.costCenter === ccFilter;
-            const matchesRegional = !regionalFilter || getRegional(b.costCenter) === regionalFilter;
-            const isAuthorized = user.role === 'CH_COSTCENTER_PLANNER' ? b.costCenter === user.costCenter : true;
-            return (matchesMonth && matchesCC && matchesRegional && isAuthorized) ? acc + b.value : acc;
+            const matchesRegional = !regionalFilter || getCCRegional(b.costCenter) === regionalFilter;
+            return (matchesMonth && matchesCC && matchesRegional && isAuthorizedCostCenter(b.costCenter)) ? acc + b.value : acc;
         }, 0);
-    }, [budgets, selectedMonth, user, ccFilter, regionalFilter]);
+    }, [budgets, selectedMonth, ccFilter, regionalFilter, isAuthorizedCostCenter]);
 
     const costDiff = currentBudget - globalStats.totalValue;
     const costPercent = currentBudget > 0 ? (globalStats.totalValue / currentBudget) * 100 : 0;
@@ -1635,7 +1642,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                 onClose={() => setIsBudgetManagerOpen(false)}
                 user={user}
                 onRefresh={() => {
-                    const storedBudgets = getBudgetsSync();
+                    const storedBudgets = getBudgetsSync().filter(b => isAuthorizedCostCenter(b.costCenter));
                     setBudgets(storedBudgets);
                 }}
             />

@@ -2,6 +2,7 @@
 import { PlanningRecord, BudgetRecord, SalaryAllocation, UserProfile, HeadcountRecord, HeadcountUploadMeta } from '../types';
 import * as FirestoreService from './firestoreCH';
 import { getPayrollCompetencyMonthKey, getPayrollCompetencyMonthKeysForRange } from '../utils/overtime';
+import { isCostCenterInHumanCapitalScope } from '../utils/scopeFilters';
 
 // Cache in-memory to avoid excessive reads during session if needed, 
 // though we primarily trust Firestore or fallback to localStorage.
@@ -173,7 +174,11 @@ export const getPlanning = async (
                 // Filter locally
                 records = planningCache.filter(p => {
                     const pMonth = p.date.substring(0, 7);
-                    return pMonth === monthKey && p.type === type;
+                    return (
+                        pMonth === monthKey &&
+                        p.type === type &&
+                        isCostCenterInHumanCapitalScope(user?.scope, p.costCenter || '')
+                    );
                 });
             }
         }
@@ -193,7 +198,12 @@ export const getPlanning = async (
             const all = JSON.parse(data) as PlanningRecord[];
             return all.filter(p => {
                 const pMonth = p.date.substring(0, 7);
-                return pMonth === monthKey && p.type === type && (!costCenter || p.costCenter === costCenter);
+                return (
+                    pMonth === monthKey &&
+                    p.type === type &&
+                    isCostCenterInHumanCapitalScope(user?.scope, p.costCenter || '') &&
+                    (!costCenter || p.costCenter === costCenter)
+                );
             });
         }
         return [];
@@ -236,7 +246,9 @@ export const getSalaries = async (monthKey: string, user?: UserProfile): Promise
         throw new Error("Offline");
     } catch (error) {
         console.warn("Fetching salaries from Firestore failed or offline, checking local cache", error);
-        return readSalaryCache().filter(s => s.monthKey === monthKey);
+        return readSalaryCache().filter(
+            s => s.monthKey === monthKey && isCostCenterInHumanCapitalScope(user?.scope, s.costCenter || '')
+        );
     }
 };
 
@@ -257,7 +269,9 @@ export const getSalariesForMonthKeys = async (monthKeys: string[], user?: UserPr
     } catch (error) {
         console.warn("Fetching salaries for multiple monthKeys failed or offline, checking local cache", error);
         const keySet = new Set(keys);
-        return readSalaryCache().filter(s => keySet.has(s.monthKey));
+        return readSalaryCache().filter(
+            s => keySet.has(s.monthKey) && isCostCenterInHumanCapitalScope(user?.scope, s.costCenter || '')
+        );
     }
 };
 
@@ -289,23 +303,27 @@ export const getBudgets = async (monthKey: string, user?: UserProfile): Promise<
         const data = localStorage.getItem('department_budgets_v2');
         if (data) {
             const all = JSON.parse(data) as BudgetRecord[];
-            return all.filter(b => b.monthKey === monthKey);
+            return all.filter(
+                b => b.monthKey === monthKey && isCostCenterInHumanCapitalScope(user?.scope, b.costCenter || '')
+            );
         }
         return [];
     }
 };
 
-export const getAllBudgetsAsync = async (): Promise<BudgetRecord[]> => {
+export const getAllBudgetsAsync = async (user?: UserProfile): Promise<BudgetRecord[]> => {
     try {
         if (isOnline()) {
-            const rows = await FirestoreService.getAllBudgets();
+            const rows = await FirestoreService.getAllBudgets(user?.scope);
             localStorage.setItem('department_budgets_v2', JSON.stringify(rows));
             return rows;
         }
         throw new Error('Offline');
     } catch {
         const data = localStorage.getItem('department_budgets_v2');
-        return data ? (JSON.parse(data) as BudgetRecord[]) : [];
+        return data
+            ? (JSON.parse(data) as BudgetRecord[]).filter(b => isCostCenterInHumanCapitalScope(user?.scope, b.costCenter || ''))
+            : [];
     }
 };
 

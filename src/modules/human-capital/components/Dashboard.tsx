@@ -515,9 +515,9 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
   const [allBudgets, setAllBudgets] = useState<BudgetRecord[]>([]);
   useEffect(() => {
-      setAllBudgets(getBudgetsSync());
-      getAllBudgetsAsync().then(setAllBudgets).catch(console.error);
-  }, []);
+      setAllBudgets(getBudgetsSync().filter(b => isRecordInHumanCapitalScope(user, b.costCenter || '')));
+      getAllBudgetsAsync(user || undefined).then(setAllBudgets).catch(console.error);
+  }, [user]);
 
   // Filtra budgets pelos monthKeys cobertos pelo período atual
   const budgets = useMemo(() => {

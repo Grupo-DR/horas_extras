@@ -3,6 +3,7 @@ import { db } from '@/services/firebaseConfig';
 import { collection, doc, writeBatch, query, where, getDocs, addDoc, Timestamp, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import { BudgetRecord, SalaryAllocation, PlanningRecord, UserProfile, ManualEmployee, HeadcountRecord, HeadcountUploadMeta } from '../types';
 import { Scope } from '../../iam/types';
+import { isCostCenterInHumanCapitalScope } from '../utils/scopeFilters';
 
 const COL_BUDGETS = 'hc_budgets';
 const COL_SALARIES = 'hc_salary_allocations';
@@ -74,12 +75,16 @@ export const getBudgetsByMonthKey = async (monthKey: string, scope?: Scope) => {
     if (!monthKey) return [];
     const q = query(collection(db, COL_BUDGETS), where('monthKey', '==', monthKey));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => d.data() as BudgetRecord);
+    return snapshot.docs
+        .map(d => d.data() as BudgetRecord)
+        .filter(b => isCostCenterInHumanCapitalScope(scope, b.costCenter || ''));
 };
 
-export const getAllBudgets = async (): Promise<BudgetRecord[]> => {
+export const getAllBudgets = async (scope?: Scope): Promise<BudgetRecord[]> => {
     const snapshot = await getDocs(collection(db, COL_BUDGETS));
-    return snapshot.docs.map(d => d.data() as BudgetRecord);
+    return snapshot.docs
+        .map(d => d.data() as BudgetRecord)
+        .filter(b => isCostCenterInHumanCapitalScope(scope, b.costCenter || ''));
 };
 
 export const deleteBudgetsByMonthKey = async (monthKey: string): Promise<void> => {
@@ -140,7 +145,9 @@ export const getSalaryAllocationsByMonthKey = async (monthKey: string, scope?: S
     if (!monthKey) return [];
     const q = query(collection(db, COL_SALARIES), where('monthKey', '==', monthKey));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => d.data() as SalaryAllocation);
+    return snapshot.docs
+        .map(d => d.data() as SalaryAllocation)
+        .filter(s => isCostCenterInHumanCapitalScope(scope, s.costCenter || ''));
 };
 
 export const deleteSalaryAllocationsByMonthKeys = async (monthKeys: string[]): Promise<void> => {
@@ -215,7 +222,7 @@ export const getPlanningRecords = async (monthKey: string, type: 'DAILY' | 'MONT
 
     const snapshot = await getDocs(q2);
     const all = snapshot.docs.map(d => d.data() as PlanningRecord);
-    return all.filter(r => r.type === type);
+    return all.filter(r => r.type === type && isCostCenterInHumanCapitalScope(scope, r.costCenter || ''));
 };
 
 // --- AUDIT ---

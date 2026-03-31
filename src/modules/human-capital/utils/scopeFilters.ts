@@ -1,30 +1,44 @@
+import { Scope } from '../../iam/types';
 import { UserProfile } from '../types';
 import { normalizeCC, getCCRegional } from '../data/ccMaster';
 
 /**
- * Verifica se um centro de custo está dentro do escopo do usuário.
- * Para usuários 'ALL' e ausência de escopo, retorna true livremente.
- * @param user Perfil do usuário logado
- * @param rawCostCenter O código do centro de custo bruto a ser avaliado
+ * Verifica se um centro de custo esta dentro de um escopo de HC.
+ * Para escopo ausente ou `ALL`, retorna true.
  */
-export const isRecordInHumanCapitalScope = (
-  user: UserProfile | null,
+export const isCostCenterInHumanCapitalScope = (
+  scope: Scope | undefined,
   rawCostCenter: string
 ): boolean => {
-  if (!user || !user.scope || user.scope.type === 'ALL') {
+  if (!scope || scope.type === 'ALL') {
     return true;
   }
 
   const cc = normalizeCC(rawCostCenter || '');
   const reg = getCCRegional(rawCostCenter || '');
 
-  if (user.scope.type === 'REGIONAL') {
-    return user.scope.regionals.includes(reg);
+  if (scope.type === 'REGIONAL') {
+    return scope.regionals.includes(reg);
   }
 
-  if (user.scope.type === 'COST_CENTER') {
-    return user.scope.costCenters.includes(cc);
+  if (scope.type === 'COST_CENTER') {
+    return scope.costCenters.includes(cc);
   }
 
   return false;
+};
+
+/**
+ * Verifica se um centro de custo esta dentro do escopo do usuario.
+ * Para usuarios `ALL` e ausencia de escopo, retorna true.
+ */
+export const isRecordInHumanCapitalScope = (
+  user: UserProfile | null,
+  rawCostCenter: string
+): boolean => {
+  if (!user) {
+    return true;
+  }
+
+  return isCostCenterInHumanCapitalScope(user.scope, rawCostCenter);
 };
