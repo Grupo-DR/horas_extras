@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { OvertimeRecord, UserProfile, BudgetRecord } from '../types';
 import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, AlertTriangle, Moon, Scale, Percent, ArrowUpRight, ArrowDownRight, X, User, Users, DollarSign, ListFilter, ShieldAlert, Zap, ChevronDown, ChevronRight, Info } from 'lucide-react';
-import { formatDecimalHours } from '../utils/formatters';
+import { formatDecimalHours, parseTimeToDecimal } from '../utils/formatters';
 import { getSalariesForMonthKeys, getSalariesSync, getBudgetsSync, getGlobalEmployeesAsync, getGlobalEmployeesSync, getAllBudgetsAsync, getPlanning } from '../services/planning';
 import { getCCName, getCCRegional, normalizeCC } from '../data/ccMaster';
 import { getPeriodStats } from '../utils/dateUtils';
@@ -72,6 +72,26 @@ const getCalendarMonthKeysForRange = (startDateKey: string, endDateKey: string):
   }
 
   return Array.from(keys).sort();
+};
+
+const getPlanningHoursValue = (plannedHours: number | string | null | undefined): number => {
+  if (typeof plannedHours === 'number') {
+    return Number.isFinite(plannedHours) ? plannedHours : 0;
+  }
+
+  if (typeof plannedHours === 'string') {
+    const normalized = plannedHours.trim();
+    if (!normalized) return 0;
+
+    if (normalized.includes(':')) {
+      return parseTimeToDecimal(normalized);
+    }
+
+    const numeric = Number(normalized.replace(',', '.'));
+    return Number.isFinite(numeric) ? numeric : 0;
+  }
+
+  return 0;
 };
 
 const TreeGridHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
@@ -526,10 +546,22 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
           const planningDateKey = toDateKey(p.date);
           return !!planningDateKey && planningDateKey >= periodStartKey && planningDateKey <= periodEndKey;
         });
+        const normalizedPlannedHours = periodFiltered.reduce(
+          (sum, p) => sum + getPlanningHoursValue((p as { plannedHours?: number | string | null }).plannedHours),
+          0
+        );
 
         console.log('Total consolidado antes do filtro de status:', allRecords.length);
         console.log('Total aprovado apos filtro de status:', approvedOnly.length);
         console.log('Total aprovado apos filtro de periodo:', periodFiltered.length);
+        console.log('Total de horas normalizado apos filtro de periodo:', normalizedPlannedHours);
+        if (periodFiltered[0]) {
+          console.log('Amostra de plannedHours apos filtro:', {
+            value: (periodFiltered[0] as { plannedHours?: number | string | null }).plannedHours,
+            type: typeof (periodFiltered[0] as { plannedHours?: number | string | null }).plannedHours,
+            normalized: getPlanningHoursValue((periodFiltered[0] as { plannedHours?: number | string | null }).plannedHours)
+          });
+        }
 
         setPlanningRecords(approvedOnly);
         console.groupEnd();
@@ -722,14 +754,15 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
         const rawCC = p.costCenter || '';
         if (!isRecordInHumanCapitalScope(user, rawCC)) return;
 
-        totalPlannedHours += p.plannedHours;
+        const plannedHours = getPlanningHoursValue((p as { plannedHours?: number | string | null }).plannedHours);
+        totalPlannedHours += plannedHours;
         const sal = getPlannedSalary(p.chapa, p.date);
-        if (sal && p.plannedHours > 0) {
+        if (sal && plannedHours > 0) {
           const isSundayOrHoliday = new Date(p.date).getDay() === 0 || false; // Simplificação aqui, mas o ideal é usar dateUtils
           // Nota: O planejamento já aplica multiplicadores (1.6/2.0) mas o DSR é sobre o Valor Final das Extras
           const baseHour = sal / 220;
           const isSunday = new Date(p.date).getDay() === 0;
-          totalPlannedValueHE += baseHour * (isSunday ? 2.0 : 1.6) * p.plannedHours;
+          totalPlannedValueHE += baseHour * (isSunday ? 2.0 : 1.6) * plannedHours;
         }
       }
     });
@@ -821,11 +854,12 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       if (regional && ccRegional !== regional) return; // filtro regional
       const cc = normalizeCC(p.costCenter || 'S/ CC');
       if (!map[cc]) map[cc] = { real: 0, planned: 0, name: resolveName(p.costCenter || cc), realCost: 0, plannedCost: 0, budget: 0 };
-      map[cc].planned += p.plannedHours;
+      const plannedHours = getPlanningHoursValue((p as { plannedHours?: number | string | null }).plannedHours);
+      map[cc].planned += plannedHours;
       const sal = getPlannedSalary(p.chapa, p.date);
-      if (sal && p.plannedHours > 0) {
+      if (sal && plannedHours > 0) {
         const isSunday = new Date(p.date).getDay() === 0;
-        map[cc].plannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
+        map[cc].plannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * plannedHours;
       }
     });
 
@@ -866,11 +900,12 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
       const f = chapaToFunc[p.chapa] || 'Indefinido';
       if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0 };
-      map[f].planned += p.plannedHours;
+      const plannedHours = getPlanningHoursValue((p as { plannedHours?: number | string | null }).plannedHours);
+      map[f].planned += plannedHours;
       const sal = getPlannedSalary(p.chapa, p.date);
-      if (sal && p.plannedHours > 0) {
+      if (sal && plannedHours > 0) {
         const isSunday = new Date(p.date).getDay() === 0;
-        map[f].plannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
+        map[f].plannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * plannedHours;
       }
     });
 
@@ -948,11 +983,12 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     filteredPlanningRecords.filter(p => p.costCenter === selectedCcModal).forEach(p => {
       const f = chapaToFunc[p.chapa] || 'S/ FunÃ§Ã£o';
       if (!map[f]) map[f] = { real: 0, planned: 0, realCost: 0, plannedCost: 0, he60: 0, he100: 0, interjornada: 0, night: 0 };
-      map[f].planned += p.plannedHours;
+      const plannedHours = getPlanningHoursValue((p as { plannedHours?: number | string | null }).plannedHours);
+      map[f].planned += plannedHours;
       const sal = getPlannedSalary(p.chapa, p.date);
-      if (sal && p.plannedHours > 0) {
+      if (sal && plannedHours > 0) {
         const isSunday = new Date(p.date).getDay() === 0;
-        map[f].plannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * p.plannedHours;
+        map[f].plannedCost += (sal / 220) * (isSunday ? 2.0 : 1.6) * plannedHours;
       }
     });
 
@@ -1020,9 +1056,10 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       m.totalCost += cost;
     };
 
-    const addPlan = (m: any, chapa: string, plannedHours: number) => {
+    const addPlan = (m: any, chapa: string, plannedHours: number | string | null | undefined) => {
+      const normalizedPlannedHours = getPlanningHoursValue(plannedHours);
       m.headcount.add(chapa);
-      m.plannedHours += plannedHours;
+      m.plannedHours += normalizedPlannedHours;
     };
 
     // 1) Dados reais: acumula direto em REGIONAL > CC > PERSON
