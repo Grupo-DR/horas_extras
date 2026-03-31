@@ -1300,7 +1300,9 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                 allRecs = [...allRecs, ...recs2];
             }
 
-            const pendingRecs = allRecs.filter(r => r.costCenter === cc && r.status === 'pending');
+            const pendingRecs = allRecs.filter(
+                r => r.costCenter === cc && r.status === 'pending' && parseTimeToDecimal(String(r.plannedHours ?? '0')) > 0
+            );
             if (pendingRecs.length === 0) {
                 setAlert({ type: 'error', message: 'Nenhum registro pendente para este Centro de Custo.' });
                 return;
@@ -1556,9 +1558,10 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                     if (hours !== undefined) {
                         const isWithinRange = dateKey >= submissionRange.start && dateKey <= submissionRange.end;
                         const originalStatus = (planStatuses[key] as PlanningRecord['status']) || 'draft';
+                        const hasHours = hours > 0;
                         const finalStatus: PlanningRecord['status'] = submitPending
-                            ? (isWithinRange ? 'pending' : originalStatus)
-                            : ((originalStatus === 'approved' || originalStatus === 'pending') ? originalStatus : 'draft');
+                            ? (isWithinRange && hasHours ? 'pending' : (hasHours ? originalStatus : 'draft'))
+                            : (((originalStatus === 'approved' || originalStatus === 'pending') && hasHours) ? originalStatus : 'draft');
 
                         recordsToSave.push({
                             id: `${emp.chapa}_${emp.cc}_DAILY_${dateKey}`,

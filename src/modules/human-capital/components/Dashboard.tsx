@@ -540,7 +540,9 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
         const allRecords = Array.from(dedup.values());
 
         // REGRA DE NEGÓCIO: Apenas aprovados no Dashboard
-        const approvedOnly = allRecords.filter(p => !p.status || p.status === 'approved');
+        const approvedOnly = allRecords.filter(
+          p => (!p.status || p.status === 'approved') && getPlanningHoursValue((p as { plannedHours?: number | string | null }).plannedHours) > 0
+        );
         const periodFiltered = approvedOnly.filter(p => {
           if (p.type !== 'DAILY') return false;
           const planningDateKey = toDateKey(p.date);
