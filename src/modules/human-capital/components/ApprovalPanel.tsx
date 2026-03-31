@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Briefcase, Calendar, CheckCircle2, Clock, X, XCircle } from 'lucide-react';
 import { getCCName, getCCRegional } from '../data/ccMaster';
+import { formatDecimalHours } from '../utils/formatters';
 
 type ApprovalStatus = 'approved' | 'pending' | 'draft' | 'rejected' | string;
+type KnownApprovalStatus = 'approved' | 'pending' | 'draft' | 'rejected';
 
 interface ApprovalDetailRow {
     id: string;
@@ -32,6 +34,13 @@ interface ApprovalPanelProps {
     mode: 'DAILY' | 'MONTHLY';
 }
 
+interface StatusMetrics {
+    approved: number;
+    pending: number;
+    draft: number;
+    rejected: number;
+}
+
 const formatDateBR = (value: string): string => {
     if (!value) return '-';
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
@@ -45,8 +54,41 @@ const statusBadgeClass = (status: ApprovalStatus): string => {
     if (status === 'pending') return 'bg-amber-100 text-amber-700';
     if (status === 'approved') return 'bg-emerald-100 text-emerald-700';
     if (status === 'draft') return 'bg-blue-100 text-blue-700';
+    if (status === 'rejected') return 'bg-rose-100 text-rose-700';
     return 'bg-slate-100 text-slate-600';
 };
+
+const createStatusMetrics = (): StatusMetrics => ({
+    approved: 0,
+    pending: 0,
+    draft: 0,
+    rejected: 0
+});
+
+const normalizeStatus = (status?: ApprovalStatus): KnownApprovalStatus => {
+    const normalized = String(status || 'draft').toLowerCase();
+    if (normalized === 'approved' || normalized === 'pending' || normalized === 'draft' || normalized === 'rejected') {
+        return normalized;
+    }
+    return 'draft';
+};
+
+const normalizeHours = (value: number | string | undefined | null): number => {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+    if (typeof value === 'string') {
+        const parsed = Number(value.replace(',', '.'));
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+    return 0;
+};
+
+const addStatusMetric = (metrics: StatusMetrics, status: ApprovalStatus, value: number = 1) => {
+    const normalized = normalizeStatus(status);
+    metrics[normalized] += value;
+};
+
+const getNonApprovedCount = (metrics: StatusMetrics): number =>
+    metrics.pending + metrics.draft + metrics.rejected;
 
 export const ApprovalPanel: React.FC<ApprovalPanelProps> = ({ records, onApprove, onReject, mode }) => {
     const [selectedCC, setSelectedCC] = useState<string | null>(null);
@@ -59,7 +101,8 @@ export const ApprovalPanel: React.FC<ApprovalPanelProps> = ({ records, onApprove
             totalHours: number;
             totalCost: number;
             headcount: number;
-            statusBreakdown: { approved: number; pending: number; draft: number };
+            statusBreakdown: StatusMetrics;
+            statusHours: StatusMetrics;
             records: ApprovalRecord[];
             detailRows: ApprovalDetailRow[];
         }>();
@@ -73,33 +116,58 @@ export const ApprovalPanel: React.FC<ApprovalPanelProps> = ({ records, onApprove
                     totalHours: 0,
                     totalCost: 0,
                     headcount: 0,
-                    statusBreakdown: { approved: 0, pending: 0, draft: 0 },
+                    statusBreakdown: createStatusMetrics(),
+                    statusHours: createStatusMetrics(),
                     records: [],
                     detailRows: []
                 });
             }
 
             const group = map.get(cc)!;
-            group.totalHours += r.plannedHours || 0;
-            group.totalCost += r.customEstCost || 0;
-            group.headcount += r.headcount || 0;
+            const recordHours = normalizeHours(r.plannedHours);
+            const recordCost = Number(r.customEstCost) || 0;
+            const recordHeadcount = Number(r.headcount) || 0;
+            const normalizedRows = Array.isArray(r.detailRows)
+                ? r.detailRows
+                    .map((row) => ({
+                        ...row,
+                        hours: normalizeHours(row.hours),
+                        status: normalizeStatus(row.status)
+                    }))
+                    .filter((row) => row.hours > 0)
+                : [];
 
-            const st = r.estStatus || 'approved';
-            if (st === 'approved') group.statusBreakdown.approved++;
-            if (st === 'pending') group.statusBreakdown.pending++;
-            if (st === 'draft') group.statusBreakdown.draft++;
-
+            group.totalCost += recordCost;
+            group.headcount = Math.max(group.headcount, recordHeadcount);
             group.records.push(r);
 
-            if (Array.isArray(r.detailRows) && r.detailRows.length > 0) {
-                group.detailRows.push(...r.detailRows);
+            if (normalizedRows.length > 0) {
+                normalizedRows.forEach((row) => {
+                    group.totalHours += row.hours;
+                    addStatusMetric(group.statusBreakdown, row.status);
+                    addStatusMetric(group.statusHours, row.status, row.hours);
+                    group.detailRows.push(row);
+                });
+            } else if (recordHours > 0) {
+                const status = normalizeStatus(r.estStatus);
+                group.totalHours += recordHours;
+                addStatusMetric(group.statusBreakdown, status);
+                addStatusMetric(group.statusHours, status, recordHours);
             }
         });
 
         return Array.from(map.entries())
             .filter(([_, data]) => data.statusBreakdown.pending > 0)
             .map(([cc, data]) => {
+                const statusOrder: Record<KnownApprovalStatus, number> = {
+                    pending: 0,
+                    draft: 1,
+                    rejected: 2,
+                    approved: 3
+                };
                 const orderedRows = [...data.detailRows].sort((a, b) => {
+                    const statusDiff = statusOrder[normalizeStatus(a.status)] - statusOrder[normalizeStatus(b.status)];
+                    if (statusDiff !== 0) return statusDiff;
                     if (a.date === b.date) {
                         if (a.ccName === b.ccName) {
                             return a.employeeName.localeCompare(b.employeeName);
@@ -117,6 +185,31 @@ export const ApprovalPanel: React.FC<ApprovalPanelProps> = ({ records, onApprove
     const selectedGroup = useMemo(
         () => grouped.find(([cc]) => cc === selectedCC) ?? null,
         [grouped, selectedCC]
+    );
+
+    const renderStatusSummary = (statusBreakdown: StatusMetrics, statusHours: StatusMetrics) => (
+        <div className="flex flex-wrap gap-2">
+            {statusBreakdown.pending > 0 && (
+                <span className="px-2 py-1 rounded-md bg-amber-50 text-amber-700 text-[10px] font-bold uppercase">
+                    Pendentes: {statusBreakdown.pending} ({formatDecimalHours(statusHours.pending)})
+                </span>
+            )}
+            {statusBreakdown.approved > 0 && (
+                <span className="px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase">
+                    Aprovados: {statusBreakdown.approved} ({formatDecimalHours(statusHours.approved)})
+                </span>
+            )}
+            {statusBreakdown.draft > 0 && (
+                <span className="px-2 py-1 rounded-md bg-blue-50 text-blue-700 text-[10px] font-bold uppercase">
+                    Rascunhos: {statusBreakdown.draft} ({formatDecimalHours(statusHours.draft)})
+                </span>
+            )}
+            {statusBreakdown.rejected > 0 && (
+                <span className="px-2 py-1 rounded-md bg-rose-50 text-rose-700 text-[10px] font-bold uppercase">
+                    Rejeitados: {statusBreakdown.rejected} ({formatDecimalHours(statusHours.rejected)})
+                </span>
+            )}
+        </div>
     );
 
     useEffect(() => {
@@ -180,7 +273,7 @@ export const ApprovalPanel: React.FC<ApprovalPanelProps> = ({ records, onApprove
                                     </div>
                                 </div>
                                 <div className="flex bg-amber-100 text-amber-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase items-center gap-1 shrink-0">
-                                    <Clock size={12} /> {data.statusBreakdown.pending} Registros pendentes
+                                    <Clock size={12} /> {data.statusBreakdown.pending} pendente{data.statusBreakdown.pending === 1 ? '' : 's'}
                                 </div>
                             </div>
 
@@ -191,7 +284,7 @@ export const ApprovalPanel: React.FC<ApprovalPanelProps> = ({ records, onApprove
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Horas planejadas</span>
-                                    <span className="text-lg font-black font-mono text-slate-700">{data.totalHours}h</span>
+                                    <span className="text-lg font-black font-mono text-slate-700">{formatDecimalHours(data.totalHours)}</span>
                                 </div>
                                 <div className="flex flex-col text-right">
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Custo estimado</span>
@@ -199,13 +292,14 @@ export const ApprovalPanel: React.FC<ApprovalPanelProps> = ({ records, onApprove
                                 </div>
                             </div>
 
-                            {(data.statusBreakdown.approved > 0 || data.statusBreakdown.draft > 0) && (
-                                <div className="px-5 pb-3">
+                            <div className="px-5 pb-3 space-y-2">
+                                {renderStatusSummary(data.statusBreakdown, data.statusHours)}
+                                {(data.statusBreakdown.approved > 0 || data.statusBreakdown.draft > 0 || data.statusBreakdown.rejected > 0) && (
                                     <p className="text-[10px] text-slate-400 italic">
-                                        Atencao: este C.C. possui planilhas em status misto ({data.statusBreakdown.approved} aprovadas, {data.statusBreakdown.draft} rascunhos). Apenas os registros pendentes serao afetados.
+                                        Aprovados: {data.statusBreakdown.approved} | Nao aprovados: {getNonApprovedCount(data.statusBreakdown)}. Apenas os registros pendentes serao afetados na aprovacao.
                                     </p>
-                                </div>
-                            )}
+                                )}
+                            </div>
 
                             <div className="p-4 bg-slate-50 border-t border-slate-100">
                                 <button
@@ -227,7 +321,7 @@ export const ApprovalPanel: React.FC<ApprovalPanelProps> = ({ records, onApprove
                             <div>
                                 <h3 className="text-lg font-bold">{selectedGroup[0]} - {selectedGroup[1].name}</h3>
                                 <p className="text-indigo-200 text-xs mt-0.5">
-                                    {selectedGroup[1].regional} | {selectedGroup[1].statusBreakdown.pending} registros pendentes
+                                    {selectedGroup[1].regional} | {selectedGroup[1].statusBreakdown.pending} pendente{selectedGroup[1].statusBreakdown.pending === 1 ? '' : 's'} | {selectedGroup[1].statusBreakdown.approved} aprovado{selectedGroup[1].statusBreakdown.approved === 1 ? '' : 's'}
                                 </p>
                             </div>
                             <button
@@ -246,12 +340,16 @@ export const ApprovalPanel: React.FC<ApprovalPanelProps> = ({ records, onApprove
                             </div>
                             <div className="flex flex-col">
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Horas planejadas</span>
-                                <span className="text-lg font-black font-mono text-slate-700">{selectedGroup[1].totalHours}h</span>
+                                <span className="text-lg font-black font-mono text-slate-700">{formatDecimalHours(selectedGroup[1].totalHours)}</span>
                             </div>
                             <div className="flex flex-col text-left md:text-right">
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Custo estimado</span>
                                 <span className="text-lg font-black font-mono text-emerald-700">R$ {selectedGroup[1].totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                             </div>
+                        </div>
+
+                        <div className="px-6 py-3 border-b border-slate-200 bg-white">
+                            {renderStatusSummary(selectedGroup[1].statusBreakdown, selectedGroup[1].statusHours)}
                         </div>
 
                         <div className="flex-1 overflow-auto">
@@ -284,7 +382,7 @@ export const ApprovalPanel: React.FC<ApprovalPanelProps> = ({ records, onApprove
                                                 <td className="px-4 py-3 text-slate-700 font-semibold">{row.ccName}</td>
                                                 <td className="px-4 py-3 text-slate-700">{row.employeeName}</td>
                                                 <td className="px-4 py-3 text-slate-500">{row.employeeRole || '-'}</td>
-                                                <td className="px-4 py-3 text-right font-mono font-black text-slate-700">{row.hours.toFixed(1)}h</td>
+                                                <td className="px-4 py-3 text-right font-mono font-black text-slate-700">{formatDecimalHours(row.hours)}</td>
                                                 <td className="px-4 py-3 text-right">
                                                     <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${statusBadgeClass(row.status)}`}>
                                                         {row.status}
