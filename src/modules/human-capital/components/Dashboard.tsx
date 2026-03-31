@@ -2,11 +2,11 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { OvertimeRecord, UserProfile, BudgetRecord } from '../types';
 import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, AlertTriangle, Moon, Scale, Percent, ArrowUpRight, ArrowDownRight, X, User, Users, DollarSign, ListFilter, ShieldAlert, Zap, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { formatDecimalHours } from '../utils/formatters';
-import { getSalariesForMonthKeys, getSalariesSync, getBudgetsSync, getAllPlanningRecords, getGlobalEmployeesAsync, getGlobalEmployeesSync, getAllBudgetsAsync, getPlanning } from '../services/planning';
+import { getSalariesForMonthKeys, getSalariesSync, getBudgetsSync, getGlobalEmployeesAsync, getGlobalEmployeesSync, getAllBudgetsAsync, getPlanning } from '../services/planning';
 import { getCCName, getCCRegional, normalizeCC } from '../data/ccMaster';
 import { getPeriodStats } from '../utils/dateUtils';
 import { isRecordInHumanCapitalScope } from '../utils/scopeFilters';
-import { formatDateKey, getDateRangeOverlapDays, getPayrollCompetencyMonthKey, getPayrollCompetencyRange, toDateKey } from '../utils/overtime';
+import { formatDateKey, getDateRangeOverlapDays, getPayrollCompetencyMonthKey, getPayrollCompetencyRange, parseDateKey, toDateKey } from '../utils/overtime';
 import EmployeeDailyComparisonModal from './EmployeeDailyComparisonModal';
 
 interface DashboardProps {
@@ -47,6 +47,32 @@ interface TreeNode {
 }
 
 type ViewMode = 'hours' | 'finance';
+
+const getCalendarMonthKeysForRange = (startDateKey: string, endDateKey: string): string[] => {
+  const startKey = toDateKey(startDateKey);
+  const endKey = toDateKey(endDateKey);
+  if (!startKey || !endKey || startKey > endKey) return [];
+
+  const keys = new Set<string>();
+  const cursor = parseDateKey(startKey);
+  const end = parseDateKey(endKey);
+
+  if (isNaN(cursor.getTime()) || isNaN(end.getTime())) return [];
+
+  cursor.setDate(1);
+  cursor.setHours(12, 0, 0, 0);
+  end.setHours(12, 0, 0, 0);
+
+  let guard = 0;
+  while (cursor <= end && guard < 48) {
+    keys.add(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`);
+    cursor.setMonth(cursor.getMonth() + 1, 1);
+    cursor.setHours(12, 0, 0, 0);
+    guard += 1;
+  }
+
+  return Array.from(keys).sort();
+};
 
 const TreeGridHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
   <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -446,28 +472,33 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
   const realRecords = allData ?? data;
   const periodStartKey = useMemo(() => formatDateKey(periodStart), [periodStart]);
   const periodEndKey = useMemo(() => formatDateKey(periodEnd), [periodEnd]);
-
-  const [planningRecords, setPlanningRecords] = useState<import('../types').PlanningRecord[]>(() =>
-    getAllPlanningRecords().filter(p => !p.status || p.status === 'approved')
+  const planningMonthKeys = useMemo(
+    () => getCalendarMonthKeysForRange(periodStartKey, periodEndKey),
+    [periodStartKey, periodEndKey]
   );
+
+  const [planningRecords, setPlanningRecords] = useState<import('../types').PlanningRecord[]>([]);
 
   // Sincronização automática com Firestore ao trocar de mês ou período
   useEffect(() => {
     let cancelled = false;
 
     const refreshPlanning = async () => {
-      const keys = new Set<string>();
-      if (selectedMonth) keys.add(selectedMonth);
-      budgetMonthKeys?.forEach(k => keys.add(k));
+      const monthKeysArray = planningMonthKeys;
+      console.groupCollapsed('DASHBOARD_PLANNING_SYNC');
+      console.log('Periodo exibido:', { periodStartKey, periodEndKey });
 
-      const monthKeysArray = Array.from(keys);
+      console.log('Meses calendario consultados:', monthKeysArray);
       console.log(`DASHBOARD_PLANNING_SYNC: Iniciando sincronização para chaves:`, monthKeysArray);
 
       const loaded: import('../types').PlanningRecord[] = [];
 
       // Dispara a busca para cada mês relevante
       for (const monthKey of monthKeysArray) {
-        if (cancelled) return;
+        if (cancelled) {
+          console.groupEnd();
+          return;
+        }
         try {
           const rows = await getPlanning(undefined, monthKey, 'DAILY', user || undefined);
           console.log(`DASHBOARD_PLANNING_SYNC: Recebidos ${rows.length} registros para ${monthKey}`);
@@ -490,17 +521,25 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
 
         // REGRA DE NEGÓCIO: Apenas aprovados no Dashboard
         const approvedOnly = allRecords.filter(p => !p.status || p.status === 'approved');
+        const periodFiltered = approvedOnly.filter(p => {
+          if (p.type !== 'DAILY') return false;
+          const planningDateKey = toDateKey(p.date);
+          return !!planningDateKey && planningDateKey >= periodStartKey && planningDateKey <= periodEndKey;
+        });
 
-        console.log(`DASHBOARD_PLANNING_SYNC: Total consolidado: ${allRecords.length} | Aprovados: ${approvedOnly.length}`);
-        
+        console.log('Total consolidado antes do filtro de status:', allRecords.length);
+        console.log('Total aprovado apos filtro de status:', approvedOnly.length);
+        console.log('Total aprovado apos filtro de periodo:', periodFiltered.length);
+
         setPlanningRecords(approvedOnly);
+        console.groupEnd();
       }
     };
 
     void refreshPlanning();
 
     return () => { cancelled = true; };
-  }, [selectedMonth, budgetMonthKeys, user]);
+  }, [planningMonthKeys, periodStartKey, periodEndKey, user]);
 
 
   const filteredPlanningRecords = useMemo(
