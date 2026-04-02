@@ -1,10 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
     formatDecimalToTime,
     formatDateKey,
-    getPayrollMonthKey
+    getPayrollMonthKey,
+    toDateKey,
+    parseDateKey
 } from '../utils/overtime';
-import { OvertimeRecord, PlanningRecord } from '../types';
+import { OvertimeRecord, PlanningRecord, UserProfile } from '../types';
 import { RealOvertimeRecord } from '../data/realOvertime';
 import type { FilterState } from './FilterBar';
 import {
@@ -14,7 +16,7 @@ import {
 } from 'lucide-react';
 import { getCCName, getCCRegional } from '../data/ccMaster';
 import EmployeeDailyComparisonModal from './EmployeeDailyComparisonModal';
-import { getAllPlanningRecords } from '../services/planning';
+import { getAllPlanningRecords, getPlanning } from '../services/planning';
 import {
     ResponsiveContainer, ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid,
     Tooltip, Legend, Cell, LabelList, BarChart, ReferenceLine
@@ -28,6 +30,7 @@ interface AnalysisPanelProps {
     periodStart: Date;
     periodEnd: Date;
     filters: FilterState;
+    user?: UserProfile | null;
 }
 
 
@@ -2031,16 +2034,89 @@ const ComplianceDrilldownModal: React.FC<{ cc: string; ccName: string; data: Ove
 // ────────────────────────────────────────────────────────────
 // Componente principal
 // ────────────────────────────────────────────────────────────
-const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, allData, periodStart, periodEnd, filters }) => {
+// Helper: retorna os meses calendário cobertos por um intervalo (ex: 2026-01-15 a 2026-02-20 → ['2026-01','2026-02'])
+const getCalendarMonthKeysForPeriod = (startDateKey: string, endDateKey: string): string[] => {
+    const startKey = toDateKey(startDateKey);
+    const endKey = toDateKey(endDateKey);
+    if (!startKey || !endKey || startKey > endKey) return [];
+
+    const keys = new Set<string>();
+    const cursor = parseDateKey(startKey);
+    const end = parseDateKey(endKey);
+    if (isNaN(cursor.getTime()) || isNaN(end.getTime())) return [];
+
+    cursor.setDate(1);
+    cursor.setHours(12, 0, 0, 0);
+    end.setHours(12, 0, 0, 0);
+
+    let guard = 0;
+    while (cursor <= end && guard < 48) {
+        keys.add(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`);
+        cursor.setMonth(cursor.getMonth() + 1, 1);
+        cursor.setHours(12, 0, 0, 0);
+        guard += 1;
+    }
+    return Array.from(keys).sort();
+};
+
+const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, allData, periodStart, periodEnd, filters, user }) => {
     const [drilldownDate, setDrilldownDate] = useState<string | null>(null);
     const [listDrilldown, setListDrilldown] = useState<{ title: string; chapas: string[] } | null>(null);
     const [complianceDrilldown, setComplianceDrilldown] = useState<{ cc: string; ccName: string } | null>(null);
     const [comparisonModalData, setComparisonModalData] = useState<{ isOpen: boolean; employeeName: string; chapa: string } | null>(null);
     const realRecords = allData ?? data;
-    const planningRecords = useMemo<PlanningRecord[]>(
-        () => getAllPlanningRecords().filter(record => !record.status || record.status === 'approved'),
-        []
+
+    // ─── Sincronização de planejamento aprovado (espelho do DASHBOARD_PLANNING_SYNC) ───
+    // Inicializa com cache local para renderização imediata enquanto o Firestore carrega
+    const [planningRecords, setPlanningRecords] = useState<PlanningRecord[]>(
+        () => getAllPlanningRecords().filter(r => !r.status || r.status === 'approved')
     );
+
+    const periodStartKey = useMemo(() => formatDateKey(periodStart), [periodStart]);
+    const periodEndKey = useMemo(() => formatDateKey(periodEnd), [periodEnd]);
+
+    const planningMonthKeys = useMemo(
+        () => getCalendarMonthKeysForPeriod(periodStartKey, periodEndKey),
+        [periodStartKey, periodEndKey]
+    );
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const syncPlanning = async () => {
+            const loaded: PlanningRecord[] = [];
+
+            for (const monthKey of planningMonthKeys) {
+                if (cancelled) return;
+                try {
+                    const rows = await getPlanning(undefined, monthKey, 'DAILY', user || undefined);
+                    loaded.push(...rows);
+                } catch (e) {
+                    console.error(`AnalysisPanel: falha ao carregar planejamento para ${monthKey}:`, e);
+                }
+            }
+
+            if (!cancelled) {
+                // Deduplicação por ID estável
+                const dedup = new Map<string, PlanningRecord>();
+                loaded.forEach(p => {
+                    const key = p.id || `${p.chapa}__${p.costCenter}__${p.date}__${p.type}`;
+                    dedup.set(key, p);
+                });
+
+                // Apenas aprovados com horas > 0
+                const approved = Array.from(dedup.values()).filter(
+                    p => (!p.status || p.status === 'approved') && Number(p.plannedHours) > 0
+                );
+
+                setPlanningRecords(approved);
+            }
+        };
+
+        void syncPlanning();
+
+        return () => { cancelled = true; };
+    }, [planningMonthKeys, user]);
 
     const handleEmployeeClick = (employeeName: string, chapa: string) => {
         setComparisonModalData({ isOpen: true, employeeName, chapa });
