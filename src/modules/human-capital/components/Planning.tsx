@@ -903,22 +903,31 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
         return { periodStart: start, periodEnd: end };
     }, [selectedMonth]);
 
+    const payrollRangeStart = useMemo(() => formatDateKey(periodStart), [periodStart]);
+    const payrollRangeEnd = useMemo(() => formatDateKey(periodEnd), [periodEnd]);
+
     const [planRangeStart, setPlanRangeStart] = useState<string>('');
     const [planRangeEnd, setPlanRangeEnd] = useState<string>('');
+    const [submitRangeStart, setSubmitRangeStart] = useState<string>('');
+    const [submitRangeEnd, setSubmitRangeEnd] = useState<string>('');
 
     useEffect(() => {
-        setPlanRangeStart(formatDateKey(periodStart));
-        setPlanRangeEnd(formatDateKey(periodEnd));
-    }, [periodStart, periodEnd]);
+        setPlanRangeStart(payrollRangeStart);
+        setPlanRangeEnd(payrollRangeEnd);
+        setSubmitRangeStart(payrollRangeStart);
+        setSubmitRangeEnd(payrollRangeEnd);
+    }, [payrollRangeStart, payrollRangeEnd]);
 
     const submissionRange = useMemo(() => {
         return resolvePlanningRange(
-            formatDateKey(periodStart),
-            formatDateKey(periodEnd),
-            planRangeStart,
-            planRangeEnd
+            payrollRangeStart,
+            payrollRangeEnd,
+            submitRangeStart,
+            submitRangeEnd
         );
-    }, [periodStart, periodEnd, planRangeStart, planRangeEnd]);
+    }, [payrollRangeStart, payrollRangeEnd, submitRangeStart, submitRangeEnd]);
+
+    const isCustomSubmissionRange = submissionRange.start !== payrollRangeStart || submissionRange.end !== payrollRangeEnd;
 
     const [currentWeekStart, setCurrentWeekStart] = useState<Date>(periodStart);
     useEffect(() => { setCurrentWeekStart(periodStart); }, [periodStart]);
@@ -1834,8 +1843,9 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                 />
             ) : (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="p-4 bg-gray-50 border-b border-gray-100 flex flex-col xl:flex-row items-center justify-between gap-6">
-                        <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto">
+                    <div className="p-4 bg-gray-50 border-b border-gray-100 space-y-4">
+                        <div className="flex flex-col xl:flex-row items-center justify-between gap-6">
+                            <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto">
                             <div className="flex flex-col">
                                 <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Mês de Referência</label>
                                 <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium" />
@@ -1881,17 +1891,71 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                                 disabled={!emailDraft}
                                 className="bg-white text-slate-700 border border-slate-200 px-4 py-2.5 rounded-lg text-sm font-bold uppercase hover:bg-slate-50 transition flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                <Mail size={16} /> Gerar E-mail
+                                <Mail size={16} /> Gerar E-mail do Periodo
                             </button>
                             <button onClick={() => {
                                 const submitStart = submissionRange.start;
                                 const submitEnd = submissionRange.end;
-                                if (window.confirm(`Atenção: os dias entre ${submitStart} e ${submitEnd} serão submetidos para aprovação. Os demais dias permanecerão em rascunho/abertos. Deseja prosseguir?`)) {
+                                if (window.confirm(`Atencao: somente o periodo personalizado de ${formatDateBR(submitStart)} a ${formatDateBR(submitEnd)} sera submetido para aprovacao. Os demais dias permanecerao em rascunho/abertos. Deseja prosseguir?`)) {
                                     handleSave(true);
                                 }
                             }} disabled={saving} className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-bold uppercase hover:bg-blue-700 transition flex items-center gap-2 shadow-md">
-                                {saving ? <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : <CheckCircle2 size={18} />} Enviar P/ Aprovar
+                                {saving ? <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : <CheckCircle2 size={18} />} Enviar Periodo P/ Aprovar
                             </button>
+                        </div>
+                        </div>
+
+                        <div className={`rounded-2xl border px-4 py-4 ${isCustomSubmissionRange ? 'border-amber-200 bg-amber-50' : 'border-sky-200 bg-sky-50'}`}>
+                            <div className="flex flex-col 2xl:flex-row 2xl:items-end 2xl:justify-between gap-4">
+                                <div className="space-y-1">
+                                    <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${isCustomSubmissionRange ? 'text-amber-700' : 'text-sky-700'}`}>
+                                        {isCustomSubmissionRange ? 'Periodo personalizado de envio ativo' : 'Periodo padrao de envio'}
+                                    </p>
+                                    <p className="text-sm font-bold text-slate-800">
+                                        O e-mail gerado e o envio para aprovacao consideram somente o periodo abaixo.
+                                    </p>
+                                    <p className="text-xs text-slate-600">
+                                        Folha: {formatDateBR(payrollRangeStart)} a {formatDateBR(payrollRangeEnd)} | Envio: {formatDateBR(submissionRange.start)} a {formatDateBR(submissionRange.end)}
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-wrap items-end gap-3">
+                                    <div className="flex flex-col">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-1">Data inicial do envio</label>
+                                        <input
+                                            type="date"
+                                            value={submitRangeStart}
+                                            min={payrollRangeStart}
+                                            max={submitRangeEnd || payrollRangeEnd}
+                                            onChange={(e) => setSubmitRangeStart(e.target.value)}
+                                            className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium bg-white"
+                                        />
+                                    </div>
+
+                                    <div className="flex flex-col">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-1">Data final do envio</label>
+                                        <input
+                                            type="date"
+                                            value={submitRangeEnd}
+                                            min={submitRangeStart || payrollRangeStart}
+                                            max={payrollRangeEnd}
+                                            onChange={(e) => setSubmitRangeEnd(e.target.value)}
+                                            className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium bg-white"
+                                        />
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSubmitRangeStart(payrollRangeStart);
+                                            setSubmitRangeEnd(payrollRangeEnd);
+                                        }}
+                                        className="h-[42px] px-4 rounded-lg border border-slate-300 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                                    >
+                                        Usar periodo da folha
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
