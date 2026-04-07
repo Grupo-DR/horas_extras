@@ -1061,8 +1061,26 @@ const PressureHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 // ────────────────────────────────────────────────────────────
 // Sub-componente: Tabela Detalhada por Colaborador
 // ────────────────────────────────────────────────────────────
-const EmployeeTable: React.FC<{ data: OvertimeRecord[]; onEmployeeClick: (name: string, chapa: string) => void }> = ({ data, onEmployeeClick }) => {
+const EmployeeTable: React.FC<{
+    data: OvertimeRecord[];
+    onEmployeeClick: (name: string, chapa: string) => void;
+    periodStart: Date;
+    periodEnd: Date;
+}> = ({ data, onEmployeeClick, periodStart, periodEnd }) => {
     const [search, setSearch] = useState('');
+    const [viewMode, setViewMode] = useState<'summary' | 'daily'>('summary');
+
+    const days = useMemo(() => {
+        const result: Date[] = [];
+        const cursor = new Date(periodStart.getFullYear(), periodStart.getMonth(), periodStart.getDate(), 12, 0, 0, 0);
+        const end = new Date(periodEnd.getFullYear(), periodEnd.getMonth(), periodEnd.getDate(), 12, 0, 0, 0);
+
+        while (cursor <= end) {
+            result.push(new Date(cursor));
+            cursor.setDate(cursor.getDate() + 1);
+        }
+        return result;
+    }, [periodStart, periodEnd]);
 
     const employeeSummary = useMemo(() => {
         const map: Record<string, {
@@ -1120,12 +1138,76 @@ const EmployeeTable: React.FC<{ data: OvertimeRecord[]; onEmployeeClick: (name: 
             .sort((a, b) => b.total - a.total);
     }, [data, search]);
 
+    const dailySummary = useMemo(() => {
+        if (viewMode !== 'daily') return [];
+
+        const map: Record<string, {
+            chapa: string;
+            name: string;
+            cc: string;
+            daily: Record<string, number>;
+            total: number;
+        }> = {};
+
+        data.forEach(r => {
+            const chapa = normalizeChapa(r.CHAPA);
+            if (!chapa) return;
+
+            if (!map[chapa]) {
+                map[chapa] = {
+                    chapa,
+                    name: normalizeName(r.NOME),
+                    cc: normalizeCC(r.CODCCUSTO),
+                    daily: {},
+                    total: 0
+                };
+            }
+
+            if (isExtraEvent(r.EVENTO)) {
+                const hours = Number(r.HORAS) || 0;
+                const dKey = toDateKey(r.DATA);
+                if (dKey) {
+                    map[chapa].daily[dKey] = (map[chapa].daily[dKey] || 0) + hours;
+                    map[chapa].total += hours;
+                }
+            }
+        });
+
+        return Object.values(map)
+            .filter(emp => emp.total > 2)
+            .filter(emp => {
+                if (!search) return true;
+                const s = search.toLowerCase();
+                return emp.name.toLowerCase().includes(s) || emp.cc.toLowerCase().includes(s) || emp.chapa.toLowerCase().includes(s);
+            })
+            .sort((a, b) => b.total - a.total);
+    }, [data, viewMode, search]);
+
     return (
         <div id="employee-table" className="bg-white rounded-2xl border border-slate-200/60 shadow-md shadow-slate-200/50 overflow-hidden">
             <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <Users size={16} className="text-indigo-500" />
-                    <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Detalhamento por Colaborador</h3>
+                <div className="flex flex-col md:flex-row md:items-center gap-3">
+                    <div className="flex items-center gap-2">
+                        <Users size={16} className="text-indigo-500" />
+                        <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Detalhamento por Colaborador</h3>
+                    </div>
+                    
+                    <div className="flex bg-white border border-slate-200 p-1 rounded-xl shadow-sm self-start ml-2">
+                        <button
+                            onClick={() => setViewMode('summary')}
+                            className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all flex items-center gap-2 ${viewMode === 'summary' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            <BarChart3 size={12} />
+                            Sumário
+                        </button>
+                        <button
+                            onClick={() => setViewMode('daily')}
+                            className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all flex items-center gap-2 ${viewMode === 'daily' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            <Activity size={12} />
+                            Raio-X Diário
+                        </button>
+                    </div>
                 </div>
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
@@ -1138,43 +1220,122 @@ const EmployeeTable: React.FC<{ data: OvertimeRecord[]; onEmployeeClick: (name: 
                     />
                 </div>
             </div>
-            <div className="overflow-x-auto max-h-[400px]">
-                <table className="w-full text-left text-sm text-slate-600">
-                    <thead className="bg-slate-50 text-slate-500 font-semibold uppercase text-[11px] tracking-wider border-b border-slate-200 sticky top-0 z-10 box-decoration-clone">
-                        <tr>
-                            <th className="px-6 py-4">Nome do Colaborador</th>
-                            <th className="px-6 py-4">CC</th>
-                            <th className="px-6 py-4 text-center">HE 60</th>
-                            <th className="px-6 py-4 text-center">HE 100</th>
-                            <th className="px-6 py-4 text-center">Inter.</th>
-                            <th className="px-6 py-4 text-center">Not.</th>
-                            <th className="px-6 py-4 text-center bg-slate-100/50">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {employeeSummary.map((emp, idx) => (
-                            <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                                <td className="px-6 py-3">
-                                    <button
-                                        onClick={() => onEmployeeClick(emp.name, emp.chapa)}
-                                        className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center gap-1 text-xs"
-                                        title="Abrir raio-x diário do colaborador"
-                                    >
-                                        {emp.name}
-                                    </button>
-                                </td>
-                                <td className="px-6 py-3">
-                                    <span className="font-mono text-[10px] text-slate-400">{emp.cc}</span>
-                                </td>
-                                <td className="px-6 py-3 text-center font-mono tracking-tight text-blue-600 font-semibold">{formatDecimalToTime(emp.he60)}</td>
-                                <td className="px-6 py-3 text-center font-mono tracking-tight text-rose-600 font-semibold">{formatDecimalToTime(emp.he100)}</td>
-                                <td className="px-6 py-3 text-center font-mono tracking-tight text-amber-600 font-semibold">{formatDecimalToTime(emp.inter)}</td>
-                                <td className="px-6 py-3 text-center font-mono tracking-tight text-purple-600 font-semibold">{formatDecimalToTime(emp.noturnas)}</td>
-                                <td className="px-6 py-3 text-center font-mono tracking-tight font-bold text-slate-800 bg-slate-50/50">{formatDecimalToTime(emp.total)}</td>
+            <div className={`overflow-x-auto ${viewMode === 'daily' ? '' : 'max-h-[400px]'}`}>
+                {viewMode === 'summary' ? (
+                    <table className="w-full text-left text-sm text-slate-600">
+                        <thead className="bg-slate-50 text-slate-500 font-semibold uppercase text-[11px] tracking-wider border-b border-slate-200 sticky top-0 z-10 box-decoration-clone">
+                            <tr>
+                                <th className="px-6 py-4">Nome do Colaborador</th>
+                                <th className="px-6 py-4">CC</th>
+                                <th className="px-6 py-4 text-center">HE 60</th>
+                                <th className="px-6 py-4 text-center">HE 100</th>
+                                <th className="px-6 py-4 text-center">Inter.</th>
+                                <th className="px-6 py-4 text-center">Not.</th>
+                                <th className="px-6 py-4 text-center bg-slate-100/50">Total</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {employeeSummary.map((emp, idx) => (
+                                <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                                    <td className="px-6 py-3">
+                                        <button
+                                            onClick={() => onEmployeeClick(emp.name, emp.chapa)}
+                                            className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center gap-1 text-xs"
+                                            title="Abrir raio-x diário do colaborador"
+                                        >
+                                            {emp.name}
+                                        </button>
+                                    </td>
+                                    <td className="px-6 py-3">
+                                        <span className="font-mono text-[10px] text-slate-400">{emp.cc}</span>
+                                    </td>
+                                    <td className="px-6 py-3 text-center font-mono tracking-tight text-blue-600 font-semibold">{formatDecimalToTime(emp.he60)}</td>
+                                    <td className="px-6 py-3 text-center font-mono tracking-tight text-rose-600 font-semibold">{formatDecimalToTime(emp.he100)}</td>
+                                    <td className="px-6 py-3 text-center font-mono tracking-tight text-amber-600 font-semibold">{formatDecimalToTime(emp.inter)}</td>
+                                    <td className="px-6 py-3 text-center font-mono tracking-tight text-purple-600 font-semibold">{formatDecimalToTime(emp.noturnas)}</td>
+                                    <td className="px-6 py-3 text-center font-mono tracking-tight font-bold text-slate-800 bg-slate-50/50">{formatDecimalToTime(emp.total)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                ) : (
+                    <table className="border-collapse text-[10px]" style={{ minWidth: `${(days.length + 3) * 48}px` }}>
+                        <thead className="sticky top-0 z-20">
+                            <tr className="bg-slate-50 border-b border-slate-200">
+                                <th className="sticky left-0 z-30 bg-slate-50 px-4 py-3 text-left font-bold text-slate-500 border-r border-slate-200 min-w-[200px] uppercase tracking-wider">
+                                    Colaborador
+                                </th>
+                                {days.map(day => {
+                                    const isSun = day.getDay() === 0;
+                                    const isSat = day.getDay() === 6;
+                                    const dKey = formatDateKey(day);
+                                    return (
+                                        <th
+                                            key={dKey}
+                                            className={`px-1 py-2 text-center font-bold border-r border-slate-100 min-w-[42px] ${isSun ? 'bg-rose-50 text-rose-600' : isSat ? 'bg-amber-50 text-amber-600' : 'text-slate-500'}`}
+                                        >
+                                            <div className="text-[10px]">{day.getDate()}</div>
+                                            <div className="text-[8px] font-normal opacity-60">
+                                                {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][day.getDay()]}
+                                            </div>
+                                        </th>
+                                    );
+                                })}
+                                <th className="bg-slate-100 px-3 py-3 text-center font-bold text-slate-700 border-l border-slate-300 min-w-[60px] uppercase tracking-wider">
+                                    Total
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {dailySummary.map((emp, idx) => (
+                                <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                                    <td className="sticky left-0 z-10 bg-white px-4 py-2 border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                                        <div className="flex flex-col">
+                                            <button
+                                                onClick={() => onEmployeeClick(emp.name, emp.chapa)}
+                                                className="font-bold text-slate-700 text-[11px] text-left hover:text-blue-600 transition-colors truncate max-w-[180px]"
+                                            >
+                                                {emp.name}
+                                            </button>
+                                            <span className="text-[9px] text-slate-400 font-mono">{emp.chapa} • {emp.cc}</span>
+                                        </div>
+                                    </td>
+                                    {days.map(day => {
+                                        const dKey = formatDateKey(day);
+                                        const value = emp.daily[dKey] || 0;
+                                        const isSun = day.getDay() === 0;
+                                        const isSat = day.getDay() === 6;
+
+                                        return (
+                                            <td 
+                                                key={dKey} 
+                                                className={`px-0.5 py-2 text-center border-r border-slate-50 ${isSun ? 'bg-rose-50/30' : isSat ? 'bg-amber-50/30' : ''}`}
+                                            >
+                                                {value > 0 ? (
+                                                    <span className={`inline-flex min-w-[34px] items-center justify-center rounded px-1 py-0.5 font-mono font-bold ${value > 2 ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>
+                                                        {formatDecimalToTime(value)}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-slate-200 font-mono">-</span>
+                                                )}
+                                            </td>
+                                        );
+                                    })}
+                                    <td className="px-3 py-2 text-center font-bold font-mono border-l border-slate-300 text-slate-800 bg-slate-50/80">
+                                        {formatDecimalToTime(emp.total)}
+                                    </td>
+                                </tr>
+                            ))}
+                            {dailySummary.length === 0 && (
+                                <tr>
+                                    <td colSpan={days.length + 2} className="px-6 py-10 text-center text-slate-400 italic">
+                                        Nenhum colaborador com mais de 2 horas extras realizadas no período.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                )}
             </div>
         </div>
     );
@@ -2194,7 +2355,12 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, allData, periodStar
             <PressureMap data={data} />
 
             {/* Tabela de Colaboradores */}
-            <EmployeeTable data={data} onEmployeeClick={handleEmployeeClick} />
+            <EmployeeTable 
+                data={data} 
+                onEmployeeClick={handleEmployeeClick} 
+                periodStart={periodStart}
+                periodEnd={periodEnd}
+            />
 
             {/* Modal de Drill-down Diário */}
             <DailyDrilldownModal
