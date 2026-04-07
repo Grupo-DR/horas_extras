@@ -1174,7 +1174,7 @@ const EmployeeTable: React.FC<{
         });
 
         return Object.values(map)
-            .filter(emp => emp.total > 2)
+            .filter(emp => Object.values(emp.daily).some(hours => hours > 2))
             .filter(emp => {
                 if (!search) return true;
                 const s = search.toLowerCase();
