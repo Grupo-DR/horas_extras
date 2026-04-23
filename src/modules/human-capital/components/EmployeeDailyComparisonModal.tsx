@@ -33,9 +33,10 @@ const EmployeeDailyComparisonModal: React.FC<EmployeeDailyComparisonModalProps> 
     plannedRecords,
     realRecords
 }) => {
+    const [showOnlyDeviations, setShowOnlyDeviations] = React.useState(false);
     const normalizedChapa = useMemo(() => normalizeChapa(chapa), [chapa]);
 
-    const { days, totals } = useMemo(() => {
+    const { days, totals, filteredDays } = useMemo(() => {
         const startKey = formatDateKey(periodStart);
         const endKey = formatDateKey(periodEnd);
         const plannedByDay: Record<string, number> = {};
@@ -76,13 +77,14 @@ const EmployeeDailyComparisonModal: React.FC<EmployeeDailyComparisonModalProps> 
 
         return {
             days: comparisonDays,
+            filteredDays: showOnlyDeviations ? comparisonDays.filter(d => Math.abs(d.delta) > 0.01) : comparisonDays,
             totals: comparisonDays.reduce((acc, item) => ({
                 planned: acc.planned + item.planned,
                 real: acc.real + item.real,
                 delta: acc.delta + item.delta
             }), { planned: 0, real: 0, delta: 0 })
         };
-    }, [normalizedChapa, periodEnd, periodStart, plannedRecords, realRecords]);
+    }, [normalizedChapa, periodEnd, periodStart, plannedRecords, realRecords, showOnlyDeviations]);
 
     if (!isOpen) return null;
 
@@ -90,7 +92,7 @@ const EmployeeDailyComparisonModal: React.FC<EmployeeDailyComparisonModalProps> 
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-2">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[96vw] overflow-hidden flex flex-col max-h-[92vh]">
                 <div className="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white shrink-0">
-                    <div>
+                    <div className="flex-1">
                         <div className="flex items-center gap-2">
                             <CalendarDays size={18} className="text-indigo-100" />
                             <h3 className="text-lg font-bold">Raio-X Diário do Colaborador</h3>
@@ -99,34 +101,47 @@ const EmployeeDailyComparisonModal: React.FC<EmployeeDailyComparisonModalProps> 
                             {employeeName} • Chapa: {chapa} • Período: {periodStart.toLocaleDateString('pt-BR')} a {periodEnd.toLocaleDateString('pt-BR')}
                         </p>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors">
-                        <X size={20} />
-                    </button>
+
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => setShowOnlyDeviations(!showOnlyDeviations)}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all border ${showOnlyDeviations ? 'bg-white text-indigo-600 border-white' : 'bg-indigo-500/30 text-white border-indigo-400/50 hover:bg-indigo-500/50'}`}
+                        >
+                            <ArrowUpRight size={14} className={showOnlyDeviations ? 'text-indigo-600' : 'text-indigo-100'} />
+                            Somente dias com desvio
+                        </button>
+                        
+                        <div className="w-px h-8 bg-indigo-500/50 mx-1" />
+
+                        <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+                            <X size={20} />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-auto">
-                    <table className="border-collapse text-xs" style={{ minWidth: `${(days.length + 2) * 56}px` }}>
+                    <table className="border-collapse text-xs" style={{ minWidth: `${(filteredDays.length + 2) * 56}px` }}>
                         <thead className="sticky top-0 z-20">
                             <tr>
                                 <th className="sticky left-0 z-30 bg-slate-100 px-4 py-2 text-left font-black text-slate-700 border-b border-r border-slate-200 min-w-[180px]">
                                     Indicador
                                 </th>
-                                {days.map(item => {
-                                    const isSun = item.day.getDay() === 0;
-                                    const isSat = item.day.getDay() === 6;
-                                    return (
-                                        <th
-                                            key={item.dateKey}
-                                            className={`px-1 py-2 text-center font-bold border-b border-slate-200 w-12 min-w-[44px] ${isSun ? 'bg-red-100 text-red-700' : isSat ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-600'}`}
-                                        >
-                                            <div className="text-[11px]">{item.day.getDate()}</div>
-                                            <div className="text-[9px] font-normal opacity-70">{WEEKDAY_LABELS[item.day.getDay()]}</div>
-                                        </th>
-                                    );
-                                })}
-                                <th className="bg-slate-100 px-3 py-2 text-center font-black text-slate-700 border-b border-l-2 border-slate-300 min-w-[72px]">
-                                    Total
-                                </th>
+                                {filteredDays.map(item => {
+                                     const isSun = item.day.getDay() === 0;
+                                     const isSat = item.day.getDay() === 6;
+                                     return (
+                                         <th
+                                             key={item.dateKey}
+                                             className={`px-1 py-2 text-center font-bold border-b border-slate-200 w-12 min-w-[44px] ${isSun ? 'bg-red-100 text-red-700' : isSat ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-600'}`}
+                                         >
+                                             <div className="text-[11px]">{item.day.getDate()}</div>
+                                             <div className="text-[9px] font-normal opacity-70">{WEEKDAY_LABELS[item.day.getDay()]}</div>
+                                         </th>
+                                     );
+                                 })}
+                                 <th className="bg-slate-100 px-3 py-2 text-center font-black text-slate-700 border-b border-l-2 border-slate-300 min-w-[72px]">
+                                     Total
+                                 </th>
                             </tr>
                         </thead>
                         <tbody>
@@ -135,7 +150,7 @@ const EmployeeDailyComparisonModal: React.FC<EmployeeDailyComparisonModalProps> 
                                     <p className="font-bold text-slate-800">Planejado</p>
                                     <p className="text-[10px] text-slate-400">Motor de planejamento</p>
                                 </td>
-                                {days.map(item => {
+                                {filteredDays.map(item => {
                                     const isSun = item.day.getDay() === 0;
                                     const isSat = item.day.getDay() === 6;
                                     return (
@@ -156,7 +171,7 @@ const EmployeeDailyComparisonModal: React.FC<EmployeeDailyComparisonModalProps> 
                                     <p className="font-bold text-slate-800">Realizado</p>
                                     <p className="text-[10px] text-slate-400">Eventos reais do ponto</p>
                                 </td>
-                                {days.map(item => {
+                                {filteredDays.map(item => {
                                     const isSun = item.day.getDay() === 0;
                                     const isSat = item.day.getDay() === 6;
                                     return (
@@ -180,7 +195,7 @@ const EmployeeDailyComparisonModal: React.FC<EmployeeDailyComparisonModalProps> 
                                     </div>
                                     <p className="text-[10px] text-slate-400">Realizado - Planejado</p>
                                 </td>
-                                {days.map(item => {
+                                {filteredDays.map(item => {
                                     const isSun = item.day.getDay() === 0;
                                     const isSat = item.day.getDay() === 6;
                                     return (

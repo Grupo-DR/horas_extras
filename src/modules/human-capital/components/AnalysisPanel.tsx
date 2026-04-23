@@ -316,7 +316,8 @@ const TrendAnalysis: React.FC<{
     periodStart: Date;
     periodEnd: Date;
     onDayClick?: (date: string) => void;
-}> = ({ data, referenceData, planningRecords, filters, periodStart, periodEnd, onDayClick }) => {
+    hideHeader?: boolean;
+}> = ({ data, referenceData, planningRecords, filters, periodStart, periodEnd, onDayClick, hideHeader }) => {
     const [showHelp, setShowHelp] = useState(false);
 
     const chartData = useMemo(() => {
@@ -384,20 +385,22 @@ const TrendAnalysis: React.FC<{
 
     return (
         <>
-            <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-md shadow-slate-200/50">
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-2">
-                        <TrendingUp size={18} className="text-blue-500" />
-                        <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Análise de Tendência Temporal</h3>
+            <div className={`bg-white rounded-2xl ${hideHeader ? '' : 'p-6 border border-slate-200/60 shadow-md shadow-slate-200/50'}`}>
+                {!hideHeader && (
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-2">
+                            <TrendingUp size={18} className="text-blue-500" />
+                            <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Análise de Tendência Temporal</h3>
+                        </div>
+                        <button
+                            onClick={() => setShowHelp(true)}
+                            className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+                            title="Como ler este gráfico?"
+                        >
+                            <Info size={18} />
+                        </button>
                     </div>
-                    <button
-                        onClick={() => setShowHelp(true)}
-                        className="text-slate-400 hover:text-slate-600 transition-colors p-1"
-                        title="Como ler este gráfico?"
-                    >
-                        <Info size={18} />
-                    </button>
-                </div>
+                )}
                 <div className="h-[300px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart data={chartData}>
@@ -468,7 +471,8 @@ const TrendAnalysisEnhanced: React.FC<{
     periodStart: Date;
     periodEnd: Date;
     onDayClick?: (date: string) => void;
-}> = ({ data, referenceData, planningRecords, filters, periodStart, periodEnd, onDayClick }) => {
+    hideHeader?: boolean;
+}> = ({ data, referenceData, planningRecords, filters, periodStart, periodEnd, onDayClick, hideHeader }) => {
     const [showHelp, setShowHelp] = useState(false);
 
     const chartData = useMemo(() => {
@@ -593,20 +597,22 @@ const TrendAnalysisEnhanced: React.FC<{
 
     return (
         <>
-            <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-md shadow-slate-200/50">
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-2">
-                        <TrendingUp size={18} className="text-blue-500" />
-                        <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">{'An\u00e1lise de Tend\u00eancia Temporal'}</h3>
+            <div className={`bg-white rounded-2xl ${hideHeader ? '' : 'p-6 border border-slate-200/60 shadow-md shadow-slate-200/50'}`}>
+                {!hideHeader && (
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-2">
+                            <TrendingUp size={18} className="text-blue-500" />
+                            <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">{'An\u00e1lise de Tend\u00eancia Temporal'}</h3>
+                        </div>
+                        <button
+                            onClick={() => setShowHelp(true)}
+                            className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+                            title={'Como ler este gr\u00e1fico?'}
+                        >
+                            <Info size={18} />
+                        </button>
                     </div>
-                    <button
-                        onClick={() => setShowHelp(true)}
-                        className="text-slate-400 hover:text-slate-600 transition-colors p-1"
-                        title={'Como ler este gr\u00e1fico?'}
-                    >
-                        <Info size={18} />
-                    </button>
-                </div>
+                )}
                 <TrendLegend showPlanned={hasPlannedLegend} />
                 <div className="h-[300px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
@@ -725,7 +731,7 @@ const ParetoHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 // ────────────────────────────────────────────────────────────
 // Sub-componente: Análise de Concentração (Pareto)
 // ────────────────────────────────────────────────────────────
-const ConcentrationPareto: React.FC<{ data: OvertimeRecord[], onBarClick?: (title: string, chapas: string[]) => void }> = ({ data, onBarClick }) => {
+const ConcentrationPareto: React.FC<{ data: OvertimeRecord[], onBarClick?: (title: string, chapas: string[]) => void; hideHeader?: boolean }> = ({ data, onBarClick, hideHeader }) => {
     const [view, setView] = useState<'cc' | 'funcao' | 'colaborador' | 'regional'>('cc');
     const [showHelp, setShowHelp] = useState(false);
 
@@ -775,31 +781,48 @@ const ConcentrationPareto: React.FC<{ data: OvertimeRecord[], onBarClick?: (titl
 
     return (
         <>
-            <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-md shadow-slate-200/50">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                    <div className="flex items-center gap-2">
-                        <BarChart3 size={18} className="text-indigo-500" />
-                        <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Análise de Concentração (Pareto)</h3>
-                        <button
-                            onClick={() => setShowHelp(true)}
-                            className="text-slate-400 hover:text-slate-600 transition-colors p-1 ml-2"
-                            title="Entendendo o Gráfico de Pareto"
-                        >
-                            <Info size={18} />
-                        </button>
-                    </div>
-                    <div className="flex bg-slate-100 p-1 rounded-xl self-start">
-                        {(['cc', 'funcao', 'colaborador', 'regional'] as const).map(v => (
+            <div className={`bg-white rounded-2xl ${hideHeader ? '' : 'p-6 border border-slate-200/60 shadow-md shadow-slate-200/50'}`}>
+                {!hideHeader && (
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                        <div className="flex items-center gap-2">
+                            <BarChart3 size={18} className="text-indigo-500" />
+                            <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Análise de Concentração (Pareto)</h3>
                             <button
-                                key={v}
-                                onClick={() => setView(v)}
-                                className={`px-3 py-1 rounded-lg text-[10px] font-semibold uppercase transition-all ${view === v ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                                onClick={() => setShowHelp(true)}
+                                className="text-slate-400 hover:text-slate-600 transition-colors p-1 ml-2"
+                                title="Entendendo o Gráfico de Pareto"
                             >
-                                {v === 'cc' ? 'CC' : v === 'funcao' ? 'Função' : v === 'colaborador' ? 'Colab.' : 'Regional'}
+                                <Info size={18} />
                             </button>
-                        ))}
+                        </div>
+                        <div className="flex bg-slate-100 p-1 rounded-xl self-start">
+                            {(['cc', 'funcao', 'colaborador', 'regional'] as const).map(v => (
+                                <button
+                                    key={v}
+                                    onClick={() => setView(v)}
+                                    className={`px-3 py-1 rounded-lg text-[10px] font-semibold uppercase transition-all ${view === v ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                                >
+                                    {v === 'cc' ? 'CC' : v === 'funcao' ? 'Função' : v === 'colaborador' ? 'Colab.' : 'Regional'}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                </div>
+                )}
+                {hideHeader && (
+                    <div className="flex justify-end mb-4">
+                        <div className="flex bg-slate-100 p-1 rounded-xl self-start">
+                            {(['cc', 'funcao', 'colaborador', 'regional'] as const).map(v => (
+                                <button
+                                    key={v}
+                                    onClick={() => setView(v)}
+                                    className={`px-3 py-1 rounded-lg text-[10px] font-semibold uppercase transition-all ${view === v ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                                >
+                                    {v === 'cc' ? 'CC' : v === 'funcao' ? 'Função' : v === 'colaborador' ? 'Colab.' : 'Regional'}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 <div className="h-[300px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
@@ -936,7 +959,7 @@ const CustomTooltip = ({ active, payload }: any) => {
     return null;
 };
 
-const DistributionHistogram: React.FC<{ data: OvertimeRecord[]; onBucketClick?: (title: string, chapas: string[]) => void }> = ({ data, onBucketClick }) => {
+const DistributionHistogram: React.FC<{ data: OvertimeRecord[]; onBucketClick?: (title: string, chapas: string[]) => void; hideHeader?: boolean }> = ({ data, onBucketClick, hideHeader }) => {
     const [showHelp, setShowHelp] = useState(false);
 
     const buckets = useMemo(() => {
@@ -967,20 +990,22 @@ const DistributionHistogram: React.FC<{ data: OvertimeRecord[]; onBucketClick?: 
     }, [data]);
 
     return (
-        <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-md shadow-slate-200/50 h-full flex flex-col">
-            <div className="flex items-center justify-between mb-6 shrink-0">
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-700 flex items-center gap-2">
-                    <PieChart size={18} className="text-emerald-500" />
-                    Distribuição por Colaborador
-                </h3>
-                <button
-                    onClick={() => setShowHelp(true)}
-                    className="text-slate-400 hover:text-slate-600 transition-colors p-1"
-                    title="Como ler este gráfico?"
-                >
-                    <Info size={18} />
-                </button>
-            </div>
+        <div className={`bg-white rounded-2xl ${hideHeader ? '' : 'p-6 border border-slate-200/60 shadow-md shadow-slate-200/50 h-full flex flex-col'}`}>
+            {!hideHeader && (
+                <div className="flex items-center justify-between mb-6 shrink-0">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                        <PieChart size={18} className="text-emerald-500" />
+                        Distribuição por Colaborador
+                    </h3>
+                    <button
+                        onClick={() => setShowHelp(true)}
+                        className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+                        title="Como ler este gráfico?"
+                    >
+                        <Info size={18} />
+                    </button>
+                </div>
+            )}
             <div className="flex-1 w-full min-h-[200px]">
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={buckets} layout="vertical" margin={{ left: 40 }}>
@@ -1066,9 +1091,10 @@ const EmployeeTable: React.FC<{
     onEmployeeClick: (name: string, chapa: string) => void;
     periodStart: Date;
     periodEnd: Date;
-}> = ({ data, onEmployeeClick, periodStart, periodEnd }) => {
+    plannedRecords: PlanningRecord[];
+}> = ({ data, onEmployeeClick, periodStart, periodEnd, plannedRecords }) => {
     const [search, setSearch] = useState('');
-    const [viewMode, setViewMode] = useState<'summary' | 'daily'>('summary');
+    const [viewMode, setViewMode] = useState<'summary' | 'daily' | 'deviations'>('deviations');
 
     const days = useMemo(() => {
         const result: Date[] = [];
@@ -1183,6 +1209,96 @@ const EmployeeTable: React.FC<{
             .sort((a, b) => b.total - a.total);
     }, [data, viewMode, search]);
 
+    const deviationSummary = useMemo(() => {
+        if (viewMode !== 'deviations') return [];
+
+        const map: Record<string, {
+            chapa: string;
+            name: string;
+            cc: string;
+            planned: number;
+            real: number;
+            delta: number;
+            deviationDays: number;
+            maxDeviation: number;
+        }> = {};
+
+        const empDailyDelta: Record<string, Record<string, number>> = {};
+
+        plannedRecords.forEach(p => {
+            if (p.type !== 'DAILY') return;
+            const chapa = normalizeChapa(p.chapa);
+            if (!chapa) return;
+            const dKey = p.date;
+            if (!empDailyDelta[chapa]) empDailyDelta[chapa] = {};
+            empDailyDelta[chapa][dKey] = (empDailyDelta[chapa][dKey] || 0) - (Number(p.plannedHours) || 0);
+            
+            if (!map[chapa]) {
+                map[chapa] = {
+                    chapa,
+                    name: p.nome || 'S/ NOME',
+                    cc: normalizeCC(p.costCenter),
+                    planned: 0,
+                    real: 0,
+                    delta: 0,
+                    deviationDays: 0,
+                    maxDeviation: 0
+                };
+            }
+            map[chapa].planned += Number(p.plannedHours) || 0;
+        });
+
+        data.forEach(r => {
+            const chapa = normalizeChapa(r.CHAPA);
+            if (!chapa) return;
+            if (!isRelevantOvertimeEvent(r.EVENTO)) return;
+            const dKey = toDateKey(r.DATA);
+            if (!dKey) return;
+
+            if (!empDailyDelta[chapa]) empDailyDelta[chapa] = {};
+            empDailyDelta[chapa][dKey] = (empDailyDelta[chapa][dKey] || 0) + (Number(r.HORAS) || 0);
+
+            if (!map[chapa]) {
+                map[chapa] = {
+                    chapa,
+                    name: normalizeName(r.NOME),
+                    cc: normalizeCC(r.CODCCUSTO),
+                    planned: 0,
+                    real: 0,
+                    delta: 0,
+                    deviationDays: 0,
+                    maxDeviation: 0
+                };
+            }
+            map[chapa].real += Number(r.HORAS) || 0;
+        });
+
+        Object.keys(map).forEach(chapa => {
+            const dailyDeltas = empDailyDelta[chapa] || {};
+            let devDays = 0;
+            let maxDev = 0;
+            Object.values(dailyDeltas).forEach(d => {
+                if (Math.abs(d) > 0.01) {
+                    devDays++;
+                    if (Math.abs(d) > Math.abs(maxDev)) {
+                        maxDev = d;
+                    }
+                }
+            });
+            map[chapa].delta = map[chapa].real - map[chapa].planned;
+            map[chapa].deviationDays = devDays;
+            map[chapa].maxDeviation = maxDev;
+        });
+
+        return Object.values(map)
+            .filter(emp => {
+                if (!search) return true;
+                const s = search.toLowerCase();
+                return emp.name.toLowerCase().includes(s) || emp.cc.toLowerCase().includes(s) || emp.chapa.toLowerCase().includes(s);
+            })
+            .sort((a, b) => b.delta - a.delta);
+    }, [data, plannedRecords, viewMode, search]);
+
     return (
         <div id="employee-table" className="bg-white rounded-2xl border border-slate-200/60 shadow-md shadow-slate-200/50 overflow-hidden">
             <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1193,12 +1309,23 @@ const EmployeeTable: React.FC<{
                     </div>
                     
                     <div className="flex bg-white border border-slate-200 p-1 rounded-xl shadow-sm self-start ml-2">
+                        {/* 
+                        Sumário mantido em standby no sistema conforme solicitado. 
+                        Para reativar, basta descomentar o bloco abaixo.
                         <button
                             onClick={() => setViewMode('summary')}
                             className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all flex items-center gap-2 ${viewMode === 'summary' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' : 'text-slate-400 hover:text-slate-600'}`}
                         >
                             <BarChart3 size={12} />
                             Sumário
+                        </button>
+                        */}
+                        <button
+                            onClick={() => setViewMode('deviations')}
+                            className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all flex items-center gap-2 ${viewMode === 'deviations' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            <TrendingUp size={12} />
+                            Desvios por Colaborador
                         </button>
                         <button
                             onClick={() => setViewMode('daily')}
@@ -1220,7 +1347,7 @@ const EmployeeTable: React.FC<{
                     />
                 </div>
             </div>
-            <div className={`overflow-x-auto ${viewMode === 'daily' ? '' : 'max-h-[400px]'}`}>
+            <div className={`overflow-x-auto ${viewMode === 'summary' ? 'max-h-[400px]' : ''}`}>
                 {viewMode === 'summary' ? (
                     <table className="w-full text-left text-sm text-slate-600">
                         <thead className="bg-slate-50 text-slate-500 font-semibold uppercase text-[11px] tracking-wider border-b border-slate-200 sticky top-0 z-10 box-decoration-clone">
@@ -1254,6 +1381,48 @@ const EmployeeTable: React.FC<{
                                     <td className="px-6 py-3 text-center font-mono tracking-tight text-amber-600 font-semibold">{formatDecimalToTime(emp.inter)}</td>
                                     <td className="px-6 py-3 text-center font-mono tracking-tight text-purple-600 font-semibold">{formatDecimalToTime(emp.noturnas)}</td>
                                     <td className="px-6 py-3 text-center font-mono tracking-tight font-bold text-slate-800 bg-slate-50/50">{formatDecimalToTime(emp.total)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                ) : viewMode === 'deviations' ? (
+                    <table className="w-full text-left text-sm text-slate-600">
+                        <thead className="bg-slate-50 text-slate-500 font-semibold uppercase text-[11px] tracking-wider border-b border-slate-200 sticky top-0 z-10 box-decoration-clone">
+                            <tr>
+                                <th className="px-6 py-4">Chapa</th>
+                                <th className="px-6 py-4">Nome do Colaborador</th>
+                                <th className="px-6 py-4">CC</th>
+                                <th className="px-6 py-4 text-center">Planejado</th>
+                                <th className="px-6 py-4 text-center">Real</th>
+                                <th className="px-6 py-4 text-center bg-slate-100/50">Delta</th>
+                                <th className="px-6 py-4 text-center">Dias c/ Desvio</th>
+                                <th className="px-6 py-4 text-center">Maior Desvio</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {deviationSummary.map((emp, idx) => (
+                                <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                                    <td className="px-6 py-3 font-mono text-[10px] text-slate-400">{emp.chapa}</td>
+                                    <td className="px-6 py-3">
+                                        <button
+                                            onClick={() => onEmployeeClick(emp.name, emp.chapa)}
+                                            className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center gap-1 text-xs"
+                                        >
+                                            {emp.name}
+                                        </button>
+                                    </td>
+                                    <td className="px-6 py-3">
+                                        <span className="font-mono text-[10px] text-slate-400">{emp.cc}</span>
+                                    </td>
+                                    <td className="px-6 py-3 text-center font-mono tracking-tight text-slate-600">{formatDecimalToTime(emp.planned)}</td>
+                                    <td className="px-6 py-3 text-center font-mono tracking-tight text-slate-800 font-semibold">{formatDecimalToTime(emp.real)}</td>
+                                    <td className={`px-6 py-3 text-center font-mono tracking-tight font-bold bg-slate-50/50 ${emp.delta > 0.01 ? 'text-red-600' : emp.delta < -0.01 ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                        {emp.delta > 0.01 ? '+' : ''}{formatDecimalToTime(emp.delta)}
+                                    </td>
+                                    <td className="px-6 py-3 text-center font-semibold text-slate-500">{emp.deviationDays}d</td>
+                                    <td className={`px-6 py-3 text-center font-mono tracking-tight font-semibold ${emp.maxDeviation > 0.01 ? 'text-red-500' : emp.maxDeviation < -0.01 ? 'text-emerald-500' : 'text-slate-300'}`}>
+                                        {formatDecimalToTime(emp.maxDeviation)}
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
@@ -1344,7 +1513,7 @@ const EmployeeTable: React.FC<{
 // ────────────────────────────────────────────────────────────
 // Sub-componente: Mapa de Pressão por CC (Heat Table)
 // ────────────────────────────────────────────────────────────
-const PressureMap: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
+const PressureMap: React.FC<{ data: OvertimeRecord[]; hideHeader?: boolean }> = ({ data, hideHeader }) => {
     const [showHelp, setShowHelp] = useState(false);
 
     const tableData = useMemo(() => {
@@ -1385,20 +1554,22 @@ const PressureMap: React.FC<{ data: OvertimeRecord[] }> = ({ data }) => {
     const maxRisk = Math.max(...tableData.map(d => d.riskIndex), 1);
 
     return (
-        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-md shadow-slate-200/50 overflow-hidden relative">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                <div className="flex items-center gap-2">
-                    <Activity size={18} className="text-rose-500" />
-                    <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Mapa de Pressão por Centro de Custo</h3>
+        <div className={`bg-white rounded-2xl ${hideHeader ? '' : 'p-6 border border-slate-200/60 shadow-md shadow-slate-200/50 h-full flex flex-col overflow-hidden relative'}`}>
+            {!hideHeader && (
+                <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                    <div className="flex items-center gap-2">
+                        <Activity size={18} className="text-rose-500" />
+                        <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Mapa de Pressão por Centro de Custo</h3>
+                    </div>
+                    <button
+                        onClick={() => setShowHelp(true)}
+                        className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+                        title="Como ler este mapa?"
+                    >
+                        <Info size={18} />
+                    </button>
                 </div>
-                <button
-                    onClick={() => setShowHelp(true)}
-                    className="text-slate-400 hover:text-slate-600 transition-colors p-1"
-                    title="Como ler este mapa?"
-                >
-                    <Info size={18} />
-                </button>
-            </div>
+            )}
             <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-slate-600 border-collapse">
                     <thead className="bg-slate-50 text-slate-500 font-semibold uppercase text-[11px] tracking-wider border-b border-slate-200 sticky top-0 z-10 box-decoration-clone">
@@ -1506,7 +1677,7 @@ const ComplianceHelpModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
 // ────────────────────────────────────────────────────────────
 // Sub-componente: Tabela de Compliance Trabalhista
 // ────────────────────────────────────────────────────────────
-const ComplianceTable: React.FC<{ data: OvertimeRecord[]; onRowClick?: (cc: string, ccName: string) => void }> = ({ data, onRowClick }) => {
+const ComplianceTable: React.FC<{ data: OvertimeRecord[]; onRowClick?: (cc: string, ccName: string) => void; hideHeader?: boolean }> = ({ data, onRowClick, hideHeader }) => {
     const [showHelp, setShowHelp] = useState(false);
 
     const complianceData = useMemo(() => {
@@ -1602,22 +1773,24 @@ const ComplianceTable: React.FC<{ data: OvertimeRecord[]; onRowClick?: (cc: stri
     }, [data]);
 
     return (
-        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-md shadow-slate-200/50 overflow-hidden relative">
-            <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between mb-0">
-                <div className="flex items-center gap-2">
-                    <AlertTriangle size={18} className="text-rose-500" />
-                    <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-700">
-                        Compliance Trabalhista (Viol. Limites de Jornada)
-                    </h3>
+        <div className={`bg-white rounded-2xl ${hideHeader ? '' : 'p-6 border border-slate-200/60 shadow-md shadow-slate-200/50 h-full flex flex-col overflow-hidden relative'}`}>
+            {!hideHeader && (
+                <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between mb-0">
+                    <div className="flex items-center gap-2">
+                        <AlertTriangle size={18} className="text-rose-500" />
+                        <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-700">
+                            Compliance Trabalhista (Viol. Limites de Jornada)
+                        </h3>
+                    </div>
+                    <button
+                        onClick={() => setShowHelp(true)}
+                        className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+                        title="Como auditar estas informações?"
+                    >
+                        <Info size={18} />
+                    </button>
                 </div>
-                <button
-                    onClick={() => setShowHelp(true)}
-                    className="text-slate-400 hover:text-slate-600 transition-colors p-1"
-                    title="Como auditar estas informações?"
-                >
-                    <Info size={18} />
-                </button>
-            </div>
+            )}
 
             {complianceData.length === 0 ? (
                 <div className="p-12 flex flex-col items-center justify-center text-center">
@@ -2220,11 +2393,58 @@ const getCalendarMonthKeysForPeriod = (startDateKey: string, endDateKey: string)
     return Array.from(keys).sort();
 };
 
+const AnalysisSection: React.FC<{
+    title: string;
+    icon: React.ReactNode;
+    isOpen: boolean;
+    onToggle: () => void;
+    children: React.ReactNode;
+    className?: string;
+    description?: string;
+}> = ({ title, icon, isOpen, onToggle, children, className, description }) => {
+    return (
+        <div className={`bg-white rounded-2xl border border-slate-200/60 shadow-md shadow-slate-200/50 overflow-hidden transition-all duration-300 ${isOpen ? 'ring-1 ring-indigo-500/20' : ''} ${className}`}>
+            <button 
+                onClick={onToggle}
+                className={`w-full flex items-center justify-between p-5 hover:bg-slate-50 transition-colors text-left ${isOpen ? 'bg-slate-50/50 border-b border-slate-100' : ''}`}
+            >
+                <div className="flex items-center gap-4">
+                    <div className={`p-2.5 rounded-xl transition-all duration-300 ${isOpen ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-100 text-slate-500'}`}>
+                        {icon}
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">{title}</h3>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                            {isOpen ? 'Clique para recolher a análise' : (description || 'Clique para expandir análise detalhada')}
+                        </p>
+                    </div>
+                </div>
+                <div className={`p-2 rounded-full hover:bg-slate-200/50 transition-all ${isOpen ? 'rotate-180 bg-indigo-50 text-indigo-600' : 'text-slate-400'}`}>
+                    <ChevronDown size={20} />
+                </div>
+            </button>
+            {isOpen && (
+                <div className="p-6 animate-in fade-in slide-in-from-top-2 duration-300 bg-white">
+                    {children}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, allData, periodStart, periodEnd, filters, user }) => {
     const [drilldownDate, setDrilldownDate] = useState<string | null>(null);
     const [listDrilldown, setListDrilldown] = useState<{ title: string; chapas: string[] } | null>(null);
     const [complianceDrilldown, setComplianceDrilldown] = useState<{ cc: string; ccName: string } | null>(null);
     const [comparisonModalData, setComparisonModalData] = useState<{ isOpen: boolean; employeeName: string; chapa: string } | null>(null);
+    
+    // Estados de visibilidade para os painéis de drill-down (colapsados por padrão)
+    const [expandedTrends, setExpandedTrends] = useState(false);
+    const [expandedConcentration, setExpandedConcentration] = useState(false);
+    const [expandedDistribution, setExpandedDistribution] = useState(false);
+    const [expandedCompliance, setExpandedCompliance] = useState(false);
+    const [expandedPressureMap, setExpandedPressureMap] = useState(false);
+
     const realRecords = allData ?? data;
 
     // ─── Sincronização de planejamento aprovado (espelho do DASHBOARD_PLANNING_SYNC) ───
@@ -2333,34 +2553,90 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, allData, periodStar
                 </div>
             </div>
 
-            {/* Gráficos Full Width */}
-            <TrendAnalysisEnhanced
-                data={data}
-                referenceData={realRecords}
-                planningRecords={planningRecords}
-                filters={filters}
-                periodStart={periodStart}
-                periodEnd={periodEnd}
-                onDayClick={setDrilldownDate}
-            />
-            <ConcentrationPareto data={data} onBarClick={(title, chapas) => setListDrilldown({ title, chapas })} />
-
-            {/* Grid 50/50: Histograma e Compliance */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <DistributionHistogram data={data} onBucketClick={(title, chapas) => setListDrilldown({ title, chapas })} />
-                <ComplianceTable data={data} onRowClick={(cc, ccName) => setComplianceDrilldown({ cc, ccName })} />
-            </div>
-
-            {/* Mapa de Pressão */}
-            <PressureMap data={data} />
-
-            {/* Tabela de Colaboradores */}
+            {/* Tabela de Colaboradores (Movida para o topo conforme solicitado) */}
             <EmployeeTable 
                 data={data} 
                 onEmployeeClick={handleEmployeeClick} 
                 periodStart={periodStart}
                 periodEnd={periodEnd}
+                plannedRecords={planningRecords}
             />
+
+            {/* Análises Full Width (Drill-down) */}
+            <AnalysisSection
+                title="Análise de Tendência Temporal"
+                icon={<TrendingUp size={20} />}
+                isOpen={expandedTrends}
+                onToggle={() => setExpandedTrends(!expandedTrends)}
+                description="Visualização de picos de horas extras e aderência ao planejado ao longo do tempo."
+            >
+                <TrendAnalysisEnhanced
+                    data={data}
+                    referenceData={realRecords}
+                    planningRecords={planningRecords}
+                    filters={filters}
+                    periodStart={periodStart}
+                    periodEnd={periodEnd}
+                    onDayClick={setDrilldownDate}
+                    hideHeader={true}
+                />
+            </AnalysisSection>
+
+            <AnalysisSection
+                title="Análise de Concentração (Pareto)"
+                icon={<BarChart3 size={20} />}
+                isOpen={expandedConcentration}
+                onToggle={() => setExpandedConcentration(!expandedConcentration)}
+                description="Identificação dos 'poucos vitais' que geram 80% do passivo operacional."
+            >
+                <ConcentrationPareto 
+                    data={data} 
+                    onBarClick={(title, chapas) => setListDrilldown({ title, chapas })} 
+                    hideHeader={true}
+                />
+            </AnalysisSection>
+
+            {/* Grid de Análises Detalhadas (Drill-down) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <AnalysisSection
+                    title="Distribuição por Colaborador"
+                    icon={<PieChart size={20} />}
+                    isOpen={expandedDistribution}
+                    onToggle={() => setExpandedDistribution(!expandedDistribution)}
+                    description="Perfil de exaustão da equipe agrupado por faixas de horas."
+                >
+                    <DistributionHistogram 
+                        data={data} 
+                        onBucketClick={(title, chapas) => setListDrilldown({ title, chapas })} 
+                        hideHeader={true}
+                    />
+                </AnalysisSection>
+
+                <AnalysisSection
+                    title="Compliance Trabalhista"
+                    icon={<AlertTriangle size={20} />}
+                    isOpen={expandedCompliance}
+                    onToggle={() => setExpandedCompliance(!expandedCompliance)}
+                    description="Monitoramento de violações de limites da CLT e riscos de jornada."
+                >
+                    <ComplianceTable 
+                        data={data} 
+                        onRowClick={(cc, ccName) => setComplianceDrilldown({ cc, ccName })} 
+                        hideHeader={true}
+                    />
+                </AnalysisSection>
+            </div>
+
+            {/* Mapa de Pressão (Drill-down) */}
+            <AnalysisSection
+                title="Mapa de Pressão por Centro de Custo"
+                icon={<Activity size={20} />}
+                isOpen={expandedPressureMap}
+                onToggle={() => setExpandedPressureMap(!expandedPressureMap)}
+                description="Heatmap de desgaste operacional por unidade de negócio."
+            >
+                <PressureMap data={data} hideHeader={true} />
+            </AnalysisSection>
 
             {/* Modal de Drill-down Diário */}
             <DailyDrilldownModal

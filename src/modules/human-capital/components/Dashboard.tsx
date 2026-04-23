@@ -1213,173 +1213,239 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       {/* â”€â”€ 4 MEGA CARDS â”€â”€ */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
 
-        {/* 1. Orçamento */}
+        {/* 1. VISÃO FINANCEIRA */}
         {(() => {
           const budgetM = metrics.totalBudget / 1_000_000;
-          const usedPct = metrics.totalBudget > 0 ? Math.min((metrics.totalRealCost / metrics.totalBudget) * 100, 200) : 0;
+          const realM = metrics.totalRealCost / 1_000_000;
+          const usedPct = metrics.totalBudget > 0 ? (metrics.totalRealCost / metrics.totalBudget) * 100 : 0;
           const devioPct = metrics.totalBudget > 0 ? ((metrics.totalRealCost - metrics.totalBudget) / metrics.totalBudget) * 100 : 0;
           const isOver = metrics.totalRealCost > metrics.totalBudget;
-          const budgetTitle = dateMode === 'CUSTOM' ? 'Budget Rateado do Período' : 'Budget da Competência';
-          const budgetHint = dateMode === 'CUSTOM'
-            ? 'Rateado pelos dias cobertos no período'
-            : 'Competência selecionada';
+          
           return (
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md transition-all">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col gap-4 hover:shadow-md transition-all group">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-indigo-600 text-white shadow"><Wallet size={14} /></div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Orçamento</span>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-slate-100 text-slate-600 group-hover:bg-slate-600 group-hover:text-white transition-colors shadow-sm">
+                    <Wallet size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Visão Financeira</h4>
+                    <p className="text-[10px] text-gray-400 font-medium leading-none">Custo vs Orçamento</p>
+                  </div>
                 </div>
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${isOver ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                  {isOver ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
+                <div className={`px-2 py-1 rounded-lg text-[10px] font-black flex items-center gap-1 shadow-sm ${isOver ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                  {isOver ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
                   {Math.abs(devioPct).toFixed(1)}%
-                </span>
+                </div>
               </div>
+
               <div>
-                <p className="text-[9px] text-gray-400 uppercase font-bold">{budgetTitle}</p>
-                <p className="text-xl font-black text-gray-900 font-mono leading-tight">
-                  R$ {budgetM >= 1 ? `${budgetM.toFixed(2)}M` : metrics.totalBudget.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
-                </p>
-                <p className="text-[9px] text-gray-400 mt-0.5">{budgetHint}</p>
+                <span className="text-[10px] font-bold text-gray-400 uppercase">Custo Previsto</span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-black text-slate-900 font-mono">
+                    R$ {realM >= 1 ? `${realM.toFixed(2)}M` : metrics.totalRealCost.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                  </span>
+                </div>
               </div>
-              <div className="space-y-1">
-                <div className="flex justify-between text-[9px] font-bold text-gray-400 uppercase">
-                  <span>Custo Real</span>
-                  <span className={isOver ? 'text-red-500' : 'text-emerald-600'}>R$ {metrics.totalRealCost.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
+
+              <div className="space-y-2 mt-auto">
+                <div className="flex justify-between items-end">
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-bold text-gray-400 uppercase">Orçamento Previsto</span>
+                    <span className="text-xs font-bold text-slate-600">
+                      R$ {budgetM >= 1 ? `${budgetM.toFixed(2)}M` : metrics.totalBudget.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                  <span className={`text-[10px] font-black font-mono ${usedPct > 100 ? 'text-red-500' : 'text-slate-500'}`}>
+                    {usedPct.toFixed(0)}%
+                  </span>
                 </div>
-                <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                  <div className={`h-1.5 rounded-full transition-all ${isOver ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(usedPct, 100)}%` }} />
+                <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                  <div 
+                    className={`h-1.5 rounded-full transition-all duration-1000 ${isOver ? 'bg-red-500' : 'bg-slate-600'}`} 
+                    style={{ width: `${Math.min(usedPct, 100)}%` }} 
+                  />
                 </div>
-                <div className="flex justify-between text-[9px] text-gray-400">
-                  <span>Plan: R$ {metrics.totalPlannedValue.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
-                  <span>{usedPct.toFixed(0)}% consumido</span>
+                <div className="flex justify-between text-[9px] text-gray-400 font-medium">
+                  <span>Variação: R$ {(metrics.totalRealCost - metrics.totalBudget).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</span>
+                  <span>Impacto Financeiro</span>
                 </div>
               </div>
             </div>
           );
         })()}
 
-        {/* 2. Horas Extras */}
+        {/* 2. VISÃO OPERACIONAL */}
         {(() => {
           const ratioPct = metrics.totalPlannedHours > 0 ? (metrics.realTotalHE / metrics.totalPlannedHours) * 100 : 0;
           const isOver = metrics.realTotalHE > metrics.totalPlannedHours;
           const pct60 = metrics.realTotalHE > 0 ? (metrics.realHE60Hours / metrics.realTotalHE) * 100 : 0;
           const pct100 = metrics.realTotalHE > 0 ? (metrics.realHE100Hours / metrics.realTotalHE) * 100 : 0;
+          
           return (
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md transition-all">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col gap-4 hover:shadow-md transition-all group">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-slate-700 text-white shadow"><Clock size={14} /></div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Horas Extras</span>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors shadow-sm">
+                    <Clock size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Visão Operacional</h4>
+                    <p className="text-[10px] text-gray-400 font-medium leading-none">Execução de Horas</p>
+                  </div>
                 </div>
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${isOver ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                  {isOver ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
-                  {ratioPct.toFixed(1)}%
-                </span>
+                <div className={`px-2 py-1 rounded-lg text-[10px] font-black flex items-center gap-1 shadow-sm ${isOver ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
+                  {ratioPct.toFixed(0)}%
+                </div>
               </div>
+
               <div>
-                <p className="text-[9px] text-gray-400 uppercase font-bold">Total HE Real</p>
-                <p className="text-xl font-black text-gray-900 font-mono leading-tight">{formatDecimalHours(metrics.realTotalHE)}</p>
+                <span className="text-[10px] font-bold text-gray-400 uppercase">Horas Extras Realizadas</span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-black text-blue-900 font-mono">
+                    {formatDecimalHours(metrics.realTotalHE)}
+                  </span>
+                  <span className="text-xs font-bold text-blue-400 uppercase">horas</span>
+                </div>
               </div>
-              <div className="space-y-1">
-                <div className="flex gap-1 h-2 rounded-full overflow-hidden bg-gray-100">
-                  <div className="bg-blue-500 h-full transition-all" style={{ width: `${pct60}%` }} title={`HE 60%: ${pct60.toFixed(1)}%`} />
-                  <div className="bg-red-500 h-full transition-all" style={{ width: `${pct100}%` }} title={`HE 100%: ${pct100.toFixed(1)}%`} />
+
+              <div className="space-y-2 mt-auto">
+                <div className="flex justify-between items-end">
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-bold text-gray-400 uppercase">Volume Planejado</span>
+                    <span className="text-xs font-bold text-slate-600">{formatDecimalHours(metrics.totalPlannedHours)} h</span>
+                  </div>
                 </div>
-                <div className="flex justify-between text-[9px] font-bold">
+                <div className="flex gap-1 h-1.5 rounded-full overflow-hidden bg-gray-100">
+                  <div className="bg-blue-500 h-full transition-all duration-1000" style={{ width: `${pct60}%` }} title={`HE 60%: ${pct60.toFixed(1)}%`} />
+                  <div className="bg-red-400 h-full transition-all duration-1000" style={{ width: `${pct100}%` }} title={`HE 100%: ${pct100.toFixed(1)}%`} />
+                </div>
+                <div className="flex justify-between text-[9px] font-bold uppercase tracking-tight">
                   <span className="text-blue-600">60%: {formatDecimalHours(metrics.realHE60Hours)}</span>
-                  <span className="text-red-600">100%: {formatDecimalHours(metrics.realHE100Hours)}</span>
+                  <span className="text-red-500">100%: {formatDecimalHours(metrics.realHE100Hours)}</span>
                 </div>
-                <p className="text-[9px] text-gray-400">Plan: {formatDecimalHours(metrics.totalPlannedHours)}</p>
               </div>
             </div>
           );
         })()}
 
-        {/* 3. Riscos Trabalhistas */}
+        {/* 3. VISÃO COMPLIANCE */}
         {(() => {
-          const totalRisk = metrics.realInterHours + metrics.realAdicNoturnoHours;
+          const totalRiskHours = metrics.realInterHours + metrics.realAdicNoturnoHours;
+          const exposureLevel = metrics.realInterHours > 0 ? 'Crítico' : totalRiskHours > 0 ? 'Atenção' : 'Conforme';
+          const exposureColor = metrics.realInterHours > 0 ? 'text-red-600' : totalRiskHours > 0 ? 'text-amber-600' : 'text-emerald-600';
+          const exposureBg = metrics.realInterHours > 0 ? 'bg-red-50' : totalRiskHours > 0 ? 'bg-amber-50' : 'bg-emerald-50';
+
           return (
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md transition-all">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col gap-4 hover:shadow-md transition-all group">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-amber-500 text-white shadow"><ShieldAlert size={14} /></div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Riscos Trabalhistas</span>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-500 group-hover:text-white transition-colors shadow-sm">
+                    <ShieldAlert size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Visão Compliance</h4>
+                    <p className="text-[10px] text-gray-400 font-medium leading-none">Exposição Trabalhista</p>
+                  </div>
                 </div>
-                {totalRisk > 0 && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700">
-                    {formatDecimalHours(totalRisk)} h
-                  </span>
-                )}
+                <div className={`px-2 py-1 rounded-lg text-[10px] font-black shadow-sm ${exposureBg} ${exposureColor}`}>
+                  {exposureLevel}
+                </div>
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between py-1.5 border-b border-gray-50">
-                  <div className="flex items-center gap-1.5">
-                    <Scale size={12} className="text-amber-500" />
-                    <span className="text-[10px] font-bold text-gray-500 uppercase">Interjornada</span>
-                  </div>
-                  <span className="text-sm font-black text-gray-800 font-mono">{formatDecimalHours(metrics.realInterHours)}</span>
+
+              <div>
+                <span className="text-[10px] font-bold text-gray-400 uppercase">Risco Trabalhista Total</span>
+                <div className="flex items-baseline gap-1">
+                  <span className={`text-2xl font-black font-mono ${metrics.realInterHours > 0 ? 'text-red-700' : 'text-amber-700'}`}>
+                    {formatDecimalHours(totalRiskHours)}
+                  </span>
+                  <span className="text-xs font-bold text-amber-400 uppercase">horas</span>
                 </div>
-                <div className="flex items-center justify-between py-1.5 border-b border-gray-50">
-                  <div className="flex items-center gap-1.5">
-                    <Moon size={12} className="text-purple-500" />
-                    <span className="text-[10px] font-bold text-gray-500 uppercase">Noturno</span>
+              </div>
+
+              <div className="space-y-1.5 mt-auto">
+                <div className="flex items-center justify-between py-1 border-b border-gray-50">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                    <span className="text-[9px] font-bold text-gray-500 uppercase">Interjornada</span>
                   </div>
-                  <span className="text-sm font-black text-gray-800 font-mono">{formatDecimalHours(metrics.realAdicNoturnoHours)}</span>
+                  <span className="text-xs font-black text-slate-700 font-mono">{formatDecimalHours(metrics.realInterHours)}</span>
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-gray-50">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                    <span className="text-[9px] font-bold text-gray-500 uppercase">Adic. Noturno</span>
+                  </div>
+                  <span className="text-xs font-black text-slate-700 font-mono">{formatDecimalHours(metrics.realAdicNoturnoHours)}</span>
                 </div>
                 <div className="flex items-center justify-between py-1">
-                  <div className="flex items-center gap-1.5" title={`DSR = (Total HE / Semanas Úteis). Cálculo para o período: ${metrics.periodStats.businessDays} dias úteis e ${metrics.periodStats.sunHolidays} domingos/feriados.`}>
-                    <Calculator size={12} className="text-orange-500" />
-                    <span className="text-[10px] font-bold text-gray-500 uppercase">DSR Estimado</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                    <span className="text-[9px] font-bold text-gray-500 uppercase">DSR Estimado</span>
                   </div>
-                  <span className="text-sm font-black text-orange-600 font-mono">R$ {metrics.realValueDSR.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
+                  <span className="text-xs font-black text-amber-600 font-mono">R$ {metrics.realValueDSR.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</span>
                 </div>
               </div>
             </div>
           );
         })()}
 
-        {/* 4. Eficiência do Planejamento */}
+        {/* 4. VISÃO PERFORMANCE */}
         {(() => {
-          const eficiencia = metrics.totalPlannedHours > 0
+          const efficiency = metrics.totalPlannedHours > 0
             ? (metrics.realTotalHE / metrics.totalPlannedHours) * 100
             : 0;
-          const efColor = eficiencia > 110 ? 'text-red-600' : eficiencia > 90 ? 'text-emerald-600' : 'text-amber-500';
-          const barColor = eficiencia > 110 ? 'bg-red-500' : eficiencia > 90 ? 'bg-emerald-500' : 'bg-amber-400';
-          const label = eficiencia > 110 ? 'Acima do Planejado' : eficiencia > 90 ? 'Dentro do Esperado' : 'Abaixo do Planejado';
-          const budgetEfic = metrics.totalBudget > 0
+          const costEfficiency = metrics.totalBudget > 0
             ? (metrics.totalRealCost / metrics.totalBudget) * 100
             : 0;
+            
+          const status = efficiency > 110 ? 'Over' : efficiency > 90 ? 'Ideal' : 'Under';
+          const statusColor = efficiency > 110 ? 'text-red-600' : efficiency > 90 ? 'text-violet-600' : 'text-amber-500';
+          const statusBg = efficiency > 110 ? 'bg-red-50' : efficiency > 90 ? 'bg-violet-50' : 'bg-amber-50';
+
           return (
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3 hover:shadow-md transition-all">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-violet-600 text-white shadow"><Zap size={14} /></div>
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Eficiência</span>
-              </div>
-              <div>
-                <p className="text-[9px] text-gray-400 uppercase font-bold">Eficiência do Planejamento</p>
-                <p className={`text-3xl font-black font-mono leading-tight ${efColor}`}>
-                  {eficiencia.toFixed(1)}%
-                </p>
-                <p className="text-[9px] text-gray-400 mt-0.5">{label}</p>
-              </div>
-              <div className="space-y-2">
-                <div>
-                  <div className="flex justify-between text-[9px] font-bold text-gray-400 mb-0.5">
-                    <span>Horas Real / Planejado</span>
-                    <span>{eficiencia.toFixed(0)}%</span>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col gap-4 hover:shadow-md transition-all group">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-violet-50 text-violet-600 group-hover:bg-violet-600 group-hover:text-white transition-colors shadow-sm">
+                    <Zap size={18} />
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                    <div className={`h-1.5 rounded-full transition-all ${barColor}`} style={{ width: `${Math.min(eficiencia, 100)}%` }} />
+                  <div>
+                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Visão Performance</h4>
+                    <p className="text-[10px] text-gray-400 font-medium leading-none">Aderência ao Plano</p>
+                  </div>
+                </div>
+                <div className={`px-2 py-1 rounded-lg text-[10px] font-black shadow-sm ${statusBg} ${statusColor}`}>
+                  {status}
+                </div>
+              </div>
+
+              <div>
+                <span className="text-[10px] font-bold text-gray-400 uppercase">Eficiência Operacional</span>
+                <div className="flex items-baseline gap-1">
+                  <span className={`text-2xl font-black font-mono ${statusColor}`}>
+                    {efficiency.toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-3 mt-auto">
+                <div>
+                  <div className="flex justify-between text-[9px] font-bold text-gray-400 mb-1 uppercase">
+                    <span>Horas Real / Plan</span>
+                    <span>{efficiency.toFixed(0)}%</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-1 overflow-hidden">
+                    <div className={`h-1 rounded-full transition-all duration-1000 ${efficiency > 100 ? 'bg-red-400' : 'bg-violet-500'}`} style={{ width: `${Math.min(efficiency, 100)}%` }} />
                   </div>
                 </div>
                 <div>
-                  <div className="flex justify-between text-[9px] font-bold text-gray-400 mb-0.5">
-                    <span>{dateMode === 'CUSTOM' ? 'Custo Real / Budget Rateado' : 'Custo Real / Budget'}</span>
-                    <span>{budgetEfic.toFixed(0)}%</span>
+                  <div className="flex justify-between text-[9px] font-bold text-gray-400 mb-1 uppercase">
+                    <span>Custo / Budget</span>
+                    <span>{costEfficiency.toFixed(0)}%</span>
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                    <div className={`h-1.5 rounded-full transition-all ${budgetEfic > 100 ? 'bg-red-500' : 'bg-violet-500'}`} style={{ width: `${Math.min(budgetEfic, 100)}%` }} />
+                  <div className="w-full bg-gray-100 rounded-full h-1 overflow-hidden">
+                    <div className={`h-1 rounded-full transition-all duration-1000 ${costEfficiency > 100 ? 'bg-red-400' : 'bg-violet-400'}`} style={{ width: `${Math.min(costEfficiency, 100)}%` }} />
                   </div>
                 </div>
               </div>
