@@ -47,6 +47,7 @@ export const CC_MASTER: CCInfo[] = [
     { ccNorm: '303703', name: 'LOCACAO SOCADORA E REGULADORA - VLI', regional: 'Regional 02' },
     { ccNorm: '304401', name: 'MODERNIZACAO E LIMP LASTRO - ARARAQUARA', regional: 'Regional 02' },
     { ccNorm: '304402', name: 'INFRANORTE - ARARAQUARA', regional: 'Regional 02' },
+    { ccNorm: '304403', name: 'LIMPEZA DE LASTRO ZMA/ZDZ', regional: 'Regional 02' },
 
     // ── OUTROS ───────────────────────────────────────────────────────────────
     { ccNorm: '302701', name: 'VLI TC IBAMA', regional: 'Outros' },
