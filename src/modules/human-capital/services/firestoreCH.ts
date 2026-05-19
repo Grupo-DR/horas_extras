@@ -471,3 +471,12 @@ export const replaceHeadcountRecords = async (
         replacedAt: new Date().toISOString(),
     }, user);
 };
+
+/**
+ * Busca todos os documentos da coleção `hc_planning_records` do Firestore,
+ * sem filtros ou limites, preservando todos os campos originais.
+ */
+export const getAllPlanningRecordsFromFirestore = async (): Promise<any[]> => {
+    const snapshot = await getDocs(collection(db, COL_PLANNING));
+    return snapshot.docs.map(d => d.data());
+};

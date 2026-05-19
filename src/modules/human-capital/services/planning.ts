@@ -581,3 +581,13 @@ export const replaceHeadcount = async (
         await saveSalaries(salaryAllocations, user, { replaceMonthKeys });
     }
 };
+
+/**
+ * Busca todos os registros de planejamento diretamente do Firestore (requer estar online).
+ */
+export const getAllPlanningRecordsFromFirestore = async (): Promise<any[]> => {
+    if (isOnline()) {
+        return await FirestoreService.getAllPlanningRecordsFromFirestore();
+    }
+    throw new Error("Offline: Não é possível buscar registros do Firestore.");
+};

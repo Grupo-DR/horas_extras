@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, ManualEmployee, GlobalEmployee, HeadcountRecord } from '../types';
-import { savePlanning, getPlanning, getSalaries, getSalariesSync, saveBudgets, getBudgetsSync, getAllBudgetsAsync, deleteBudgets, deleteAllBudgets, saveGlobalEmployees, getGlobalEmployeesAsync, getGlobalEmployeesSync } from '../services/planning';
+import { savePlanning, getPlanning, getSalaries, getSalariesSync, saveBudgets, getBudgetsSync, getAllBudgetsAsync, deleteBudgets, deleteAllBudgets, saveGlobalEmployees, getGlobalEmployeesAsync, getGlobalEmployeesSync, getAllPlanningRecordsFromFirestore } from '../services/planning';
 import { canApprove, canManageBudgets } from '../../iam/types';
 import { ApprovalPanel } from './ApprovalPanel';
 import { getCCName, getCCRegional } from '../data/ccMaster';
 import { isRecordInHumanCapitalScope } from '../utils/scopeFilters';
 
-import { Users, Wallet, TrendingUp, Calculator, CheckCircle2, AlertTriangle, X, ChevronLeft, ChevronRight, Save, FileUp, ArrowUpRight, ArrowDownRight, LayoutList, Trash2, Mail, Copy } from 'lucide-react';
+import { Users, Wallet, TrendingUp, Calculator, CheckCircle2, AlertTriangle, X, ChevronLeft, ChevronRight, Save, FileUp, FileDown, ArrowUpRight, ArrowDownRight, LayoutList, Trash2, Mail, Copy } from 'lucide-react';
 import { formatDecimalHours, parseTimeToDecimal } from '../utils/formatters';
 import * as XLSX from 'xlsx';
 import { PlanningTable } from './PlanningTable';
@@ -937,8 +937,32 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
     const [salaries, setSalaries] = useState<Record<string, number>>({});
     const [budgets, setBudgets] = useState<BudgetRecord[]>([]);
     const [saving, setSaving] = useState(false);
+    const [exporting, setExporting] = useState(false);
     const [alert, setAlert] = useState<{ type: 'success' | 'error', message: string } | null>(null);
     const canManagePlanningBudgets = user.isSuperAdmin || canManageBudgets(user.role);
+    const isAdministradorMaster = user.role === 'CH_ADMIN' || user.isSuperAdmin || (user.role as string) === 'DEV_MASTER' || (user.role as string) === 'MASTER';
+
+    const handleExportPlanningJSON = async () => {
+        setExporting(true);
+        try {
+            const records = await getAllPlanningRecordsFromFirestore();
+            const blob = new Blob([JSON.stringify(records, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.href = url;
+            downloadAnchor.download = `hc_planning_records_${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+            URL.revokeObjectURL(url);
+            setAlert({ type: 'success', message: 'Coleção exportada com sucesso!' });
+        } catch (error: any) {
+            console.error("Erro ao exportar JSON:", error);
+            setAlert({ type: 'error', message: `Erro ao exportar JSON: ${error.message}` });
+        } finally {
+            setExporting(false);
+        }
+    };
 
     const [ccPlanModalId, setCcPlanModalId] = useState<string | null>(null);
 
@@ -1407,6 +1431,14 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                 const key = `${chapa}_${costCenter}_${dateKey}`;
                 const hours = mergedPlans[key];
                 if (hours !== undefined) {
+                    // BUG FIX: Preserve approved/pending status — never downgrade to draft.
+                    // Previously this always wrote 'draft', corrupting approved records.
+                    const originalStatus = (planStatuses[key] as PlanningRecord['status']) || 'draft';
+                    const finalStatus: PlanningRecord['status'] =
+                        (originalStatus === 'approved' || originalStatus === 'pending') && hours > 0
+                            ? originalStatus
+                            : 'draft';
+
                     recordsToSave.push({
                         id: `${chapa}_${costCenter}_DAILY_${dateKey}`,
                         chapa,
@@ -1415,7 +1447,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                         date: dateKey,
                         type: 'DAILY',
                         plannedHours: hours,
-                        status: 'draft'
+                        status: finalStatus
                     });
                 }
                 curr.setDate(curr.getDate() + 1);
@@ -1568,9 +1600,20 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                         const isWithinRange = dateKey >= submissionRange.start && dateKey <= submissionRange.end;
                         const originalStatus = (planStatuses[key] as PlanningRecord['status']) || 'draft';
                         const hasHours = hours > 0;
-                        const finalStatus: PlanningRecord['status'] = submitPending
-                            ? (isWithinRange && hasHours ? 'pending' : (hasHours ? originalStatus : 'draft'))
-                            : (((originalStatus === 'approved' || originalStatus === 'pending') && hasHours) ? originalStatus : 'draft');
+
+                        // BUG FIX: approved records are NEVER demoted by any save operation.
+                        // Previously, submitPending=true would push 'pending' even for approved records
+                        // when they fell inside the submissionRange (e.g. default full-payroll range).
+                        let finalStatus: PlanningRecord['status'];
+                        if (originalStatus === 'approved') {
+                            // Approved is immutable from this flow — only explicit approve/reject actions may change it.
+                            finalStatus = 'approved';
+                        } else if (submitPending) {
+                            finalStatus = isWithinRange && hasHours ? 'pending' : (hasHours ? originalStatus : 'draft');
+                        } else {
+                            // Save-draft: preserve pending status too (don't regress pending → draft).
+                            finalStatus = ((originalStatus === 'pending') && hasHours) ? 'pending' : (hasHours ? 'draft' : 'draft');
+                        }
 
                         recordsToSave.push({
                             id: `${emp.chapa}_${emp.cc}_DAILY_${dateKey}`,
@@ -1880,6 +1923,20 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                                     </button>
                                 </>
                             )}
+                            {isAdministradorMaster && (
+                                <button
+                                    onClick={handleExportPlanningJSON}
+                                    disabled={exporting}
+                                    className="bg-white text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-indigo-50 flex items-center gap-2 shadow-sm disabled:opacity-50 transition"
+                                >
+                                    {exporting ? (
+                                        <div className="animate-spin w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full" />
+                                    ) : (
+                                        <FileDown size={16} />
+                                    )}
+                                    Exportar JSON
+                                </button>
+                            )}
                             <div className="self-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
                                 Salários vêm do headcount ativo
                             </div>
@@ -1967,10 +2024,16 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                                     .filter(e => !!e);
 
                                 let totalHours = 0;
+                                let totalDraftHours = 0;
+                                let totalPendingHours = 0;
+                                let totalApprovedHours = 0;
                                 let totalCost = 0;
 
                                 const memberRecords = ccEmployees.map((emp: any) => {
                                     let empHours = 0;
+                                    let draftHours = 0;
+                                    let pendingHours = 0;
+                                    let approvedHours = 0;
                                     let empCost = 0;
                                     const salary = salaries[emp.chapa];
 
@@ -1978,7 +2041,15 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                                     while (curr <= periodEnd) {
                                         const key = `${emp.chapa}_${cc.costCenter}_${formatDateKey(curr)}`;
                                         const hours = plans[key] || 0;
+                                        const status = planStatuses[key] || 'draft';
+                                        
                                         empHours += hours;
+                                        if (hours > 0) {
+                                            if (status === 'draft') draftHours += hours;
+                                            else if (status === 'pending') pendingHours += hours;
+                                            else if (status === 'approved') approvedHours += hours;
+                                        }
+
                                         if (salary && hours > 0) {
                                             const isSunday = curr.getDay() === 0;
                                             const baseHour = salary / 220;
@@ -1989,6 +2060,9 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                                     }
 
                                     totalHours += empHours;
+                                    totalDraftHours += draftHours;
+                                    totalPendingHours += pendingHours;
+                                    totalApprovedHours += approvedHours;
                                     totalCost += empCost;
 
                                     return {
@@ -1996,6 +2070,9 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                                         description: emp.nome,
                                         chapa: emp.chapa,
                                         plannedHours: empHours,
+                                        draftHours,
+                                        pendingHours,
+                                        approvedHours,
                                         customEstCost: empCost
                                     };
                                 });
@@ -2006,6 +2083,9 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                                     costCenter: cc.costCenter,
                                     headcount: cc.memberChapas.length,
                                     plannedHours: totalHours,
+                                    draftHours: totalDraftHours,
+                                    pendingHours: totalPendingHours,
+                                    approvedHours: totalApprovedHours,
                                     customEstCost: totalCost,
                                     date: selectedMonth,
                                     shift: 'Integral',
