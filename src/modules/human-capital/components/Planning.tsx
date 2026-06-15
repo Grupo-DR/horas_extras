@@ -663,7 +663,26 @@ const CostCenterPlanModal: React.FC<{
         memberChapas.forEach(chapa => {
             days.forEach(day => {
                 const dk = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
-                numericMap[`${chapa}_${costCenter}_${dk}`] = parseTimeToDecimal(localValues[`${chapa}_${dk}`] || '0');
+                const fullKey = `${chapa}_${costCenter}_${dk}`;
+                const numericVal = parseTimeToDecimal(localValues[`${chapa}_${dk}`] || '0');
+                const existingHours = plans[fullKey] ?? 0;
+                const existingStatus = planStatuses[fullKey] || 'draft';
+
+                // FIX 4 — O modal só envia ao caller entradas com dados relevantes:
+                // • Tem horas novas (> 0): sempre inclui.
+                // • Tinha horas antes e agora está zerado E não é aprovado:
+                //   usuário limpou explicitamente → inclui para apagar no Firestore.
+                // • Aprovado com horas > 0 e valor do modal = 0: NÃO inclui
+                //   (o usuário pode ter deixado o campo em branco, mas o registro
+                //   aprovado é imutável — a guarda nas camadas 3C e 2 bloqueariam
+                //   de qualquer forma, mas evitar envio é mais eficiente).
+                const shouldInclude =
+                    numericVal > 0 ||
+                    (existingHours > 0 && existingStatus !== 'approved' && existingStatus !== 'pending');
+
+                if (shouldInclude) {
+                    numericMap[fullKey] = numericVal;
+                }
             });
         });
         await onSave(costCenter, numericMap);
@@ -1158,8 +1177,21 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
             const statusMap: Record<string, string> = {};
             records.forEach(r => {
                 const key = `${r.chapa}_${r.costCenter}_${r.date}`;
-                planMap[key] = r.plannedHours;
-                statusMap[key] = r.status || 'draft'; // Sem status = rascunho (editavel)
+                // FIX 3A — Só armazena horas no planMap se o registro tem horas reais
+                // ou status relevante (approved/pending). Zeros de rascunhos são
+                // resíduos de saves anteriores e NÃO devem ser re-gravados no próximo save.
+                // Manter apenas o statusMap para esses casos garante que o UI ainda
+                // renderiza o status correto, sem expor o zero ao fluxo de gravação.
+                const hasRealHours = (r.plannedHours ?? 0) > 0;
+                const isRelevantStatus = r.status === 'approved' || r.status === 'pending';
+
+                if (hasRealHours || isRelevantStatus) {
+                    planMap[key] = r.plannedHours ?? 0;
+                }
+                // Sempre rastreia o status (para UI de bloqueio/ícones)
+                if (r.status) {
+                    statusMap[key] = r.status;
+                }
             });
             setPlans(planMap);
             setPlanStatuses(statusMap);
@@ -1430,26 +1462,44 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                 const dateKey = formatDateKey(curr);
                 const key = `${chapa}_${costCenter}_${dateKey}`;
                 const hours = mergedPlans[key];
-                if (hours !== undefined) {
-                    // BUG FIX: Preserve approved/pending status — never downgrade to draft.
-                    // Previously this always wrote 'draft', corrupting approved records.
-                    const originalStatus = (planStatuses[key] as PlanningRecord['status']) || 'draft';
-                    const finalStatus: PlanningRecord['status'] =
-                        (originalStatus === 'approved' || originalStatus === 'pending') && hours > 0
-                            ? originalStatus
-                            : 'draft';
+                const originalStatus = (planStatuses[key] as PlanningRecord['status']) || 'draft';
 
-                    recordsToSave.push({
-                        id: `${chapa}_${costCenter}_DAILY_${dateKey}`,
-                        chapa,
-                        nome: emp.nome,
-                        costCenter,
-                        date: dateKey,
-                        type: 'DAILY',
-                        plannedHours: hours,
-                        status: finalStatus
-                    });
+                // FIX 3C — Mesmas guards de imutabilidade do handleSave.
+
+                // REGRA 1: Chave não presente no mapa → não foi tocada → pular.
+                if (hours === undefined) {
+                    curr.setDate(curr.getDate() + 1);
+                    continue;
                 }
+
+                // REGRA 2: Aprovados com horas = 0 são intocáveis por este fluxo.
+                if (originalStatus === 'approved' && hours <= 0) {
+                    curr.setDate(curr.getDate() + 1);
+                    continue;
+                }
+
+                // REGRA 3: Ghost records de rascunho não são persistidos.
+                if (hours <= 0 && originalStatus === 'draft') {
+                    curr.setDate(curr.getDate() + 1);
+                    continue;
+                }
+
+                // Preserva status: approved e pending nunca regridem via save de gestor.
+                const finalStatus: PlanningRecord['status'] =
+                    (originalStatus === 'approved' || originalStatus === 'pending') && hours > 0
+                        ? originalStatus
+                        : 'draft';
+
+                recordsToSave.push({
+                    id: `${chapa}_${costCenter}_DAILY_${dateKey}`,
+                    chapa,
+                    nome: emp.nome,
+                    costCenter,
+                    date: dateKey,
+                    type: 'DAILY',
+                    plannedHours: hours,
+                    status: finalStatus
+                });
                 curr.setDate(curr.getDate() + 1);
             }
         });
@@ -1595,40 +1645,59 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                     const dateKey = formatDateKey(curr);
                     const key = `${emp.chapa}_${emp.cc}_${dateKey}`;
                     const hours = plans[key];
+                    const originalStatus = (planStatuses[key] as PlanningRecord['status']) || 'draft';
 
-                    if (hours !== undefined) {
-                        const isWithinRange = dateKey >= submissionRange.start && dateKey <= submissionRange.end;
-                        const originalStatus = (planStatuses[key] as PlanningRecord['status']) || 'draft';
-                        const hasHours = hours > 0;
+                    // FIX 3B — Guards de imutabilidade: três regras antes de incluir no payload.
 
-                        // BUG FIX: approved records are NEVER demoted by any save operation.
-                        // Previously, submitPending=true would push 'pending' even for approved records
-                        // when they fell inside the submissionRange (e.g. default full-payroll range).
-                        let finalStatus: PlanningRecord['status'];
-                        if (originalStatus === 'approved') {
-                            // Approved is immutable from this flow — only explicit approve/reject actions may change it.
-                            finalStatus = 'approved';
-                        } else if (submitPending) {
-                            finalStatus = isWithinRange && hasHours ? 'pending' : (hasHours ? originalStatus : 'draft');
-                        } else {
-                            // Save-draft: preserve pending status too (don't regress pending → draft).
-                            finalStatus = ((originalStatus === 'pending') && hasHours) ? 'pending' : (hasHours ? 'draft' : 'draft');
-                        }
-
-                        recordsToSave.push({
-                            id: `${emp.chapa}_${emp.cc}_DAILY_${dateKey}`,
-                            chapa: emp.chapa,
-                            nome: emp.nome,
-                            costCenter: emp.cc,
-                            date: dateKey,
-                            type: 'DAILY',
-                            plannedHours: hours,
-                            status: finalStatus
-                        });
-
-                        nextStatuses[key] = finalStatus;
+                    // REGRA 1: Não tocar o que não foi carregado nesta sessão.
+                    // hours === undefined → chave ausente no planMap → dia intocado → pular.
+                    if (hours === undefined) {
+                        curr.setDate(curr.getDate() + 1);
+                        continue;
                     }
 
+                    // REGRA 2: Registros aprovados com horas = 0 no state local são resíduos
+                    // do carregamento (approved sem horas reais, ex: dias fora da escala aprovada).
+                    // Nunca sobrescrever via este fluxo — apenas approve/reject podem alterar.
+                    if (originalStatus === 'approved' && hours <= 0) {
+                        curr.setDate(curr.getDate() + 1);
+                        continue;
+                    }
+
+                    // REGRA 3: Rascunhos com 0 horas são ghost records. Não persistir.
+                    // (O usuário não programou nada para este dia — não criar registro vazio.)
+                    if (hours <= 0 && originalStatus === 'draft') {
+                        curr.setDate(curr.getDate() + 1);
+                        continue;
+                    }
+
+                    const isWithinRange = dateKey >= submissionRange.start && dateKey <= submissionRange.end;
+                    const hasHours = hours > 0;
+
+                    // Determina o status final preservando imutabilidade.
+                    let finalStatus: PlanningRecord['status'];
+                    if (originalStatus === 'approved') {
+                        // Approved é imutável por este fluxo — só approve/reject explícito muda.
+                        finalStatus = 'approved';
+                    } else if (submitPending) {
+                        finalStatus = isWithinRange && hasHours ? 'pending' : (hasHours ? originalStatus : 'draft');
+                    } else {
+                        // Save-draft: não regredir pending → draft.
+                        finalStatus = (originalStatus === 'pending' && hasHours) ? 'pending' : (hasHours ? 'draft' : 'draft');
+                    }
+
+                    recordsToSave.push({
+                        id: `${emp.chapa}_${emp.cc}_DAILY_${dateKey}`,
+                        chapa: emp.chapa,
+                        nome: emp.nome,
+                        costCenter: emp.cc,
+                        date: dateKey,
+                        type: 'DAILY',
+                        plannedHours: hours,
+                        status: finalStatus
+                    });
+
+                    nextStatuses[key] = finalStatus;
                     curr.setDate(curr.getDate() + 1);
                 }
             });

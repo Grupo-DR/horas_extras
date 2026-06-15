@@ -99,18 +99,34 @@ const getSalaryReplaceMonthKeysFromHeadcount = (records: HeadcountRecord[]): str
 // --- PLANNING ---
 
 export const savePlanning = async (plans: PlanningRecord[], user: UserProfile): Promise<void> => {
+    // INVARIANT: Registros com status 'approved' são imutáveis fora do fluxo
+    // de aprovação/rejeição explícito. Nunca sobrescrever horas de um registro
+    // aprovado com plannedHours <= 0 — isso indica dado residual ou bug no caller.
+    const safeRecords = plans.filter(r => {
+        if (r.status === 'approved' && (r.plannedHours ?? 0) <= 0) {
+            console.warn(
+                `[savePlanning] BLOQUEADO: tentativa de zerar horas de registro aprovado.`,
+                `ID: ${r.id} | Chapa: ${r.chapa} | Data: ${r.date} | CC: ${r.costCenter}`
+            );
+            return false;
+        }
+        return true;
+    });
+
+    if (safeRecords.length === 0) return;
+
     try {
         if (isOnline()) {
-            await FirestoreService.upsertPlanningRecords(plans, user);
+            await FirestoreService.upsertPlanningRecords(safeRecords, user);
         } else {
             console.warn("Offline: Saving planning to local cache only.");
         }
 
         // Also update local cache/storage for fallback
-        updateLocalPlanningCache(plans);
+        updateLocalPlanningCache(safeRecords);
     } catch (error) {
         console.error("Save Planning Failed:", error);
-        updateLocalPlanningCache(plans); // Fallback
+        updateLocalPlanningCache(safeRecords); // Fallback
     }
 };
 
