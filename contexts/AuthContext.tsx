@@ -162,6 +162,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!profile) return false;
         if (profile.isSuperAdmin) return true;
 
+        // TEMPORÁRIO PARA DEMONSTRAÇÃO: Forçando ativação do módulo de obras
+        if (module === 'construction') return true;
+
         return !!profile.modules[module]?.enabled;
     };
 

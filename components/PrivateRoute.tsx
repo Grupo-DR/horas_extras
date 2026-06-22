@@ -40,7 +40,7 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, requiredMo
         // Redirect to the first module the user has access to
         if (hasModuleAccess('human_capital')) return <Navigate to="/human-capital" replace />;
         if (hasModuleAccess('commercial')) return <Navigate to="/" replace />;
-        if (profile?.modules?.construction?.enabled) return <Navigate to="/construction" replace />;
+        if (hasModuleAccess('construction')) return <Navigate to="/construction" replace />;
         // No module access at all - show login
         return <Navigate to="/login" replace />;
     }

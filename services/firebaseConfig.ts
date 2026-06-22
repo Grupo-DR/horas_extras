@@ -3,13 +3,13 @@ import { initializeFirestore, Firestore } from 'firebase/firestore';
 import { getAuth, setPersistence, browserLocalPersistence, Auth } from 'firebase/auth';
 
 export const firebaseConfig = {
-    apiKey: "AIzaSyCCIPZr7nfdZZKHPQ5VdwIzwglSM7bXapo",
-    authDomain: "kanbancomercial-af561.firebaseapp.com",
-    projectId: "kanbancomercial-af561",
-    storageBucket: "kanbancomercial-af561.firebasestorage.app",
-    messagingSenderId: "1034446322680",
-    appId: "1:1034446322680:web:d3d8778a6131d9bb22740d",
-    measurementId: "G-SR7KRPM38D"
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 import { getStorage, FirebaseStorage } from 'firebase/storage';

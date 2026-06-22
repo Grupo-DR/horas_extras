@@ -47,7 +47,7 @@ export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ isOpen, onClose 
             color: 'bg-amber-600',
             textColor: 'text-amber-600',
             bgLight: 'bg-amber-50',
-            allowed: profile?.isSuperAdmin || !!(profile?.modules?.construction?.enabled)
+            allowed: profile?.isSuperAdmin || hasModuleAccess('construction')
         }
     ];
 
