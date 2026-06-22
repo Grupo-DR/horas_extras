@@ -256,21 +256,7 @@ npm install
 
 ### 3. Configurar variáveis de ambiente
 
-Crie um arquivo `.env.local` na raiz do projeto com o conteúdo abaixo:
 
-```env
-# Google Gemini API
-VITE_GEMINI_API_KEY=SUA_CHAVE_GEMINI_AQUI
-
-# Firebase Configuration (Projeto: kanbancomercial-af561)
-VITE_FIREBASE_API_KEY=AIzaSyCCIPZr7nfdZZKHPQSVdwIzwglSM7bXapo
-VITE_FIREBASE_AUTH_DOMAIN=kanbancomercial-af561.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=kanbancomercial-af561
-VITE_FIREBASE_STORAGE_BUCKET=kanbancomercial-af561.firebasestorage.app
-VITE_FIREBASE_MESSAGING_SENDER_ID=1034446322680
-VITE_FIREBASE_APP_ID=1:1034446322680:web:d3d8778a6131d9bb22740d
-VITE_FIREBASE_MEASUREMENT_ID=G-SR7KRPM38D
-```
 
 > ⚠️ **ATENÇÃO**: Nunca commitar o arquivo `.env.local` no repositório. Ele já está no `.gitignore`.  
 > A chave do Firebase neste README é pública (usada no cliente web) mas a chave do Gemini deve ser mantida em segredo.
