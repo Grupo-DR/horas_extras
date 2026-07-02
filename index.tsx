@@ -141,6 +141,7 @@ root.render(
               />
 
               {/* MÓDULO COMERCIAL (Layout Padrão com Sidebar) */}
+              <Route path="/comercial/*" element={<Navigate to="/commercial" replace />} />
               <Route
                 path="/commercial/*"
                 element={
