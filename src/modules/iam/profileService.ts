@@ -5,7 +5,7 @@ import { UserProfileDoc } from './types';
 
 const COLLECTION = 'user_profiles';
 // Hardcoded Super Admin Emails
-const SUPER_ADMINS = ['antonio.silva@grupodr.com.br'];
+const SUPER_ADMINS = ['antonio.silva@grupodr.com.br', 'dimitri.gomes@grupodr.com.br'];
 
 export const getUserProfile = async (uid: string): Promise<UserProfileDoc | null> => {
     try {
