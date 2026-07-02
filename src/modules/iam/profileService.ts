@@ -1,5 +1,5 @@
-import { auth, db } from '@/services/firebaseConfig';
-import { doc, getDoc, setDoc, updateDoc, Timestamp, collection, getDocs } from 'firebase/firestore';
+import { auth, db } from '../../../services/firebaseConfig';
+import { doc, getDoc, setDoc, updateDoc, Timestamp, collection, getDocs, deleteDoc } from 'firebase/firestore';
 import { User as FirebaseUser, signOut } from 'firebase/auth';
 import { UserProfileDoc } from './types';
 
@@ -62,10 +62,15 @@ export const getOrCreateUserProfile = async (authUser: FirebaseUser): Promise<Us
                 role: isSuperAdmin ? 'CH_ADMIN' : 'CH_AUDITOR_VIEWER',
                 scope: { type: 'ALL' } // Default scope
             },
-            construction: {
+            construction_vli: {
                 enabled: isSuperAdmin,
-                role: isSuperAdmin ? 'CONSTRUCTION_ADMIN' : 'CONSTRUCTION_VIEWER' // Default role
-            }
+                role: isSuperAdmin ? 'CONSTRUCTION_ADMIN' : 'CONSTRUCTION_VIEWER'
+            },
+            construction_rdo: {
+                enabled: isSuperAdmin,
+                role: isSuperAdmin ? 'CONSTRUCTION_ADMIN' : 'CONSTRUCTION_VIEWER'
+            },
+            bi_reports: isSuperAdmin ? ['Financeiro', 'Gestão de Contratos', 'Obras'] : []
         },
         createdAt: new Date().toISOString(),
         createdBy: 'system',
@@ -77,7 +82,9 @@ export const getOrCreateUserProfile = async (authUser: FirebaseUser): Promise<Us
     if (!isSuperAdmin) {
         newProfile.modules.commercial!.enabled = false;
         newProfile.modules.human_capital!.enabled = false;
-        newProfile.modules.construction!.enabled = false;
+        newProfile.modules.construction_vli!.enabled = false;
+        newProfile.modules.construction_rdo!.enabled = false;
+        newProfile.modules.bi_reports = [];
     }
 
     try {
@@ -103,7 +110,9 @@ export const createUserProfile = async (uid: string, email: string, displayName:
             modules: {
                 commercial: { enabled: false, role: 'COMMERCIAL_VIEWER' },
                 human_capital: { enabled: false, role: 'CH_AUDITOR_VIEWER', scope: { type: 'ALL' } },
-                construction: { enabled: false, role: 'CONSTRUCTION_VIEWER' }
+                construction_vli: { enabled: false, role: 'CONSTRUCTION_VIEWER' },
+                construction_rdo: { enabled: false, role: 'CONSTRUCTION_VIEWER' },
+                bi_reports: []
             },
             createdAt: new Date().toISOString(),
             createdBy: 'admin_manual_sync',
@@ -159,14 +168,28 @@ export const getUsersDirectory = async (): Promise<any[]> => {
 export const updateUserRoles = async (uid: string, iamUpdates: {
     commercial?: { enabled: boolean; role: 'COMMERCIAL_ADMIN' | 'COMMERCIAL_VIEWER' | 'IAM_ADMIN' };
     human_capital?: { enabled: boolean; role: import('./types').CHRole; scope: any };
-    construction?: { enabled: boolean; role: 'CONSTRUCTION_ADMIN' | 'CONSTRUCTION_MANAGER' | 'CONSTRUCTION_VIEWER' };
+    construction_vli?: { enabled: boolean; role: 'CONSTRUCTION_ADMIN' | 'CONSTRUCTION_MANAGER' | 'CONSTRUCTION_VIEWER' };
+    construction_rdo?: { enabled: boolean; role: 'CONSTRUCTION_ADMIN' | 'CONSTRUCTION_MANAGER' | 'CONSTRUCTION_VIEWER' };
+    bi_reports?: string[];
 }) => {
     const ref = doc(db, COLLECTION, uid);
     const updates: any = {};
     if (iamUpdates.commercial) updates['modules.commercial'] = iamUpdates.commercial;
     if (iamUpdates.human_capital) updates['modules.human_capital'] = iamUpdates.human_capital;
-    if (iamUpdates.construction) updates['modules.construction'] = iamUpdates.construction;
+    if (iamUpdates.construction_vli) updates['modules.construction_vli'] = iamUpdates.construction_vli;
+    if (iamUpdates.construction_rdo) updates['modules.construction_rdo'] = iamUpdates.construction_rdo;
+    if (iamUpdates.bi_reports !== undefined) updates['modules.bi_reports'] = iamUpdates.bi_reports;
 
     updates['updatedAt'] = new Date().toISOString();
     await updateDoc(ref, updates);
+};
+
+export const deleteUserProfile = async (uid: string) => {
+    try {
+        const ref = doc(db, COLLECTION, uid);
+        await deleteDoc(ref);
+    } catch (error) {
+        console.error("Error deleting user profile:", error);
+        throw error;
+    }
 };

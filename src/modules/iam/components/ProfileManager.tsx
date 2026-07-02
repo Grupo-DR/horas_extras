@@ -1,14 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { UserProfileDoc, CHRole, CommercialRole, Scope, ScopeType, ConstructionRole, canManageProfiles } from '../types';
-import { getAllProfiles, updateUserRoles, createUserProfile } from '../profileService';
-import { useAuth } from '@/contexts/AuthContext';
-import { Users, Search, Edit2, Shield, AlertTriangle, Save, X, Building2, MapPin, Plus, HardHat, KeyRound, Ban, CheckCircle2, Trash2, Copy, ExternalLink, Check } from 'lucide-react';
+import { getAllProfiles, updateUserRoles, createUserProfile, deleteUserProfile } from '../profileService';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../../contexts/AuthContext';
+import { Users, Search, Edit2, Shield, AlertTriangle, Save, X, Building2, MapPin, Plus, HardHat, KeyRound, Ban, CheckCircle2, Trash2, Copy, ExternalLink, Check, BarChart2, ArrowLeft } from 'lucide-react';
+import { toast } from 'sonner';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getAuth, sendPasswordResetEmail } from 'firebase/auth';
-import { app } from '@/services/firebaseConfig';
+import { app } from '../../../../services/firebaseConfig';
 
 const ProfileManager: React.FC = () => {
+    const navigate = useNavigate();
     const { profile } = useAuth();
     const [users, setUsers] = useState<UserProfileDoc[]>([]);
     const [filteredUsers, setFilteredUsers] = useState<UserProfileDoc[]>([]);
@@ -54,6 +57,7 @@ const ProfileManager: React.FC = () => {
         setLoading(true);
         try {
             const data = await getAllProfiles();
+            data.sort((a, b) => (a.displayName || a.email).localeCompare(b.displayName || b.email));
             setUsers(data);
             setFilteredUsers(data);
         } catch (err) {
@@ -84,23 +88,32 @@ const ProfileManager: React.FC = () => {
                 scope: editingUser.modules.human_capital.scope
             } : undefined;
 
-            const construction = editingUser.modules.construction ? {
-                enabled: editingUser.modules.construction.enabled,
-                role: editingUser.modules.construction.role
+            const construction_vli = editingUser.modules.construction_vli ? {
+                enabled: editingUser.modules.construction_vli.enabled,
+                role: editingUser.modules.construction_vli.role
             } : undefined;
+
+            const construction_rdo = editingUser.modules.construction_rdo ? {
+                enabled: editingUser.modules.construction_rdo.enabled,
+                role: editingUser.modules.construction_rdo.role
+            } : undefined;
+
+            const bi_reports = editingUser.modules.bi_reports;
 
             await updateUserRoles(editingUser.uid, {
                 commercial,
                 human_capital: hc,
-                construction
+                construction_vli,
+                construction_rdo,
+                bi_reports
             });
 
             // Update local state
             setUsers(prev => prev.map(u => u.uid === editingUser.uid ? editingUser : u));
             setEditingUser(null);
-            alert("Perfil atualizado com sucesso!");
+            toast.success("Perfil atualizado com sucesso!");
         } catch (err) {
-            alert("Erro ao salvar perfil.");
+            toast.error("Erro ao salvar perfil.");
             console.error(err);
         } finally {
             setSaving(false);
@@ -109,7 +122,7 @@ const ProfileManager: React.FC = () => {
 
     const handleCreateUser = async () => {
         if (!newUserEmail || !newUserName) {
-            alert("Preencha E-mail e Nome.");
+            toast.warning("Preencha E-mail e Nome.");
             return;
         }
         setCreatingUser(true);
@@ -125,7 +138,7 @@ const ProfileManager: React.FC = () => {
                     url: "https://gdr-nexus.netlify.app/config/account",
                     handleCodeInApp: false,
                 });
-                alert(`Usuário convidado com sucesso!\n\nUm e-mail de definição de senha foi enviado automaticamente para: ${newUserEmail}`);
+                toast.success(`Usuário convidado com sucesso!\n\nUm e-mail de definição de senha foi enviado automaticamente para: ${newUserEmail}`);
             } catch (emailError: any) {
                 console.error("Failed to send reset email natively", emailError);
                 setLinkModal({
@@ -141,7 +154,7 @@ const ProfileManager: React.FC = () => {
             setNewUserName('');
             loadUsers(); // Refresh list
         } catch (error: any) {
-            alert("Erro ao criar usuário: " + error.message);
+            toast.error("Erro ao criar usuário: " + error.message);
         } finally {
             setCreatingUser(false);
         }
@@ -154,17 +167,17 @@ const ProfileManager: React.FC = () => {
                 if (!window.confirm(`Desativar o acesso de ${userDoc.displayName}? O usuário será desconectado imediatamente.`)) return;
                 const disableUser = httpsCallable(functions, 'adminDisableUser');
                 await disableUser({ uid: userDoc.uid, reason: 'Desativado pelo admin via painel' });
-                alert('Usuário desativado com sucesso.');
+                toast.success('Usuário desativado com sucesso.');
             } else if (action === 'enable') {
                 if (!window.confirm(`Reativar o acesso de ${userDoc.displayName}?`)) return;
                 const enableUser = httpsCallable(functions, 'adminEnableUser');
                 await enableUser({ uid: userDoc.uid });
-                alert('Usuário reativado com sucesso.');
+                toast.success('Usuário reativado com sucesso.');
             } else if (action === 'delete') {
                 if (!window.confirm(`ATENÇÃO: Excluir PERMANENTEMENTE o usuário ${userDoc.displayName}?\n\nEsta ação apagará a conta do Firebase Auth e o perfil de acessos irreparavelmente.`)) return;
                 const deleteUser = httpsCallable(functions, 'adminDeleteUser');
                 await deleteUser({ uid: userDoc.uid });
-                alert('Usuário excluído permanentemente.');
+                toast.success('Usuário excluído permanentemente.');
             } else if (action === 'reset-password') {
                 if (!window.confirm(`Gerar link de redefinição de senha para ${userDoc.displayName}?`)) return;
                 const resetPassword = httpsCallable(functions, 'adminGeneratePasswordResetLink');
@@ -179,7 +192,20 @@ const ProfileManager: React.FC = () => {
             loadUsers();
         } catch (error: any) {
             console.error(error);
-            alert(`Erro ao executar a ação: ${error.message}`);
+            // Se for exclusão e o usuário não existir no Auth (ex: deletado manualmente antes)
+            if (action === 'delete' && error.message && error.message.includes('no user record corresponding to the provided identifier')) {
+                if (window.confirm(`Atenção: A conta no Firebase Auth já foi deletada anteriormente ou não existe.\n\nDeseja forçar a exclusão do registro deste perfil no sistema local?`)) {
+                    try {
+                        await deleteUserProfile(userDoc.uid);
+                        toast.success('Perfil órfão removido com sucesso.');
+                        loadUsers();
+                    } catch (delErr: any) {
+                        toast.error(`Erro ao forçar exclusão local: ${delErr.message}`);
+                    }
+                }
+            } else {
+                toast.error(`Erro ao executar a ação: ${error.message}`);
+            }
         }
     };
 
@@ -192,11 +218,20 @@ const ProfileManager: React.FC = () => {
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <div>
-                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                        <Users className="text-blue-600" /> Gestão de Acessos (IAM)
-                    </h2>
-                    <p className="text-sm text-gray-500">Gerencie permissões e escopos dos usuários</p>
+                <div className="flex items-center gap-4">
+                    <button 
+                        onClick={() => navigate('/')}
+                        className="p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors flex-shrink-0"
+                        title="Voltar ao Saguão Principal"
+                    >
+                        <ArrowLeft className="text-slate-600" size={20} />
+                    </button>
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                            <Users className="text-blue-600" /> Gestão de Acessos (IAM)
+                        </h2>
+                        <p className="text-sm text-gray-500">Gerencie permissões e escopos dos usuários</p>
+                    </div>
                 </div>
                 <div className="flex gap-2 w-full md:w-auto">
                     <div className="relative flex-1 md:w-auto">
@@ -218,10 +253,10 @@ const ProfileManager: React.FC = () => {
                                         const functions = getFunctions(app, 'us-central1');
                                         const backfill = httpsCallable(functions, 'adminBackfillUserProfiles');
                                         const res = await backfill();
-                                        alert('Script de backfill concluído com sucesso:\n\n' + (res.data as any).message);
+                                        toast.success('Script de backfill concluído com sucesso:\n\n' + (res.data as any).message);
                                         loadUsers();
                                     } catch (e: any) {
-                                        alert('Erro no script de backfill: ' + e.message);
+                                        toast.error('Erro no script de backfill: ' + e.message);
                                     }
                                 }
                             }}
@@ -248,7 +283,9 @@ const ProfileManager: React.FC = () => {
                             <th className="px-6 py-4">Usuário</th>
                             <th className="px-6 py-4">Comercial</th>
                             <th className="px-6 py-4">Capital Humano</th>
-                            <th className="px-6 py-4">Obras</th>
+                            <th className="px-6 py-4">Obras VLI</th>
+                            <th className="px-6 py-4">Obras RDO</th>
+                            <th className="px-6 py-4">BI</th>
                             <th className="px-6 py-4">Status</th>
                             <th className="px-6 py-4 text-center">Ações</th>
                         </tr>
@@ -290,9 +327,27 @@ const ProfileManager: React.FC = () => {
                                     )}
                                 </td>
                                 <td className="px-6 py-4">
-                                    {user.modules.construction?.enabled ? (
+                                    {user.modules.construction_vli?.enabled ? (
                                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 text-xs font-bold border border-amber-100">
-                                            <HardHat size={12} /> {user.modules.construction.role.replace('CONSTRUCTION_', '')}
+                                            <HardHat size={12} /> {user.modules.construction_vli.role.replace('CONSTRUCTION_', '')}
+                                        </span>
+                                    ) : (
+                                        <span className="text-gray-400 text-xs italic">Desativado</span>
+                                    )}
+                                </td>
+                                <td className="px-6 py-4">
+                                    {user.modules.construction_rdo?.enabled ? (
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-50 text-orange-700 text-xs font-bold border border-orange-100">
+                                            <Building2 size={12} /> {user.modules.construction_rdo.role.replace('CONSTRUCTION_', '')}
+                                        </span>
+                                    ) : (
+                                        <span className="text-gray-400 text-xs italic">Desativado</span>
+                                    )}
+                                </td>
+                                <td className="px-6 py-4">
+                                    {user.modules.bi_reports && user.modules.bi_reports.length > 0 ? (
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-50 text-cyan-700 text-xs font-bold border border-cyan-100">
+                                            {user.modules.bi_reports.length} Painéis
                                         </span>
                                     ) : (
                                         <span className="text-gray-400 text-xs italic">Desativado</span>
@@ -434,23 +489,23 @@ const ProfileManager: React.FC = () => {
 
                             <hr className="border-gray-100" />
 
-                            {/* Construction Module */}
+                            {/* Obras VLI Module */}
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
-                                    <h4 className="font-bold text-gray-700 flex items-center gap-2"><HardHat size={16} /> Módulo de Obras</h4>
+                                    <h4 className="font-bold text-gray-700 flex items-center gap-2"><HardHat size={16} /> Obras VLI</h4>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                         <input
                                             type="checkbox"
-                                            checked={editingUser.modules.construction?.enabled ?? false}
+                                            checked={editingUser.modules.construction_vli?.enabled ?? false}
                                             onChange={(e) => {
                                                 const enabled = e.target.checked;
                                                 setEditingUser({
                                                     ...editingUser,
                                                     modules: {
                                                         ...editingUser.modules,
-                                                        construction: {
+                                                        construction_vli: {
                                                             enabled,
-                                                            role: enabled ? (editingUser.modules.construction?.role || 'CONSTRUCTION_VIEWER') : (editingUser.modules.construction?.role || 'CONSTRUCTION_VIEWER')
+                                                            role: enabled ? (editingUser.modules.construction_vli?.role || 'CONSTRUCTION_VIEWER') : (editingUser.modules.construction_vli?.role || 'CONSTRUCTION_VIEWER')
                                                         }
                                                     }
                                                 });
@@ -460,14 +515,14 @@ const ProfileManager: React.FC = () => {
                                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
                                     </label>
                                 </div>
-                                {editingUser.modules.construction?.enabled && (
+                                {editingUser.modules.construction_vli?.enabled && (
                                     <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                                         <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Função</label>
                                         <select
-                                            value={editingUser.modules.construction.role}
+                                            value={editingUser.modules.construction_vli.role}
                                             onChange={(e) => setEditingUser({
                                                 ...editingUser,
-                                                modules: { ...editingUser.modules, construction: { ...editingUser.modules.construction!, role: e.target.value as ConstructionRole } }
+                                                modules: { ...editingUser.modules, construction_vli: { ...editingUser.modules.construction_vli!, role: e.target.value as ConstructionRole } }
                                             })}
                                             className="w-full p-2 border rounded-lg text-sm"
                                         >
@@ -477,6 +532,87 @@ const ProfileManager: React.FC = () => {
                                         </select>
                                     </div>
                                 )}
+                            </div>
+
+                            <hr className="border-gray-100" />
+
+                            {/* Obras RDO Module */}
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="font-bold text-gray-700 flex items-center gap-2"><Building2 size={16} /> Obras RDO Online</h4>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={editingUser.modules.construction_rdo?.enabled ?? false}
+                                            onChange={(e) => {
+                                                const enabled = e.target.checked;
+                                                setEditingUser({
+                                                    ...editingUser,
+                                                    modules: {
+                                                        ...editingUser.modules,
+                                                        construction_rdo: {
+                                                            enabled,
+                                                            role: enabled ? (editingUser.modules.construction_rdo?.role || 'CONSTRUCTION_VIEWER') : (editingUser.modules.construction_rdo?.role || 'CONSTRUCTION_VIEWER')
+                                                        }
+                                                    }
+                                                });
+                                            }}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                                    </label>
+                                </div>
+                                {editingUser.modules.construction_rdo?.enabled && (
+                                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                        <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Função</label>
+                                        <select
+                                            value={editingUser.modules.construction_rdo.role}
+                                            onChange={(e) => setEditingUser({
+                                                ...editingUser,
+                                                modules: { ...editingUser.modules, construction_rdo: { ...editingUser.modules.construction_rdo!, role: e.target.value as ConstructionRole } }
+                                            })}
+                                            className="w-full p-2 border rounded-lg text-sm"
+                                        >
+                                            <option value="CONSTRUCTION_VIEWER">Visualizador (Apenas Leitura)</option>
+                                            <option value="CONSTRUCTION_MANAGER">Gerente (Operacional)</option>
+                                            <option value="CONSTRUCTION_ADMIN">Administrador (Acesso Total)</option>
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
+
+                            <hr className="border-gray-100" />
+
+                            {/* BI Reports Module */}
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="font-bold text-gray-700 flex items-center gap-2"><BarChart2 size={16} /> Relatórios de Inteligência (BI)</h4>
+                                </div>
+                                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-3">
+                                    {['Financeiro', 'Gestão de Contratos'].map((area) => (
+                                        <label key={area} className="flex items-center justify-between cursor-pointer">
+                                            <span className="text-sm font-medium text-gray-700">{area}</span>
+                                            <input
+                                                type="checkbox"
+                                                checked={editingUser.modules.bi_reports?.includes(area) ?? false}
+                                                onChange={(e) => {
+                                                    const enabled = e.target.checked;
+                                                    let currentReports = editingUser.modules.bi_reports || [];
+                                                    if (enabled) {
+                                                        currentReports = [...currentReports, area];
+                                                    } else {
+                                                        currentReports = currentReports.filter(r => r !== area);
+                                                    }
+                                                    setEditingUser({
+                                                        ...editingUser,
+                                                        modules: { ...editingUser.modules, bi_reports: currentReports }
+                                                    });
+                                                }}
+                                                className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
+                                            />
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
 
                             <hr className="border-gray-100" />
@@ -668,7 +804,7 @@ const ProfileManager: React.FC = () => {
                                     <button
                                         onClick={() => {
                                             navigator.clipboard.writeText(linkModal.link);
-                                            alert("Link copiado para a área de transferência!");
+                                            toast.success("Link copiado para a área de transferência!");
                                         }}
                                         className="p-2 bg-white shadow-sm border border-gray-100 rounded-xl text-blue-600 hover:bg-blue-50 transition-all flex items-center gap-2 group/btn"
                                         title="Copiar Link"

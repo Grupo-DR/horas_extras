@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LogOut, Grid, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LogOut, Grid, ChevronLeft, ChevronRight, Home } from 'lucide-react';
 import { ModuleSwitcher } from '../ModuleSwitcher';
 
 export type SidebarItem = {
@@ -187,13 +187,14 @@ export const CorporateSidebar: React.FC<CorporateSidebarProps> = ({
 
                                 {/* Actions */}
                                 <div className="flex items-center">
-                                    <button
-                                        onClick={() => setIsModuleSwitcherOpen(true)}
-                                        title="Trocar Módulo"
+                                    <NavLink
+                                        to="/"
+                                        title="Voltar ao Centro de Inteligência"
                                         className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors shrink-0"
                                     >
-                                        <Grid size={18} />
-                                    </button>
+                                        <Home size={18} />
+                                    </NavLink>
+
 
                                     <button
                                         onClick={onLogout}

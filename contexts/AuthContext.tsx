@@ -31,7 +31,7 @@ interface AuthContextData {
     loading: boolean;
 
     // IAM Helpers
-    hasModuleAccess: (module: 'commercial' | 'human_capital' | 'construction') => boolean;
+    hasModuleAccess: (module: 'commercial' | 'human_capital' | 'construction_vli' | 'construction_rdo' | 'bi_reports', biArea?: string) => boolean;
     isProfileLoading: boolean;
     refreshProfile: () => Promise<void>;
 
@@ -158,12 +158,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return () => unsubscribe();
     }, []);
 
-    const hasModuleAccess = (module: 'commercial' | 'human_capital' | 'construction'): boolean => {
+    const hasModuleAccess = (module: 'commercial' | 'human_capital' | 'construction_vli' | 'construction_rdo' | 'bi_reports', biArea?: string): boolean => {
         if (!profile) return false;
         if (profile.isSuperAdmin) return true;
 
-        // TEMPORÁRIO PARA DEMONSTRAÇÃO: Forçando ativação do módulo de obras
-        if (module === 'construction') return true;
+        if (module === 'bi_reports') {
+            if (!biArea) return !!profile.modules.bi_reports?.length;
+            return profile.modules.bi_reports?.includes(biArea) ?? false;
+        }
 
         return !!profile.modules[module]?.enabled;
     };

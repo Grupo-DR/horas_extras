@@ -27,6 +27,12 @@ import HumanCapitalDashboard from './src/modules/human-capital/HumanCapitalDashb
 import ConstructionDashboard from './src/modules/construction/ConstructionDashboard';
 import ProfileManager from './src/modules/iam/components/ProfileManager';
 
+// Centro de Inteligência
+import { CentroInteligenciaView } from './src/pages/CentroInteligencia/CentroInteligenciaView';
+import { PowerBiView } from './src/pages/CentroInteligencia/PowerBiView';
+import { ConstructionSelectionView } from './src/pages/ConstructionSelectionView';
+import RdoApp from './src/modules/rdo/RdoApp';
+
 const App = () => {
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
@@ -43,7 +49,6 @@ const App = () => {
             <Route path="/production" element={<ConstructionSiteView />} />
             <Route path="/actions" element={<ActionsView />} />
             <Route path="/config/account" element={<AccountSettings />} />
-            <Route path="/users" element={<div className="p-4 lg:p-8"><ProfileManager /></div>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
@@ -79,15 +84,65 @@ root.render(
               <Route
                 path="/construction/*"
                 element={
-                  <PrivateRoute requiredModule="construction">
+                  <PrivateRoute requiredModule="construction_vli">
                     <ConstructionDashboard />
+                  </PrivateRoute>
+                }
+              />
+
+              {/* SELEÇÃO DE MÓDULO DE OBRAS */}
+              <Route
+                path="/construction-selection"
+                element={
+                  <PrivateRoute>
+                    <ConstructionSelectionView />
+                  </PrivateRoute>
+                }
+              />
+
+              {/* MÓDULO RDO ONLINE */}
+              <Route
+                path="/rdo/*"
+                element={
+                  <PrivateRoute requiredModule="construction_rdo">
+                    <RdoApp />
+                  </PrivateRoute>
+                }
+              />
+
+              {/* CENTRO DE INTELIGÊNCIA (Nova Home) */}
+              <Route
+                path="/"
+                element={
+                  <PrivateRoute>
+                    <CentroInteligenciaView />
+                  </PrivateRoute>
+                }
+              />
+
+              {/* VISUALIZADOR DE RELATÓRIOS (PowerBI) */}
+              <Route
+                path="/powerbi-viewer"
+                element={
+                  <PrivateRoute>
+                    <PowerBiView />
+                  </PrivateRoute>
+                }
+              />
+
+              {/* GESTÃO GLOBAL DE USUÁRIOS (IAM) */}
+              <Route
+                path="/admin/users"
+                element={
+                  <PrivateRoute>
+                    <div className="p-4 lg:p-8 h-screen overflow-y-auto bg-gray-50"><ProfileManager /></div>
                   </PrivateRoute>
                 }
               />
 
               {/* MÓDULO COMERCIAL (Layout Padrão com Sidebar) */}
               <Route
-                path="/*"
+                path="/commercial/*"
                 element={
                   <PrivateRoute requiredModule="commercial">
                     <App />

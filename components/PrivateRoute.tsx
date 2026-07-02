@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 interface PrivateRouteProps {
     children?: React.ReactNode;
-    requiredModule?: 'commercial' | 'human_capital' | 'construction';
+    requiredModule?: 'commercial' | 'human_capital' | 'construction_vli' | 'construction_rdo' | 'bi_reports';
 }
 
 export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, requiredModule }) => {
@@ -37,12 +37,8 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, requiredMo
 
     // Module-level access guard
     if (requiredModule && !profile?.isSuperAdmin && !hasModuleAccess(requiredModule)) {
-        // Redirect to the first module the user has access to
-        if (hasModuleAccess('human_capital')) return <Navigate to="/human-capital" replace />;
-        if (hasModuleAccess('commercial')) return <Navigate to="/" replace />;
-        if (hasModuleAccess('construction')) return <Navigate to="/construction" replace />;
-        // No module access at all - show login
-        return <Navigate to="/login" replace />;
+        // Redirecionar para o Centro de Inteligência se não tiver acesso
+        return <Navigate to="/" replace />;
     }
 
     return children ? <>{children}</> : <Outlet />;

@@ -50,10 +50,15 @@ export interface UserProfileDoc {
             role: CHRole;
             scope: Scope;
         };
-        construction?: {
+        construction_vli?: {
             enabled: boolean;
             role: ConstructionRole;
         };
+        construction_rdo?: {
+            enabled: boolean;
+            role: ConstructionRole;
+        };
+        bi_reports?: string[];
     };
 
     createdAt: string;
@@ -80,7 +85,8 @@ export const canManageProfiles = (profile: UserProfileDoc | null | undefined): b
         profile.modules.human_capital?.role === 'CH_ADMIN' ||
         profile.modules.commercial?.role === 'COMMERCIAL_ADMIN' ||
         profile.modules.commercial?.role === 'IAM_ADMIN' ||
-        profile.modules.construction?.role === 'CONSTRUCTION_ADMIN'
+        profile.modules.construction_vli?.role === 'CONSTRUCTION_ADMIN' ||
+        profile.modules.construction_rdo?.role === 'CONSTRUCTION_ADMIN'
     );
 };
 

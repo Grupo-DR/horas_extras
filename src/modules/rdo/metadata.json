@@ -1,0 +1,5 @@
+{
+  "name": "RDO Analyzer AI",
+  "description": "An intelligent dashboard that analyzes Daily Construction Reports (RDOs) using Gemini 2.5 Flash. Upload your RDO images/PDFs to extract data on manpower, equipment, weather, and project progress instantly.",
+  "requestFramePermissions": []
+}
