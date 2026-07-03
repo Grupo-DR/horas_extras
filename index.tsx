@@ -33,6 +33,24 @@ import { PowerBiView } from './src/pages/CentroInteligencia/PowerBiView';
 import { ConstructionSelectionView } from './src/pages/ConstructionSelectionView';
 import RdoApp from './src/modules/rdo/RdoApp';
 
+import { useNavigate } from 'react-router-dom';
+
+const AccountLayout = () => {
+  const navigate = useNavigate();
+  return (
+    <div className="h-screen w-full bg-gray-50 overflow-y-auto flex flex-col">
+      <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center shrink-0">
+        <button onClick={() => navigate(-1)} className="flex items-center text-slate-500 hover:text-blue-600 transition-colors font-medium">
+          ← Voltar
+        </button>
+      </div>
+      <div className="flex-1">
+        <AccountSettings />
+      </div>
+    </div>
+  );
+};
+
 const App = () => {
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
@@ -48,7 +66,6 @@ const App = () => {
             <Route path="contracts/dashboard" element={<ContractDashboardView />} />
             <Route path="production" element={<ConstructionSiteView />} />
             <Route path="actions" element={<ActionsView />} />
-            <Route path="config/account" element={<AccountSettings />} />
             <Route path="*" element={<Navigate to="/commercial" replace />} />
           </Routes>
         </div>
@@ -136,6 +153,16 @@ root.render(
                 element={
                   <PrivateRoute>
                     <div className="p-4 lg:p-8 h-screen overflow-y-auto bg-gray-50"><ProfileManager /></div>
+                  </PrivateRoute>
+                }
+              />
+
+              {/* CONFIGURAÇÕES DE CONTA (Global) */}
+              <Route
+                path="/config/account"
+                element={
+                  <PrivateRoute>
+                    <AccountLayout />
                   </PrivateRoute>
                 }
               />
