@@ -6,11 +6,11 @@ import DataGrid from '@/src/modules/human-capital/components/DataGrid';
 import GeminiPanel from '@/src/modules/human-capital/components/GeminiPanel';
 import AnalysisPanel from '@/src/modules/human-capital/components/AnalysisPanel';
 import FilterBar, { FilterState } from '@/src/modules/human-capital/components/FilterBar';
-import ProfileManager from '@/src/modules/iam/components/ProfileManager';
+
 import Planning from '@/src/modules/human-capital/components/Planning';
 import HeadcountUpload from '@/src/modules/human-capital/components/HeadcountUpload';
 import HeadcountGovernance from '@/src/modules/human-capital/components/HeadcountGovernance';
-import { canAccessSettings, canManageHeadcount, canManageProfiles, canPlan } from '../iam/types';
+import { canAccessSettings, canManageHeadcount, canPlan } from '../iam/types';
 import { formatDateForApi } from '@/src/modules/human-capital/utils/formatters';
 import { LayoutDashboard, Table, Settings, CheckCircle2, AlertTriangle, Sparkles, CalendarRange, UserCog, Lock, BarChart3 } from 'lucide-react';
 import { ApiConfig, OvertimeRecord, FetchStatus, UserProfile, ManualEmployee, GlobalEmployee, HeadcountRecord } from '@/src/modules/human-capital/types';
@@ -38,7 +38,6 @@ enum Tab {
   DATA = 'data',
   PLANNING = 'planning',
   ANALYSIS = 'analysis',
-  PROFILES = 'profiles',
   SETTINGS = 'settings'
 }
 
@@ -433,7 +432,7 @@ const HumanCapitalDashboard: React.FC = () => {
       { key: Tab.DATA, label: "Histórico", icon: Table, onClick: () => setActiveTab(Tab.DATA), isActive: activeTab === Tab.DATA },
     ];
     if (effectiveUser.isSuperAdmin || canPlan(effectiveUser.role)) items.push({ key: Tab.PLANNING, label: "Planejamento", icon: CalendarRange, onClick: () => setActiveTab(Tab.PLANNING), isActive: activeTab === Tab.PLANNING });
-    if (canManageProfiles(profile)) items.push({ key: Tab.PROFILES, label: "Gestão de Usuários", icon: UserCog, onClick: () => setActiveTab(Tab.PROFILES), isActive: activeTab === Tab.PROFILES });
+
     if (effectiveUser.isSuperAdmin || canAccessSettings(effectiveUser.role)) {
       items.push({ key: Tab.SETTINGS, label: "Configurações", icon: Settings, onClick: () => setActiveTab(Tab.SETTINGS), isActive: activeTab === Tab.SETTINGS });
     }
@@ -463,7 +462,6 @@ const HumanCapitalDashboard: React.FC = () => {
               {activeTab === Tab.ANALYSIS && 'Análise de Dados'}
               {activeTab === Tab.DATA && 'Histórico de Registros'}
               {activeTab === Tab.PLANNING && 'Planejamento de Horas'}
-              {activeTab === Tab.PROFILES && 'Administração de Usuários'}
               {activeTab === Tab.SETTINGS && 'Configuração do Sistema'}
             </h2>
           </div>
@@ -520,7 +518,7 @@ const HumanCapitalDashboard: React.FC = () => {
               />
             )}
             {activeTab === Tab.PLANNING && (effectiveUser.isSuperAdmin || canPlan(effectiveUser.role)) && <Planning user={effectiveUser} employees={scopedData} manualEmployees={manualEmployees} headcountRecords={headcountRecords} />}
-            {activeTab === Tab.PROFILES && canManageProfiles(profile) && <ProfileManager />}
+
             {activeTab === Tab.SETTINGS && (effectiveUser.isSuperAdmin || canManageHeadcount(effectiveUser.role)) && (
               <div className="space-y-6">
                 {/* Governança do headcount ativo */}

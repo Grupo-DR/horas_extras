@@ -40,16 +40,16 @@ const App = () => {
       <main className="flex-1 flex flex-col overflow-hidden relative bg-gray-50/30 transition-all duration-300">
         <div className="flex-1 overflow-y-auto scroll-smooth">
           <Routes>
-            <Route path="/" element={<CommercialView />} />
-            <Route path="/prospecting" element={<ProspectingView />} />
-            <Route path="/crm/clients" element={<ClientsView />} />
-            <Route path="/crm/clients/:id" element={<ClientDetailsView />} />
-            <Route path="/contracts" element={<ContractsView />} />
-            <Route path="/contracts/dashboard" element={<ContractDashboardView />} />
-            <Route path="/production" element={<ConstructionSiteView />} />
-            <Route path="/actions" element={<ActionsView />} />
-            <Route path="/config/account" element={<AccountSettings />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route index element={<CommercialView />} />
+            <Route path="prospecting" element={<ProspectingView />} />
+            <Route path="crm/clients" element={<ClientsView />} />
+            <Route path="crm/clients/:id" element={<ClientDetailsView />} />
+            <Route path="contracts" element={<ContractsView />} />
+            <Route path="contracts/dashboard" element={<ContractDashboardView />} />
+            <Route path="production" element={<ConstructionSiteView />} />
+            <Route path="actions" element={<ActionsView />} />
+            <Route path="config/account" element={<AccountSettings />} />
+            <Route path="*" element={<Navigate to="/commercial" replace />} />
           </Routes>
         </div>
       </main>

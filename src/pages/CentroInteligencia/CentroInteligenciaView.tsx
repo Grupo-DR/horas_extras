@@ -6,7 +6,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { canManageProfiles } from '../../modules/iam/types';
 
 // Carrega dinamicamente todas as imagens da pasta assets/carousel (no momento do build)
-const slideImages = import.meta.glob('../../../assets/carousel/*.{png,jpg,jpeg,webp}', { eager: true, query: '?url', import: 'default' });
+const slideImages = import.meta.glob('../../assets/carousel/*.{png,jpg,jpeg,webp}', { eager: true, query: '?url', import: 'default' });
 const imagePaths = Object.values(slideImages) as string[];
 
 type SlideType = {
@@ -125,31 +125,32 @@ export const CentroInteligenciaView: React.FC = () => {
               index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
             } ${slide.bgImage ? 'bg-black' : slide.bgColor}`}
           >
-            {slide.bgImage && (
+            {slide.bgImage ? (
                 <img 
                   src={slide.bgImage} 
-                  className="absolute inset-0 w-full h-full object-cover opacity-50" 
+                  className="absolute inset-0 w-full h-full object-cover" 
                   alt={`Slide ${index + 1}`} 
                 />
+            ) : (
+                <div className="container relative mx-auto h-full px-6 flex flex-col justify-center z-10">
+                  <div className={`flex flex-col w-full ${slide.align} text-white space-y-4`}>
+                    <h1 className="text-4xl md:text-5xl font-bold tracking-tight animate-in slide-in-from-bottom-5 duration-700 drop-shadow-md">
+                      {slide.title}
+                    </h1>
+                    <p className="text-lg md:text-xl text-blue-100/90 max-w-2xl font-medium animate-in slide-in-from-bottom-8 duration-700 delay-150 drop-shadow">
+                      {slide.description}
+                    </p>
+                    {index === 0 && (
+                      <button 
+                        onClick={() => document.getElementById('areas')?.scrollIntoView({ behavior: 'smooth' })}
+                        className="mt-6 px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-semibold transition-all transform hover:scale-105 shadow-lg animate-in fade-in duration-1000 delay-300"
+                      >
+                        Escolher Área
+                      </button>
+                    )}
+                  </div>
+                </div>
             )}
-            <div className="container relative mx-auto h-full px-6 flex flex-col justify-center z-10">
-              <div className={`flex flex-col w-full ${slide.align} text-white space-y-4`}>
-                <h1 className="text-4xl md:text-5xl font-bold tracking-tight animate-in slide-in-from-bottom-5 duration-700 drop-shadow-md">
-                  {slide.title}
-                </h1>
-                <p className="text-lg md:text-xl text-blue-100/90 max-w-2xl font-medium animate-in slide-in-from-bottom-8 duration-700 delay-150 drop-shadow">
-                  {slide.description}
-                </p>
-                {index === 0 && (
-                  <button 
-                    onClick={() => document.getElementById('areas')?.scrollIntoView({ behavior: 'smooth' })}
-                    className="mt-6 px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-semibold transition-all transform hover:scale-105 shadow-lg animate-in fade-in duration-1000 delay-300"
-                  >
-                    Escolher Área
-                  </button>
-                )}
-              </div>
-            </div>
           </div>
         ))}
 

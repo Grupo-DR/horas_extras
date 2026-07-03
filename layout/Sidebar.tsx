@@ -5,7 +5,7 @@ import { AppModule } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { ModuleKey } from '../types/auth';
 import { CorporateSidebar, SidebarItem } from '../src/components/navigation/CorporateSidebar';
-import { canManageProfiles } from '../src/modules/iam/types';
+
 
 export const Sidebar: React.FC = () => {
 
@@ -25,35 +25,35 @@ export const Sidebar: React.FC = () => {
             module: AppModule.COMMERCIAL,
             label: 'Comercial',
             icon: LayoutDashboard,
-            path: '/',
+            path: '/commercial',
             authModule: 'commercial_dashboard' as ModuleKey
         },
         {
             module: 'PROSPECTING',
             label: 'Prospecção',
             icon: Target,
-            path: '/prospecting',
+            path: '/commercial/prospecting',
             authModule: 'commercial_dashboard' as ModuleKey
         },
         {
             module: AppModule.CONTRACTS,
             label: 'Contratos',
             icon: FileText,
-            path: '/contracts',
+            path: '/commercial/contracts',
             authModule: 'contracts' as ModuleKey
         },
         {
             module: 'ACTIONS',
             label: 'Ações',
             icon: CheckSquare,
-            path: '/actions',
+            path: '/commercial/actions',
             authModule: 'operational_planning' as ModuleKey
         },
         {
             module: 'CRM',
             label: 'Clientes',
             icon: Users,
-            path: '/crm/clients',
+            path: '/commercial/crm/clients',
             authModule: 'crm' as ModuleKey
         },
 
@@ -69,15 +69,6 @@ export const Sidebar: React.FC = () => {
         to: item.path,
     }));
 
-    // Add IAM if has permission
-    if (canManageProfiles(profile)) {
-        sidebarItems.push({
-            key: 'IAM',
-            label: 'Gestão de Usuários',
-            icon: UserCog,
-            to: '/users'
-        });
-    }
 
 
     const handleLogout = () => {

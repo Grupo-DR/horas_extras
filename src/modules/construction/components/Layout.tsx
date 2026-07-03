@@ -8,7 +8,7 @@ import { ViewType } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { ModuleSwitcher } from '../../../components/ModuleSwitcher';
-import { canManageProfiles } from '../../iam/types';
+
 import { CorporateSidebar, SidebarItem } from '../../../components/navigation/CorporateSidebar';
 
 interface LayoutProps {
@@ -41,9 +41,7 @@ const Layout: React.FC<LayoutProps> = ({
     { key: 'equipments', label: 'Equipamentos', icon: Truck, onClick: () => setView('equipments'), isActive: activeView === 'equipments' },
   ];
 
-  if (canManageProfiles(profile)) {
-    sidebarItems.push({ key: 'iam', label: 'Gestão de Usuários', icon: UserCog, onClick: () => setView('iam'), isActive: activeView === 'iam' });
-  }
+
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -64,7 +62,7 @@ const Layout: React.FC<LayoutProps> = ({
               activeView === 'dashboard' ? 'Painel de Indicadores' :
                 activeView === 'services' ? 'Tabela de Preços SAP' :
                   activeView === 'planning' ? 'Planejamento de Frota' :
-                    activeView === 'iam' ? 'Gestão de Usuários' :
+
                       activeView === 'equipments' ? 'Gestão de Equipamentos' : 'Tabela de Operações'}
           </h1>
           <div className="flex items-center gap-4">
