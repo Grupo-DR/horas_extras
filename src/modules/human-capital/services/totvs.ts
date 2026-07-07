@@ -34,6 +34,25 @@ export const generateMockData = (): OvertimeRecord[] => {
             "DATA": "2025-08-15T00:00:00-03:00",
             "HORA_EXTRA_100": 2.15,
             "INTER_JORNADA60": 0.30
+        },
+        {
+            "CHAPA": "2337",
+            "NOME": "CLAYTON DE SOUZA CHAMONE",
+            "FUNCAO": "Supervisor de Obras",
+            "CODCCUSTO": "303702",
+            "DESCRICAO": "SERV CORRECAO GEOMETRICA SOCADORA - RUMO",
+            "DATA": "2025-08-01T00:00:00-03:00",
+            "DESCONTO_ATRASOS": 1.5,
+            "DESCONTO_FALTAS": 8.0
+        },
+        {
+            "CHAPA": "1846",
+            "NOME": "ALEXANDRE AYUSSO",
+            "FUNCAO": "Motorista III",
+            "CODCCUSTO": "301903",
+            "DESCRICAO": "MANUT. INFRA NORTE ZAR – TMI",
+            "DATA": "2025-12-25T00:00:00-03:00",
+            "DESCONTO_FALTAS": 16.0
         }
     ];
     return parseTotvsResponse(rawMock);
@@ -67,7 +86,9 @@ const parseTotvsResponse = (data: any[]): OvertimeRecord[] => {
         'HORA_EXTRA_60',
         'HORA_EXTRA_100',
         'INTER_JORNADA60',
-        'ADICIONAL_NOTURNO_20'
+        'ADICIONAL_NOTURNO_20',
+        'DESCONTO_ATRASOS',
+        'DESCONTO_FALTAS'
     ];
 
     data.forEach((item) => {

@@ -32,6 +32,7 @@ import { CentroInteligenciaView } from './src/pages/CentroInteligencia/CentroInt
 import { PowerBiView } from './src/pages/CentroInteligencia/PowerBiView';
 import { ConstructionSelectionView } from './src/pages/ConstructionSelectionView';
 import RdoApp from './src/modules/rdo/RdoApp';
+import SSMAApp from './src/modules/ssma/SSMAApp';
 
 import { useNavigate } from 'react-router-dom';
 
@@ -123,6 +124,16 @@ root.render(
                 element={
                   <PrivateRoute requiredModule="construction_rdo">
                     <RdoApp />
+                  </PrivateRoute>
+                }
+              />
+
+              {/* MÓDULO SSMA */}
+              <Route
+                path="/ssma/*"
+                element={
+                  <PrivateRoute requiredModule="ssma">
+                    <SSMAApp />
                   </PrivateRoute>
                 }
               />

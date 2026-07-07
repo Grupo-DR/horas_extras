@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 interface PrivateRouteProps {
     children?: React.ReactNode;
-    requiredModule?: 'commercial' | 'human_capital' | 'construction_vli' | 'construction_rdo' | 'bi_reports';
+    requiredModule?: 'commercial' | 'human_capital' | 'construction_vli' | 'construction_rdo' | 'ssma' | 'bi_reports';
 }
 
 export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, requiredModule }) => {

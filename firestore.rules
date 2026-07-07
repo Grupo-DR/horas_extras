@@ -21,8 +21,56 @@ service cloud.firestore {
     // Check if user is IAM Admin (or Super Admin)
     function isIAMAdmin() {
        let profile = getUserProfile();
-       return (profile != null && profile.isSuperAdmin == true) || 
-              (profile != null && profile.modules.commercial.role == 'IAM_ADMIN'); 
+       return profile != null && (
+           profile.isSuperAdmin == true || 
+           (profile.modules != null && profile.modules.commercial != null && profile.modules.commercial.role == 'IAM_ADMIN')
+       ); 
+    }
+
+    // SSMA Helpers
+    function hasSSMAAccess() {
+      let profile = getUserProfile();
+      return profile != null &&
+             (
+               profile.isSuperAdmin == true ||
+               (profile.modules.ssma != null && profile.modules.ssma.enabled == true)
+             );
+    }
+
+    function isSSMAAdmin() {
+      let profile = getUserProfile();
+      return profile != null &&
+             (
+               profile.isSuperAdmin == true ||
+               (profile.modules.ssma != null && profile.modules.ssma.role == 'SSMA_ADMIN')
+             );
+    }
+
+    function canManageSSMARegisters() {
+      let profile = getUserProfile();
+      return profile != null &&
+             (
+               profile.isSuperAdmin == true ||
+               (profile.modules.ssma != null && (profile.modules.ssma.role == 'SSMA_ADMIN' || profile.modules.ssma.role == 'SSMA_MANAGER'))
+             );
+    }
+
+    function canReadSSMAAuditLogs() {
+      let profile = getUserProfile();
+      return profile != null &&
+             (
+               profile.isSuperAdmin == true ||
+               (profile.modules.ssma != null && (profile.modules.ssma.role == 'SSMA_ADMIN' || profile.modules.ssma.role == 'SSMA_MANAGER'))
+             );
+    }
+
+    function isSSMAOperational() {
+      let profile = getUserProfile();
+      if (profile == null) return false;
+      if (profile.isSuperAdmin == true) return true;
+      if (profile.modules.ssma == null || profile.modules.ssma.enabled != true) return false;
+      let role = profile.modules.ssma.role;
+      return role in ['SSMA_ADMIN', 'SSMA_MANAGER', 'SSMA_REGIONAL_MANAGER', 'SSMA_ENGINEER', 'SSMA_SUPERVISOR', 'SSMA_TECHNICIAN', 'SSMA_FOREMAN'];
     }
 
     // --- User Profiles ---
@@ -62,6 +110,50 @@ service cloud.firestore {
     match /hc_planning_records/{recordId} {
        allow read: if isAuthenticated(); // TODO: Add granular scope checks when migrated
        allow write: if isAuthenticated(); // TODO: Add role checks when migrated
+    }
+
+    // --- SSMA Collections ---
+    match /ssma_regionals/{id} {
+      allow read: if isAuthenticated() && hasSSMAAccess();
+      allow create, update: if isAuthenticated() && canManageSSMARegisters();
+      allow delete: if false;
+    }
+
+    match /ssma_cost_centers/{id} {
+      allow read: if isAuthenticated() && hasSSMAAccess();
+      allow create, update: if isAuthenticated() && canManageSSMARegisters();
+      allow delete: if false;
+    }
+
+    match /ssma_employees/{id} {
+      allow read: if isAuthenticated() && hasSSMAAccess();
+      allow create, update: if isAuthenticated() && canManageSSMARegisters();
+      allow delete: if false;
+    }
+
+    match /ssma_rules/{id} {
+      allow read: if isAuthenticated() && hasSSMAAccess();
+      allow create, update: if isAuthenticated() && isSSMAAdmin();
+      allow delete: if false;
+    }
+
+    match /ssma_inspection_events/{id} {
+      allow read: if isAuthenticated() && hasSSMAAccess();
+      allow create, update: if isAuthenticated() && isSSMAOperational();
+      allow delete: if false;
+    }
+
+    match /ssma_evidences/{id} {
+      allow read: if isAuthenticated() && hasSSMAAccess();
+      allow create, update: if isAuthenticated() && isSSMAOperational();
+      allow delete: if false;
+    }
+
+    match /ssma_audit_logs/{id} {
+      allow read: if isAuthenticated() && canReadSSMAAuditLogs();
+      allow create: if isAuthenticated() && hasSSMAAccess();
+      allow update: if false;
+      allow delete: if false;
     }
     
     // Default Deny

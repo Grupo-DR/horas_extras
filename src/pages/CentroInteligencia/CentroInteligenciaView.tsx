@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CircleDollarSign, Users, FileText, ChevronLeft, ChevronRight, Building2, TrendingUp, LogOut, Shield } from 'lucide-react';
+import { CircleDollarSign, Users, FileText, ChevronLeft, ChevronRight, Building2, TrendingUp, LogOut, Shield, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { canManageProfiles } from '../../modules/iam/types';
 
@@ -44,15 +44,15 @@ const DEFAULT_SLIDES: SlideType[] = [
 
 // Se tivermos imagens na pasta, criamos slides baseados nelas, aproveitando os textos (como overlay).
 // Se não houver, voltamos para o modo padrão de cores sólidas.
-const SLIDES = imagePaths.length > 0 
+const SLIDES = imagePaths.length > 0
   ? imagePaths.map((path, index) => {
-      const defaultSlide = DEFAULT_SLIDES[index % DEFAULT_SLIDES.length];
-      return {
-        ...defaultSlide,
-        id: index + 1,
-        bgImage: path
-      };
-    })
+    const defaultSlide = DEFAULT_SLIDES[index % DEFAULT_SLIDES.length];
+    return {
+      ...defaultSlide,
+      id: index + 1,
+      bgImage: path
+    };
+  })
   : DEFAULT_SLIDES;
 
 export const CentroInteligenciaView: React.FC = () => {
@@ -64,7 +64,7 @@ export const CentroInteligenciaView: React.FC = () => {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev === SLIDES.length - 1 ? 0 : prev + 1));
-    }, 5000);
+    }, 30000);
     return () => clearInterval(timer);
   }, []);
 
@@ -121,35 +121,34 @@ export const CentroInteligenciaView: React.FC = () => {
         {SLIDES.map((slide, index) => (
           <div
             key={slide.id}
-            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-              index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
-            } ${slide.bgImage ? 'bg-black' : slide.bgColor}`}
+            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
+              } ${slide.bgImage ? 'bg-black' : slide.bgColor}`}
           >
             {slide.bgImage ? (
-                <img 
-                  src={slide.bgImage} 
-                  className="absolute inset-0 w-full h-full object-cover" 
-                  alt={`Slide ${index + 1}`} 
-                />
+              <img
+                src={slide.bgImage}
+                className="absolute inset-0 w-full h-full object-cover"
+                alt={`Slide ${index + 1}`}
+              />
             ) : (
-                <div className="container relative mx-auto h-full px-6 flex flex-col justify-center z-10">
-                  <div className={`flex flex-col w-full ${slide.align} text-white space-y-4`}>
-                    <h1 className="text-4xl md:text-5xl font-bold tracking-tight animate-in slide-in-from-bottom-5 duration-700 drop-shadow-md">
-                      {slide.title}
-                    </h1>
-                    <p className="text-lg md:text-xl text-blue-100/90 max-w-2xl font-medium animate-in slide-in-from-bottom-8 duration-700 delay-150 drop-shadow">
-                      {slide.description}
-                    </p>
-                    {index === 0 && (
-                      <button 
-                        onClick={() => document.getElementById('areas')?.scrollIntoView({ behavior: 'smooth' })}
-                        className="mt-6 px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-semibold transition-all transform hover:scale-105 shadow-lg animate-in fade-in duration-1000 delay-300"
-                      >
-                        Escolher Área
-                      </button>
-                    )}
-                  </div>
+              <div className="container relative mx-auto h-full px-6 flex flex-col justify-center z-10">
+                <div className={`flex flex-col w-full ${slide.align} text-white space-y-4`}>
+                  <h1 className="text-4xl md:text-5xl font-bold tracking-tight animate-in slide-in-from-bottom-5 duration-700 drop-shadow-md">
+                    {slide.title}
+                  </h1>
+                  <p className="text-lg md:text-xl text-blue-100/90 max-w-2xl font-medium animate-in slide-in-from-bottom-8 duration-700 delay-150 drop-shadow">
+                    {slide.description}
+                  </p>
+                  {index === 0 && (
+                    <button
+                      onClick={() => document.getElementById('areas')?.scrollIntoView({ behavior: 'smooth' })}
+                      className="mt-6 px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-semibold transition-all transform hover:scale-105 shadow-lg animate-in fade-in duration-1000 delay-300"
+                    >
+                      Escolher Área
+                    </button>
+                  )}
                 </div>
+              </div>
             )}
           </div>
         ))}
@@ -174,9 +173,8 @@ export const CentroInteligenciaView: React.FC = () => {
             <button
               key={index}
               onClick={() => setCurrentSlide(index)}
-              className={`w-3 h-3 rounded-full transition-all ${
-                index === currentSlide ? 'bg-white scale-125' : 'bg-white/50 hover:bg-white/80'
-              }`}
+              className={`w-3 h-3 rounded-full transition-all ${index === currentSlide ? 'bg-white scale-125' : 'bg-white/50 hover:bg-white/80'
+                }`}
             />
           ))}
         </div>
@@ -184,10 +182,10 @@ export const CentroInteligenciaView: React.FC = () => {
 
       {/* Areas Section */}
       <div id="areas" className="container mx-auto px-6 py-12 flex-grow">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 max-w-7xl mx-auto">
-          
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6 gap-6 max-w-7xl mx-auto">
+
           {/* Financeiro */}
-          <div 
+          <div
             onClick={() => handleNavigation('/powerbi-viewer?area=Financeiro')}
             className="group cursor-pointer flex flex-col items-center text-center space-y-4 p-4 rounded-2xl transition-all duration-300 hover:bg-blue-50/50"
           >
@@ -203,7 +201,7 @@ export const CentroInteligenciaView: React.FC = () => {
           </div>
 
           {/* Capital Humano */}
-          <div 
+          <div
             onClick={() => handleNavigation('/human-capital')}
             className="group cursor-pointer flex flex-col items-center text-center space-y-4 p-4 rounded-2xl transition-all duration-300 hover:bg-green-50/50"
           >
@@ -219,7 +217,7 @@ export const CentroInteligenciaView: React.FC = () => {
           </div>
 
           {/* Gestão de Contratos */}
-          <div 
+          <div
             onClick={() => handleNavigation('/powerbi-viewer?area=Gestão de Contratos')}
             className="group cursor-pointer flex flex-col items-center text-center space-y-4 p-4 rounded-2xl transition-all duration-300 hover:bg-indigo-50/50"
           >
@@ -235,7 +233,7 @@ export const CentroInteligenciaView: React.FC = () => {
           </div>
 
           {/* Comercial */}
-          <div 
+          <div
             onClick={() => handleNavigation('/commercial')}
             className="group cursor-pointer flex flex-col items-center text-center space-y-4 p-4 rounded-2xl transition-all duration-300 hover:bg-orange-50/50"
           >
@@ -250,8 +248,24 @@ export const CentroInteligenciaView: React.FC = () => {
             </div>
           </div>
 
+          {/* SSMA */}
+          <div
+            onClick={() => handleNavigation('/ssma')}
+            className="group cursor-pointer flex flex-col items-center text-center space-y-4 p-4 rounded-2xl transition-all duration-300 hover:bg-teal-50/50"
+          >
+            <div className="w-20 h-20 rounded-full bg-teal-100 flex items-center justify-center transform transition-transform duration-300 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-teal-200">
+              <ShieldCheck className="w-10 h-10 text-teal-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-slate-800 mb-2">SSMA</h2>
+              <p className="text-sm text-slate-500 leading-relaxed">
+                Inspeções de segurança, meio ambiente, alojamentos e frentes de serviço.
+              </p>
+            </div>
+          </div>
+
           {/* Obras */}
-          <div 
+          <div
             onClick={() => handleNavigation('/construction-selection')}
             className="group cursor-pointer flex flex-col items-center text-center space-y-4 p-4 rounded-2xl transition-all duration-300 hover:bg-amber-50/50"
           >
@@ -268,7 +282,7 @@ export const CentroInteligenciaView: React.FC = () => {
 
           {/* Gestão de Acessos (IAM) - Somente Master/Admin */}
           {canManageProfiles(profile) && (
-            <div 
+            <div
               onClick={() => handleNavigation('/admin/users')}
               className="group cursor-pointer flex flex-col items-center text-center space-y-4 p-4 rounded-2xl transition-all duration-300 hover:bg-red-50/50"
             >

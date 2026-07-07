@@ -1,0 +1,25 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Padrão: Negar tudo
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // Regras SSMA Evidências
+    match /ssma/evidences/{year}/{month}/{costCenterId}/{inspectionEventId}/{fileName} {
+      // Usuário autenticado com acesso SSMA.
+      // (O controle fino do módulo e roles ocorre via Firestore/App Services antes de bater aqui,
+      // pois o Firebase Storage depende primariamente de Custom Claims para algo tão granular).
+      allow read: if request.auth != null;
+      
+      // Usuário autenticado com acesso SSMA e role operacional.
+      allow write: if request.auth != null;
+      
+      // Sem hard delete
+      allow delete: if false;
+    }
+  }
+}

@@ -1,10 +1,21 @@
 
 import React, { useState, useEffect } from 'react';
-import { UserProfileDoc, CHRole, CommercialRole, Scope, ScopeType, ConstructionRole, canManageProfiles } from '../types';
+import { UserProfileDoc, CHRole, CommercialRole, SSMARole, Scope, ScopeType, ConstructionRole, canManageProfiles } from '../types';
 import { getAllProfiles, updateUserRoles, createUserProfile, deleteUserProfile } from '../profileService';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../contexts/AuthContext';
-import { Users, Search, Edit2, Shield, AlertTriangle, Save, X, Building2, MapPin, Plus, HardHat, KeyRound, Ban, CheckCircle2, Trash2, Copy, ExternalLink, Check, BarChart2, ArrowLeft } from 'lucide-react';
+import { Users, Search, Edit2, Shield, ShieldCheck, AlertTriangle, Save, X, Building2, MapPin, Plus, HardHat, KeyRound, Ban, CheckCircle2, Trash2, Copy, ExternalLink, Check, BarChart2, ArrowLeft } from 'lucide-react';
+
+const SSMA_ROLE_LABELS: Record<SSMARole, string> = {
+    'SSMA_ADMIN': 'Admin (Sistema)',
+    'SSMA_MANAGER': 'Gerente de SSMA',
+    'SSMA_REGIONAL_MANAGER': 'Gerente Regional',
+    'SSMA_SITE_MANAGER': 'Gestor de Obra',
+    'SSMA_SUPERVISOR': 'Supervisor de SSMA',
+    'SSMA_TECHNICIAN': 'Técnico de Segurança',
+    'SSMA_FOREMAN': 'Encarregado',
+    'SSMA_VIEWER': 'Visualizador',
+};
 import { toast } from 'sonner';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getAuth, sendPasswordResetEmail } from 'firebase/auth';
@@ -98,6 +109,12 @@ const ProfileManager: React.FC = () => {
                 role: editingUser.modules.construction_rdo.role
             } : undefined;
 
+            const ssma = editingUser.modules.ssma ? {
+                enabled: editingUser.modules.ssma.enabled,
+                role: editingUser.modules.ssma.role,
+                scope: editingUser.modules.ssma.scope
+            } : undefined;
+
             const bi_reports = editingUser.modules.bi_reports;
 
             await updateUserRoles(editingUser.uid, {
@@ -105,6 +122,7 @@ const ProfileManager: React.FC = () => {
                 human_capital: hc,
                 construction_vli,
                 construction_rdo,
+                ssma,
                 bi_reports
             });
 
@@ -285,6 +303,7 @@ const ProfileManager: React.FC = () => {
                             <th className="px-6 py-4">Capital Humano</th>
                             <th className="px-6 py-4">Obras VLI</th>
                             <th className="px-6 py-4">Obras RDO</th>
+                            <th className="px-6 py-4">SSMA</th>
                             <th className="px-6 py-4">BI</th>
                             <th className="px-6 py-4">Status</th>
                             <th className="px-6 py-4 text-center">Ações</th>
@@ -339,6 +358,15 @@ const ProfileManager: React.FC = () => {
                                     {user.modules.construction_rdo?.enabled ? (
                                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-50 text-orange-700 text-xs font-bold border border-orange-100">
                                             <Building2 size={12} /> {user.modules.construction_rdo.role.replace('CONSTRUCTION_', '')}
+                                        </span>
+                                    ) : (
+                                        <span className="text-gray-400 text-xs italic">Desativado</span>
+                                    )}
+                                </td>
+                                <td className="px-6 py-4">
+                                    {user.modules.ssma?.enabled ? (
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-50 text-teal-700 text-xs font-bold border border-teal-100">
+                                            <ShieldCheck size={12} /> {SSMA_ROLE_LABELS[user.modules.ssma.role] || user.modules.ssma.role}
                                         </span>
                                     ) : (
                                         <span className="text-gray-400 text-xs italic">Desativado</span>
@@ -613,6 +641,59 @@ const ProfileManager: React.FC = () => {
                                         </label>
                                     ))}
                                 </div>
+                            </div>
+
+                            <hr className="border-gray-100" />
+
+                            {/* SSMA Module */}
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="font-bold text-gray-700 flex items-center gap-2"><ShieldCheck size={16} /> Módulo SSMA</h4>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={editingUser.modules.ssma?.enabled ?? false}
+                                            onChange={(e) => {
+                                                const enabled = e.target.checked;
+                                                setEditingUser({
+                                                    ...editingUser,
+                                                    modules: {
+                                                        ...editingUser.modules,
+                                                        ssma: {
+                                                            enabled,
+                                                            role: editingUser.modules.ssma?.role || 'SSMA_VIEWER',
+                                                            scope: { type: 'ALL' }
+                                                        }
+                                                    }
+                                                });
+                                            }}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
+                                    </label>
+                                </div>
+                                {editingUser.modules.ssma?.enabled && (
+                                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                        <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Função SSMA</label>
+                                        <select
+                                            value={editingUser.modules.ssma.role}
+                                            onChange={(e) => setEditingUser({
+                                                ...editingUser,
+                                                modules: { ...editingUser.modules, ssma: { ...editingUser.modules.ssma!, role: e.target.value as SSMARole } }
+                                            })}
+                                            className="w-full p-2 border rounded-lg text-sm"
+                                        >
+                                            <option value="SSMA_MANAGER">Gerente de SSMA</option>
+                                            <option value="SSMA_REGIONAL_MANAGER">Gerente Regional</option>
+                                            <option value="SSMA_SITE_MANAGER">Gestor de Obra</option>
+                                            <option value="SSMA_SUPERVISOR">Supervisor de SSMA</option>
+                                            <option value="SSMA_TECHNICIAN">Técnico de Segurança (TST)</option>
+                                            <option value="SSMA_FOREMAN">Encarregado</option>
+                                            <option value="SSMA_VIEWER">Visualizador (Apenas Leitura)</option>
+                                        </select>
+                                        <p className="text-[10px] text-gray-400 mt-2">A alocação em regionais e obras é feita dentro do módulo SSMA.</p>
+                                    </div>
+                                )}
                             </div>
 
                             <hr className="border-gray-100" />

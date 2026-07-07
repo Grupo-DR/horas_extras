@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchOvertimeData } from '@/src/modules/human-capital/services/totvs';
 import Dashboard from '@/src/modules/human-capital/components/Dashboard';
+import AbsenteeismDashboard from '@/src/modules/human-capital/components/AbsenteeismDashboard';
 import DataGrid from '@/src/modules/human-capital/components/DataGrid';
 import GeminiPanel from '@/src/modules/human-capital/components/GeminiPanel';
 import AnalysisPanel from '@/src/modules/human-capital/components/AnalysisPanel';
@@ -12,7 +13,7 @@ import HeadcountUpload from '@/src/modules/human-capital/components/HeadcountUpl
 import HeadcountGovernance from '@/src/modules/human-capital/components/HeadcountGovernance';
 import { canAccessSettings, canManageHeadcount, canPlan } from '../iam/types';
 import { formatDateForApi } from '@/src/modules/human-capital/utils/formatters';
-import { LayoutDashboard, Table, Settings, CheckCircle2, AlertTriangle, Sparkles, CalendarRange, UserCog, Lock, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Table, Settings, CheckCircle2, AlertTriangle, Sparkles, CalendarRange, UserCog, Lock, BarChart3, Activity } from 'lucide-react';
 import { ApiConfig, OvertimeRecord, FetchStatus, UserProfile, ManualEmployee, GlobalEmployee, HeadcountRecord } from '@/src/modules/human-capital/types';
 import { CorporateSidebar, SidebarItem } from '../../components/navigation/CorporateSidebar';
 import { useNavigate } from 'react-router-dom';
@@ -35,6 +36,7 @@ const DEFAULT_CONFIG: ApiConfig = {
 
 enum Tab {
   DASHBOARD = 'dashboard',
+  ABSENTEEISM = 'absenteeism',
   DATA = 'data',
   PLANNING = 'planning',
   ANALYSIS = 'analysis',
@@ -428,6 +430,7 @@ const HumanCapitalDashboard: React.FC = () => {
     if (!effectiveUser) return [];
     const items: SidebarItem[] = [
       { key: Tab.DASHBOARD, label: "Visão Geral", icon: LayoutDashboard, onClick: () => setActiveTab(Tab.DASHBOARD), isActive: activeTab === Tab.DASHBOARD },
+      { key: Tab.ABSENTEEISM, label: "Absenteísmo", icon: Activity, onClick: () => setActiveTab(Tab.ABSENTEEISM), isActive: activeTab === Tab.ABSENTEEISM },
       { key: Tab.ANALYSIS, label: "Análise de Dados", icon: BarChart3, onClick: () => setActiveTab(Tab.ANALYSIS), isActive: activeTab === Tab.ANALYSIS },
       { key: Tab.DATA, label: "Histórico", icon: Table, onClick: () => setActiveTab(Tab.DATA), isActive: activeTab === Tab.DATA },
     ];
@@ -459,6 +462,7 @@ const HumanCapitalDashboard: React.FC = () => {
           <div className="flex items-center gap-4">
             <h2 className="text-xl font-bold text-gray-800 tracking-tight">
               {activeTab === Tab.DASHBOARD && 'Dashboard Geral'}
+              {activeTab === Tab.ABSENTEEISM && 'Dashboard de Absenteísmo'}
               {activeTab === Tab.ANALYSIS && 'Análise de Dados'}
               {activeTab === Tab.DATA && 'Histórico de Registros'}
               {activeTab === Tab.PLANNING && 'Planejamento de Horas'}
@@ -482,7 +486,7 @@ const HumanCapitalDashboard: React.FC = () => {
         </header>
 
         <div className="flex-1 overflow-y-auto pt-2 pb-4 px-4 lg:pt-3 lg:pb-8 lg:px-8 scroll-smooth">
-          {(activeTab === Tab.DASHBOARD || activeTab === Tab.DATA || activeTab === Tab.ANALYSIS) && (
+          {(activeTab === Tab.DASHBOARD || activeTab === Tab.DATA || activeTab === Tab.ANALYSIS || activeTab === Tab.ABSENTEEISM) && (
             <FilterBar filters={filters} setFilters={setFilters} options={filterOptions} onClear={clearFilters} />
           )}
 
@@ -502,6 +506,19 @@ const HumanCapitalDashboard: React.FC = () => {
                 user={effectiveUser}
                 periodStart={comparisonPeriod.periodStart}
                 periodEnd={comparisonPeriod.periodEnd}
+              />
+            )}
+            {activeTab === Tab.ABSENTEEISM && (
+              <AbsenteeismDashboard
+                data={filteredData}
+                regional={filters.regional}
+                budgetMonthKeys={budgetMonthKeys}
+                dateMode={normalizedDateMode}
+                selectedMonth={selectedMonthKey}
+                user={effectiveUser}
+                periodStart={comparisonPeriod.periodStart}
+                periodEnd={comparisonPeriod.periodEnd}
+                headcountRecords={headcountRecords}
               />
             )}
             {activeTab === Tab.DATA && <DataGrid data={filteredData} rawData={headcountRecords.length > 0 ? data : undefined} />}

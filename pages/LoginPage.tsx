@@ -3,8 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Play, Loader2 } from 'lucide-react';
-// @ts-expect-error - Video import handled by Vite
-import loginBgVideo from '../src/assets/login-bg.mp4';
+
 
 export const LoginPage: React.FC = () => {
     const { login } = useAuth();
@@ -70,7 +69,7 @@ export const LoginPage: React.FC = () => {
                 autoPlay
                 muted
                 playsInline
-                src={loginBgVideo}
+                src="/login-bg.mp4"
                 onLoadedMetadata={handleVideoLoad}
             />
 

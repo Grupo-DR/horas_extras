@@ -5,7 +5,12 @@ import { UserProfileDoc } from './types';
 
 const COLLECTION = 'user_profiles';
 // Hardcoded Super Admin Emails
-const SUPER_ADMINS = ['antonio.silva@grupodr.com.br', 'dimitri.gomes@grupodr.com.br'];
+const SUPER_ADMINS = [
+    'antonio.silva@grupodr.com.br',
+    'dimitri.gomes@grupodr.com.br',
+    'antonioaugustomg@hotmail.com',
+    'antonio.augusto@grupodr.com.br'
+];
 
 export const getUserProfile = async (uid: string): Promise<UserProfileDoc | null> => {
     try {
@@ -13,6 +18,19 @@ export const getUserProfile = async (uid: string): Promise<UserProfileDoc | null
         const snap = await getDoc(ref);
         if (snap.exists()) {
             const data = snap.data() as UserProfileDoc;
+
+            // Force Super Admin for predefined emails (to avoid issues with legacy accounts)
+            if (SUPER_ADMINS.includes(data.email || '')) {
+                data.isSuperAdmin = true;
+                if (!data.modules) data.modules = {} as any;
+                
+                data.modules.ssma = { enabled: true, role: 'SSMA_ADMIN', scope: { type: 'ALL' } };
+                data.modules.commercial = { enabled: true, role: 'COMMERCIAL_ADMIN' };
+                data.modules.human_capital = { enabled: true, role: 'CH_ADMIN', scope: { type: 'ALL' } };
+                data.modules.construction_vli = { enabled: true, role: 'CONSTRUCTION_ADMIN' };
+                data.modules.construction_rdo = { enabled: true, role: 'CONSTRUCTION_ADMIN' };
+                data.modules.bi_reports = ['Financeiro', 'Gestão de Contratos', 'Obras'];
+            }
 
             // Normalization: translate legacy HC roles to CH
             if (data.modules?.human_capital?.role) {
@@ -70,6 +88,11 @@ export const getOrCreateUserProfile = async (authUser: FirebaseUser): Promise<Us
                 enabled: isSuperAdmin,
                 role: isSuperAdmin ? 'CONSTRUCTION_ADMIN' : 'CONSTRUCTION_VIEWER'
             },
+            ssma: {
+                enabled: isSuperAdmin,
+                role: isSuperAdmin ? 'SSMA_ADMIN' : 'SSMA_VIEWER',
+                scope: { type: 'ALL' }
+            },
             bi_reports: isSuperAdmin ? ['Financeiro', 'Gestão de Contratos', 'Obras'] : []
         },
         createdAt: new Date().toISOString(),
@@ -84,6 +107,7 @@ export const getOrCreateUserProfile = async (authUser: FirebaseUser): Promise<Us
         newProfile.modules.human_capital!.enabled = false;
         newProfile.modules.construction_vli!.enabled = false;
         newProfile.modules.construction_rdo!.enabled = false;
+        newProfile.modules.ssma!.enabled = false;
         newProfile.modules.bi_reports = [];
     }
 
@@ -112,6 +136,7 @@ export const createUserProfile = async (uid: string, email: string, displayName:
                 human_capital: { enabled: false, role: 'CH_AUDITOR_VIEWER', scope: { type: 'ALL' } },
                 construction_vli: { enabled: false, role: 'CONSTRUCTION_VIEWER' },
                 construction_rdo: { enabled: false, role: 'CONSTRUCTION_VIEWER' },
+                ssma: { enabled: false, role: 'SSMA_VIEWER', scope: { type: 'ALL' } },
                 bi_reports: []
             },
             createdAt: new Date().toISOString(),
@@ -170,6 +195,7 @@ export const updateUserRoles = async (uid: string, iamUpdates: {
     human_capital?: { enabled: boolean; role: import('./types').CHRole; scope: any };
     construction_vli?: { enabled: boolean; role: 'CONSTRUCTION_ADMIN' | 'CONSTRUCTION_MANAGER' | 'CONSTRUCTION_VIEWER' };
     construction_rdo?: { enabled: boolean; role: 'CONSTRUCTION_ADMIN' | 'CONSTRUCTION_MANAGER' | 'CONSTRUCTION_VIEWER' };
+    ssma?: { enabled: boolean; role: import('./types').SSMARole; scope: any };
     bi_reports?: string[];
 }) => {
     const ref = doc(db, COLLECTION, uid);
@@ -178,6 +204,7 @@ export const updateUserRoles = async (uid: string, iamUpdates: {
     if (iamUpdates.human_capital) updates['modules.human_capital'] = iamUpdates.human_capital;
     if (iamUpdates.construction_vli) updates['modules.construction_vli'] = iamUpdates.construction_vli;
     if (iamUpdates.construction_rdo) updates['modules.construction_rdo'] = iamUpdates.construction_rdo;
+    if (iamUpdates.ssma) updates['modules.ssma'] = iamUpdates.ssma;
     if (iamUpdates.bi_reports !== undefined) updates['modules.bi_reports'] = iamUpdates.bi_reports;
 
     updates['updatedAt'] = new Date().toISOString();

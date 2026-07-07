@@ -21,6 +21,16 @@ export type ConstructionRole =
     | 'CONSTRUCTION_MANAGER'
     | 'CONSTRUCTION_VIEWER';
 
+export type SSMARole =
+    | 'SSMA_ADMIN'            // Super Admin (sistema) — não exposto na UI
+    | 'SSMA_MANAGER'           // Gerente de SSMA
+    | 'SSMA_REGIONAL_MANAGER'  // Gerente Regional
+    | 'SSMA_SITE_MANAGER'      // Gestor de Obra
+    | 'SSMA_SUPERVISOR'        // Supervisor de SSMA
+    | 'SSMA_TECHNICIAN'        // Técnico de Segurança (TST)
+    | 'SSMA_FOREMAN'           // Encarregado
+    | 'SSMA_VIEWER';           // Visualizador (Apenas Leitura)
+
 export interface ModuleAccess<R> {
     enabled: boolean;
     role: R;
@@ -57,6 +67,11 @@ export interface UserProfileDoc {
         construction_rdo?: {
             enabled: boolean;
             role: ConstructionRole;
+        };
+        ssma?: {
+            enabled: boolean;
+            role: SSMARole;
+            scope: Scope;
         };
         bi_reports?: string[];
     };
@@ -113,4 +128,35 @@ export const canManageHeadcount = (role?: HCLegacyRole): boolean => {
 export const canManageBudgets = (role?: HCLegacyRole): boolean => {
     if (!role) return false;
     return ['CH_ADMIN', 'DEV_MASTER', 'MASTER'].includes(role);
+};
+
+// SSMA Helpers
+
+export const canViewSSMA = (profile: UserProfileDoc | null | undefined): boolean => {
+    if (!profile) return false;
+    if (profile.isSuperAdmin) return true;
+    if (!profile.modules.ssma?.enabled) return false;
+    return true; // All roles with module enabled can at least view (within scope)
+};
+
+export const canEditSSMA = (profile: UserProfileDoc | null | undefined): boolean => {
+    if (!profile) return false;
+    if (profile.isSuperAdmin) return true;
+    if (!profile.modules.ssma?.enabled) return false;
+    const role = profile.modules.ssma.role;
+    return ['SSMA_ADMIN', 'SSMA_MANAGER', 'SSMA_REGIONAL_MANAGER', 'SSMA_SITE_MANAGER', 'SSMA_SUPERVISOR', 'SSMA_TECHNICIAN', 'SSMA_FOREMAN'].includes(role);
+};
+
+export const canManageSSMA = (profile: UserProfileDoc | null | undefined): boolean => {
+    if (!profile) return false;
+    if (profile.isSuperAdmin) return true;
+    if (!profile.modules.ssma?.enabled) return false;
+    return profile.modules.ssma.role === 'SSMA_ADMIN';
+};
+
+export const getSSMAScope = (profile: UserProfileDoc | null | undefined): Scope | null => {
+    if (!profile) return null;
+    if (profile.isSuperAdmin) return { type: 'ALL' };
+    if (!profile.modules.ssma?.enabled) return null;
+    return profile.modules.ssma.scope;
 };
