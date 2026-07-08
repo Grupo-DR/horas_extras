@@ -31,6 +31,54 @@
         { "fieldPath": "competence", "order": "ASCENDING" },
         { "fieldPath": "employeeUid", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "hc_budgets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "monthKey", "order": "ASCENDING" },
+        { "fieldPath": "costCenter", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "hc_budgets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "monthKey", "order": "ASCENDING" },
+        { "fieldPath": "regional", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "hc_salary_allocations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "monthKey", "order": "ASCENDING" },
+        { "fieldPath": "costCenter", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "hc_salary_allocations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "monthKey", "order": "ASCENDING" },
+        { "fieldPath": "regional", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "hc_planning_records",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "costCenter", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "hc_planning_records",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "regional", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

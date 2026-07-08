@@ -14,7 +14,13 @@ export type CHRole =
     | 'CH_APPROVER'           // Type 04: Approver Level
     | 'CH_AUDITOR_VIEWER';    // Type 05: All + Read Only
 
-type HCLegacyRole = CHRole | 'DEV_MASTER' | 'MASTER';
+export type LegacyCHRole =
+    | CHRole
+    | 'HC_ADMIN'
+    | 'HC_MANAGER'
+    | 'HC_COSTCENTER_PLANNER'
+    | 'HC_APPROVER'
+    | 'HC_AUDITOR_VIEWER';
 
 export type ConstructionRole =
     | 'CONSTRUCTION_ADMIN'
@@ -88,9 +94,20 @@ export interface UserProfileDoc {
 
 // Helpers
 
-export const canPlan = (role?: CHRole): boolean => {
-    if (!role) return false;
-    return ['CH_ADMIN', 'CH_MANAGER', 'CH_COSTCENTER_PLANNER', 'CH_APPROVER'].includes(role);
+export const normalizeCHRole = (role?: string): CHRole | undefined => {
+    if (!role) return undefined;
+
+    // Temporary compatibility for user_profiles created before the CH_* standard.
+    const normalized = role.startsWith('HC_') ? role.replace('HC_', 'CH_') : role;
+    return ['CH_ADMIN', 'CH_MANAGER', 'CH_COSTCENTER_PLANNER', 'CH_APPROVER', 'CH_AUDITOR_VIEWER'].includes(normalized)
+        ? normalized as CHRole
+        : undefined;
+};
+
+export const canPlan = (role?: LegacyCHRole): boolean => {
+    const normalizedRole = normalizeCHRole(role);
+    if (!normalizedRole) return false;
+    return ['CH_ADMIN', 'CH_MANAGER', 'CH_COSTCENTER_PLANNER', 'CH_APPROVER'].includes(normalizedRole);
 };
 
 export const canManageProfiles = (profile: UserProfileDoc | null | undefined): boolean => {
@@ -105,29 +122,28 @@ export const canManageProfiles = (profile: UserProfileDoc | null | undefined): b
     );
 };
 
-export const canReadAll = (role?: CHRole): boolean => {
-    if (!role) return false;
-    return ['CH_ADMIN', 'CH_AUDITOR_VIEWER', 'CH_APPROVER'].includes(role);
+export const canReadAll = (role?: LegacyCHRole): boolean => {
+    const normalizedRole = normalizeCHRole(role);
+    if (!normalizedRole) return false;
+    return ['CH_ADMIN', 'CH_AUDITOR_VIEWER', 'CH_APPROVER'].includes(normalizedRole);
 };
 
-export const canApprove = (role?: CHRole): boolean => {
-    if (!role) return false;
-    return ['CH_ADMIN', 'CH_APPROVER'].includes(role);
+export const canApprove = (role?: LegacyCHRole): boolean => {
+    const normalizedRole = normalizeCHRole(role);
+    if (!normalizedRole) return false;
+    return ['CH_ADMIN', 'CH_APPROVER'].includes(normalizedRole);
 };
 
-export const canAccessSettings = (role?: HCLegacyRole): boolean => {
-    if (!role) return false;
-    return ['CH_ADMIN', 'DEV_MASTER', 'MASTER'].includes(role);
+export const canAccessSettings = (role?: LegacyCHRole): boolean => {
+    return normalizeCHRole(role) === 'CH_ADMIN';
 };
 
-export const canManageHeadcount = (role?: HCLegacyRole): boolean => {
-    if (!role) return false;
-    return ['CH_ADMIN', 'DEV_MASTER', 'MASTER'].includes(role);
+export const canManageHeadcount = (role?: LegacyCHRole): boolean => {
+    return normalizeCHRole(role) === 'CH_ADMIN';
 };
 
-export const canManageBudgets = (role?: HCLegacyRole): boolean => {
-    if (!role) return false;
-    return ['CH_ADMIN', 'DEV_MASTER', 'MASTER'].includes(role);
+export const canManageBudgets = (role?: LegacyCHRole): boolean => {
+    return normalizeCHRole(role) === 'CH_ADMIN';
 };
 
 // SSMA Helpers

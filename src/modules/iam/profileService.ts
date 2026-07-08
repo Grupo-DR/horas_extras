@@ -1,7 +1,7 @@
 import { auth, db } from '../../../services/firebaseConfig';
 import { doc, getDoc, setDoc, updateDoc, Timestamp, collection, getDocs, deleteDoc } from 'firebase/firestore';
 import { User as FirebaseUser, signOut } from 'firebase/auth';
-import { UserProfileDoc } from './types';
+import { normalizeCHRole, UserProfileDoc } from './types';
 
 const COLLECTION = 'user_profiles';
 // Hardcoded Super Admin Emails
@@ -32,12 +32,9 @@ export const getUserProfile = async (uid: string): Promise<UserProfileDoc | null
                 data.modules.bi_reports = ['Financeiro', 'Gestão de Contratos', 'Obras'];
             }
 
-            // Normalization: translate legacy HC roles to CH
+            // Temporary compatibility: translate legacy HC roles to the official CH_* standard.
             if (data.modules?.human_capital?.role) {
-                const role = data.modules.human_capital.role as string;
-                if (role.startsWith('HC_')) {
-                    data.modules.human_capital.role = role.replace('HC_', 'CH_') as any;
-                }
+                data.modules.human_capital.role = normalizeCHRole(data.modules.human_capital.role as string) || data.modules.human_capital.role;
             }
 
             return data;
@@ -165,12 +162,9 @@ export const getAllProfiles = async (): Promise<UserProfileDoc[]> => {
         const snapshot = await getDocs(collection(db, COLLECTION));
         return snapshot.docs.map(d => {
             const data = d.data() as UserProfileDoc;
-            // Normalization: translate legacy HC roles to CH
+            // Temporary compatibility: translate legacy HC roles to the official CH_* standard.
             if (data.modules?.human_capital?.role) {
-                const role = data.modules.human_capital.role as string;
-                if (role.startsWith('HC_')) {
-                    data.modules.human_capital.role = role.replace('HC_', 'CH_') as any;
-                }
+                data.modules.human_capital.role = normalizeCHRole(data.modules.human_capital.role as string) || data.modules.human_capital.role;
             }
             return data;
         });

@@ -24,7 +24,9 @@ async function verifyAdmin(context) {
     }
     const isSuperAdmin = profile.isSuperAdmin === true;
     const isIamAdmin = ((_b = (_a = profile.modules) === null || _a === void 0 ? void 0 : _a.commercial) === null || _b === void 0 ? void 0 : _b.role) === 'IAM_ADMIN';
-    const isHcAdmin = ((_d = (_c = profile.modules) === null || _c === void 0 ? void 0 : _c.human_capital) === null || _d === void 0 ? void 0 : _d.role) === 'HC_ADMIN';
+    const hcRole = (_d = (_c = profile.modules) === null || _c === void 0 ? void 0 : _c.human_capital) === null || _d === void 0 ? void 0 : _d.role;
+    // Temporary compatibility for profiles created before the CH_* role standard.
+    const isHcAdmin = hcRole === 'CH_ADMIN' || hcRole === 'HC_ADMIN';
     // Se o usuário não tiver nível suficiente, barre
     if (!isSuperAdmin && !isIamAdmin && !isHcAdmin) {
         throw new functions.https.HttpsError("permission-denied", "Acesso negado. Requer permissão de Administrador IAM.");
@@ -67,7 +69,7 @@ exports.adminCreateUserInvite = functions.https.onCall(async (data, context) => 
             status: "invited",
             modules: modules || {
                 commercial: { enabled: false, role: 'COMMERCIAL_VIEWER' },
-                human_capital: { enabled: false, role: 'HC_AUDITOR_VIEWER', scope: { type: 'ALL' } },
+                human_capital: { enabled: false, role: 'CH_AUDITOR_VIEWER', scope: { type: 'ALL' } },
                 construction: { enabled: false, role: 'CONSTRUCTION_VIEWER' }
             },
             createdAt: new Date().toISOString(),

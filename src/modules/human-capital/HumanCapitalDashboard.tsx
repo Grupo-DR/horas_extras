@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { fetchOvertimeData } from '@/src/modules/human-capital/services/totvs';
+import { fetchOvertimeDataWithMeta, TotvsIntegrationError } from '@/src/modules/human-capital/services/totvs';
 import Dashboard from '@/src/modules/human-capital/components/Dashboard';
 import AbsenteeismDashboard from '@/src/modules/human-capital/components/AbsenteeismDashboard';
 import DataGrid from '@/src/modules/human-capital/components/DataGrid';
@@ -13,8 +13,8 @@ import HeadcountUpload from '@/src/modules/human-capital/components/HeadcountUpl
 import HeadcountGovernance from '@/src/modules/human-capital/components/HeadcountGovernance';
 import { canAccessSettings, canManageHeadcount, canPlan } from '../iam/types';
 import { formatDateForApi } from '@/src/modules/human-capital/utils/formatters';
-import { LayoutDashboard, Table, Settings, CheckCircle2, AlertTriangle, Sparkles, CalendarRange, UserCog, Lock, BarChart3, Activity } from 'lucide-react';
-import { ApiConfig, OvertimeRecord, FetchStatus, UserProfile, ManualEmployee, GlobalEmployee, HeadcountRecord } from '@/src/modules/human-capital/types';
+import { LayoutDashboard, Table, Settings, CheckCircle2, AlertTriangle, Sparkles, CalendarRange, Lock, BarChart3, Activity, RefreshCw, XCircle, Loader2 } from 'lucide-react';
+import { ApiConfig, OvertimeRecord, FetchStatus, UserProfile, ManualEmployee, GlobalEmployee, HeadcountRecord, TotvsQueryMeta } from '@/src/modules/human-capital/types';
 import { CorporateSidebar, SidebarItem } from '../../components/navigation/CorporateSidebar';
 import { useNavigate } from 'react-router-dom';
 import { realOvertimeData, RealOvertimeRecord } from '@/src/modules/human-capital/data/realOvertime';
@@ -42,6 +42,150 @@ enum Tab {
   ANALYSIS = 'analysis',
   SETTINGS = 'settings'
 }
+
+const TOTVS_DATA_TABS = new Set<Tab>([Tab.DASHBOARD, Tab.ABSENTEEISM, Tab.DATA, Tab.ANALYSIS]);
+
+const formatQueryTimestamp = (value?: string): string => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleString('pt-BR');
+};
+
+const getTotvsBadge = (status: FetchStatus) => {
+  if (status === 'success') {
+    return {
+      className: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
+      icon: <CheckCircle2 size={14} />,
+      label: 'Dados reais TOTVS'
+    };
+  }
+
+  if (status === 'empty') {
+    return {
+      className: 'bg-slate-100 text-slate-600 border border-slate-200',
+      icon: <CheckCircle2 size={14} />,
+      label: 'TOTVS sem registros'
+    };
+  }
+
+  if (status === 'loading') {
+    return {
+      className: 'bg-blue-100 text-blue-700 border border-blue-200',
+      icon: <Loader2 size={14} className="animate-spin" />,
+      label: 'Consultando TOTVS'
+    };
+  }
+
+  if (status === 'error') {
+    return {
+      className: 'bg-rose-100 text-rose-700 border border-rose-200',
+      icon: <XCircle size={14} />,
+      label: 'Erro TOTVS'
+    };
+  }
+
+  return {
+    className: 'bg-slate-100 text-slate-500 border border-slate-200',
+    icon: <AlertTriangle size={14} />,
+    label: 'TOTVS pendente'
+  };
+};
+
+const getTotvsNoticeStyle = (status: FetchStatus): string => {
+  if (status === 'success') return 'bg-emerald-50 border-emerald-200 text-emerald-800';
+  if (status === 'empty') return 'bg-slate-50 border-slate-200 text-slate-700';
+  if (status === 'loading') return 'bg-blue-50 border-blue-200 text-blue-800';
+  if (status === 'error') return 'bg-rose-50 border-rose-200 text-rose-800';
+  return 'bg-amber-50 border-amber-200 text-amber-800';
+};
+
+const TotvsStatusNotice: React.FC<{
+  status: FetchStatus;
+  meta: TotvsQueryMeta | null;
+  errorMessage: string | null;
+  hasPreviousData: boolean;
+  onRetry: () => void;
+}> = ({ status, meta, errorMessage, hasPreviousData, onRetry }) => {
+  if (status === 'idle' && !meta && !errorMessage) return null;
+
+  const isError = status === 'error';
+  const isLoading = status === 'loading';
+  const isEmpty = status === 'empty';
+  const period = meta?.period;
+  const periodLabel = period ? `${period.startDate} a ${period.endDate}` : '-';
+
+  return (
+    <div className={`rounded-xl border px-4 py-3 flex flex-col lg:flex-row lg:items-center justify-between gap-3 ${getTotvsNoticeStyle(status)}`}>
+      <div className="flex items-start gap-3 min-w-0">
+        <div className="mt-0.5 shrink-0">
+          {isLoading ? <Loader2 size={18} className="animate-spin" /> : isError ? <XCircle size={18} /> : <CheckCircle2 size={18} />}
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-bold">
+            {isError && 'Erro ao consultar a integracao TOTVS'}
+            {isLoading && 'Consultando dados reais da TOTVS'}
+            {isEmpty && 'Sem registros no periodo'}
+            {status === 'success' && 'Consulta TOTVS concluida com dados reais'}
+            {status === 'idle' && 'Consulta TOTVS ainda nao iniciada'}
+          </p>
+          <p className="text-xs mt-1 opacity-90">
+            {isError
+              ? (errorMessage || 'Nao foi possivel consultar os dados reais da TOTVS para o periodo selecionado. Verifique a integracao ou tente novamente.')
+              : `Origem: ${meta?.source || 'TOTVS_API'} | Periodo: ${periodLabel} | Consulta: ${formatQueryTimestamp(meta?.queriedAt)} | Linhas retornadas: ${meta?.recordCount ?? 0} | Eventos processados: ${meta?.parsedRecordCount ?? 0}`}
+          </p>
+          {isError && (
+            <p className="text-xs mt-1 opacity-80">
+              Periodo preservado: {periodLabel}. {hasPreviousData ? 'Dados anteriores foram preservados, mas nao estao sendo exibidos como resultado atual.' : 'Nenhum dado oficial foi carregado para este periodo.'}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {(isError || status === 'idle') && (
+        <button
+          onClick={onRetry}
+          disabled={isLoading}
+          className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white/80 hover:bg-white border border-current/20 text-xs font-bold transition-colors disabled:opacity-50"
+        >
+          <RefreshCw size={14} />
+          Tentar novamente
+        </button>
+      )}
+    </div>
+  );
+};
+
+const TotvsBlockingState: React.FC<{
+  status: FetchStatus;
+  errorMessage: string | null;
+  onRetry: () => void;
+}> = ({ status, errorMessage, onRetry }) => (
+  <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-10 flex flex-col items-center justify-center text-center">
+    {status === 'loading' ? (
+      <Loader2 size={36} className="animate-spin text-blue-600 mb-4" />
+    ) : (
+      <XCircle size={40} className="text-rose-500 mb-4" />
+    )}
+    <p className="text-base font-bold text-slate-800">
+      {status === 'loading' ? 'Carregando dados reais da TOTVS' : 'Dados reais nao carregados'}
+    </p>
+    <p className="text-sm text-slate-500 mt-2 max-w-2xl">
+      {status === 'loading'
+        ? 'A tela sera atualizada somente quando a consulta real for concluida.'
+        : errorMessage || 'Nao foi possivel consultar os dados reais da TOTVS para o periodo selecionado. Verifique a integracao ou tente novamente.'}
+    </p>
+    {status !== 'loading' && (
+      <button
+        onClick={onRetry}
+        className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold transition-colors"
+      >
+        <RefreshCw size={15} />
+        Tentar novamente
+      </button>
+    )}
+  </div>
+);
 
 // regionalMap agora vem de ccMaster.ts — fonte única de verdade
 // getRegional delegado para getCCRegional do master
@@ -95,12 +239,13 @@ const HumanCapitalDashboard: React.FC = () => {
     };
   }, [profile]);
 
-  const [simulatedUser, setSimulatedUser] = useState<UserProfile | null>(null);
-  const effectiveUser = simulatedUser || currentUser;
+  const effectiveUser = currentUser;
 
   const [config, setConfig] = useState<ApiConfig>(DEFAULT_CONFIG);
   const [data, setData] = useState<OvertimeRecord[]>([]);
   const [status, setStatus] = useState<FetchStatus>('idle');
+  const [totvsMeta, setTotvsMeta] = useState<TotvsQueryMeta | null>(null);
+  const [totvsError, setTotvsError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>(Tab.DASHBOARD);
 
   // Manual Employees State (Global for HC Module)
@@ -111,6 +256,11 @@ const HumanCapitalDashboard: React.FC = () => {
 
 
   const [showAiPanel, setShowAiPanel] = useState(false);
+
+  const trustedTotvsData = useMemo(
+    () => (status === 'success' || status === 'empty' ? data : []),
+    [data, status]
+  );
 
   // Inicializa filtros com função helper
   // Inicializa filtros com função helper
@@ -152,6 +302,7 @@ const HumanCapitalDashboard: React.FC = () => {
 
   const loadData = async () => {
     setStatus('loading');
+    setTotvsError(null);
     const apiConfig = {
       ...config,
       // Garante que a API receba as datas selecionadas no filtro
@@ -160,34 +311,77 @@ const HumanCapitalDashboard: React.FC = () => {
     };
 
     // Pequena otimização: se as datas forem inválidas, não busca
-    if (!apiConfig.startDate || !apiConfig.endDate) return;
+    if (!apiConfig.startDate || !apiConfig.endDate) {
+      const errorMessage = 'Periodo invalido para consulta da TOTVS.';
+      setTotvsError(errorMessage);
+      setTotvsMeta({
+        source: 'TOTVS_API',
+        queriedAt: new Date().toISOString(),
+        period: {
+          startDate: apiConfig.startDate || '-',
+          endDate: apiConfig.endDate || '-'
+        },
+        status: 'ERROR',
+        recordCount: 0,
+        parsedRecordCount: 0,
+        errorCode: 'UNEXPECTED_FORMAT',
+        errorMessage
+      });
+      setStatus('error');
+      return;
+    }
 
     try {
-      const records = await fetchOvertimeData(apiConfig);
-      setData(records);
-      setStatus('success');
+      const result = await fetchOvertimeDataWithMeta(apiConfig);
+      setData(result.data);
+      setTotvsMeta(result.meta);
+      setStatus(result.meta.status === 'EMPTY' ? 'empty' : 'success');
     } catch (e) {
-      console.error("Failed to load HC data", e);
+      const message = e instanceof TotvsIntegrationError
+        ? e.userMessage
+        : 'Nao foi possivel consultar os dados reais da TOTVS para o periodo selecionado. Verifique a integracao ou tente novamente.';
+
+      console.error("Failed to load HC data", {
+        message: e instanceof Error ? e.message : String(e),
+        code: e instanceof TotvsIntegrationError ? e.code : undefined,
+        httpStatus: e instanceof TotvsIntegrationError ? e.httpStatus : undefined
+      });
+      setTotvsError(message);
+      setTotvsMeta(e instanceof TotvsIntegrationError ? e.meta : {
+        source: 'TOTVS_API',
+        queriedAt: new Date().toISOString(),
+        period: {
+          startDate: apiConfig.startDate,
+          endDate: apiConfig.endDate
+        },
+        status: 'ERROR',
+        recordCount: 0,
+        parsedRecordCount: 0,
+        errorCode: 'NETWORK_ERROR',
+        errorMessage: message
+      });
       setStatus('error');
     }
   };
 
   // Carrega colaboradores manuais
   useEffect(() => {
+    if (!effectiveUser) return;
+
     const loadManual = async () => {
       try {
-        const manuals = await getManualEmployees();
+        const manuals = await getManualEmployees(effectiveUser.scope);
         setManualEmployees(manuals);
       } catch (error) {
         console.error("Erro ao carregar colaboradores manuais:", error);
       }
     };
     loadManual();
-  }, []);
+  }, [effectiveUser]);
 
   // Esponja de Dados Global: Sempre que carregarmos novos dados ou manuais, verifica se tem nomes novos que faltam
   useEffect(() => {
-    if (!effectiveUser || (data.length === 0 && manualEmployees.length === 0)) return;
+    if (!effectiveUser || (trustedTotvsData.length === 0 && manualEmployees.length === 0)) return;
 
     // Processa em background
     const timer = setTimeout(() => {
@@ -195,7 +389,7 @@ const HumanCapitalDashboard: React.FC = () => {
       const newGlobalEmps: GlobalEmployee[] = [];
       let hasChanges = false;
 
-      data.forEach(e => {
+      trustedTotvsData.forEach(e => {
         if (!e.CHAPA) return;
         const existing = currentGlobalMap.get(e.CHAPA);
         if (!existing || existing.nome !== e.NOME || existing.funcao !== e.FUNCAO || existing.costCenter !== e.CODCCUSTO) {
@@ -233,7 +427,7 @@ const HumanCapitalDashboard: React.FC = () => {
     }, 2000); // 2 segundos depois pra não travar a renderização imediata da tela
 
     return () => clearTimeout(timer);
-  }, [data, manualEmployees, effectiveUser, globalEmployees.length]);
+  }, [trustedTotvsData, manualEmployees, effectiveUser, globalEmployees.length]);
 
   const handleCreateEmployee = async (name: string, chapa: string, cc: string, role: string) => {
     if (!effectiveUser) return;
@@ -263,7 +457,7 @@ const HumanCapitalDashboard: React.FC = () => {
     }
 
     try {
-      const records = await getHeadcount();
+      const records = await getHeadcount(undefined, effectiveUser);
       setHeadcountRecords(records);
       return records;
     } catch (error) {
@@ -272,7 +466,7 @@ const HumanCapitalDashboard: React.FC = () => {
       setHeadcountRecords(fallback);
       return fallback;
     }
-  }, []);
+  }, [effectiveUser]);
 
   const filteredRealOvertime = useMemo(() => {
     if (!effectiveUser?.scope) return realOvertimeData;
@@ -300,8 +494,8 @@ const HumanCapitalDashboard: React.FC = () => {
    *  - Sem headcount importado: retorna `data` inalterado (fallback transparente)
    */
   const ratedData = useMemo(
-    () => gerarOvertimeRateado(data, headcountRecords),
-    [data, headcountRecords]
+    () => gerarOvertimeRateado(trustedTotvsData, headcountRecords),
+    [trustedTotvsData, headcountRecords]
   );
 
   const scopedData = useMemo(() => {
@@ -442,6 +636,13 @@ const HumanCapitalDashboard: React.FC = () => {
     return items;
   }, [effectiveUser, activeTab, profile]);
 
+  const totvsBadge = getTotvsBadge(status);
+  const shouldBlockTotvsDataTab = TOTVS_DATA_TABS.has(activeTab) && (
+    status === 'loading' ||
+    status === 'error' ||
+    status === 'idle'
+  );
+
   if (isProfileLoading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="animate-pulse text-blue-600 font-medium">Carregando perfil...</div></div>;
   if (!hasModuleAccess('human_capital')) return <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-gray-500 gap-4"><Lock size={48} className="text-gray-300" /><h2 className="text-xl font-bold">Acesso Restrito</h2><p>Seu perfil não possui acesso ao módulo Capital Humano.</p><button onClick={() => navigate('/')} className="text-blue-600 underline text-sm">Voltar ao início</button></div>;
   if (!effectiveUser) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="animate-pulse text-blue-600 font-medium">Carregando Perfil Capital Humano...</div></div>;
@@ -471,9 +672,9 @@ const HumanCapitalDashboard: React.FC = () => {
           </div>
           <div className="flex items-center gap-3">
             {/* Badge status TOTVS */}
-            <div className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide flex items-center space-x-1.5 shadow-sm ${status === 'success' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}`}>
-              {status === 'success' ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
-              <span>{status === 'success' ? 'Conectado TOTVS' : 'Modo Simulação'}</span>
+            <div className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide flex items-center space-x-1.5 shadow-sm ${totvsBadge.className}`}>
+              {totvsBadge.icon}
+              <span>{totvsBadge.label}</span>
             </div>
             {/* Badge status Headcount */}
             <div className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide flex items-center space-x-1.5 shadow-sm ${headcountRecords.length > 0 ? 'bg-teal-100 text-teal-700 border border-teal-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
@@ -486,12 +687,28 @@ const HumanCapitalDashboard: React.FC = () => {
         </header>
 
         <div className="flex-1 overflow-y-auto pt-2 pb-4 px-4 lg:pt-3 lg:pb-8 lg:px-8 scroll-smooth">
+          {TOTVS_DATA_TABS.has(activeTab) && (
+            <div className="mb-3">
+              <TotvsStatusNotice
+                status={status}
+                meta={totvsMeta}
+                errorMessage={totvsError}
+                hasPreviousData={data.length > 0}
+                onRetry={() => { void loadData(); }}
+              />
+            </div>
+          )}
+
           {(activeTab === Tab.DASHBOARD || activeTab === Tab.DATA || activeTab === Tab.ANALYSIS || activeTab === Tab.ABSENTEEISM) && (
             <FilterBar filters={filters} setFilters={setFilters} options={filterOptions} onClear={clearFilters} />
           )}
 
           <div className="mt-5 animate-in fade-in duration-500 slide-in-from-bottom-2">
-            {activeTab === Tab.DASHBOARD && (
+            {shouldBlockTotvsDataTab && (
+              <TotvsBlockingState status={status} errorMessage={totvsError} onRetry={() => { void loadData(); }} />
+            )}
+
+            {!shouldBlockTotvsDataTab && activeTab === Tab.DASHBOARD && (
               <Dashboard
                 data={filteredData}
                 allData={scopedData}
@@ -508,7 +725,7 @@ const HumanCapitalDashboard: React.FC = () => {
                 periodEnd={comparisonPeriod.periodEnd}
               />
             )}
-            {activeTab === Tab.ABSENTEEISM && (
+            {!shouldBlockTotvsDataTab && activeTab === Tab.ABSENTEEISM && (
               <AbsenteeismDashboard
                 data={filteredData}
                 regional={filters.regional}
@@ -521,8 +738,8 @@ const HumanCapitalDashboard: React.FC = () => {
                 headcountRecords={headcountRecords}
               />
             )}
-            {activeTab === Tab.DATA && <DataGrid data={filteredData} rawData={headcountRecords.length > 0 ? data : undefined} />}
-            {activeTab === Tab.ANALYSIS && (
+            {!shouldBlockTotvsDataTab && activeTab === Tab.DATA && <DataGrid data={filteredData} rawData={headcountRecords.length > 0 ? trustedTotvsData : undefined} />}
+            {!shouldBlockTotvsDataTab && activeTab === Tab.ANALYSIS && (
               <AnalysisPanel
                 data={filteredData}
                 allData={scopedData}
@@ -546,7 +763,7 @@ const HumanCapitalDashboard: React.FC = () => {
                   </p>
                   <HeadcountGovernance
                     headcountRecords={headcountRecords}
-                    rawData={data}
+                    rawData={trustedTotvsData}
                     onClear={() => { void syncHeadcountRecords({ clearCache: true }); }}
                     onRefresh={() => { void syncHeadcountRecords(); }}
                   />
@@ -565,13 +782,15 @@ const HumanCapitalDashboard: React.FC = () => {
               </div>
             )}
 
-            <button
-              onClick={() => setShowAiPanel(true)}
-              className="fixed bottom-6 right-6 bg-gradient-to-br from-indigo-500 to-purple-600 text-white p-4 rounded-full shadow-xl hover:shadow-2xl hover:scale-105 transition-all z-40 group"
-              title="Gemini AI Insights"
-            >
-              <Sparkles size={24} className="group-hover:animate-pulse" />
-            </button>
+            {!shouldBlockTotvsDataTab && (
+              <button
+                onClick={() => setShowAiPanel(true)}
+                className="fixed bottom-6 right-6 bg-gradient-to-br from-indigo-500 to-purple-600 text-white p-4 rounded-full shadow-xl hover:shadow-2xl hover:scale-105 transition-all z-40 group"
+                title="Gemini AI Insights"
+              >
+                <Sparkles size={24} className="group-hover:animate-pulse" />
+              </button>
+            )}
 
             {/* Global Modals */}
             <CreateEmployeeModal
@@ -583,7 +802,7 @@ const HumanCapitalDashboard: React.FC = () => {
           </div>
         </div>
 
-        {showAiPanel && (
+        {showAiPanel && !shouldBlockTotvsDataTab && (
           <div className="absolute inset-y-0 right-0 w-full sm:w-[450px] shadow-2xl z-40 bg-white border-l border-gray-100 animate-in slide-in-from-right duration-300">
             <GeminiPanel data={filteredData} isVisible={true} onClose={() => setShowAiPanel(false)} />
           </div>

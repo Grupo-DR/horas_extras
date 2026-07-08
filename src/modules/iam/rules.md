@@ -2,40 +2,41 @@
 
 ## Overview
 Unified Identity & Access Management for Commercial and Human Capital modules.
-Source of Truth: `user_profiles/{uid}` in Firestore.
+Source of truth: `user_profiles/{uid}` in Firestore.
 
 ## Roles & Permissions
 
 ### Commercial Module
-- **COMMERCIAL_ADMIN**: Full access to Commercial module features.
-- **COMMERCIAL_VIEWER**: Read-only access to Commercial dashboards.
-- **IAM_ADMIN**: Cannot access Commercial business logic, but manages user profiles.
+- `COMMERCIAL_ADMIN`: full access to Commercial module features.
+- `COMMERCIAL_VIEWER`: read-only access to Commercial dashboards.
+- `IAM_ADMIN`: manages user profiles; does not imply Commercial business access.
 
-### Human Capital Module (HC)
+### Human Capital Module (CH)
 | Role | Access Scope | Can Plan? | Manage Profiles? | Description |
 | :--- | :--- | :---: | :---: | :--- |
-| `HC_ADMIN` | ALL | ✅ | ✅ | Full Admin |
-| `HC_MANAGER` | REGIONAL | ✅ | ❌ | Regional Manager |
-| `HC_COSTCENTER_PLANNER` | COST_CENTER | ✅ | ❌ | Specific Project/CC Planner |
-| `HC_AUDITOR_VIEWER` | ALL | ❌ | ❌ | Auditor / Payroll Viewer |
+| `CH_ADMIN` | ALL | yes | yes | Full admin |
+| `CH_MANAGER` | REGIONAL | yes | no | Regional manager |
+| `CH_COSTCENTER_PLANNER` | COST_CENTER | yes | no | Specific project/CC planner |
+| `CH_APPROVER` | ALL | yes | no | Approval workflow |
+| `CH_AUDITOR_VIEWER` | ALL | no | no | Auditor / payroll viewer |
+
+Legacy `HC_*` role values are accepted only as temporary compatibility for old `user_profiles` documents. New code and new documents must use `CH_*`.
 
 ## Scopes
-- **ALL**: Full visibility.
-- **REGIONAL**: Filter data by `regionals` array in profile.
-- **COST_CENTER**: Filter data by `costCenters` array in profile.
+- `ALL`: full visibility.
+- `REGIONAL`: filter data by `regionals` array in profile.
+- `COST_CENTER`: filter data by `costCenters` array in profile.
 
 ## Profile Management Policy
-- Only `isSuperAdmin` (Hardcoded/Dev) or `HC_ADMIN` (or `IAM_ADMIN`) can edit profiles.
-- Profiles are created automatically on first login if not present, but with minimal/no access (disabled modules).
-- **Exception**: `antonio.silva@grupodr.com.br` (and Dev) are auto-initialized as Super Admins.
+- Only `isSuperAdmin`, `CH_ADMIN`, or `IAM_ADMIN` can edit profiles.
+- Profiles are created automatically on first login if not present, with disabled modules for regular users.
 
 ## Database Rules
-- `read`: Own profile OR Admin.
-- `write`: Admin only.
-- Validation: Enforce schema types for Scope and Role.
+- `read`: own profile or admin.
+- `write`: admin only.
+- Human Capital collections must check authenticated user, enabled `human_capital` module, role, and scope whenever the document has the required denormalized fields.
 
-## Migration / Fallback Strategy (Fase 1)
-For existing users without a full profile structure:
-1. If `modules.commercial` is undefined: Assume `{ enabled: true, role: 'COMMERCIAL_ADMIN' }`.
-2. This ensures no disruption for legacy Commercial users.
-3. HC access is strictly denied if `modules.human_capital.enabled` is missing or false.
+## Migration / Fallback Strategy
+1. If `modules.commercial` is undefined, legacy Commercial users may be handled by application compatibility logic.
+2. Human Capital access is denied if `modules.human_capital.enabled` is missing or false.
+3. Legacy `HC_*` roles should be normalized to `CH_*` during profile reads and future profile saves.

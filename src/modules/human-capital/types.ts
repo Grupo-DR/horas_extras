@@ -21,7 +21,35 @@ export interface ApiConfig {
     endDate: string;
 }
 
-export type FetchStatus = 'idle' | 'loading' | 'success' | 'error';
+export type TotvsErrorCode =
+    | 'HTTP_UNAUTHORIZED'
+    | 'HTTP_FORBIDDEN'
+    | 'HTTP_ERROR'
+    | 'UNEXPECTED_FORMAT'
+    | 'NETWORK_ERROR';
+
+export type TotvsQueryStatus = 'SUCCESS' | 'EMPTY' | 'ERROR';
+
+export interface TotvsQueryMeta {
+    source: 'TOTVS_API';
+    queriedAt: string;
+    period: {
+        startDate: string;
+        endDate: string;
+    };
+    status: TotvsQueryStatus;
+    recordCount: number;
+    parsedRecordCount: number;
+    errorCode?: TotvsErrorCode;
+    errorMessage?: string;
+}
+
+export interface TotvsQueryResult {
+    data: OvertimeRecord[];
+    meta: TotvsQueryMeta;
+}
+
+export type FetchStatus = 'idle' | 'loading' | 'success' | 'empty' | 'error';
 
 export interface DashboardMetrics {
     totalSum: number;

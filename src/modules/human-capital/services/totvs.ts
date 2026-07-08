@@ -1,124 +1,166 @@
-import { OvertimeRecord, ApiConfig } from '../types';
+import {
+    ApiConfig,
+    OvertimeRecord,
+    TotvsErrorCode,
+    TotvsQueryMeta,
+    TotvsQueryResult,
+} from '../types';
 
-// Mock Data (Mantido para fallback)
-export const generateMockData = (): OvertimeRecord[] => {
-    // ... mesmo mock data anterior ...
-    const rawMock = [
-        {
-            "CHAPA": "2337",
-            "NOME": "CLAYTON DE SOUZA CHAMONE",
-            "FUNCAO": "Supervisor de Obras",
-            "CODCCUSTO": "303702",
-            "DESCRICAO": "SERV CORRECAO GEOMETRICA SOCADORA - RUMO",
-            "DATA": "2025-08-01T00:00:00-03:00",
-            "HORAS_TRABALHADAS_PERIODO_PONTO": 8.0,
-            "HORA_EXTRA_60": 0.45
-        },
-        {
-            "CHAPA": "1846",
-            "NOME": "ALEXANDRE AYUSSO",
-            "FUNCAO": "Motorista III",
-            "CODCCUSTO": "301903",
-            "DESCRICAO": "MANUT. INFRA NORTE ZAR – TMI",
-            "DATA": "2025-12-25T00:00:00-03:00",
-            "HORA_EXTRA_100": 4.8,
-            "INTER_JORNADA60": 4.8,
-            "ADICIONAL_NOTURNO_20": 4.43
-        },
-        {
-            "CHAPA": "9999",
-            "NOME": "MARIA SILVA",
-            "FUNCAO": "Analista RH",
-            "CODCCUSTO": "101010",
-            "DESCRICAO": "ADMINISTRATIVO SEDE",
-            "DATA": "2025-08-15T00:00:00-03:00",
-            "HORA_EXTRA_100": 2.15,
-            "INTER_JORNADA60": 0.30
-        },
-        {
-            "CHAPA": "2337",
-            "NOME": "CLAYTON DE SOUZA CHAMONE",
-            "FUNCAO": "Supervisor de Obras",
-            "CODCCUSTO": "303702",
-            "DESCRICAO": "SERV CORRECAO GEOMETRICA SOCADORA - RUMO",
-            "DATA": "2025-08-01T00:00:00-03:00",
-            "DESCONTO_ATRASOS": 1.5,
-            "DESCONTO_FALTAS": 8.0
-        },
-        {
-            "CHAPA": "1846",
-            "NOME": "ALEXANDRE AYUSSO",
-            "FUNCAO": "Motorista III",
-            "CODCCUSTO": "301903",
-            "DESCRICAO": "MANUT. INFRA NORTE ZAR – TMI",
-            "DATA": "2025-12-25T00:00:00-03:00",
-            "DESCONTO_FALTAS": 16.0
-        }
-    ];
-    return parseTotvsResponse(rawMock);
+type TotvsRawValue = string | number | boolean | null | undefined;
+export type TotvsRawRecord = Record<string, TotvsRawValue>;
+
+const ALLOWED_EVENTS = [
+    'HORA_EXTRA_60',
+    'HORA_EXTRA_100',
+    'INTER_JORNADA60',
+    'ADICIONAL_NOTURNO_20',
+    'DESCONTO_ATRASOS',
+    'DESCONTO_FALTAS',
+];
+
+export class TotvsIntegrationError extends Error {
+    readonly code: TotvsErrorCode;
+    readonly userMessage: string;
+    readonly meta: TotvsQueryMeta;
+    readonly httpStatus?: number;
+    readonly cause?: unknown;
+
+    constructor(params: {
+        code: TotvsErrorCode;
+        technicalMessage: string;
+        userMessage: string;
+        meta: TotvsQueryMeta;
+        httpStatus?: number;
+        cause?: unknown;
+    }) {
+        super(params.technicalMessage);
+        this.name = 'TotvsIntegrationError';
+        this.code = params.code;
+        this.userMessage = params.userMessage;
+        this.meta = params.meta;
+        this.httpStatus = params.httpStatus;
+        this.cause = params.cause;
+    }
+}
+
+const createMeta = (
+    config: ApiConfig,
+    status: TotvsQueryMeta['status'],
+    recordCount: number,
+    parsedRecordCount: number,
+    error?: { code: TotvsErrorCode; message: string }
+): TotvsQueryMeta => ({
+    source: 'TOTVS_API',
+    queriedAt: new Date().toISOString(),
+    period: {
+        startDate: config.startDate,
+        endDate: config.endDate,
+    },
+    status,
+    recordCount,
+    parsedRecordCount,
+    ...(error ? { errorCode: error.code, errorMessage: error.message } : {}),
+});
+
+const buildError = (
+    config: ApiConfig,
+    code: TotvsErrorCode,
+    technicalMessage: string,
+    userMessage: string,
+    options?: { httpStatus?: number; cause?: unknown }
+) => new TotvsIntegrationError({
+    code,
+    technicalMessage,
+    userMessage,
+    httpStatus: options?.httpStatus,
+    cause: options?.cause,
+    meta: createMeta(config, 'ERROR', 0, 0, { code, message: userMessage }),
+});
+
+const logTotvsError = (error: TotvsIntegrationError) => {
+    console.error('[TOTVS] Falha na consulta de horas extras.', {
+        code: error.code,
+        httpStatus: error.httpStatus,
+        message: error.message,
+    });
 };
 
+const isRecord = (value: unknown): value is TotvsRawRecord =>
+    typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const convertTotvsHourToDecimal = (value: number): number => {
-    const sign = value < 0 ? -1 : 1;
-    const absValue = Math.abs(value);
-    const str = absValue.toString();
-    const parts = str.split('.');
+const isRecordArray = (value: unknown): value is TotvsRawRecord[] =>
+    Array.isArray(value) && value.every(isRecord);
 
-    const hours = parseInt(parts[0], 10);
-    if (parts.length === 1) return hours * sign;
-    const minutes = parseInt(parts[1], 10);
-    return sign * (hours + (minutes / 60));
+const extractRawItems = (payload: unknown): unknown => {
+    if (Array.isArray(payload)) return payload;
+    if (isRecord(payload) && 'Items' in payload) return payload.Items;
+    if (isRecord(payload) && 'items' in payload) return payload.items;
+    return payload;
 };
 
-const parseTotvsResponse = (data: any[]): OvertimeRecord[] => {
-    const records: OvertimeRecord[] = [];
-    if (!Array.isArray(data)) return [];
+const getString = (item: TotvsRawRecord, key: string, fallback = ''): string => {
+    const value = item[key];
+    if (value === null || value === undefined || value === '') return fallback;
+    return String(value);
+};
 
-    if (data.length > 0) {
-        console.log("================ TOTVS API DEBUG ================");
-        console.log("RAW ITEM KEYS:", Object.keys(data[0]));
-        console.log("FIRST ITEM:", data[0]);
-        console.log("=================================================");
+const parseNumericHour = (value: TotvsRawValue): number | string | null => {
+    if (typeof value === 'number') {
+        return Number.isFinite(value) ? value : null;
     }
 
-    const allowedEvents = [
-        'HORA_EXTRA_60',
-        'HORA_EXTRA_100',
-        'INTER_JORNADA60',
-        'ADICIONAL_NOTURNO_20',
-        'DESCONTO_ATRASOS',
-        'DESCONTO_FALTAS'
-    ];
+    if (typeof value === 'string') {
+        const normalized = value.trim().replace(',', '.');
+        if (!normalized) return null;
+        return Number.isFinite(Number(normalized)) ? normalized : null;
+    }
+
+    return null;
+};
+
+export const convertTotvsHourToDecimal = (value: number | string): number => {
+    const normalized = String(value).trim().replace(',', '.');
+    const sign = normalized.startsWith('-') ? -1 : 1;
+    const unsigned = normalized.replace(/^-/, '');
+    const [hourPart, minutePart] = unsigned.split('.');
+
+    const hours = Number.parseInt(hourPart || '0', 10);
+    if (!Number.isFinite(hours)) return 0;
+    if (!minutePart) return sign * hours;
+
+    const minutes = Number.parseInt(minutePart, 10);
+    if (!Number.isFinite(minutes)) return sign * hours;
+    return sign * (hours + minutes / 60);
+};
+
+export const parseTotvsResponse = (data: TotvsRawRecord[]): OvertimeRecord[] => {
+    const records: OvertimeRecord[] = [];
 
     data.forEach((item) => {
-        // Campos Básicos (Extração Direta)
         const baseRecord = {
-            CHAPA: String(item.CHAPA || ''),
-            NOME: String(item.NOME || 'Desconhecido'),
-            FUNCAO: String(item.FUNCAO || ''),
-            CODCCUSTO: String(item.CODCCUSTO || ''),
-            SECAO: String(item.DESCRICAO || item.SECAO || 'Sem Seção'),
-            DATA: String(item.DATA || new Date().toISOString()),
+            CHAPA: getString(item, 'CHAPA'),
+            NOME: getString(item, 'NOME', 'Desconhecido'),
+            FUNCAO: getString(item, 'FUNCAO'),
+            CODCCUSTO: getString(item, 'CODCCUSTO'),
+            SECAO: getString(item, 'DESCRICAO', getString(item, 'SECAO', 'Sem Secao')),
+            DATA: getString(item, 'DATA', new Date().toISOString()),
         };
 
-        // Filtro Simplificado e Seguro por Whitelist
         Object.keys(item).forEach((key) => {
             const upperKey = key.toUpperCase();
-            const value = item[key];
+            const rawHour = parseNumericHour(item[key]);
+            const numericHour = rawHour === null ? 0 : Number(String(rawHour).replace(',', '.'));
 
             if (
-                allowedEvents.includes(upperKey) &&
-                value !== undefined &&
-                value !== null &&
-                typeof value === 'number' &&
-                value !== 0
+                ALLOWED_EVENTS.includes(upperKey) &&
+                rawHour !== null &&
+                numericHour !== 0
             ) {
                 records.push({
                     ...baseRecord,
                     EVENTO: key.replace(/_/g, ' '),
-                    HORAS: convertTotvsHourToDecimal(value),
-                    VALOR: 0
+                    HORAS: convertTotvsHourToDecimal(rawHour),
+                    VALOR: 0,
                 });
             }
         });
@@ -127,50 +169,109 @@ const parseTotvsResponse = (data: any[]): OvertimeRecord[] => {
     return records;
 };
 
-export const fetchOvertimeData = async (config: ApiConfig): Promise<OvertimeRecord[]> => {
-    try {
-        const authString = btoa(`${config.username}:${config.password || ''}`);
-        const headers = {
-            'Authorization': `Basic ${authString}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
+const buildFetchUrl = (config: ApiConfig): string => {
+    let fetchUrl = config.url;
+    if (!fetchUrl.includes('parameters=') && config.startDate && config.endDate) {
+        const joinChar = fetchUrl.includes('?') ? '&' : '?';
+        const params = `PLN_B1_D=${config.startDate};PLN_B2_D=${config.endDate}`;
+        fetchUrl = `${fetchUrl}${joinChar}parameters=${params}`;
+    }
+    return fetchUrl;
+};
+
+const getHttpError = (status: number): { code: TotvsErrorCode; userMessage: string } => {
+    if (status === 401) {
+        return {
+            code: 'HTTP_UNAUTHORIZED',
+            userMessage: 'Credenciais invalidas ou acesso negado na integracao TOTVS.',
         };
+    }
 
-        let fetchUrl = config.url;
-        if (!fetchUrl.includes('parameters=') && config.startDate && config.endDate) {
-            const joinChar = fetchUrl.includes('?') ? '&' : '?';
-            const params = `PLN_B1_D=${config.startDate};PLN_B2_D=${config.endDate}`;
-            fetchUrl = `${fetchUrl}${joinChar}parameters=${params}`;
-        }
+    if (status === 403) {
+        return {
+            code: 'HTTP_FORBIDDEN',
+            userMessage: 'Acesso negado pela API TOTVS para as credenciais configuradas.',
+        };
+    }
 
-        const response = await fetch(fetchUrl, {
+    return {
+        code: 'HTTP_ERROR',
+        userMessage: `API TOTVS retornou status ${status}.`,
+    };
+};
+
+export const fetchOvertimeDataWithMeta = async (config: ApiConfig): Promise<TotvsQueryResult> => {
+    try {
+        const authString = globalThis.btoa(`${config.username}:${config.password || ''}`);
+        const response = await fetch(buildFetchUrl(config), {
             method: 'GET',
-            headers: headers,
+            headers: {
+                Authorization: `Basic ${authString}`,
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+            },
         });
 
         if (!response.ok) {
-            throw new Error(`API retornou ${response.status}`);
+            const httpError = getHttpError(response.status);
+            throw buildError(
+                config,
+                httpError.code,
+                `API TOTVS retornou status ${response.status}.`,
+                httpError.userMessage,
+                { httpStatus: response.status }
+            );
         }
 
-        const json = await response.json();
-        let rawData = json;
-        if (!Array.isArray(json) && json.Items) {
-            rawData = json.Items;
-        } else if (!Array.isArray(json) && json.items) {
-            rawData = json.items;
+        let payload: unknown;
+        try {
+            payload = await response.json();
+        } catch (cause) {
+            throw buildError(
+                config,
+                'UNEXPECTED_FORMAT',
+                'Resposta da API TOTVS nao pode ser interpretada como JSON.',
+                'Formato inesperado retornado pela TOTVS.',
+                { cause }
+            );
         }
 
-        if (!Array.isArray(rawData)) {
-            console.warn("Formato de API inesperado, usando mock.", rawData);
-            return generateMockData();
+        const rawItems = extractRawItems(payload);
+        if (!isRecordArray(rawItems)) {
+            throw buildError(
+                config,
+                'UNEXPECTED_FORMAT',
+                'Formato inesperado na resposta da API TOTVS.',
+                'Formato inesperado retornado pela TOTVS.'
+            );
         }
 
-        return parseTotvsResponse(rawData);
+        const parsed = parseTotvsResponse(rawItems);
+        const status = rawItems.length === 0 ? 'EMPTY' : 'SUCCESS';
 
+        return {
+            data: parsed,
+            meta: createMeta(config, status, rawItems.length, parsed.length),
+        };
     } catch (error) {
-        console.warn("Falha na busca, alternando para Dados Simulados.", error);
-        return new Promise((resolve) => {
-            setTimeout(() => resolve(generateMockData()), 800);
-        });
+        if (error instanceof TotvsIntegrationError) {
+            logTotvsError(error);
+            throw error;
+        }
+
+        const networkError = buildError(
+            config,
+            'NETWORK_ERROR',
+            'Falha de conexao ao consultar a API TOTVS.',
+            'Falha de conexao com a API TOTVS. Verifique a integracao ou tente novamente.',
+            { cause: error }
+        );
+        logTotvsError(networkError);
+        throw networkError;
     }
+};
+
+export const fetchOvertimeData = async (config: ApiConfig): Promise<OvertimeRecord[]> => {
+    const result = await fetchOvertimeDataWithMeta(config);
+    return result.data;
 };

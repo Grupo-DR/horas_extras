@@ -477,10 +477,10 @@ export const getGlobalEmployeesSync = (): import('../types').GlobalEmployee[] =>
     return [];
 };
 
-export const getGlobalEmployeesAsync = async (): Promise<import('../types').GlobalEmployee[]> => {
+export const getGlobalEmployeesAsync = async (user?: UserProfile): Promise<import('../types').GlobalEmployee[]> => {
     try {
         if (isOnline()) {
-            const rows = await FirestoreService.getGlobalEmployees();
+            const rows = await FirestoreService.getGlobalEmployees(user?.scope);
             localStorage.setItem(GLOBAL_EMP_CACHE_KEY, JSON.stringify(rows));
             return rows;
         }
@@ -549,10 +549,10 @@ export const saveHeadcount = async (
  * Busca registros de headcount do Firestore com fallback ao cache local.
  * Se dateRef for fornecido, retorna apenas os vigentes naquela data.
  */
-export const getHeadcount = async (dateRef?: string): Promise<HeadcountRecord[]> => {
+export const getHeadcount = async (dateRef?: string, user?: UserProfile): Promise<HeadcountRecord[]> => {
     try {
         if (isOnline()) {
-            const rows = await FirestoreService.getHeadcountRecords(dateRef);
+            const rows = await FirestoreService.getHeadcountRecords(dateRef, user?.scope);
             localStorage.setItem(HC_CACHE_KEY, JSON.stringify(rows));
             return rows;
         }

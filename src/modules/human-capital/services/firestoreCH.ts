@@ -1,9 +1,10 @@
 
 import { db } from '@/services/firebaseConfig';
-import { collection, doc, writeBatch, query, where, getDocs, addDoc, Timestamp, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, writeBatch, query, where, getDocs, addDoc, Timestamp, getDoc, setDoc, deleteDoc, QueryConstraint } from 'firebase/firestore';
 import { BudgetRecord, SalaryAllocation, PlanningRecord, UserProfile, ManualEmployee, HeadcountRecord, HeadcountUploadMeta } from '../types';
 import { Scope } from '../../iam/types';
 import { isCostCenterInHumanCapitalScope } from '../utils/scopeFilters';
+import { getCCRegional } from '../data/ccMaster';
 
 const COL_BUDGETS = 'hc_budgets';
 const COL_SALARIES = 'hc_salary_allocations';
@@ -47,6 +48,57 @@ const clean = (obj: any): any => {
     return res;
 };
 
+const FIRESTORE_IN_LIMIT = 10;
+
+const chunk = <T,>(items: T[], size: number): T[][] => {
+    const chunks: T[][] = [];
+    for (let i = 0; i < items.length; i += size) {
+        chunks.push(items.slice(i, i + size));
+    }
+    return chunks;
+};
+
+const getScopedConstraintGroups = (
+    scope: Scope | undefined,
+    costCenterField: string
+): QueryConstraint[][] => {
+    if (!scope || scope.type === 'ALL') return [[]];
+
+    if (scope.type === 'COST_CENTER') {
+        const costCenters = Array.from(new Set((scope.costCenters || []).filter(Boolean)));
+        return chunk(costCenters, FIRESTORE_IN_LIMIT).map(values => [where(costCenterField, 'in', values)]);
+    }
+
+    if (scope.type === 'REGIONAL') {
+        const regionals = Array.from(new Set((scope.regionals || []).filter(Boolean)));
+        return chunk(regionals, FIRESTORE_IN_LIMIT).map(values => [where('regional', 'in', values)]);
+    }
+
+    return [];
+};
+
+const getScopedDocs = async <T,>(
+    collectionName: string,
+    scope: Scope | undefined,
+    costCenterField = 'costCenter',
+    baseConstraints: QueryConstraint[] = []
+): Promise<T[]> => {
+    const scopedGroups = getScopedConstraintGroups(scope, costCenterField);
+    if (scopedGroups.length === 0) return [];
+
+    const snapshots = await Promise.all(
+        scopedGroups.map(group =>
+            getDocs(query(collection(db, collectionName), ...baseConstraints, ...group))
+        )
+    );
+
+    const docs = new Map<string, T>();
+    snapshots.forEach(snapshot => {
+        snapshot.docs.forEach(document => docs.set(document.id, document.data() as T));
+    });
+    return Array.from(docs.values());
+};
+
 // --- BUDGETS ---
 
 export const upsertBudgets = async (budgets: BudgetRecord[], user: UserProfile) => {
@@ -59,7 +111,8 @@ export const upsertBudgets = async (budgets: BudgetRecord[], user: UserProfile) 
 
         const data = clean({
             ...b,
-            value: safeNumber(b.value)
+            value: safeNumber(b.value),
+            regional: getCCRegional(b.costCenter || '')
         });
 
         batch.set(ref, {
@@ -73,17 +126,14 @@ export const upsertBudgets = async (budgets: BudgetRecord[], user: UserProfile) 
 
 export const getBudgetsByMonthKey = async (monthKey: string, scope?: Scope) => {
     if (!monthKey) return [];
-    const q = query(collection(db, COL_BUDGETS), where('monthKey', '==', monthKey));
-    const snapshot = await getDocs(q);
-    return snapshot.docs
-        .map(d => d.data() as BudgetRecord)
+    const rows = await getScopedDocs<BudgetRecord>(COL_BUDGETS, scope, 'costCenter', [where('monthKey', '==', monthKey)]);
+    return rows
         .filter(b => isCostCenterInHumanCapitalScope(scope, b.costCenter || ''));
 };
 
 export const getAllBudgets = async (scope?: Scope): Promise<BudgetRecord[]> => {
-    const snapshot = await getDocs(collection(db, COL_BUDGETS));
-    return snapshot.docs
-        .map(d => d.data() as BudgetRecord)
+    const rows = await getScopedDocs<BudgetRecord>(COL_BUDGETS, scope);
+    return rows
         .filter(b => isCostCenterInHumanCapitalScope(scope, b.costCenter || ''));
 };
 
@@ -128,7 +178,8 @@ export const upsertSalaryAllocations = async (allocations: SalaryAllocation[], u
             const data = clean({
                 ...s,
                 salary: safeNumber(s.salary),
-                allocation: safeNumber(s.allocation)
+                allocation: safeNumber(s.allocation),
+                regional: getCCRegional(s.costCenter || '')
             });
 
             batch.set(ref, {
@@ -143,10 +194,8 @@ export const upsertSalaryAllocations = async (allocations: SalaryAllocation[], u
 
 export const getSalaryAllocationsByMonthKey = async (monthKey: string, scope?: Scope) => {
     if (!monthKey) return [];
-    const q = query(collection(db, COL_SALARIES), where('monthKey', '==', monthKey));
-    const snapshot = await getDocs(q);
-    return snapshot.docs
-        .map(d => d.data() as SalaryAllocation)
+    const rows = await getScopedDocs<SalaryAllocation>(COL_SALARIES, scope, 'costCenter', [where('monthKey', '==', monthKey)]);
+    return rows
         .filter(s => isCostCenterInHumanCapitalScope(scope, s.costCenter || ''));
 };
 
@@ -180,7 +229,8 @@ export const upsertPlanningRecords = async (records: PlanningRecord[], user: Use
 
         const data = clean({
             ...r,
-            plannedHours: safeNumber(r.plannedHours)
+            plannedHours: safeNumber(r.plannedHours),
+            regional: getCCRegional(r.costCenter || '')
         });
 
         batch.set(ref, {
@@ -200,29 +250,11 @@ export const getPlanningRecords = async (monthKey: string, type: 'DAILY' | 'MONT
     const start = monthKey;
     const end = monthKey + '\uf8ff';
 
-    // We also need to match TYPE.
-    // Compound query requires index. If fails, we might filter in memory.
-    // Let's try compound.
-    const q = query(
-        collection(db, COL_PLANNING),
-        where('date', '>=', start),
-        where('date', '<=', end),
-        where('type', '==', type)
-    );
-
-    // If index missing, this might fail console.error.
-    // We can just query by date and filter type in memory, safer for now without deploying indexes manually.
-    // Actually, 'date' is enough to narrow down to month.
-
-    const q2 = query(
-        collection(db, COL_PLANNING),
+    const rows = await getScopedDocs<PlanningRecord>(COL_PLANNING, scope, 'costCenter', [
         where('date', '>=', start),
         where('date', '<=', end)
-    );
-
-    const snapshot = await getDocs(q2);
-    const all = snapshot.docs.map(d => d.data() as PlanningRecord);
-    return all.filter(r => r.type === type && isCostCenterInHumanCapitalScope(scope, r.costCenter || ''));
+    ]);
+    return rows.filter(r => r.type === type && isCostCenterInHumanCapitalScope(scope, r.costCenter || ''));
 };
 
 // --- AUDIT ---
@@ -251,6 +283,7 @@ export const upsertTeams = async (teams: LegacyWorkTeam[], user: UserProfile) =>
 
         batch.set(ref, {
             ...t,
+            regional: getCCRegional(t.costCenter || ''),
             updatedAt: Timestamp.now(),
             updatedBy: user.email
         }, { merge: true });
@@ -259,10 +292,8 @@ export const upsertTeams = async (teams: LegacyWorkTeam[], user: UserProfile) =>
 };
 
 export const getTeams = async (scope?: Scope) => {
-    const q = query(collection(db, COL_TEAMS));
-    // Filters based on scope can be added here if needed, currently global or filtered in UI
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => d.data() as LegacyWorkTeam);
+    const rows = await getScopedDocs<LegacyWorkTeam>(COL_TEAMS, scope);
+    return rows.filter(t => isCostCenterInHumanCapitalScope(scope, t.costCenter || ''));
 };
 
 export const deleteTeam = async (teamId: string) => {
@@ -286,6 +317,8 @@ export const upsertTeamAllocation = async (allocation: LegacyTeamAllocation, use
 
 export const getTeamAllocationsByMonthKey = async (monthKey: string, scope?: Scope) => {
     if (!monthKey) return [];
+    // Team allocation docs do not denormalize costCenter/regional; scoped users cannot be queried safely.
+    if (scope && scope.type !== 'ALL') return [];
     const q = query(collection(db, COL_TEAM_ALLOCATIONS), where('monthKey', '==', monthKey));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(d => d.data() as LegacyTeamAllocation);
@@ -306,15 +339,15 @@ export const upsertManualEmployee = async (employee: ManualEmployee, user: UserP
     const ref = doc(db, COL_MANUAL_EMPLOYEES, employee.id);
     await setDoc(ref, {
         ...employee,
+        regional: getCCRegional(employee.costCenter || ''),
         updatedAt: Timestamp.now(),
         updatedBy: user.email
     }, { merge: true });
 };
 
-export const getManualEmployees = async () => {
-    const q = query(collection(db, COL_MANUAL_EMPLOYEES));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => d.data() as ManualEmployee);
+export const getManualEmployees = async (scope?: Scope) => {
+    const rows = await getScopedDocs<ManualEmployee>(COL_MANUAL_EMPLOYEES, scope);
+    return rows.filter(employee => isCostCenterInHumanCapitalScope(scope, employee.costCenter || ''));
 };
 
 // --- GLOBAL EMPLOYEES (DICTIONARY) ---
@@ -335,6 +368,7 @@ export const upsertGlobalEmployees = async (employees: import('../types').Global
             const ref = doc(db, COL_GLOBAL_EMPLOYEES, emp.chapa);
             batch.set(ref, {
                 ...emp,
+                regional: getCCRegional(emp.costCenter || ''),
                 updatedAt: Timestamp.now(),
                 updatedBy: user.email
             }, { merge: true });
@@ -343,10 +377,9 @@ export const upsertGlobalEmployees = async (employees: import('../types').Global
     }
 };
 
-export const getGlobalEmployees = async () => {
-    const q = query(collection(db, COL_GLOBAL_EMPLOYEES));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => d.data() as import('../types').GlobalEmployee);
+export const getGlobalEmployees = async (scope?: Scope) => {
+    const rows = await getScopedDocs<import('../types').GlobalEmployee>(COL_GLOBAL_EMPLOYEES, scope);
+    return rows.filter(employee => isCostCenterInHumanCapitalScope(scope, employee.costCenter || ''));
 };
 
 // --- HEADCOUNT ---
@@ -368,6 +401,7 @@ export const upsertHeadcountRecords = async (
             const ref = doc(db, COL_HEADCOUNT, id);
             batch.set(ref, {
                 ...r,
+                regional: getCCRegional(r.centroCusto || ''),
                 uploadId: meta.uploadId,
                 uploadedAt: meta.uploadedAt,
                 updatedAt: Timestamp.now(),
@@ -387,10 +421,8 @@ export const upsertHeadcountRecords = async (
  * Retorna todos os registros de headcount.
  * Se dateRef for fornecido, filtra pelos registros vigentes naquela data.
  */
-export const getHeadcountRecords = async (dateRef?: string): Promise<HeadcountRecord[]> => {
-    const q = query(collection(db, COL_HEADCOUNT));
-    const snapshot = await getDocs(q);
-    const all = snapshot.docs.map(d => d.data() as HeadcountRecord & { uploadId?: string });
+export const getHeadcountRecords = async (dateRef?: string, scope?: Scope): Promise<HeadcountRecord[]> => {
+    const all = await getScopedDocs<HeadcountRecord & { uploadId?: string }>(COL_HEADCOUNT, scope, 'centroCusto');
     if (!dateRef) return all;
     return all.filter(r => r.dataInicio <= dateRef && r.dataFim >= dateRef);
 };
@@ -454,6 +486,7 @@ export const replaceHeadcountRecords = async (
             const ref = doc(db, COL_HEADCOUNT, id);
             batch.set(ref, {
                 ...r,
+                regional: getCCRegional(r.centroCusto || ''),
                 uploadId: meta.uploadId,
                 uploadedAt: meta.uploadedAt,
                 updatedAt: Timestamp.now(),

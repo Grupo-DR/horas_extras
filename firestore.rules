@@ -22,6 +22,189 @@ service cloud.firestore {
       );
     }
 
+    function hasHumanCapitalAccess() {
+      let profile = getUserProfile();
+      return profile != null && (
+        profile.isSuperAdmin == true ||
+        (
+          profile.modules != null &&
+          profile.modules.human_capital != null &&
+          profile.modules.human_capital.enabled == true
+        )
+      );
+    }
+
+    function hcRole() {
+      let profile = getUserProfile();
+      return profile.isSuperAdmin == true ? 'CH_ADMIN' : profile.modules.human_capital.role;
+    }
+
+    function hcScope() {
+      let profile = getUserProfile();
+      return profile.isSuperAdmin == true ? { type: 'ALL' } : profile.modules.human_capital.scope;
+    }
+
+    function isCHAdmin() {
+      // Temporary compatibility for user_profiles that still store HC_ADMIN.
+      return hasHumanCapitalAccess() && hcRole() in ['CH_ADMIN', 'HC_ADMIN'];
+    }
+
+    function isCHPlanner() {
+      // HC_* values are temporary read-time compatibility only; CH_* is the official standard.
+      return hasHumanCapitalAccess() && hcRole() in [
+        'CH_ADMIN',
+        'CH_MANAGER',
+        'CH_COSTCENTER_PLANNER',
+        'CH_APPROVER',
+        'HC_ADMIN',
+        'HC_MANAGER',
+        'HC_COSTCENTER_PLANNER',
+        'HC_APPROVER'
+      ];
+    }
+
+    function isCHAuditorReader() {
+      return hasHumanCapitalAccess() && hcRole() in [
+        'CH_ADMIN',
+        'CH_MANAGER',
+        'CH_COSTCENTER_PLANNER',
+        'CH_APPROVER',
+        'CH_AUDITOR_VIEWER',
+        'HC_ADMIN',
+        'HC_MANAGER',
+        'HC_COSTCENTER_PLANNER',
+        'HC_APPROVER',
+        'HC_AUDITOR_VIEWER'
+      ];
+    }
+
+    function canApproveCH() {
+      return hasHumanCapitalAccess() && hcRole() in ['CH_ADMIN', 'CH_APPROVER', 'HC_ADMIN', 'HC_APPROVER'];
+    }
+
+    function isCHAllScope() {
+      return hasHumanCapitalAccess() && hcScope().type == 'ALL';
+    }
+
+    function chCostCenterMatches(costCenter) {
+      let scope = hcScope();
+      return costCenter is string &&
+        scope.type == 'COST_CENTER' &&
+        costCenter in scope.costCenters;
+    }
+
+    function chRegionalMatches(data) {
+      let scope = hcScope();
+      return scope.type == 'REGIONAL' && (
+        (data.keys().hasAny(['regional']) && data.regional in scope.regionals) ||
+        (data.keys().hasAny(['regionalId']) && data.regionalId in scope.regionals)
+      );
+    }
+
+    function isCHScopedData(data) {
+      let scope = hcScope();
+      return scope.type == 'ALL' ||
+        chRegionalMatches(data) ||
+        (data.keys().hasAny(['costCenter']) && chCostCenterMatches(data.costCenter)) ||
+        (data.keys().hasAny(['centroCusto']) && chCostCenterMatches(data.centroCusto));
+    }
+
+    function canManageCHReferenceData() {
+      return isCHAdmin() && isCHAllScope();
+    }
+
+    function optionalPlanningStatus(data) {
+      return !data.keys().hasAny(['status']) || data.status in ['draft', 'pending', 'approved', 'rejected'];
+    }
+
+    function validCHPlanning(data) {
+      return data.keys().hasAll(['chapa', 'nome', 'costCenter', 'date', 'type', 'plannedHours']) &&
+        data.chapa is string &&
+        data.nome is string &&
+        data.costCenter is string &&
+        data.type in ['DAILY', 'MONTHLY'] &&
+        (
+          (data.type == 'DAILY' && validDate(data.date)) ||
+          (data.type == 'MONTHLY' && validCompetence(data.date))
+        ) &&
+        data.plannedHours is number &&
+        data.plannedHours >= 0 &&
+        optionalPlanningStatus(data);
+    }
+
+    function validCHBudget(data) {
+      return data.keys().hasAll(['monthKey', 'month', 'costCenter', 'value']) &&
+        validCompetence(data.monthKey) &&
+        data.month is string &&
+        data.costCenter is string &&
+        data.value is number;
+    }
+
+    function validCHSalaryAllocation(data) {
+      return data.keys().hasAll(['monthKey', 'chapa', 'status', 'costCenter', 'allocation', 'salary']) &&
+        validCompetence(data.monthKey) &&
+        data.chapa is string &&
+        data.status is string &&
+        data.costCenter is string &&
+        data.allocation is number &&
+        data.allocation >= 0 &&
+        data.allocation <= 1 &&
+        data.salary is number &&
+        data.salary >= 0;
+    }
+
+    function validCHManualEmployee(data) {
+      return data.keys().hasAll(['id', 'chapa', 'name', 'costCenter', 'role', 'status']) &&
+        data.id is string &&
+        data.chapa is string &&
+        data.name is string &&
+        data.costCenter is string &&
+        data.role is string &&
+        data.status in ['ACTIVE', 'INACTIVE'];
+    }
+
+    function validCHGlobalEmployee(data) {
+      return data.keys().hasAll(['chapa', 'nome', 'funcao', 'costCenter']) &&
+        data.chapa is string &&
+        data.nome is string &&
+        data.funcao is string &&
+        data.costCenter is string;
+    }
+
+    function validCHHeadcount(data) {
+      return data.keys().hasAll(['dataInicio', 'dataFim', 'chapa', 'centroCusto', 'distribuicao']) &&
+        validDate(data.dataInicio) &&
+        validDate(data.dataFim) &&
+        data.dataInicio <= data.dataFim &&
+        data.chapa is string &&
+        data.centroCusto is string &&
+        data.distribuicao is number &&
+        data.distribuicao > 0 &&
+        data.distribuicao <= 1 &&
+        (!data.keys().hasAny(['salario']) || data.salario is number);
+    }
+
+    function validCHTeam(data) {
+      return data.keys().hasAll(['id', 'name', 'costCenter']) &&
+        data.id is string &&
+        data.name is string &&
+        data.costCenter is string;
+    }
+
+    function validCHTeamAllocation(data) {
+      return data.keys().hasAll(['id', 'teamId', 'monthKey', 'chapas']) &&
+        data.id is string &&
+        data.teamId is string &&
+        validCompetence(data.monthKey) &&
+        data.chapas is list;
+    }
+
+    function validCHAuditLog(data) {
+      return data.keys().hasAll(['action', 'userEmail']) &&
+        data.action is string &&
+        data.userEmail is string;
+    }
+
     function ssmaModule() {
       return getUserProfile().modules.ssma;
     }
@@ -153,8 +336,76 @@ service cloud.firestore {
     }
 
     match /hc_planning_records/{recordId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthenticated() && isCHAuditorReader() && isCHScopedData(resource.data);
+      allow create: if isAuthenticated() && isCHPlanner() && validCHPlanning(request.resource.data) && isCHScopedData(request.resource.data);
+      allow update: if isAuthenticated() && isCHPlanner() &&
+        validCHPlanning(request.resource.data) &&
+        isCHScopedData(resource.data) &&
+        isCHScopedData(request.resource.data);
+      allow delete: if isAuthenticated() && canManageCHReferenceData();
+    }
+
+    match /hc_budgets/{budgetId} {
+      allow read: if isAuthenticated() && isCHAuditorReader() && isCHScopedData(resource.data);
+      allow create: if isAuthenticated() && canManageCHReferenceData() && validCHBudget(request.resource.data);
+      allow update: if isAuthenticated() && canManageCHReferenceData() && validCHBudget(request.resource.data);
+      allow delete: if isAuthenticated() && canManageCHReferenceData();
+    }
+
+    match /hc_salary_allocations/{salaryId} {
+      allow read: if isAuthenticated() && isCHAuditorReader() && isCHScopedData(resource.data);
+      allow create: if isAuthenticated() && canManageCHReferenceData() && validCHSalaryAllocation(request.resource.data);
+      allow update: if isAuthenticated() && canManageCHReferenceData() && validCHSalaryAllocation(request.resource.data);
+      allow delete: if isAuthenticated() && canManageCHReferenceData();
+    }
+
+    match /hc_headcount/{headcountId} {
+      allow read: if isAuthenticated() && isCHAuditorReader() && isCHScopedData(resource.data);
+      allow create: if isAuthenticated() && canManageCHReferenceData() && validCHHeadcount(request.resource.data);
+      allow update: if isAuthenticated() && canManageCHReferenceData() && validCHHeadcount(request.resource.data);
+      allow delete: if isAuthenticated() && canManageCHReferenceData();
+    }
+
+    match /hc_manual_employees/{employeeId} {
+      allow read: if isAuthenticated() && isCHAuditorReader() && isCHScopedData(resource.data);
+      allow create: if isAuthenticated() && isCHPlanner() && validCHManualEmployee(request.resource.data) && isCHScopedData(request.resource.data);
+      allow update: if isAuthenticated() && isCHPlanner() &&
+        validCHManualEmployee(request.resource.data) &&
+        isCHScopedData(resource.data) &&
+        isCHScopedData(request.resource.data);
+      allow delete: if isAuthenticated() && canManageCHReferenceData();
+    }
+
+    match /hc_global_employees/{employeeId} {
+      allow read: if isAuthenticated() && isCHAuditorReader() && isCHScopedData(resource.data);
+      allow create: if isAuthenticated() && isCHPlanner() && validCHGlobalEmployee(request.resource.data) && isCHScopedData(request.resource.data);
+      allow update: if isAuthenticated() && isCHPlanner() &&
+        validCHGlobalEmployee(request.resource.data) &&
+        isCHScopedData(resource.data) &&
+        isCHScopedData(request.resource.data);
+      allow delete: if isAuthenticated() && canManageCHReferenceData();
+    }
+
+    match /hc_teams/{teamId} {
+      allow read: if isAuthenticated() && isCHAuditorReader() && isCHScopedData(resource.data);
+      allow create: if isAuthenticated() && canManageCHReferenceData() && validCHTeam(request.resource.data);
+      allow update: if isAuthenticated() && canManageCHReferenceData() && validCHTeam(request.resource.data);
+      allow delete: if isAuthenticated() && canManageCHReferenceData();
+    }
+
+    match /hc_team_allocations/{allocationId} {
+      // Limitation: these legacy docs do not denormalize costCenter/regional.
+      // Until that schema changes, access is restricted to CH admins with ALL scope.
+      allow read: if isAuthenticated() && canManageCHReferenceData();
+      allow create: if isAuthenticated() && canManageCHReferenceData() && validCHTeamAllocation(request.resource.data);
+      allow update: if isAuthenticated() && canManageCHReferenceData() && validCHTeamAllocation(request.resource.data);
+      allow delete: if isAuthenticated() && canManageCHReferenceData();
+    }
+
+    match /hc_audit_logs/{logId} {
+      allow read: if isAuthenticated() && hasHumanCapitalAccess() && (isCHAdmin() || canApproveCH() || hcRole() in ['CH_AUDITOR_VIEWER', 'HC_AUDITOR_VIEWER']);
+      allow create: if isAuthenticated() && hasHumanCapitalAccess() && validCHAuditLog(request.resource.data);
+      allow update, delete: if false;
     }
 
     match /ssma_regionals/{id} {

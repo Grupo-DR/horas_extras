@@ -683,7 +683,7 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
       .catch(error => console.error('Error loading salaries for dashboard:', error));
 
     // Background refresh for global employees
-    getGlobalEmployeesAsync().then(emps => setGlobalEmployees(emps)).catch(console.error);
+    getGlobalEmployeesAsync(user || undefined).then(emps => setGlobalEmployees(emps)).catch(console.error);
     return () => {
       cancelled = true;
     };

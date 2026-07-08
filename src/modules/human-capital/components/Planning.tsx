@@ -959,7 +959,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
     const [exporting, setExporting] = useState(false);
     const [alert, setAlert] = useState<{ type: 'success' | 'error', message: string } | null>(null);
     const canManagePlanningBudgets = user.isSuperAdmin || canManageBudgets(user.role);
-    const isAdministradorMaster = user.role === 'CH_ADMIN' || user.isSuperAdmin || (user.role as string) === 'DEV_MASTER' || (user.role as string) === 'MASTER';
+    const isAdministradorMaster = user.role === 'CH_ADMIN' || user.isSuperAdmin;
 
     const handleExportPlanningJSON = async () => {
         setExporting(true);
@@ -1109,7 +1109,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
         getAllBudgetsAsync(user).then(setBudgets).catch(console.error);
 
         // Background refresh for global employees
-        getGlobalEmployeesAsync().then(emps => setGlobalEmployees(emps)).catch(console.error);
+        getGlobalEmployeesAsync(user).then(emps => setGlobalEmployees(emps)).catch(console.error);
     }, [user, isAuthorizedCostCenter]);
 
     // UPSERT Global Employees silently

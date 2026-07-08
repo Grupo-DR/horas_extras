@@ -27,7 +27,9 @@ async function verifyAdmin(context: functions.https.CallableContext) {
 
     const isSuperAdmin = profile.isSuperAdmin === true;
     const isIamAdmin = profile.modules?.commercial?.role === 'IAM_ADMIN';
-    const isHcAdmin = profile.modules?.human_capital?.role === 'HC_ADMIN';
+    const hcRole = profile.modules?.human_capital?.role;
+    // Temporary compatibility for profiles created before the CH_* role standard.
+    const isHcAdmin = hcRole === 'CH_ADMIN' || hcRole === 'HC_ADMIN';
 
     // Se o usuário não tiver nível suficiente, barre
     if (!isSuperAdmin && !isIamAdmin && !isHcAdmin) {
@@ -83,7 +85,7 @@ export const adminCreateUserInvite = functions.https.onCall(async (data, context
             status: "invited",
             modules: modules || {
                 commercial: { enabled: false, role: 'COMMERCIAL_VIEWER' },
-                human_capital: { enabled: false, role: 'HC_AUDITOR_VIEWER', scope: { type: 'ALL' } },
+                human_capital: { enabled: false, role: 'CH_AUDITOR_VIEWER', scope: { type: 'ALL' } },
                 construction: { enabled: false, role: 'CONSTRUCTION_VIEWER' }
             },
             createdAt: new Date().toISOString(),
