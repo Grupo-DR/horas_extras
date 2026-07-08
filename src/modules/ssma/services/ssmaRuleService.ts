@@ -93,5 +93,18 @@ export const ssmaRuleService = {
             before: existing as any,
             after: { ...existing, ...updates } as any
         }, currentUser);
+    },
+
+    setActiveRule: async (id: string, currentUser: UserProfileDoc): Promise<void> => {
+        const allRules = await ssmaRuleService.list();
+        const activeRules = allRules.filter(r => r.active && r.id !== id);
+
+        // Disable currently active rules
+        for (const r of activeRules) {
+            await ssmaRuleService.update(r.id, { active: false }, currentUser);
+        }
+
+        // Activate the chosen rule
+        await ssmaRuleService.update(id, { active: true }, currentUser);
     }
 };

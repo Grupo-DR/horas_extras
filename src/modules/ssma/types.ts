@@ -1,4 +1,5 @@
 // src/modules/ssma/types.ts
+import { SSMARole } from '../iam/types';
 
 export type SSMAInspectionType = 'IFS' | 'ALOJAMENTO';
 
@@ -47,6 +48,7 @@ export interface SSMAEmployee extends AuditableRecord {
     name: string;
     email?: string;
     functionGroup: SSMAFunctionGroup;
+    roleSnapshot?: SSMARole;
     costCenterId?: string;
     costCenterIds?: string[];
     regionalId?: string;
@@ -152,4 +154,110 @@ export interface SSMAAuditLog {
     costCenterId?: string;
     competence?: string;
     metadata?: Record<string, unknown>;
+}
+
+// --- Sprint 2 New Types ---
+
+export type SSMATargetFunctionGroup = 'GREG' | 'GESTOR' | 'SUPSSMA' | 'TST' | 'ENCARREGADO';
+
+export interface SSMAMonthlyTarget extends AuditableRecord {
+    id: string; // competence_employeeUid
+    competence: string; // YYYY-MM
+    employeeUid: string;
+    employeeNameSnapshot: string;
+    employeeEmailSnapshot?: string;
+    functionGroup: SSMATargetFunctionGroup;
+    roleSnapshot: SSMARole;
+    metaIFS: number;
+    metaAlojamento: number;
+    active: boolean;
+}
+
+export interface SSMAInspectionEvent extends AuditableRecord {
+    id: string;
+    competence: string; // YYYY-MM
+    date: string; // YYYY-MM-DD
+    inspectionType: 'IFS' | 'ALOJAMENTO';
+    regionalId: string;
+    regionalNameSnapshot: string;
+    costCenterId: string;
+    costCenterCodeSnapshot: string;
+    costCenterNameSnapshot: string;
+    executorUid: string;
+    executorNameSnapshot: string;
+    executorEmailSnapshot?: string;
+    executorFunctionGroup: SSMATargetFunctionGroup;
+    executorRoleSnapshot: SSMARole;
+    comments?: string;
+    status: 'VALID' | 'CANCELLED';
+    cancelledAt?: string;
+    cancelledBy?: string;
+    cancelledByNameSnapshot?: string;
+    cancelReason?: string;
+}
+
+export interface SSMAEvidence {
+    id: string;
+    inspectionEventId: string;
+    competence: string;
+    regionalId: string;
+    costCenterId: string;
+    storagePath: string;
+    downloadUrl: string;
+    fileName: string;
+    mimeType: string;
+    sizeBytes: number;
+    uploadedAt: string;
+    uploadedBy: string;
+    uploadedByNameSnapshot: string;
+    active: boolean;
+}
+
+export interface SSMAMonthlyPersonResult {
+    id: string; // competence_employeeUid
+    competence: string;
+    employeeUid: string;
+    employeeNameSnapshot: string;
+    functionGroup: SSMATargetFunctionGroup;
+    realIFS: number;
+    realAlojamento: number;
+    realTotal: number;
+    metaIFS: number;
+    metaAlojamento: number;
+    metaTotal: number;
+    resultadoIndividual: number | null;
+    status: 'SEM_META' | 'ATENDE' | 'NAO_ATENDE' | 'REALIZADO_SEM_META';
+    recalculatedAt: string;
+}
+
+export interface SSMAMonthlyCollectiveResult {
+    id: string; // competence_scopeType[_regionalId|_costCenterId]
+    competence: string;
+    scopeType: 'ALL' | 'REGIONAL' | 'COST_CENTER';
+    regionalId?: string;
+    costCenterId?: string;
+    realIFS_GREG: number;
+    realAloj_GREG: number;
+    realIFS_GESTOR: number;
+    realAloj_GESTOR: number;
+    realIFS_SUPSSMA: number;
+    realAloj_SUPSSMA: number;
+    realIFS_TST: number;
+    realAloj_TST: number;
+    realIFS_ENCARREGADO: number;
+    realAloj_ENCARREGADO: number;
+    metaIFS_GREG: number;
+    metaAloj_GREG: number;
+    metaIFS_GESTOR: number;
+    metaAloj_GESTOR: number;
+    metaIFS_SUPSSMA: number;
+    metaAloj_SUPSSMA: number;
+    metaIFS_TST: number;
+    metaAloj_TST: number;
+    metaIFS_ENCARREGADO: number;
+    metaAloj_ENCARREGADO: number;
+    totalRealizado: number;
+    totalMeta: number;
+    resultadoColetivo: number | null;
+    recalculatedAt: string;
 }

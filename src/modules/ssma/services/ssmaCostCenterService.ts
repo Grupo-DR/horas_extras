@@ -1,15 +1,41 @@
-import { collection, doc, getDocs, getDoc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, getDoc, setDoc, updateDoc, query, where } from 'firebase/firestore';
 import { db } from '../../../../services/firebaseConfig';
 import { SSMACostCenter } from '../types';
-import { UserProfileDoc } from '../../iam/types';
+import { Scope, UserProfileDoc } from '../../iam/types';
 import { ssmaAuditService } from './ssmaAuditService';
 
 const COLLECTION = 'ssma_cost_centers';
+const chunk = <T,>(items: T[], size = 30): T[][] => {
+    const chunks: T[][] = [];
+    for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
+    return chunks;
+};
 
 export const ssmaCostCenterService = {
     list: async (): Promise<SSMACostCenter[]> => {
         const snap = await getDocs(collection(db, COLLECTION));
         return snap.docs.map(d => ({ id: d.id, ...d.data() } as SSMACostCenter));
+    },
+
+    listByScope: async (scope?: Scope): Promise<SSMACostCenter[]> => {
+        if (!scope || scope.type === 'ALL') return ssmaCostCenterService.list();
+
+        const result: SSMACostCenter[] = [];
+        if (scope.type === 'REGIONAL') {
+            for (const regionalIds of chunk(scope.regionals)) {
+                const q = query(collection(db, COLLECTION), where('regionalId', 'in', regionalIds));
+                const snap = await getDocs(q);
+                result.push(...snap.docs.map(d => ({ id: d.id, ...d.data() } as SSMACostCenter)));
+            }
+            return result;
+        }
+
+        for (const costCenterIds of chunk(scope.costCenters)) {
+            const q = query(collection(db, COLLECTION), where('id', 'in', costCenterIds));
+            const snap = await getDocs(q);
+            result.push(...snap.docs.map(d => ({ id: d.id, ...d.data() } as SSMACostCenter)));
+        }
+        return result;
     },
 
     getById: async (id: string): Promise<SSMACostCenter | null> => {
@@ -96,18 +122,6 @@ export const ssmaCostCenterService = {
     },
 
     remove: async (id: string, currentUser: UserProfileDoc): Promise<void> => {
-        const ref = doc(db, COLLECTION, id);
-        const existing = await ssmaCostCenterService.getById(id);
-        if (!existing) throw new Error('Centro de Custo não encontrado.');
-
-        await deleteDoc(ref);
-
-        await ssmaAuditService.createSSMAAuditLog({
-            action: 'DELETE',
-            entityType: 'COST_CENTER',
-            entityId: id,
-            entityLabelSnapshot: `${existing.code} - ${existing.name}`,
-            before: existing as any
-        }, currentUser);
+        await ssmaCostCenterService.disable(id, 'Remocao logica solicitada pelo usuario.', currentUser);
     }
 };

@@ -12,7 +12,8 @@ export const useSSMACostCenters = () => {
     const loadData = useCallback(async () => {
         try {
             setLoading(true);
-            const res = await ssmaCostCenterService.list();
+            const scope = profile?.isSuperAdmin ? { type: 'ALL' as const } : profile?.modules?.ssma?.scope;
+            const res = await ssmaCostCenterService.listByScope(scope);
             setData(res);
             setError(null);
         } catch (err: any) {
@@ -20,7 +21,7 @@ export const useSSMACostCenters = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [profile]);
 
     useEffect(() => {
         loadData();

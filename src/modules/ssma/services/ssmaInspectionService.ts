@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, Timestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, query, where, Timestamp } from 'firebase/firestore';
 import { db } from '../../../../services/firebaseConfig';
 import { SSMAInspection } from '../types';
 import { ssmaAuditService } from './ssmaAuditService';
@@ -99,17 +99,13 @@ export const ssmaInspectionService = {
             throw new Error('Inspection record not found');
         }
 
-        const currentData = docSnap.data() as SSMAInspection;
-
-        await deleteDoc(docRef);
-
         await ssmaAuditService.createSSMAAuditLog({
-            action: 'DELETE',
+            action: 'UPDATE',
             entityType: 'INSPECTION_EVENT',
             entityId: id,
-            before: currentData as any,
-            after: null,
-            reason: 'Deleted inspection record'
+            reason: 'Blocked hard delete attempt on legacy ssma_inspections'
         }, currentUser);
+
+        throw new Error('Hard delete de inspecao legada desabilitado. Use eventos reais com cancelamento logico.');
     }
 };

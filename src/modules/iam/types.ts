@@ -160,3 +160,26 @@ export const getSSMAScope = (profile: UserProfileDoc | null | undefined): Scope 
     if (!profile.modules.ssma?.enabled) return null;
     return profile.modules.ssma.scope;
 };
+
+export const canManageSSMARegisters = (profile: UserProfileDoc | null | undefined): boolean => {
+    if (!profile) return false;
+    if (profile.isSuperAdmin) return true;
+    if (!profile.modules.ssma?.enabled) return false;
+    const role = profile.modules.ssma.role;
+    return ['SSMA_ADMIN', 'SSMA_MANAGER'].includes(role);
+};
+
+export const canManageSSMATargets = (profile: UserProfileDoc | null | undefined): boolean => {
+    if (!profile) return false;
+    if (profile.isSuperAdmin) return true;
+    if (!profile.modules.ssma?.enabled) return false;
+    const role = profile.modules.ssma.role;
+    return ['SSMA_ADMIN', 'SSMA_MANAGER'].includes(role);
+};
+
+export const isSSMAOperationalRole = (profile: UserProfileDoc | null | undefined): boolean => {
+    if (!profile) return false;
+    if (!profile.modules.ssma?.enabled) return false;
+    const role = profile.modules.ssma.role;
+    return ['SSMA_SITE_MANAGER', 'SSMA_SUPERVISOR', 'SSMA_TECHNICIAN', 'SSMA_FOREMAN', 'SSMA_VIEWER'].includes(role);
+};

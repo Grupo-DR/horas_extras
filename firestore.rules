@@ -1,14 +1,10 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // --- Helper Functions ---
-
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Fetch the user's profile
     function getUserProfile() {
       return get(/databases/$(database)/documents/user_profiles/$(request.auth.uid)).data;
     }
@@ -18,145 +14,260 @@ service cloud.firestore {
       return profile != null && profile.isSuperAdmin == true;
     }
 
-    // Check if user is IAM Admin (or Super Admin)
     function isIAMAdmin() {
-       let profile = getUserProfile();
-       return profile != null && (
-           profile.isSuperAdmin == true || 
-           (profile.modules != null && profile.modules.commercial != null && profile.modules.commercial.role == 'IAM_ADMIN')
-       ); 
+      let profile = getUserProfile();
+      return profile != null && (
+        profile.isSuperAdmin == true ||
+        (profile.modules != null && profile.modules.commercial != null && profile.modules.commercial.role == 'IAM_ADMIN')
+      );
     }
 
-    // SSMA Helpers
+    function ssmaModule() {
+      return getUserProfile().modules.ssma;
+    }
+
+    function ssmaRole() {
+      return isSuperAdmin() ? 'SSMA_MANAGER' : ssmaModule().role;
+    }
+
+    function ssmaScope() {
+      return isSuperAdmin() ? { type: 'ALL' } : ssmaModule().scope;
+    }
+
     function hasSSMAAccess() {
       let profile = getUserProfile();
-      return profile != null &&
-             (
-               profile.isSuperAdmin == true ||
-               (profile.modules.ssma != null && profile.modules.ssma.enabled == true)
-             );
+      return profile != null && (
+        profile.isSuperAdmin == true ||
+        (profile.modules.ssma != null && profile.modules.ssma.enabled == true)
+      );
     }
 
-    function isSSMAAdmin() {
-      let profile = getUserProfile();
-      return profile != null &&
-             (
-               profile.isSuperAdmin == true ||
-               (profile.modules.ssma != null && profile.modules.ssma.role == 'SSMA_ADMIN')
-             );
+    function isSSMAManager() {
+      return hasSSMAAccess() && ssmaRole() in ['SSMA_ADMIN', 'SSMA_MANAGER'];
     }
 
-    function canManageSSMARegisters() {
-      let profile = getUserProfile();
-      return profile != null &&
-             (
-               profile.isSuperAdmin == true ||
-               (profile.modules.ssma != null && (profile.modules.ssma.role == 'SSMA_ADMIN' || profile.modules.ssma.role == 'SSMA_MANAGER'))
-             );
-    }
-
-    function canReadSSMAAuditLogs() {
-      let profile = getUserProfile();
-      return profile != null &&
-             (
-               profile.isSuperAdmin == true ||
-               (profile.modules.ssma != null && (profile.modules.ssma.role == 'SSMA_ADMIN' || profile.modules.ssma.role == 'SSMA_MANAGER'))
-             );
+    function isSSMAViewer() {
+      return hasSSMAAccess() && ssmaRole() == 'SSMA_VIEWER';
     }
 
     function isSSMAOperational() {
-      let profile = getUserProfile();
-      if (profile == null) return false;
-      if (profile.isSuperAdmin == true) return true;
-      if (profile.modules.ssma == null || profile.modules.ssma.enabled != true) return false;
-      let role = profile.modules.ssma.role;
-      return role in ['SSMA_ADMIN', 'SSMA_MANAGER', 'SSMA_REGIONAL_MANAGER', 'SSMA_ENGINEER', 'SSMA_SUPERVISOR', 'SSMA_TECHNICIAN', 'SSMA_FOREMAN'];
+      return hasSSMAAccess() && ssmaRole() in [
+        'SSMA_ADMIN',
+        'SSMA_MANAGER',
+        'SSMA_REGIONAL_MANAGER',
+        'SSMA_SITE_MANAGER',
+        'SSMA_SUPERVISOR',
+        'SSMA_TECHNICIAN',
+        'SSMA_FOREMAN'
+      ];
     }
 
-    // --- User Profiles ---
-    
+    function canManageSSMARegisters() {
+      return isSSMAManager();
+    }
+
+    function isInSSMAScope(regionalId, costCenterId) {
+      return isSSMAManager() ||
+        ssmaScope().type == 'ALL' ||
+        (ssmaScope().type == 'REGIONAL' && regionalId in ssmaScope().regionals) ||
+        (ssmaScope().type == 'COST_CENTER' && costCenterId in ssmaScope().costCenters);
+    }
+
+    function immutableCreateAuditFields() {
+      return request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.createdAt is string;
+    }
+
+    function preservesCreateAuditFields() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'id',
+        'createdAt',
+        'createdBy',
+        'createdByNameSnapshot'
+      ]);
+    }
+
+    function validCompetence(value) {
+      return value is string && value.matches('^\\d{4}-(0[1-9]|1[0-2])$');
+    }
+
+    function validDate(value) {
+      return value is string && value.matches('^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$');
+    }
+
+    function validInspectionEvent(data) {
+      return validCompetence(data.competence) &&
+        validDate(data.date) &&
+        data.inspectionType in ['IFS', 'ALOJAMENTO'] &&
+        data.status in ['VALID', 'CANCELLED'] &&
+        data.regionalId is string && data.regionalId.size() > 0 &&
+        data.costCenterId is string && data.costCenterId.size() > 0 &&
+        data.executorUid is string && data.executorUid.size() > 0 &&
+        data.executorFunctionGroup in ['GREG', 'GESTOR', 'SUPSSMA', 'TST', 'ENCARREGADO'];
+    }
+
+    function validEventCancellationTransition() {
+      return request.resource.data.status != 'CANCELLED' ||
+        (
+          request.resource.data.cancelledBy == request.auth.uid &&
+          request.resource.data.cancelledAt is string &&
+          request.resource.data.cancelReason is string &&
+          request.resource.data.cancelReason.size() > 0
+        );
+    }
+
+    function validMonthlyTarget(data) {
+      return validCompetence(data.competence) &&
+        data.employeeUid is string && data.employeeUid.size() > 0 &&
+        data.functionGroup in ['GREG', 'GESTOR', 'SUPSSMA', 'TST', 'ENCARREGADO'] &&
+        data.metaIFS is number && data.metaIFS >= 0 &&
+        data.metaAlojamento is number && data.metaAlojamento >= 0;
+    }
+
+    function validEvidence(data) {
+      return validCompetence(data.competence) &&
+        data.inspectionEventId is string && data.inspectionEventId.size() > 0 &&
+        data.regionalId is string && data.regionalId.size() > 0 &&
+        data.costCenterId is string && data.costCenterId.size() > 0 &&
+        data.mimeType in ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'] &&
+        data.sizeBytes is number && data.sizeBytes > 0 && data.sizeBytes <= 10 * 1024 * 1024 &&
+        data.active is bool;
+    }
+
     match /user_profiles/{userId} {
-      // Read: Own profile OR Admin
       allow read: if isAuthenticated() && (request.auth.uid == userId || isIAMAdmin());
-      
-      // Write: Admin Only
       allow write: if isAuthenticated() && isIAMAdmin();
     }
 
-    // --- User Directory (Public Catalog for CRM) ---
     match /user_directory/{userId} {
-      // Read: Any authenticated user can read the company directory
       allow read: if isAuthenticated();
-      // Write: Only Cloud Functions (Admin SDK) can write here
       allow write: if false;
     }
 
-    // --- Audit Logs ---
     match /audit_logs/{logId} {
-      // Only IAM Admins can read or write audit logs directly from client
-      // Note: Cloud Functions bypass these rules entirely.
       allow read, write: if isAuthenticated() && isIAMAdmin();
     }
 
-    // --- Legacy / Other Collections ---
-
-    // Existing 'users' collection used by AuthContext legacy logic
     match /users/{userId} {
-      // Restrict so users can only touch their own legacy record, or Admin can touch everything
       allow read, write: if isAuthenticated() && (request.auth.uid == userId || isIAMAdmin());
     }
-    
-    // Placeholder for future HC collections if migrated to Firestore
+
     match /hc_planning_records/{recordId} {
-       allow read: if isAuthenticated(); // TODO: Add granular scope checks when migrated
-       allow write: if isAuthenticated(); // TODO: Add role checks when migrated
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
     }
 
-    // --- SSMA Collections ---
     match /ssma_regionals/{id} {
+      // Regional names are treated as catalog data; event/evidence access remains scoped.
       allow read: if isAuthenticated() && hasSSMAAccess();
-      allow create, update: if isAuthenticated() && canManageSSMARegisters();
+      allow create: if isAuthenticated() && canManageSSMARegisters() && immutableCreateAuditFields();
+      allow update: if isAuthenticated() && canManageSSMARegisters() && preservesCreateAuditFields();
       allow delete: if false;
     }
 
     match /ssma_cost_centers/{id} {
-      allow read: if isAuthenticated() && hasSSMAAccess();
-      allow create, update: if isAuthenticated() && canManageSSMARegisters();
+      allow read: if isAuthenticated() && hasSSMAAccess() && isInSSMAScope(resource.data.regionalId, resource.data.id);
+      allow create: if isAuthenticated() && canManageSSMARegisters() && immutableCreateAuditFields();
+      allow update: if isAuthenticated() && canManageSSMARegisters() && preservesCreateAuditFields();
       allow delete: if false;
     }
 
     match /ssma_employees/{id} {
       allow read: if isAuthenticated() && hasSSMAAccess();
-      allow create, update: if isAuthenticated() && canManageSSMARegisters();
+      allow create: if isAuthenticated() && canManageSSMARegisters() && immutableCreateAuditFields();
+      allow update: if isAuthenticated() && canManageSSMARegisters() && preservesCreateAuditFields();
       allow delete: if false;
     }
 
     match /ssma_rules/{id} {
       allow read: if isAuthenticated() && hasSSMAAccess();
-      allow create, update: if isAuthenticated() && isSSMAAdmin();
+      allow create: if isAuthenticated() && isSSMAManager() && immutableCreateAuditFields();
+      allow update: if isAuthenticated() && isSSMAManager() && preservesCreateAuditFields();
+      allow delete: if false;
+    }
+
+    match /ssma_inspections/{id} {
+      allow read: if isAuthenticated() && hasSSMAAccess();
+      allow create, update: if isAuthenticated() && isSSMAOperational();
+      allow delete: if false;
+    }
+
+    match /ssma_monthly_targets/{id} {
+      // Limitation: target docs are person-scoped and do not denormalize regional/costCenter scope.
+      // Reads are module-wide for SSMA users; UI/services filter visible people by IAM scope.
+      allow read: if isAuthenticated() && hasSSMAAccess();
+      allow create: if isAuthenticated() && isSSMAManager() && validMonthlyTarget(request.resource.data) && immutableCreateAuditFields();
+      allow update: if isAuthenticated() && isSSMAManager() && validMonthlyTarget(request.resource.data) && preservesCreateAuditFields();
       allow delete: if false;
     }
 
     match /ssma_inspection_events/{id} {
-      allow read: if isAuthenticated() && hasSSMAAccess();
-      allow create, update: if isAuthenticated() && isSSMAOperational();
+      allow read: if isAuthenticated() && hasSSMAAccess() && isInSSMAScope(resource.data.regionalId, resource.data.costCenterId);
+      allow create: if isAuthenticated() && isSSMAOperational() &&
+        validInspectionEvent(request.resource.data) &&
+        isInSSMAScope(request.resource.data.regionalId, request.resource.data.costCenterId) &&
+        request.resource.data.status == 'VALID' &&
+        immutableCreateAuditFields();
+      allow update: if isAuthenticated() && isSSMAOperational() &&
+        isInSSMAScope(resource.data.regionalId, resource.data.costCenterId) &&
+        isInSSMAScope(request.resource.data.regionalId, request.resource.data.costCenterId) &&
+        validInspectionEvent(request.resource.data) &&
+        preservesCreateAuditFields() &&
+        validEventCancellationTransition();
       allow delete: if false;
     }
 
     match /ssma_evidences/{id} {
+      allow read: if isAuthenticated() && hasSSMAAccess() && isInSSMAScope(resource.data.regionalId, resource.data.costCenterId);
+      allow create: if isAuthenticated() && isSSMAOperational() &&
+        validEvidence(request.resource.data) &&
+        isInSSMAScope(request.resource.data.regionalId, request.resource.data.costCenterId) &&
+        request.resource.data.uploadedBy == request.auth.uid;
+      allow update: if isAuthenticated() && isSSMAOperational() &&
+        validEvidence(request.resource.data) &&
+        isInSSMAScope(resource.data.regionalId, resource.data.costCenterId) &&
+        isInSSMAScope(request.resource.data.regionalId, request.resource.data.costCenterId) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'id',
+          'inspectionEventId',
+          'competence',
+          'regionalId',
+          'costCenterId',
+          'storagePath',
+          'downloadUrl',
+          'fileName',
+          'mimeType',
+          'sizeBytes',
+          'uploadedAt',
+          'uploadedBy',
+          'uploadedByNameSnapshot'
+        ]);
+      allow delete: if false;
+    }
+
+    match /ssma_monthly_person_results/{id} {
       allow read: if isAuthenticated() && hasSSMAAccess();
-      allow create, update: if isAuthenticated() && isSSMAOperational();
+      allow create, update: if isAuthenticated() && isSSMAManager();
+      allow delete: if false;
+    }
+
+    match /ssma_monthly_collective_results/{id} {
+      allow read: if isAuthenticated() && hasSSMAAccess();
+      allow create, update: if isAuthenticated() && isSSMAManager();
+      allow delete: if false;
+    }
+
+    match /ssma_monthly_results/{id} {
+      allow read: if isAuthenticated() && hasSSMAAccess();
+      allow create, update: if isAuthenticated() && isSSMAManager();
       allow delete: if false;
     }
 
     match /ssma_audit_logs/{id} {
-      allow read: if isAuthenticated() && canReadSSMAAuditLogs();
-      allow create: if isAuthenticated() && hasSSMAAccess();
-      allow update: if false;
-      allow delete: if false;
+      allow read: if isAuthenticated() && isSSMAManager();
+      allow create, update, delete: if false;
     }
-    
-    // Default Deny
+
     match /{document=**} {
       allow read, write: if false;
     }

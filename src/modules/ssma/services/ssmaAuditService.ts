@@ -30,7 +30,14 @@ export const ssmaAuditService = {
             }
         });
 
-        await setDoc(newRef, logData);
+        try {
+            await setDoc(newRef, logData);
+        } catch (error) {
+            // Server-side audit triggers are authoritative in production. Client-side
+            // audit writes are best-effort and may be denied by hardened rules.
+            console.warn('SSMA client audit skipped; server-side audit should handle this event.', error);
+            return `client_audit_skipped_${newRef.id}`;
+        }
         return newRef.id;
     },
 

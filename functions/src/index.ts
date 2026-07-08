@@ -363,3 +363,129 @@ export const adminBackfillUserDirectory = functions.https.onCall(async (data, co
         throw new functions.https.HttpsError("internal", error.message);
     }
 });
+
+type SSMAAuditEntityType = "INSPECTION_EVENT" | "MONTHLY_TARGET" | "EVIDENCE";
+
+async function getSSMAActor(uid?: string) {
+    if (!uid) {
+        return { uid: "system", displayName: "System", role: "SYSTEM" };
+    }
+
+    const profileSnap = await db.collection("user_profiles").doc(uid).get();
+    const profile = profileSnap.data() as any;
+    return {
+        uid,
+        displayName: profile?.displayName || profile?.email || uid,
+        role: profile?.modules?.ssma?.role || "UNKNOWN"
+    };
+}
+
+async function writeSSMAAuditLog(params: {
+    action: string;
+    entityType: SSMAAuditEntityType;
+    entityId: string;
+    entityLabelSnapshot?: string;
+    actorUid?: string;
+    before?: FirebaseFirestore.DocumentData;
+    after?: FirebaseFirestore.DocumentData;
+    reason?: string;
+    regionalId?: string;
+    costCenterId?: string;
+    competence?: string;
+}) {
+    const actor = await getSSMAActor(params.actorUid);
+    await db.collection("ssma_audit_logs").add({
+        action: params.action,
+        entityType: params.entityType,
+        entityId: params.entityId,
+        entityLabelSnapshot: params.entityLabelSnapshot || null,
+        before: params.before || null,
+        after: params.after || null,
+        reason: params.reason || null,
+        regionalId: params.regionalId || null,
+        costCenterId: params.costCenterId || null,
+        competence: params.competence || null,
+        performedAt: new Date().toISOString(),
+        performedBy: actor.uid,
+        performedByNameSnapshot: actor.displayName,
+        performedByRoleSnapshot: actor.role,
+        source: "cloud_function"
+    });
+}
+
+export const auditSSMAInspectionEventCreate = functions.firestore
+    .document("ssma_inspection_events/{eventId}")
+    .onCreate(async (snap, context) => {
+        const after = snap.data();
+        await writeSSMAAuditLog({
+            action: "CREATE",
+            entityType: "INSPECTION_EVENT",
+            entityId: context.params.eventId,
+            entityLabelSnapshot: `${after.inspectionType || "INSPECTION"} - ${after.costCenterCodeSnapshot || after.costCenterId || ""}`,
+            actorUid: after.createdBy,
+            after,
+            regionalId: after.regionalId,
+            costCenterId: after.costCenterId,
+            competence: after.competence
+        });
+    });
+
+export const auditSSMAInspectionEventUpdate = functions.firestore
+    .document("ssma_inspection_events/{eventId}")
+    .onUpdate(async (change, context) => {
+        const before = change.before.data();
+        const after = change.after.data();
+        await writeSSMAAuditLog({
+            action: after.status === "CANCELLED" && before.status !== "CANCELLED" ? "CANCEL" : "UPDATE",
+            entityType: "INSPECTION_EVENT",
+            entityId: context.params.eventId,
+            entityLabelSnapshot: `${after.inspectionType || "INSPECTION"} - ${after.costCenterCodeSnapshot || after.costCenterId || ""}`,
+            actorUid: after.updatedBy || after.cancelledBy,
+            before,
+            after,
+            reason: after.cancelReason || null,
+            regionalId: after.regionalId,
+            costCenterId: after.costCenterId,
+            competence: after.competence
+        });
+    });
+
+export const auditSSMAMonthlyTargetWrite = functions.firestore
+    .document("ssma_monthly_targets/{targetId}")
+    .onWrite(async (change, context) => {
+        if (!change.after.exists) return;
+        const before = change.before.exists ? change.before.data() : undefined;
+        const after = change.after.data();
+        if (!after) return;
+        await writeSSMAAuditLog({
+            action: before ? "UPDATE" : "CREATE",
+            entityType: "MONTHLY_TARGET",
+            entityId: context.params.targetId,
+            entityLabelSnapshot: `Meta ${after.competence || ""} - ${after.employeeNameSnapshot || after.employeeUid || ""}`,
+            actorUid: after.updatedBy || after.createdBy,
+            before,
+            after,
+            competence: after.competence
+        });
+    });
+
+export const auditSSMAEvidenceWrite = functions.firestore
+    .document("ssma_evidences/{evidenceId}")
+    .onWrite(async (change, context) => {
+        if (!change.after.exists) return;
+        const before = change.before.exists ? change.before.data() : undefined;
+        const after = change.after.data();
+        if (!after) return;
+        await writeSSMAAuditLog({
+            action: before ? (before.active !== false && after.active === false ? "DISABLE" : "UPDATE") : "CREATE",
+            entityType: "EVIDENCE",
+            entityId: context.params.evidenceId,
+            entityLabelSnapshot: after.fileName || context.params.evidenceId,
+            actorUid: after.updatedBy || after.uploadedBy,
+            before,
+            after,
+            regionalId: after.regionalId,
+            costCenterId: after.costCenterId,
+            competence: after.competence
+        });
+    });

@@ -1,49 +1,86 @@
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { storage } from '../../../../services/firebaseConfig';
-import { SSMAInspection, SSMAInspecaoEvidencia } from '../types';
 import { UserProfileDoc } from '../../iam/types';
+import { validateEvidenceFile, validateEvidenceMetadata } from '../domain/validators';
+import { SSMAEvidence, SSMAInspecaoEvidencia, SSMAInspection, SSMAInspectionEvent } from '../types';
+import { ssmaEvidenceMetadataService } from './ssmaEvidenceMetadataService';
 import { ssmaInspectionService } from './ssmaInspectionService';
-import { ssmaAuditService } from './ssmaAuditService';
 
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+const safeStorageFileName = (fileName: string): string => {
+    return `${Date.now()}_${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+};
 
 export const ssmaEvidenceService = {
+    uploadInspectionEventEvidence: async (
+        event: SSMAInspectionEvent,
+        file: File,
+        currentUser: UserProfileDoc
+    ): Promise<SSMAEvidence> => {
+        if (!currentUser || (!currentUser.isSuperAdmin && !currentUser.modules?.ssma?.enabled)) {
+            throw new Error('Usuario sem acesso ao modulo SSMA.');
+        }
+        validateEvidenceFile(file);
+
+        const storagePath = `ssma/evidences/${event.competence}/${event.regionalId}/${event.costCenterId}/${event.id}/${safeStorageFileName(file.name)}`;
+        const storageRef = ref(storage, storagePath);
+
+        await uploadBytes(storageRef, file, {
+            contentType: file.type,
+            customMetadata: {
+                inspectionEventId: event.id,
+                competence: event.competence,
+                regionalId: event.regionalId,
+                costCenterId: event.costCenterId,
+                uploadedBy: currentUser.uid
+            }
+        });
+
+        const downloadUrl = await getDownloadURL(storageRef);
+        const metadata = {
+            inspectionEventId: event.id,
+            competence: event.competence,
+            regionalId: event.regionalId,
+            costCenterId: event.costCenterId,
+            storagePath,
+            downloadUrl,
+            fileName: file.name,
+            mimeType: file.type,
+            sizeBytes: file.size
+        };
+        validateEvidenceMetadata(metadata);
+
+        const evidenceId = await ssmaEvidenceMetadataService.create(metadata, currentUser);
+        const evidence = await ssmaEvidenceMetadataService.getById(evidenceId);
+        if (!evidence) throw new Error('Metadados da evidencia nao encontrados apos upload.');
+        return evidence;
+    },
+
+    /**
+     * Legacy adapter for ssma_inspections. The Sprint 3+ operational flow must use
+     * uploadInspectionEventEvidence and ssma_evidences metadata instead.
+     */
     uploadEvidence: async (
         inspectionId: string,
         file: File,
         evidenciaData: Omit<SSMAInspecaoEvidencia, 'id' | 'fotoUrl'>,
         currentUser: UserProfileDoc
     ): Promise<SSMAInspecaoEvidencia> => {
-        // 1. Validar usuário autenticado
-        if (!currentUser || !currentUser.modules?.ssma?.enabled) {
-            throw new Error('Usuário sem acesso ao módulo SSMA.');
+        if (!currentUser || (!currentUser.isSuperAdmin && !currentUser.modules?.ssma?.enabled)) {
+            throw new Error('Usuario sem acesso ao modulo SSMA.');
         }
+        validateEvidenceFile(file);
 
-        // 2. Validar evento
         const inspection = await ssmaInspectionService.getById(inspectionId);
-        if (!inspection) throw new Error('Registro mensal de inspeção não encontrado.');
+        if (!inspection) throw new Error('Registro mensal legado nao encontrado.');
 
-        // 3. Validar arquivo
-        if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-            throw new Error('Tipo de arquivo não permitido. Apenas JPEG, PNG, WEBP e PDF são aceitos.');
-        }
-        if (file.size > MAX_FILE_SIZE_BYTES) {
-            throw new Error('Arquivo excede o limite de 10MB.');
-        }
-
-        // 4. Gerar storage path e enviar
         const now = new Date();
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, '0');
-        const safeFileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-        const storagePath = `ssma/evidences/${year}/${month}/${inspection.cc}/${inspection.id}/${safeFileName}`;
-
+        const storagePath = `ssma/evidences/legacy/${year}-${month}/${inspection.cc}/${inspection.id}/${safeStorageFileName(file.name)}`;
         const storageRef = ref(storage, storagePath);
-        await uploadBytes(storageRef, file);
+        await uploadBytes(storageRef, file, { contentType: file.type });
         const downloadUrl = await getDownloadURL(storageRef);
 
-        // 5. Atualizar array no evento original
         const newEvidencia: SSMAInspecaoEvidencia = {
             ...evidenciaData,
             id: `ev_${Date.now()}`,
@@ -51,29 +88,11 @@ export const ssmaEvidenceService = {
         };
 
         const updatedEvidencias = [...(inspection.evidencias || []), newEvidencia];
-        
-        // Em vez de só atualizar o array, precisamos incrementar os "realizados"
         const updateData: Partial<SSMAInspection> = {
             evidencias: updatedEvidencias
         };
 
-        // Incrementadores automáticos
-        if (evidenciaData.executorRole === 'Gerente Regional' || evidenciaData.executorRole === 'Engenheiro de Obra') {
-            if (evidenciaData.tipo === 'IFS') updateData.realizadoGestorIFS = (inspection.realizadoGestorIFS || 0) + 1;
-            if (evidenciaData.tipo === 'Alojamento') updateData.realizadoGestorAlojamento = (inspection.realizadoGestorAlojamento || 0) + 1;
-        } else if (evidenciaData.executorRole === 'Encarregado') {
-            if (evidenciaData.tipo === 'IFS') updateData.realizadoEncarregadoIFS = (inspection.realizadoEncarregadoIFS || 0) + 1;
-            if (evidenciaData.tipo === 'Alojamento') updateData.realizadoEncarregadoAlojamento = (inspection.realizadoEncarregadoAlojamento || 0) + 1;
-        } else if (evidenciaData.executorRole === 'Supervisor de SSMA') {
-            if (evidenciaData.tipo === 'IFS') updateData.realizadoSupssmaIFS = (inspection.realizadoSupssmaIFS || 0) + 1;
-            if (evidenciaData.tipo === 'Alojamento') updateData.realizadoSupssmaAlojamento = (inspection.realizadoSupssmaAlojamento || 0) + 1;
-        } else if (evidenciaData.executorRole === 'Técnico de Segurança') {
-            if (evidenciaData.tipo === 'IFS') updateData.realizadoTstIFS = (inspection.realizadoTstIFS || 0) + 1;
-            if (evidenciaData.tipo === 'Alojamento') updateData.realizadoTstAlojamento = (inspection.realizadoTstAlojamento || 0) + 1;
-        }
-
-        await ssmaInspectionService.update(inspection.id, updateData, currentUser.uid, currentUser.displayName);
-
+        await ssmaInspectionService.update(inspection.id, updateData, currentUser);
         return newEvidencia;
     }
 };

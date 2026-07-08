@@ -1,0 +1,37 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "ssma_inspection_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "competence", "order": "ASCENDING" },
+        { "fieldPath": "regionalId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ssma_inspection_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "competence", "order": "ASCENDING" },
+        { "fieldPath": "costCenterId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ssma_evidences",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "inspectionEventId", "order": "ASCENDING" },
+        { "fieldPath": "active", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ssma_monthly_targets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "competence", "order": "ASCENDING" },
+        { "fieldPath": "employeeUid", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

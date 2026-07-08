@@ -1,5 +1,5 @@
 import { UserProfileDoc, Scope } from '../../iam/types';
-import { SSMAInspection } from '../types';
+import { SSMACostCenter, SSMAInspection, SSMAInspectionEvent, SSMARegional } from '../types';
 
 const isScopeMatch = (scope: Scope | undefined, regionalId: string, costCenterId: string): boolean => {
     if (!scope) return false;
@@ -11,6 +11,32 @@ const isScopeMatch = (scope: Scope | undefined, regionalId: string, costCenterId
         return scope.costCenters.includes(costCenterId);
     }
     return false;
+};
+
+const getRole = (profile: UserProfileDoc | null): string | null => {
+    if (!profile) return null;
+    if (profile.isSuperAdmin) return 'SSMA_MANAGER';
+    if (!profile.modules?.ssma?.enabled) return null;
+    return profile.modules.ssma.role;
+};
+
+const canWriteSSMAEvents = (profile: UserProfileDoc | null): boolean => {
+    const role = getRole(profile);
+    if (!role) return false;
+    return role !== 'SSMA_VIEWER';
+};
+
+const hasFullEventScope = (profile: UserProfileDoc | null): boolean => {
+    if (!profile) return false;
+    if (profile.isSuperAdmin) return true;
+    const role = getRole(profile);
+    return role === 'SSMA_ADMIN' || role === 'SSMA_MANAGER' || role === 'Gerente de SSMA';
+};
+
+const getSSMAScopeForProfile = (profile: UserProfileDoc | null): Scope | undefined => {
+    if (!profile) return undefined;
+    if (profile.isSuperAdmin) return { type: 'ALL' };
+    return profile.modules?.ssma?.scope;
 };
 
 export const hasSSMAAccess = (profile: UserProfileDoc | null): boolean => {
@@ -155,4 +181,79 @@ export const canReadSSMAAuditLogs = (profile: UserProfileDoc | null): boolean =>
     if (!ssma || !ssma.enabled) return false;
 
     return ['SSMA_ADMIN', 'SSMA_MANAGER', 'Gerente de SSMA'].includes(ssma.role);
+};
+
+export const canViewEvent = (profile: UserProfileDoc | null, event: SSMAInspectionEvent): boolean => {
+    if (!profile) return false;
+    if (hasFullEventScope(profile)) return true;
+    if (!profile.modules?.ssma?.enabled) return false;
+    return isScopeMatch(profile.modules.ssma.scope, event.regionalId, event.costCenterId);
+};
+
+export const canCreateEvent = (
+    profile: UserProfileDoc | null,
+    target: { regionalId: string; costCenterId: string }
+): boolean => {
+    if (!canWriteSSMAEvents(profile)) return false;
+    if (hasFullEventScope(profile)) return true;
+    const scope = getSSMAScopeForProfile(profile);
+    return isScopeMatch(scope, target.regionalId, target.costCenterId);
+};
+
+export const canEditEvent = (profile: UserProfileDoc | null, event: SSMAInspectionEvent): boolean => {
+    if (event.status === 'CANCELLED') return false;
+    if (!canWriteSSMAEvents(profile)) return false;
+    return canViewEvent(profile, event);
+};
+
+export const canCancelEvent = (profile: UserProfileDoc | null, event: SSMAInspectionEvent): boolean => {
+    if (event.status === 'CANCELLED') return false;
+    if (!canWriteSSMAEvents(profile)) return false;
+    return canViewEvent(profile, event);
+};
+
+export const canSelectExecutor = (profile: UserProfileDoc | null): boolean => {
+    const role = getRole(profile);
+    return role === 'SSMA_ADMIN' || role === 'SSMA_MANAGER' || role === 'SSMA_REGIONAL_MANAGER' || role === 'Gerente de SSMA' || role === 'Gerente Regional';
+};
+
+export const getAllowedCostCenters = (
+    profile: UserProfileDoc | null,
+    costCenters: SSMACostCenter[]
+): SSMACostCenter[] => {
+    if (!profile) return [];
+    if (hasFullEventScope(profile)) return costCenters;
+    if (!profile.modules?.ssma?.enabled) return [];
+
+    const scope = profile.modules.ssma.scope;
+    if (!scope) return [];
+    if (scope.type === 'ALL') return costCenters;
+    if (scope.type === 'REGIONAL') {
+        return costCenters.filter(costCenter => scope.regionals.includes(costCenter.regionalId));
+    }
+    return costCenters.filter(costCenter => scope.costCenters.includes(costCenter.id));
+};
+
+export const getAllowedRegionals = (
+    profile: UserProfileDoc | null,
+    regionals: SSMARegional[],
+    costCenters: SSMACostCenter[]
+): SSMARegional[] => {
+    if (!profile) return [];
+    if (hasFullEventScope(profile)) return regionals;
+    if (!profile.modules?.ssma?.enabled) return [];
+
+    const scope = profile.modules.ssma.scope;
+    if (!scope) return [];
+    if (scope.type === 'ALL') return regionals;
+    if (scope.type === 'REGIONAL') {
+        return regionals.filter(regional => scope.regionals.includes(regional.id));
+    }
+
+    const allowedRegionalIds = new Set(
+        costCenters
+            .filter(costCenter => scope.costCenters.includes(costCenter.id))
+            .map(costCenter => costCenter.regionalId)
+    );
+    return regionals.filter(regional => allowedRegionalIds.has(regional.id));
 };

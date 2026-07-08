@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { LayoutDashboard, FileCheck, Database, Gavel } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { CorporateSidebar, SidebarItem } from '../../components/navigation/CorporateSidebar';
-import { canManageSSMARules, canManageSSMARegisters } from './domain/permissions';
+import { canManageSSMARegisters, hasSSMAAccess } from './domain/permissions';
 
 import { SSMADashboard } from './components/Dashboard/SSMADashboard';
 import { InspectionEventList } from './components/Inspections/InspectionEventList';
@@ -30,8 +30,8 @@ export default function SSMAApp() {
     if (canManageSSMARegisters(profile)) {
       items.push({ key: 'registers', label: 'Cadastros', icon: Database, onClick: () => setActiveTab('registers'), isActive: activeTab === 'registers' });
     }
-    if (canManageSSMARules(profile)) {
-      items.push({ key: 'rules', label: 'Regras', icon: Gavel, onClick: () => setActiveTab('rules'), isActive: activeTab === 'rules' });
+    if (hasSSMAAccess(profile)) {
+      items.push({ key: 'rules', label: 'Metas', icon: Gavel, onClick: () => setActiveTab('rules'), isActive: activeTab === 'rules' });
     }
     return items;
   }, [activeTab, profile]);
@@ -41,7 +41,7 @@ export default function SSMAApp() {
       case 'dashboard': return 'Dashboard SSMA';
       case 'inspections': return 'Inspeções SSMA';
       case 'registers': return 'Cadastros e Entidades';
-      case 'rules': return 'Regras de Conformidade';
+      case 'rules': return 'Metas SSMA';
       default: return 'SSMA';
     }
   };

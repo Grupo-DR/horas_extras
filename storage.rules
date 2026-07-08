@@ -2,24 +2,32 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    
-    // Padrão: Negar tudo
-    match /{allPaths=**} {
-      allow read, write: if false;
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // Regras SSMA Evidências
-    match /ssma/evidences/{year}/{month}/{costCenterId}/{inspectionEventId}/{fileName} {
-      // Usuário autenticado com acesso SSMA.
-      // (O controle fino do módulo e roles ocorre via Firestore/App Services antes de bater aqui,
-      // pois o Firebase Storage depende primariamente de Custom Claims para algo tão granular).
-      allow read: if request.auth != null;
-      
-      // Usuário autenticado com acesso SSMA e role operacional.
-      allow write: if request.auth != null;
-      
-      // Sem hard delete
+    function validEvidenceFile() {
+      return request.resource != null &&
+        request.resource.size > 0 &&
+        request.resource.size <= 10 * 1024 * 1024 &&
+        request.resource.contentType in [
+          'image/jpeg',
+          'image/png',
+          'image/webp',
+          'application/pdf'
+        ];
+    }
+
+    match /ssma/evidences/{competence}/{regionalId}/{costCenterId}/{inspectionEventId}/{fileName} {
+      allow read: if isSignedIn();
+      // Role/scope checks are enforced in Firestore/services because this project
+      // does not currently issue SSMA custom claims to Firebase Auth tokens.
+      allow create, update: if isSignedIn() && validEvidenceFile();
       allow delete: if false;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }

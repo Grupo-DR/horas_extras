@@ -32,9 +32,13 @@ export const useSSMAEmployees = () => {
 
                     return {
                         id: p.uid,
+                        uid: p.uid,
                         name: p.displayName || p.email,
                         email: p.email,
                         functionGroup,
+                        roleSnapshot: role,
+                        regionalIds: p.modules.ssma!.scope?.type === 'REGIONAL' ? p.modules.ssma!.scope.regionals : undefined,
+                        costCenterIds: p.modules.ssma!.scope?.type === 'COST_CENTER' ? p.modules.ssma!.scope.costCenters : undefined,
                         active: p.status === 'active',
                     } as SSMAEmployee;
                 });

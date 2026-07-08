@@ -1,6 +1,6 @@
 import React from 'react';
 import { SSMADashboardFilters } from '../../hooks/useSSMADashboard';
-import { SSMARegional, SSMACostCenter } from '../../types';
+import { SSMACostCenter, SSMARegional } from '../../types';
 
 interface Props {
     filters: SSMADashboardFilters;
@@ -9,71 +9,53 @@ interface Props {
     costCenters: SSMACostCenter[];
 }
 
+const currentCompetence = () => new Date().toISOString().slice(0, 7);
+
 export const DashboardFilters: React.FC<Props> = ({ filters, setFilters, regionals, costCenters }) => {
+    const filteredCostCenters = costCenters.filter(costCenter => !filters.regionalId || costCenter.regionalId === filters.regionalId);
+
     return (
-        <div className="bg-white p-4 rounded shadow-sm flex flex-wrap gap-4 mb-6 items-end">
-            <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Ano Base</label>
+        <div className="grid gap-3 rounded border border-gray-200 bg-white p-3 md:grid-cols-4">
+            <label className="space-y-1">
+                <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Competencia</span>
+                <input
+                    type="month"
+                    value={filters.competence || currentCompetence()}
+                    onChange={event => setFilters({ ...filters, competence: event.target.value })}
+                    className="h-10 w-full rounded border border-gray-300 px-3 text-sm"
+                />
+            </label>
+            <label className="space-y-1">
+                <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Regional</span>
                 <select
-                    value={filters.year}
-                    onChange={e => setFilters({ ...filters, year: Number(e.target.value) })}
-                    className="border p-2 rounded text-sm w-32"
-                >
-                    <option value={2026}>2026</option>
-                    <option value={2027}>2027</option>
-                    <option value={2028}>2028</option>
-                </select>
-            </div>
-            
-            <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Regional</label>
-                <select 
-                    value={filters.regionalId || ''} 
-                    onChange={e => setFilters({ ...filters, regionalId: e.target.value || undefined, costCenterId: undefined })}
-                    className="border p-2 rounded text-sm w-48"
+                    value={filters.regionalId || ''}
+                    onChange={event => setFilters({ ...filters, regionalId: event.target.value || undefined, costCenterId: undefined })}
+                    className="h-10 w-full rounded border border-gray-300 px-3 text-sm"
                 >
                     <option value="">Todas</option>
-                    {regionals.map(r => (
-                        <option key={r.id} value={r.id}>{r.name}</option>
-                    ))}
+                    {regionals.map(regional => <option key={regional.id} value={regional.id}>{regional.name}</option>)}
                 </select>
-            </div>
-
-            <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Centro de Custo</label>
-                <select 
-                    value={filters.costCenterId || ''} 
-                    onChange={e => setFilters({ ...filters, costCenterId: e.target.value || undefined })}
-                    className="border p-2 rounded text-sm w-48"
-                    disabled={!filters.regionalId && costCenters.length > 50} // simplistic UX
+            </label>
+            <label className="space-y-1">
+                <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Obra</span>
+                <select
+                    value={filters.costCenterId || ''}
+                    onChange={event => setFilters({ ...filters, costCenterId: event.target.value || undefined })}
+                    className="h-10 w-full rounded border border-gray-300 px-3 text-sm"
                 >
-                    <option value="">Todos</option>
-                    {costCenters
-                        .filter(c => !filters.regionalId || c.regionalId === filters.regionalId)
-                        .map(c => (
-                        <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
-                    ))}
+                    <option value="">Todas</option>
+                    {filteredCostCenters.map(costCenter => <option key={costCenter.id} value={costCenter.id}>{costCenter.code} - {costCenter.name}</option>)}
                 </select>
-            </div>
-
-            <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Gestor</label>
-                <select 
-                    value={filters.gestor || ''} 
-                    onChange={e => setFilters({ ...filters, gestor: e.target.value || undefined })}
-                    className="border p-2 rounded text-sm w-32"
+            </label>
+            <div className="flex items-end">
+                <button
+                    type="button"
+                    onClick={() => setFilters({ competence: filters.competence || currentCompetence() })}
+                    className="h-10 rounded border border-gray-300 px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50"
                 >
-                    <option value="">Todos</option>
-                    {/* Add options based on available gestores if needed */}
-                </select>
+                    Limpar filtros
+                </button>
             </div>
-            
-            <button 
-                onClick={() => setFilters({ year: filters.year })} 
-                className="bg-gray-100 px-4 py-2 rounded text-sm hover:bg-gray-200"
-            >
-                Limpar
-            </button>
         </div>
     );
 };
