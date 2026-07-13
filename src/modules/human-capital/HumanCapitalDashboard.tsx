@@ -729,6 +729,8 @@ const HumanCapitalDashboard: React.FC = () => {
               <AbsenteeismDashboard
                 data={filteredData}
                 regional={filters.regional}
+                costCenter={filters.costCenter}
+                functionName={filters.function}
                 budgetMonthKeys={budgetMonthKeys}
                 dateMode={normalizedDateMode}
                 selectedMonth={selectedMonthKey}

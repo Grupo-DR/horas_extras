@@ -28,7 +28,7 @@ const getMonthAbbr = (monthStr: string) => {
 export const ResourcesMatrixTable: React.FC<ResourcesMatrixTableProps> = ({ facts }) => {
   const [selectedGroup, setSelectedGroup] = useState<'ALL' | DimensionGroup>('ALL');
 
-  const { allMonths, groupedData } = useMemo(() => {
+  const { allMonths, groupedData, grandTotals } = useMemo(() => {
     // Filter facts based on selected group
     const filteredFacts = selectedGroup === 'ALL' ? facts : facts.filter(f => f.group === selectedGroup);
 
@@ -73,7 +73,35 @@ export const ResourcesMatrixTable: React.FC<ResourcesMatrixTableProps> = ({ fact
       itemData.total.realizedCost += fact.realizedCost;
     });
 
-    return { allMonths: monthsByYear, groupedData: dataByItem };
+    const totals = {
+      months: {} as Record<string, { plannedQty: number, realizedQty: number, plannedCost: number, realizedCost: number }>,
+      overall: { plannedQty: 0, realizedQty: 0, plannedCost: 0, realizedCost: 0 }
+    };
+    
+    // Initialize months
+    monthKeys.forEach(mk => {
+      totals.months[mk] = { plannedQty: 0, realizedQty: 0, plannedCost: 0, realizedCost: 0 };
+    });
+
+    Object.values(dataByItem).forEach(itemsMap => {
+      Object.values(itemsMap).forEach(itemData => {
+        totals.overall.plannedQty += itemData.total.plannedQty;
+        totals.overall.realizedQty += itemData.total.realizedQty;
+        totals.overall.plannedCost += itemData.total.plannedCost;
+        totals.overall.realizedCost += itemData.total.realizedCost;
+        
+        Object.keys(itemData.months).forEach(mk => {
+          if (totals.months[mk]) {
+            totals.months[mk].plannedQty += itemData.months[mk].plannedQty || 0;
+            totals.months[mk].realizedQty += itemData.months[mk].realizedQty || 0;
+            totals.months[mk].plannedCost += itemData.months[mk].plannedCost || 0;
+            totals.months[mk].realizedCost += itemData.months[mk].realizedCost || 0;
+          }
+        });
+      });
+    });
+
+    return { allMonths: monthsByYear, groupedData: dataByItem, grandTotals: totals };
   }, [facts, selectedGroup]);
 
   if (facts.length === 0) {
@@ -248,6 +276,95 @@ export const ResourcesMatrixTable: React.FC<ResourcesMatrixTableProps> = ({ fact
               })}
             </React.Fragment>
           ))}
+          {/* Linha de Total Geral */}
+          <React.Fragment>
+            {/* Linha 1: Previsto Contrato (Qtd) */}
+            <tr className="hover:bg-slate-800/40 transition-colors bg-blue-900/20 border-t-2 border-blue-500/50">
+              <td rowSpan={4} className="px-4 py-3 border-r border-b border-white/10 font-black text-blue-400 bg-slate-900 sticky left-0 z-30 w-[150px] min-w-[150px] max-w-[150px] break-words align-middle text-center shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)]">
+                TOTAL GERAL
+              </td>
+              <td className="px-4 py-2 border-r border-white/10 text-blue-300 uppercase tracking-wider bg-slate-900 sticky left-[150px] z-20 w-[180px] min-w-[180px] max-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)] font-bold">
+                Previsto Contrato
+              </td>
+              {years.map(year => 
+                allMonths[year].map(month => {
+                  const mk = `${year}-${month}`;
+                  const val = grandTotals.months[mk]?.plannedQty || 0;
+                  return (
+                    <td key={`tot-p-${mk}`} className="px-3 py-2 border-r border-white/5 text-right font-bold text-blue-300 tabular-nums">
+                      {val > 0 ? formatValue(val, false) : '-'}
+                    </td>
+                  );
+                })
+              )}
+              <td className="px-4 py-2 text-right font-black text-blue-300 border-white/10 bg-slate-800/50 tabular-nums">
+                {grandTotals.overall.plannedQty > 0 ? formatValue(grandTotals.overall.plannedQty, false) : '-'}
+              </td>
+            </tr>
+
+            {/* Linha 2: Realizado (Qtd) */}
+            <tr className="hover:bg-slate-800/40 transition-colors bg-rose-900/20">
+              <td className="px-4 py-2 border-r border-white/10 text-rose-400 uppercase tracking-wider bg-slate-900 sticky left-[150px] z-20 w-[180px] min-w-[180px] max-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)] font-bold">
+                Realizado
+              </td>
+              {years.map(year => 
+                allMonths[year].map(month => {
+                  const mk = `${year}-${month}`;
+                  const val = grandTotals.months[mk]?.realizedQty || 0;
+                  return (
+                    <td key={`tot-r-${mk}`} className="px-3 py-2 border-r border-white/5 text-right font-bold text-rose-400 tabular-nums">
+                      {val > 0 ? formatValue(val, false) : '-'}
+                    </td>
+                  );
+                })
+              )}
+              <td className="px-4 py-2 text-right font-black text-rose-400 border-white/10 bg-slate-800/50 tabular-nums">
+                {grandTotals.overall.realizedQty > 0 ? formatValue(grandTotals.overall.realizedQty, false) : '-'}
+              </td>
+            </tr>
+
+            {/* Linha 3: Previsto Contrato ($) */}
+            <tr className="hover:bg-slate-800/40 transition-colors bg-blue-900/20">
+              <td className="px-4 py-2 border-r border-white/10 text-slate-300 uppercase tracking-wider bg-slate-900 sticky left-[150px] z-20 w-[180px] min-w-[180px] max-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)] font-bold">
+                Previsto Contrato ($)
+              </td>
+              {years.map(year => 
+                allMonths[year].map(month => {
+                  const mk = `${year}-${month}`;
+                  const val = grandTotals.months[mk]?.plannedCost || 0;
+                  return (
+                    <td key={`tot-p$-${mk}`} className="px-3 py-2 border-r border-white/5 text-right font-bold text-slate-300 tabular-nums">
+                      {val > 0 ? formatValue(val, true) : '-'}
+                    </td>
+                  );
+                })
+              )}
+              <td className="px-4 py-2 text-right font-black text-slate-200 border-white/10 bg-slate-800/50 tabular-nums">
+                {grandTotals.overall.plannedCost > 0 ? formatValue(grandTotals.overall.plannedCost, true) : '-'}
+              </td>
+            </tr>
+
+            {/* Linha 4: Realizado ($) */}
+            <tr className="hover:bg-slate-800/40 transition-colors bg-rose-900/20 border-b border-white/10">
+              <td className="px-4 py-2 border-r border-white/10 text-slate-300 uppercase tracking-wider bg-slate-900 sticky left-[150px] z-20 w-[180px] min-w-[180px] max-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)] font-bold italic">
+                Realizado ($)
+              </td>
+              {years.map(year => 
+                allMonths[year].map(month => {
+                  const mk = `${year}-${month}`;
+                  const val = grandTotals.months[mk]?.realizedCost || 0;
+                  return (
+                    <td key={`tot-r$-${mk}`} className="px-3 py-2 border-r border-white/5 text-right font-bold text-slate-300 tabular-nums italic">
+                      {val > 0 ? formatValue(val, true) : '-'}
+                    </td>
+                  );
+                })
+              )}
+              <td className="px-4 py-2 text-right font-black text-slate-200 border-white/10 bg-slate-800/50 tabular-nums italic">
+                {grandTotals.overall.realizedCost > 0 ? formatValue(grandTotals.overall.realizedCost, true) : '-'}
+              </td>
+            </tr>
+          </React.Fragment>
         </tbody>
       </table>
     </div>

@@ -14,10 +14,13 @@ import {
   analyzeAbsenteeismOvertimeCorrelation
 } from '../domain/absenteeism';
 import { DEFAULT_ABSENTEEISM_TARGETS, AbsenteeismGroupSummary, AbsenteeismOvertimeCorrelation } from '../domain/absenteeismTypes';
+import { getCCRegional } from '../data/ccMaster';
 
 interface AbsenteeismDashboardProps {
   data: OvertimeRecord[];
   regional?: string;
+  costCenter?: string;
+  functionName?: string;
   budgetMonthKeys: string[];
   dateMode: 'PAYROLL' | 'ANNUAL' | 'CUSTOM';
   selectedMonth: string;
@@ -32,35 +35,33 @@ const formatPercent = (value: number) => {
 };
 
 const formatPercentAbs = (value: number) => {
-    return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+    return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
-const AbsenteeismDashboard: React.FC<AbsenteeismDashboardProps> = ({ data, regional, headcountRecords }) => {
+const AbsenteeismDashboard: React.FC<AbsenteeismDashboardProps> = ({ data, regional, costCenter, functionName, headcountRecords, periodStart, periodEnd }) => {
   
-  const facts = useMemo(() => buildAbsenteeismFacts(data, headcountRecords), [data, headcountRecords]);
-  const summary = useMemo(() => calculateAbsenteeismSummary(facts, headcountRecords), [facts, headcountRecords]);
-  const regionalGroups = useMemo(() => calculateAbsenteeismByRegional(facts, headcountRecords), [facts, headcountRecords]);
-  const evolutionGroups = useMemo(() => calculateAbsenteeismMonthlyEvolution(facts, headcountRecords), [facts, headcountRecords]);
-  const costCenterGroups = useMemo(() => calculateAbsenteeismByCostCenter(facts, headcountRecords), [facts, headcountRecords]);
-  const functionGroups = useMemo(() => calculateAbsenteeismByFunction(facts, headcountRecords), [facts, headcountRecords]);
-  const employeeGroups = useMemo(() => calculateAbsenteeismByEmployee(facts, headcountRecords), [facts, headcountRecords]);
+  const filteredHeadcountRecords = useMemo(() => {
+      const startStr = periodStart.toISOString().slice(0, 10);
+      const endStr = periodEnd.toISOString().slice(0, 10);
+      return headcountRecords.filter(h => {
+          if (h.dataInicio > endStr || h.dataFim < startStr) return false;
+          if (regional && getCCRegional(h.centroCusto) !== regional) return false;
+          if (costCenter && h.centroCusto !== costCenter) return false;
+          if (functionName && h.funcao !== functionName) return false;
+          return true;
+      });
+  }, [headcountRecords, periodStart, periodEnd, regional, costCenter, functionName]);
+
+  const facts = useMemo(() => buildAbsenteeismFacts(data, filteredHeadcountRecords), [data, filteredHeadcountRecords]);
+  const summary = useMemo(() => calculateAbsenteeismSummary(facts, filteredHeadcountRecords), [facts, filteredHeadcountRecords]);
+  const regionalGroups = useMemo(() => calculateAbsenteeismByRegional(facts, filteredHeadcountRecords), [facts, filteredHeadcountRecords]);
+  const evolutionGroups = useMemo(() => calculateAbsenteeismMonthlyEvolution(facts, filteredHeadcountRecords), [facts, filteredHeadcountRecords]);
+  const costCenterGroups = useMemo(() => calculateAbsenteeismByCostCenter(facts, filteredHeadcountRecords), [facts, filteredHeadcountRecords]);
+  const functionGroups = useMemo(() => calculateAbsenteeismByFunction(facts, filteredHeadcountRecords), [facts, filteredHeadcountRecords]);
+  const employeeGroups = useMemo(() => calculateAbsenteeismByEmployee(facts, filteredHeadcountRecords), [facts, filteredHeadcountRecords]);
   const diagnosisText = useMemo(() => generateExecutiveDiagnosis(summary, regionalGroups, costCenterGroups), [summary, regionalGroups, costCenterGroups]);
   const correlations = useMemo(() => analyzeAbsenteeismOvertimeCorrelation(facts, data), [facts, data]);
 
-  const handleExportCSV = () => {
-      let csv = 'Centro de Custo,Nome CC,Regional,Horas Absenteismo,Horas Extras,Custo Absenteismo,Custo HE,Risco\n';
-      correlations.forEach(c => {
-          csv += `"${c.costCenter}","${c.costCenterName}","${c.regional}",${c.absenteeismHours.toFixed(2)},${c.overtimeHours.toFixed(2)},${c.absenteeismEstimatedCost.toFixed(2)},${c.overtimeCost.toFixed(2)},"${c.correlationRisk}"\n`;
-      });
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'correlacao_absenteismo_horas_extras.csv');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-  };
 
   const renderBadge = (status: 'OK' | 'ATTENTION' | 'CRITICAL', deviation: number) => {
     let color = 'bg-gray-100 text-gray-700 border border-gray-200';
@@ -172,14 +173,7 @@ const AbsenteeismDashboard: React.FC<AbsenteeismDashboardProps> = ({ data, regio
   return (
     <div className="space-y-6">
       
-      {/* Header Actions */}
-      <div className="flex justify-end">
-          <button onClick={handleExportCSV} className="flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-colors">
-              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-              Exportar Correlações CSV
-          </button>
-      </div>
-
+      {/* Header Actions Removidos */}
       {/* Bloco de Diagnóstico Executivo */}
       <div className="bg-gradient-to-r from-[#1e3a8a] to-blue-900 rounded-2xl shadow-lg p-6 text-white flex items-center gap-6 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>

@@ -209,6 +209,23 @@ export function ResourcesMonthlyTable({ facts, projectName }: ResourcesMonthlyTa
     });
   }, [filtered, sortKey, sortDir]);
 
+  // Totals for the table
+  const totals = useMemo(() => {
+    return sorted.reduce((acc, curr) => {
+      acc.plannedQty += curr.plannedQty;
+      acc.realizedAverageQty += curr.realizedAverageQty;
+      acc.quantityDeviation += curr.quantityDeviation;
+      acc.realHH += curr.realHH;
+      acc.plannedCost += curr.plannedCost;
+      acc.realizedCost += curr.realizedCost;
+      acc.financialDeviation += curr.financialDeviation;
+      return acc;
+    }, {
+      plannedQty: 0, realizedAverageQty: 0, quantityDeviation: 0,
+      realHH: 0, plannedCost: 0, realizedCost: 0, financialDeviation: 0
+    });
+  }, [sorted]);
+
   // KPIs
   const summary = useMemo(() => getFactsSummary(filtered), [filtered]);
   const splitGroups = useMemo(() => splitResourceFactsByGroup(facts), [facts]);
@@ -468,6 +485,20 @@ export function ResourcesMonthlyTable({ facts, projectName }: ResourcesMonthlyTa
                 );
               })}
             </tbody>
+            <tfoot style={{ background: 'rgba(96,165,250,0.1)', fontWeight: 700 }}>
+              <tr>
+                <td colSpan={4} style={{ ...tdStyle, textAlign: 'right' }}>Total:</td>
+                <td style={{ ...tdStyle, textAlign: 'right', color: '#64748b' }}>—</td>
+                <td style={{ ...tdStyle, textAlign: 'right', color: '#93c5fd', fontVariantNumeric: 'tabular-nums' }}>{NUM(totals.plannedQty)}</td>
+                <td style={{ ...tdStyle, textAlign: 'right', color: '#6ee7b7', fontVariantNumeric: 'tabular-nums' }}>{NUM(totals.realizedAverageQty)}</td>
+                <td style={{ ...tdStyle, textAlign: 'right' }}><DeviationCell value={totals.quantityDeviation} /></td>
+                <td style={{ ...tdStyle, textAlign: 'right', color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>{NUM(totals.realHH, 1)}h</td>
+                <td style={{ ...tdStyle, textAlign: 'right', color: '#93c5fd', fontVariantNumeric: 'tabular-nums' }}>{BRL(totals.plannedCost)}</td>
+                <td style={{ ...tdStyle, textAlign: 'right', color: '#6ee7b7', fontVariantNumeric: 'tabular-nums' }}>{BRL(totals.realizedCost)}</td>
+                <td style={{ ...tdStyle, textAlign: 'right' }}><DeviationCell value={totals.financialDeviation} isCurrency /></td>
+                <td style={tdStyle}></td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       )}

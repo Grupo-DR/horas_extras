@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import {
     UploadCloud, FileSpreadsheet, CheckCircle2, XCircle, AlertTriangle,
     Info, Loader2, RotateCcw, ClipboardCheck, ChevronDown, ChevronUp, X,
-    ShieldAlert,
+    ShieldAlert, DownloadCloud,
 } from 'lucide-react';
 import {
     HeadcountUploadStatus,
@@ -12,7 +12,7 @@ import {
 } from '../types';
 import { parseHeadcountXlsx } from '../utils/headcount';
 import { runFullValidation } from '../utils/headcountValidator';
-import { replaceHeadcount } from '../services/planning';
+import { replaceHeadcount, getHeadcountSync } from '../services/planning';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -286,6 +286,30 @@ const HeadcountUpload: React.FC<HeadcountUploadProps> = ({ user, onSaved }) => {
         }
     };
 
+    const handleBackup = () => {
+        const records = getHeadcountSync();
+        if (!records || records.length === 0) {
+            alert('Nenhum headcount encontrado para exportar.');
+            return;
+        }
+
+        const headers = ['data_inicio', 'data_fim', 'chapa', 'nome', 'centro_custo', 'nome_cc', 'funcao', 'salario', 'distribuicao'];
+        let csv = headers.join(',') + '\n';
+        
+        records.forEach(r => {
+            csv += `"${r.dataInicio || ''}","${r.dataFim || ''}","${r.chapa || ''}","${r.nome || ''}","${r.centroCusto || ''}","${r.nomeCC || ''}","${r.funcao || ''}",${r.salario || 0},${r.distribuicao || 1}\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `backup_headcount_completo_${new Date().toISOString().slice(0,10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     // ── Render: Drop Zone ─────────────────────────────────────────────────────
 
     const isProcessing = status === 'parsing' || status === 'validating' || status === 'saving';
@@ -294,24 +318,33 @@ const HeadcountUpload: React.FC<HeadcountUploadProps> = ({ user, onSaved }) => {
         return (
             <div className="space-y-4">
                 {/* Cabeçalho */}
-                <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-700">
-                    <Info size={18} className="shrink-0 mt-0.5" />
-                    <div className="space-y-1">
-                        <p className="font-semibold">Importação de Headcount por Centro de Custo</p>
-                        <p className="text-blue-600 text-xs">
-                            Faça upload de uma planilha Excel com as colunas:{' '}
-                            <span className="font-mono font-bold">data_inicio · data_fim · chapa · centro_custo · distribuicao</span>
-                        </p>
-                        <p className="text-blue-600 text-xs">
-                            A distribuição deve ser decimal (0.5, 0.33, 1) e a soma por colaborador + dia deve ser igual a 1.
-                        </p>
-                        <p className="text-blue-600 text-xs">
-                            A coluna <span className="font-mono font-bold">salario</span> é opcional e, quando enviada, passa a ser a fonte oficial de salários do módulo.
-                        </p>
-                        <p className="text-amber-600 text-xs font-medium mt-1">
-                            ⚠️ Cada upload <strong>substitui completamente</strong> o headcount anterior.
-                        </p>
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 p-4 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-700">
+                    <div className="flex items-start gap-3">
+                        <Info size={18} className="shrink-0 mt-0.5" />
+                        <div className="space-y-1">
+                            <p className="font-semibold">Importação de Headcount por Centro de Custo</p>
+                            <p className="text-blue-600 text-xs">
+                                Faça upload de uma planilha Excel com as colunas:{' '}
+                                <span className="font-mono font-bold">data_inicio · data_fim · chapa · centro_custo · distribuicao</span>
+                            </p>
+                            <p className="text-blue-600 text-xs">
+                                A distribuição deve ser decimal (0.5, 0.33, 1) e a soma por colaborador + dia deve ser igual a 1.
+                            </p>
+                            <p className="text-blue-600 text-xs">
+                                A coluna <span className="font-mono font-bold">salario</span> é opcional e, quando enviada, passa a ser a fonte oficial de salários do módulo.
+                            </p>
+                            <p className="text-amber-600 text-xs font-medium mt-1">
+                                ⚠️ Cada upload <strong>substitui completamente</strong> o headcount anterior.
+                            </p>
+                        </div>
                     </div>
+                    <button 
+                        onClick={handleBackup}
+                        className="shrink-0 flex items-center gap-2 bg-white border border-blue-200 px-3 py-2 rounded-lg text-xs font-bold text-blue-700 hover:bg-blue-100 shadow-sm transition-colors"
+                    >
+                        <DownloadCloud size={16} />
+                        Backup Headcount Completo
+                    </button>
                 </div>
 
                 {saveError && (

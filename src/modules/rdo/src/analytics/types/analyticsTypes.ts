@@ -443,6 +443,10 @@ export type OccurrenceResponsibility =
   | 'CALENDARIO';
 
 export type OccurrenceEligibility =
+  | 'Contratante'
+  | 'Contratada'
+  | 'Força maior'
+  | 'Não Classificado'
   | 'POTENCIAL_PLEITO'
   | 'RISCO_CONTRATADA'
   | 'REQUER_ANALISE'

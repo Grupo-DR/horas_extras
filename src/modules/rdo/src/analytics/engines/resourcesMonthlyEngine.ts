@@ -28,6 +28,7 @@
  */
 
 import { RDOData } from '../../../types';
+import { isDateInRange } from '../../../utils';
 import { getMonthKeyFromDateString, countBusinessDaysInMonth } from '../core/calendarRules';
 import { getValidDailyPresenceKeys, ResourceSourceGroup, isValidExecutionDay, getRdoWorkingHours } from '../core/contractRules';
 import { normalizeItemName, formatAnoMesKey, parseBrazilianDate } from '../core/normalizer';
@@ -526,13 +527,18 @@ export function calculateRealHH(
   normalizedItemName: string,
   sourceGroup: ResourceSourceGroup,
   holidays: string[],
-  warnings: string[]
+  warnings: string[],
+  startDate?: string,
+  endDate?: string
 ): number {
   let totalHH = 0;
   const countedDates = new Set<string>();
 
   for (const rdo of rdos) {
     if (!isValidExecutionDay(rdo, holidays)) continue;
+    if (startDate || endDate) {
+      if (!isDateInRange(rdo.date, startDate, endDate)) continue;
+    }
     if (countedDates.has(rdo.date)) continue; // deduplicação por dia
 
     const hasItem = sourceGroup === 'WORKFORCE'
@@ -723,8 +729,15 @@ export function buildMonthlyResourceFacts(
       const rdoKey = dimItem.rdoEquivalentNormalized ?? dimItem.normalizedName;
       const hasRdoEquivalent = !!dimItem.rdoEquivalentNormalized;
 
-      // Apontamentos válidos
-      const appointmentDays = rdoAppointments.get(rdoKey)?.size ?? 0;
+      // Apontamentos válidos filtrados pela validade do item
+      let appointmentDays = 0;
+      if (rdoAppointments.has(rdoKey)) {
+        for (const rdoDate of rdoAppointments.get(rdoKey)!) {
+          if (isDateInRange(rdoDate, dimItem.iStart, dimItem.iEnd)) {
+            appointmentDays++;
+          }
+        }
+      }
       const realizedAverageQty = appointmentDays / safeDenominator;
 
       if (rdoAppointments.has(rdoKey)) matchedRdoKeys.add(rdoKey);
@@ -733,9 +746,9 @@ export function buildMonthlyResourceFacts(
       const sourceGroup: ResourceSourceGroup =
         dimItem.group === 'EQUIP' ? 'EQUIPMENT' : 'WORKFORCE';
 
-      // HH real
+      // HH real (passando as datas de início e fim)
       const realHH = calculateRealHH(
-        monthRdos, rdoKey, sourceGroup, holidays, warnings
+        monthRdos, rdoKey, sourceGroup, holidays, warnings, dimItem.iStart, dimItem.iEnd
       );
 
       // HH planejado (padrão 176h/mês)

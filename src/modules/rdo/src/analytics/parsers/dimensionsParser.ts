@@ -238,6 +238,8 @@ export async function parseDimensionsExcel(
         const itemIdx = eqHeaders.findIndex(h => h.includes('ITEMPADRAO') || h === 'ITEM_PADRAO' || h.includes('ITEM'));
         const rdoIdx = eqHeaders.findIndex(h => h.includes('ITEMRDO') || h === 'ITEM_RDO');
         const custoIdx = eqHeaders.findIndex(h => h.includes('CUSTOMENSALUNITARIO') || h.includes('CUSTO'));
+        const dataInicIdx = eqHeaders.findIndex(h => h.includes('DATAINICIAL') || h.includes('INICIO') || h === 'DATA_INICIAL');
+        const dataFinIdx = eqHeaders.findIndex(h => h.includes('DATAFINAL') || h.includes('FIM') || h === 'DATA_FINAL');
         
         if (itemIdx === -1) {
           return resolve(emptyResult('Coluna "Item_Padrao" não encontrada na aba "equivalência".'));
@@ -251,7 +253,7 @@ export async function parseDimensionsExcel(
         qtdCols.sort((a, b) => a - b);
 
         const items: DimensionItem[] = [];
-        const seenNames = new Set<string>();
+        const seenIntervals = new Map<string, { start?: string, end?: string }[]>();
         const warnings: string[] = [];
         let errorCount = 0;
         let totalRows = 0;
@@ -269,12 +271,21 @@ export async function parseDimensionsExcel(
           totalRows++;
           const normalizedName = normalizeItemName(rawName);
 
-          if (seenNames.has(normalizedName)) {
-            warnings.push(`Equivalência linha ${i + 1}: item duplicado '${rawName}'.`);
+          const rawStart = dataInicIdx !== -1 ? row[dataInicIdx] : undefined;
+          const rawEnd = dataFinIdx !== -1 ? row[dataFinIdx] : undefined;
+          const iStart = excelCellToIsoDate(rawStart) || metadata.iStart;
+          const iEnd = excelCellToIsoDate(rawEnd) || metadata.iEnd;
+
+          const intervals = seenIntervals.get(normalizedName) || [];
+          const isExactDuplicate = intervals.some(inv => inv.start === iStart && inv.end === iEnd);
+
+          if (isExactDuplicate) {
+            warnings.push(`Equivalência linha ${i + 1}: item duplicado '${rawName}' no mesmo período.`);
             errorCount++;
             continue;
           }
-          seenNames.add(normalizedName);
+          intervals.push({ start: iStart, end: iEnd });
+          seenIntervals.set(normalizedName, intervals);
 
           const rawGroup = grupoIdx !== -1 ? row[grupoIdx] : undefined;
           const group = normalizeGroup(rawGroup);
@@ -319,8 +330,8 @@ export async function parseDimensionsExcel(
             hasMissingCost,
             hasMissingGroup,
             monthlyPlan,
-            iStart: metadata.iStart,
-            iEnd: metadata.iEnd,
+            iStart,
+            iEnd,
           });
         }
 

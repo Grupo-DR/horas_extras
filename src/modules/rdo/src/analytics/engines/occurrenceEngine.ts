@@ -35,23 +35,23 @@ export function classifyOccurrence(description: string): OccurrenceClassificatio
   const rules: { regex: RegExp; result: OccurrenceClassification }[] = [
     {
       regex: /(trem|trens|circulação|circulacao|faixa|malha|intervalo operacional)/,
-      result: { category: 'CIRCULACAO_TRENS', responsibility: 'CONTRATANTE_OPERACAO', eligibility: 'POTENCIAL_PLEITO' }
+      result: { category: 'CIRCULACAO_TRENS', responsibility: 'CONTRATANTE_OPERACAO', eligibility: 'Contratante' }
     },
     {
       regex: /(falta de mão de obra|falta de mao de obra|falta de efetivo|equipe desfalcada)/,
-      result: { category: 'FALTA_MAO_OBRA', responsibility: 'CONTRATADA', eligibility: 'RISCO_CONTRATADA' }
+      result: { category: 'FALTA_MAO_OBRA', responsibility: 'CONTRATADA', eligibility: 'Contratada' }
     },
     {
       regex: /(falta de equipamento|falta de ferramenta|avaria|manutenção própria|manutencao propria)/,
-      result: { category: 'EQUIPAMENTO_FERRAMENTA', responsibility: 'CONTRATADA', eligibility: 'RISCO_CONTRATADA' }
+      result: { category: 'EQUIPAMENTO_FERRAMENTA', responsibility: 'CONTRATADA', eligibility: 'Contratada' }
     },
     {
       regex: /(chuva forte|clima impeditivo)/,
-      result: { category: 'CLIMA', responsibility: 'INDETERMINADA', eligibility: 'REQUER_ANALISE' }
+      result: { category: 'CLIMA', responsibility: 'INDETERMINADA', eligibility: 'Força maior' }
     },
     {
       regex: /(feriado|sábado|sabado|domingo)/,
-      result: { category: 'CALENDARIO', responsibility: 'CALENDARIO', eligibility: 'NAO_ELEGIVEL' }
+      result: { category: 'CALENDARIO', responsibility: 'CALENDARIO', eligibility: 'Não Classificado' }
     }
   ];
 
@@ -65,7 +65,7 @@ export function classifyOccurrence(description: string): OccurrenceClassificatio
   return {
     category: 'OUTRA',
     responsibility: 'INDETERMINADA',
-    eligibility: 'REQUER_ANALISE'
+    eligibility: 'Não Classificado'
   };
 }
 
@@ -97,7 +97,7 @@ export function buildOccurrenceFacts(params: BuildOccurrenceFactsParams): { fact
         description: occ.description,
         category: occ.category || '',
         responsibility: classification.responsibility,
-        eligibility: classification.eligibility,
+        eligibility: (occ.eligibility as OccurrenceEligibility) || classification.eligibility,
         impactMinutes: minutes,
         impactHours: hours,
         status

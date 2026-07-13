@@ -85,6 +85,7 @@ export const ProjectServices: React.FC<ProjectServicesProps> = ({
                       <th className="py-5 px-8 text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em]">Cód. Item</th>
                       <th className="py-5 px-8 text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em]">Escopo e Descritivo</th>
                       <th className="py-5 px-8 text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] text-center">Unid.</th>
+                      <th className="py-5 px-8 text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] text-center">Vigência</th>
                       <th className="py-5 px-8 text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] text-right">Preço Unitário</th>
                     </tr>
                   </thead>
@@ -95,6 +96,11 @@ export const ProjectServices: React.FC<ProjectServicesProps> = ({
                         <td className="py-5 px-8 font-semibold text-slate-200 group-hover:text-white transition-colors">{service.scope}</td>
                         <td className="py-5 px-8 text-center bg-white/[0.01]">
                            <span className="px-2 py-1 bg-white/5 text-slate-400 text-[10px] font-bold rounded-md border border-white/5">{service.unit}</span>
+                        </td>
+                        <td className="py-5 px-8 text-center text-xs text-slate-400 font-medium">
+                          {service.startDate ? service.startDate.split('-').reverse().join('/') : 'Início'} 
+                          <span className="mx-1 text-slate-600">até</span> 
+                          {service.endDate ? service.endDate.split('-').reverse().join('/') : 'Fim'}
                         </td>
                         <td className="py-5 px-8 text-right font-mono font-bold text-emerald-400 group-hover:scale-105 transition-transform">
                           {formatMoney(service.value)}

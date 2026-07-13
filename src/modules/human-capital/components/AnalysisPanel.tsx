@@ -2520,6 +2520,21 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, allData, periodStar
         return { dailyExtraViolations, interjornadas };
     }, [data]);
 
+    const filteredPlanningRecords = useMemo(() => {
+        if (!filters) return planningRecords;
+        return planningRecords.filter(p => {
+            const rawCC = p.costCenter || '';
+            const regional = getCCRegional(rawCC);
+            const normalizedCC = rawCC.replace(/\./g, '');
+            const filterNormalizedCC = filters.costCenter ? filters.costCenter.replace(/\./g, '') : '';
+
+            if (filters.costCenter && normalizedCC !== filterNormalizedCC) return false;
+            if (filters.regional && regional !== filters.regional) return false;
+            
+            return true;
+        });
+    }, [planningRecords, filters]);
+
     return (
         <div className="space-y-6">
             {/* Mega Cards de Alerta */}
@@ -2559,7 +2574,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, allData, periodStar
                 onEmployeeClick={handleEmployeeClick} 
                 periodStart={periodStart}
                 periodEnd={periodEnd}
-                plannedRecords={planningRecords}
+                plannedRecords={filteredPlanningRecords}
             />
 
             {/* Análises Full Width (Drill-down) */}
@@ -2573,7 +2588,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, allData, periodStar
                 <TrendAnalysisEnhanced
                     data={data}
                     referenceData={realRecords}
-                    planningRecords={planningRecords}
+                    planningRecords={filteredPlanningRecords}
                     filters={filters}
                     periodStart={periodStart}
                     periodEnd={periodEnd}

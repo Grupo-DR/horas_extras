@@ -8,28 +8,33 @@ import { AlertCircle, AlertTriangle, CheckCircle, Info } from 'lucide-react';
 
 export interface ValidationItem {
   id: string;
-  type: 'error' | 'warning' | 'info';
+  type: 'error' | 'warning' | 'info' | 'success';
   title: string;
   description: string;
   module: 'RECURSOS' | 'MEDICAO' | 'PRODUTIVIDADE' | 'OCORRENCIAS' | 'IMPRODUTIVIDADE' | 'GERAL';
 }
 
+import { DimensionItem } from '../../src/analytics/types/analyticsTypes';
+
 interface ValidationCenterProps {
   issues: ValidationItem[];
+  dimensions?: DimensionItem[];
 }
 
 const TYPE_CONFIG = {
   error: { color: '#f87171', bg: '#450a0a', border: '#7f1d1d', icon: AlertCircle, label: 'Erro Crítico' },
   warning: { color: '#fbbf24', bg: '#422006', border: '#a16207', icon: AlertTriangle, label: 'Aviso' },
-  info: { color: '#60a5fa', bg: '#1e3a8a', border: '#1e40af', icon: Info, label: 'Informativo' }
+  info: { color: '#60a5fa', bg: '#1e3a8a', border: '#1e40af', icon: Info, label: 'Informativo' },
+  success: { color: '#4ade80', bg: '#052e16', border: '#14532d', icon: CheckCircle, label: 'Validado' }
 };
 
-export function ValidationCenter({ issues }: ValidationCenterProps) {
+export function ValidationCenter({ issues, dimensions = [] }: ValidationCenterProps) {
   const summary = useMemo(() => {
     return {
       errors: issues.filter(i => i.type === 'error').length,
       warnings: issues.filter(i => i.type === 'warning').length,
       infos: issues.filter(i => i.type === 'info').length,
+      successes: issues.filter(i => i.type === 'success').length,
       total: issues.length
     };
   }, [issues]);
@@ -59,6 +64,10 @@ export function ValidationCenter({ issues }: ValidationCenterProps) {
           <div style={{ fontSize: 24, fontWeight: 'bold', color: '#60a5fa' }}>{summary.infos}</div>
           <div style={{ color: '#94a3b8', fontSize: 13, marginTop: 4 }}>Informativos</div>
         </div>
+        <div style={{ flex: '1 1 200px', background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ fontSize: 24, fontWeight: 'bold', color: '#4ade80' }}>{summary.successes}</div>
+          <div style={{ color: '#94a3b8', fontSize: 13, marginTop: 4 }}>Validados com Sucesso</div>
+        </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -86,6 +95,42 @@ export function ValidationCenter({ issues }: ValidationCenterProps) {
           );
         })}
       </div>
+
+      {dimensions.length > 0 && (
+        <div style={{ marginTop: 40 }}>
+          <h3 style={{ fontSize: 18, fontWeight: 600, color: '#f1f5f9', marginBottom: 16 }}>Equivalências Validadas (Recursos)</h3>
+          <div style={{ overflowX: 'auto', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead style={{ background: 'rgba(255,255,255,0.03)' }}>
+                <tr>
+                  <th style={{ padding: '10px 16px', textAlign: 'left', color: '#64748b', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>Item Padrão</th>
+                  <th style={{ padding: '10px 16px', textAlign: 'left', color: '#64748b', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>Equivalência (RDO)</th>
+                  <th style={{ padding: '10px 16px', textAlign: 'left', color: '#64748b', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>Grupo</th>
+                  <th style={{ padding: '10px 16px', textAlign: 'center', color: '#64748b', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>Vigência</th>
+                  <th style={{ padding: '10px 16px', textAlign: 'right', color: '#64748b', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>Custo Unitário Mensal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dimensions.map((dim, i) => (
+                  <tr key={i} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <td style={{ padding: '10px 16px', color: '#e2e8f0', fontWeight: 500 }}>{dim.name}</td>
+                    <td style={{ padding: '10px 16px', color: dim.rdoEquivalent ? '#4ade80' : '#94a3b8' }}>{dim.rdoEquivalent || '—'}</td>
+                    <td style={{ padding: '10px 16px', color: '#94a3b8' }}>{dim.group}</td>
+                    <td style={{ padding: '10px 16px', color: '#94a3b8', textAlign: 'center', fontSize: 12 }}>
+                      {dim.iStart ? dim.iStart.split('-').reverse().join('/') : 'Início'} 
+                      <span style={{ margin: '0 4px', color: '#475569' }}>até</span> 
+                      {dim.iEnd ? dim.iEnd.split('-').reverse().join('/') : 'Fim'}
+                    </td>
+                    <td style={{ padding: '10px 16px', color: '#93c5fd', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                      {dim.monthlyUnitCost > 0 ? dim.monthlyUnitCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

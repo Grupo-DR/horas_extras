@@ -121,6 +121,16 @@ export default function ContractIntelligencePage({
     }
   }, [rdos, rdoActions]);
 
+  const handleEligibilityChange = useCallback(async (rdoId: string, occurrenceIndex: number, newEligibility: string) => {
+    const rdoToUpdate = rdos.find(r => r.id === rdoId);
+    if (!rdoToUpdate) return;
+    const updatedRdo = JSON.parse(JSON.stringify(rdoToUpdate));
+    if (updatedRdo.occurrences && updatedRdo.occurrences[occurrenceIndex]) {
+      updatedRdo.occurrences[occurrenceIndex].eligibility = newEligibility;
+      await rdoActions.saveRdo(updatedRdo);
+    }
+  }, [rdos, rdoActions]);
+
   // Filtros Globais
   const [globalDateRange, setGlobalDateRange] = useState<{start: string, end: string}>({ start: '', end: '' });
   const [globalTeamFilter, setGlobalTeamFilter] = useState<string>('ALL');
@@ -209,6 +219,9 @@ export default function ContractIntelligencePage({
       const addWarning = (msg: string, mod: ValidationItem['module']) => {
         issues.push({ id: generateUUID(), type: 'warning', title: 'Alerta Analítico', description: msg, module: mod });
       };
+      const addSuccess = (msg: string, mod: ValidationItem['module']) => {
+        issues.push({ id: generateUUID(), type: 'success', title: 'Validado com Sucesso', description: msg, module: mod });
+      };
 
       // Fatos
       if (dimResult && dimResult.items.length > 0) {
@@ -217,6 +230,8 @@ export default function ContractIntelligencePage({
         });
         setResourceFacts(facts);
         warnings.forEach(w => addWarning(w, 'RECURSOS'));
+        const okFacts = facts.filter(f => f.status === 'PLANEJADO_E_REALIZADO' || f.status === 'PLANEJADO_SEM_REALIZADO').length;
+        if (okFacts > 0) addSuccess(`Foram classificados e validados ${okFacts} apontamentos de recursos de mão de obra e equipamentos.`, 'RECURSOS');
       } else {
         issues.push({ id: generateUUID(), type: 'info', title: 'Dimensões Ausentes', description: 'A planilha de dimensões da obra não foi importada. A aba de Recursos estará vazia.', module: 'RECURSOS' });
       }
@@ -226,16 +241,21 @@ export default function ContractIntelligencePage({
         const mRes = buildMeasurementFacts({ projectId: selectedProject.id, rdos: projectRdos, compositions: activeCompositions, projectServices: selectedProject.services || [] });
         setMeasureFacts(mRes.facts);
         mRes.warnings.forEach(w => addWarning(w, 'MEDICAO'));
+        const okMeasurements = mRes.facts.filter(f => f.status === 'ENCONTRADA_COMPOSICAO' || f.status === 'EQUIVALENCIA_NOME' || f.status === 'PRECO_SERVICES_FALLBACK').length;
+        if (okMeasurements > 0) addSuccess(`Foram medidas e cruzadas com sucesso ${okMeasurements} atividades com a base contratual e serviços associados.`, 'MEDICAO');
 
         // Productivity
         const pRes = buildProductivityFacts({ projectId: selectedProject.id, rdos: projectRdos, compositions: activeCompositions, projectServices: selectedProject.services || [] });
         setProdFacts(pRes.facts);
         pRes.warnings.forEach(w => addWarning(w, 'PRODUTIVIDADE'));
+        const okProd = pRes.facts.filter(f => f.status === 'ACIMA_COMPOSICAO' || f.status === 'CONFORME_COMPOSICAO' || f.status === 'ABAIXO_COMPOSICAO').length;
+        if (okProd > 0) addSuccess(`A produtividade foi apurada e parametrizada para ${okProd} frentes de serviço, comparando as equipes com a composição analítica.`, 'PRODUTIVIDADE');
 
         // Occurrences
         const oRes = buildOccurrenceFacts({ projectId: selectedProject.id, rdos: projectRdos });
         setOccurrenceFacts(oRes.facts);
         oRes.warnings.forEach(w => addWarning(w, 'OCORRENCIAS'));
+        if (oRes.facts.length > 0) addSuccess(`Foram classificadas, mapeadas e parametrizadas ${oRes.facts.length} ocorrências e interferências extraídas do RDO.`, 'OCORRENCIAS');
 
         // Idleness
         const iRes = buildIdlenessFacts({ occurrenceFacts: oRes.facts, rdos: projectRdos, compositions: activeCompositions });
@@ -495,7 +515,7 @@ export default function ContractIntelligencePage({
             </div>
           ) }
 
-          {activeTab === 'VALIDACAO' && <ValidationCenter issues={validationIssues} />}
+          {activeTab === 'VALIDACAO' && <ValidationCenter issues={validationIssues} dimensions={dimensions?.items} />}
           
           {activeTab === 'RECURSOS' && (
              dimensions ? (
@@ -533,7 +553,7 @@ export default function ContractIntelligencePage({
           
           {activeTab === 'PRODUTIVIDADE' && <ProductivityTable facts={filteredProdFacts} projectName={selectedProject.name} />}
           
-          {activeTab === 'OCORRENCIAS' && <OccurrencesTable facts={filteredOccurrenceFacts} projectName={selectedProject.name} teams={teams} onNavigateToRDO={onNavigateToRDO} />}
+          {activeTab === 'OCORRENCIAS' && <OccurrencesTable facts={filteredOccurrenceFacts} projectName={selectedProject.name} teams={teams} onNavigateToRDO={onNavigateToRDO} onCategoryChange={handleCategoryChange} onEligibilityChange={handleEligibilityChange} />}
           
           { activeTab === 'IMPRODUTIVIDADE' && <IdlenessTable facts={filteredIdlenessFacts} projectName={selectedProject.name} /> }
           
