@@ -152,10 +152,7 @@ const ProfileManager: React.FC = () => {
 
             try {
                 const authInstance = getAuth();
-                await sendPasswordResetEmail(authInstance, newUserEmail, {
-                    url: "https://gdr-nexus.netlify.app/config/account",
-                    handleCodeInApp: false,
-                });
+                await sendPasswordResetEmail(authInstance, newUserEmail);
                 toast.success(`Usuário convidado com sucesso!\n\nUm e-mail de definição de senha foi enviado automaticamente para: ${newUserEmail}`);
             } catch (emailError: any) {
                 console.error("Failed to send reset email natively", emailError);
@@ -263,27 +260,6 @@ const ProfileManager: React.FC = () => {
                         />
                     </div>
 
-                    {profile?.isSuperAdmin && (
-                        <button
-                            onClick={async () => {
-                                if (window.confirm('Executar backfill de usuários legados?\n\nIsso definirá status "active" e removerá "mustChangePassword" de todos que já existiam, além de garantir privilégios de Super Admin para seu e-mail.\n\nRode apenas 1x após implantar o novo IAM.')) {
-                                    try {
-                                        const functions = getFunctions(app, 'us-central1');
-                                        const backfill = httpsCallable(functions, 'adminBackfillUserProfiles');
-                                        const res = await backfill();
-                                        toast.success('Script de backfill concluído com sucesso:\n\n' + (res.data as any).message);
-                                        loadUsers();
-                                    } catch (e: any) {
-                                        toast.error('Erro no script de backfill: ' + e.message);
-                                    }
-                                }
-                            }}
-                            title="Recurso temporário para transição do banco"
-                            className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors"
-                        >
-                            <AlertTriangle size={16} /> Backfill
-                        </button>
-                    )}
 
                     <button
                         onClick={() => setIsAddModalOpen(true)}

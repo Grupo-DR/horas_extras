@@ -56,6 +56,62 @@ async function logAudit(type: string, actorUid: string, actorEmail: string, targ
 
 // --- Cloud Functions ---
 
+export const ssmaCreateForemanAccount = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "O usuário deve estar logado.");
+    const adminUid = context.auth.uid;
+    const adminEmail = context.auth.token.email || "unknown";
+
+    const profileSnap = await db.collection("user_profiles").doc(adminUid).get();
+    const profile = profileSnap.data();
+    if (!profile) throw new functions.https.HttpsError("permission-denied", "Perfil não encontrado.");
+
+    const isSuperAdmin = profile.isSuperAdmin === true;
+    const ssmaRole = profile.modules?.ssma?.role;
+    if (!isSuperAdmin && ssmaRole !== 'SSMA_ADMIN' && ssmaRole !== 'SSMA_MANAGER' && ssmaRole !== 'Gerente de SSMA') {
+        throw new functions.https.HttpsError("permission-denied", "Acesso negado. Requer permissão de Gestor de SSMA.");
+    }
+
+    const { name, cpf, password } = data;
+    if (!name || !cpf || !password) throw new functions.https.HttpsError("invalid-argument", "Nome, CPF e Senha são obrigatórios.");
+
+    const cleanCpf = cpf.replace(/[^\d]/g, '');
+    if (cleanCpf.length !== 11) throw new functions.https.HttpsError("invalid-argument", "CPF inválido.");
+
+    const fakeEmail = `${cleanCpf}@encarregado.dr`;
+
+    try {
+        const newAuthUser = await auth.createUser({
+            email: fakeEmail,
+            password: password,
+            displayName: name,
+            disabled: false,
+        });
+
+        const newProfile = {
+            uid: newAuthUser.uid,
+            email: fakeEmail,
+            displayName: name,
+            jobTitle: "Encarregado",
+            status: "active",
+            modules: {
+                ssma: { enabled: true, role: 'SSMA_FOREMAN' }
+            },
+            createdAt: new Date().toISOString(),
+            createdBy: adminUid,
+            updatedAt: new Date().toISOString(),
+            updatedBy: adminUid
+        };
+
+        await db.collection("user_profiles").doc(newAuthUser.uid).set(newProfile);
+        await logAudit("SSMA_FOREMAN_CREATED", adminUid, adminEmail, newAuthUser.uid, fakeEmail);
+
+        return { uid: newAuthUser.uid, status: "active" };
+    } catch (error: any) {
+        console.error("Erro no ssmaCreateForemanAccount:", error);
+        throw new functions.https.HttpsError("internal", error.message || "Erro ao criar encarregado.");
+    }
+});
+
 export const adminCreateUserInvite = functions.https.onCall(async (data, context) => {
     const adminUser = await verifyAdmin(context);
 

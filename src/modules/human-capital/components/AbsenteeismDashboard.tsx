@@ -93,9 +93,15 @@ const AbsenteeismDashboard: React.FC<AbsenteeismDashboardProps> = ({ data, regio
       if (risk === 'MEDIUM') color = 'bg-orange-100 text-orange-700 font-medium';
       if (risk === 'LOW') color = 'bg-green-100 text-green-700';
 
+      const labels: Record<string, string> = {
+          'LOW': 'Baixo',
+          'MEDIUM': 'Médio',
+          'HIGH': 'Alto'
+      };
+
       return (
           <span className={`px-2 py-1 rounded text-[10px] uppercase ${color}`}>
-              {risk}
+              {labels[risk]}
           </span>
       );
   }
@@ -174,21 +180,7 @@ const AbsenteeismDashboard: React.FC<AbsenteeismDashboardProps> = ({ data, regio
     <div className="space-y-6">
       
       {/* Header Actions Removidos */}
-      {/* Bloco de Diagnóstico Executivo */}
-      <div className="bg-gradient-to-r from-[#1e3a8a] to-blue-900 rounded-2xl shadow-lg p-6 text-white flex items-center gap-6 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-        <div className="shrink-0 bg-white/10 p-4 rounded-full border border-white/20 shadow-inner">
-            <svg className="w-8 h-8 text-blue-100" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-        </div>
-        <div className="flex-1 relative z-10">
-            <h3 className="text-sm font-bold text-blue-200 tracking-wider uppercase mb-1">Diagnóstico Executivo</h3>
-            <p className="text-lg leading-relaxed font-light text-white/90">
-                {diagnosisText}
-            </p>
-        </div>
-      </div>
+
 
       {/* Alertas de Inteligência Gerencial */}
       {correlations.filter(c => c.correlationRisk === 'HIGH' || c.correlationRisk === 'MEDIUM').length > 0 && (

@@ -110,31 +110,33 @@ export const calculateInspecoesFields = (
 export type SSMARealByFunctionGroup = Record<SSMATargetFunctionGroup, {
   realIFS: number;
   realAlojamento: number;
+  realHotel: number;
   realTotal: number;
 }>;
 
 export type SSMAMetaByFunctionGroup = Record<SSMATargetFunctionGroup, {
   metaIFS: number;
   metaAlojamento: number;
+  metaHotel: number;
   metaTotal: number;
 }>;
 
 const TARGET_FUNCTION_GROUPS: SSMATargetFunctionGroup[] = ['GREG', 'GESTOR', 'SUPSSMA', 'TST', 'ENCARREGADO'];
 
 const emptyRealByFunctionGroup = (): SSMARealByFunctionGroup => ({
-  GREG: { realIFS: 0, realAlojamento: 0, realTotal: 0 },
-  GESTOR: { realIFS: 0, realAlojamento: 0, realTotal: 0 },
-  SUPSSMA: { realIFS: 0, realAlojamento: 0, realTotal: 0 },
-  TST: { realIFS: 0, realAlojamento: 0, realTotal: 0 },
-  ENCARREGADO: { realIFS: 0, realAlojamento: 0, realTotal: 0 }
+  GREG: { realIFS: 0, realAlojamento: 0, realHotel: 0, realTotal: 0 },
+  GESTOR: { realIFS: 0, realAlojamento: 0, realHotel: 0, realTotal: 0 },
+  SUPSSMA: { realIFS: 0, realAlojamento: 0, realHotel: 0, realTotal: 0 },
+  TST: { realIFS: 0, realAlojamento: 0, realHotel: 0, realTotal: 0 },
+  ENCARREGADO: { realIFS: 0, realAlojamento: 0, realHotel: 0, realTotal: 0 }
 });
 
 const emptyMetaByFunctionGroup = (): SSMAMetaByFunctionGroup => ({
-  GREG: { metaIFS: 0, metaAlojamento: 0, metaTotal: 0 },
-  GESTOR: { metaIFS: 0, metaAlojamento: 0, metaTotal: 0 },
-  SUPSSMA: { metaIFS: 0, metaAlojamento: 0, metaTotal: 0 },
-  TST: { metaIFS: 0, metaAlojamento: 0, metaTotal: 0 },
-  ENCARREGADO: { metaIFS: 0, metaAlojamento: 0, metaTotal: 0 }
+  GREG: { metaIFS: 0, metaAlojamento: 0, metaHotel: 0, metaTotal: 0 },
+  GESTOR: { metaIFS: 0, metaAlojamento: 0, metaHotel: 0, metaTotal: 0 },
+  SUPSSMA: { metaIFS: 0, metaAlojamento: 0, metaHotel: 0, metaTotal: 0 },
+  TST: { metaIFS: 0, metaAlojamento: 0, metaHotel: 0, metaTotal: 0 },
+  ENCARREGADO: { metaIFS: 0, metaAlojamento: 0, metaHotel: 0, metaTotal: 0 }
 });
 
 export const mapRoleToFunctionGroup = (role: SSMARole): SSMATargetFunctionGroup => {
@@ -162,12 +164,15 @@ export const aggregateRealByFunctionGroup = (events: SSMAInspectionEvent[]): SSM
     .forEach(event => {
       const group = event.executorFunctionGroup;
       if (!totals[group]) return;
-      if (event.inspectionType === 'IFS') {
+      const type = event.inspectionType.toUpperCase();
+      if (type.includes('IFS') || type.includes('FRENTE DE SERVIÇO') || type.includes('FRENTE DE SERVICO')) {
         totals[group].realIFS += 1;
-      } else if (event.inspectionType === 'ALOJAMENTO') {
+      } else if (type.includes('ALOJAMENTO')) {
         totals[group].realAlojamento += 1;
+      } else if (type.includes('HOTEL')) {
+        totals[group].realHotel += 1;
       }
-      totals[group].realTotal = totals[group].realIFS + totals[group].realAlojamento;
+      totals[group].realTotal = totals[group].realIFS + totals[group].realAlojamento + totals[group].realHotel;
     });
 
   return totals;
@@ -183,7 +188,8 @@ export const aggregateMetaByFunctionGroup = (targets: SSMAMonthlyTarget[]): SSMA
       if (!totals[group]) return;
       totals[group].metaIFS += target.metaIFS || 0;
       totals[group].metaAlojamento += target.metaAlojamento || 0;
-      totals[group].metaTotal = totals[group].metaIFS + totals[group].metaAlojamento;
+      totals[group].metaHotel += target.metaHotel || 0;
+      totals[group].metaTotal = totals[group].metaIFS + totals[group].metaAlojamento + totals[group].metaHotel;
     });
 
   return totals;
@@ -202,19 +208,21 @@ export const calculatePersonMonthlyResult = (
     event => event.status === 'VALID' && event.competence === competence && event.executorUid === employeeUid
   );
 
-  const realIFS = personEvents.filter(event => event.inspectionType === 'IFS').length;
-  const realAlojamento = personEvents.filter(event => event.inspectionType === 'ALOJAMENTO').length;
-  const realTotal = realIFS + realAlojamento;
+  const realIFS = personEvents.filter(event => event.inspectionType.toUpperCase().includes('IFS') || event.inspectionType.toUpperCase().includes('FRENTE DE SERVI')).length;
+  const realAlojamento = personEvents.filter(event => event.inspectionType.toUpperCase().includes('ALOJAMENTO')).length;
+  const realHotel = personEvents.filter(event => event.inspectionType.toUpperCase().includes('HOTEL')).length;
+  const realTotal = realIFS + realAlojamento + realHotel;
 
   const metaIFS = target?.active === false ? 0 : target?.metaIFS || 0;
   const metaAlojamento = target?.active === false ? 0 : target?.metaAlojamento || 0;
-  const metaTotal = metaIFS + metaAlojamento;
+  const metaHotel = target?.active === false ? 0 : target?.metaHotel || 0;
+  const metaTotal = metaIFS + metaAlojamento + metaHotel;
 
   let resultadoIndividual: number | null = null;
   let status: SSMAMonthlyPersonResult['status'] = 'SEM_META';
 
   if (metaTotal > 0) {
-    resultadoIndividual = realTotal / metaTotal;
+    resultadoIndividual = Math.min(1, realTotal / metaTotal);
     status = resultadoIndividual >= 0.95 ? 'ATENDE' : 'NAO_ATENDE';
   } else if (realTotal > 0) {
     status = 'REALIZADO_SEM_META';
@@ -228,9 +236,11 @@ export const calculatePersonMonthlyResult = (
     functionGroup,
     realIFS,
     realAlojamento,
+    realHotel,
     realTotal,
     metaIFS,
     metaAlojamento,
+    metaHotel,
     metaTotal,
     resultadoIndividual,
     status,
@@ -272,7 +282,7 @@ export const calculateCollectiveMonthlyResult = (
 
   const totalRealizado = TARGET_FUNCTION_GROUPS.reduce((sum, group) => sum + realByGroup[group].realTotal, 0);
   const totalMeta = TARGET_FUNCTION_GROUPS.reduce((sum, group) => sum + metaByGroup[group].metaTotal, 0);
-  const resultadoColetivo = totalMeta > 0 ? totalRealizado / totalMeta : null;
+  const resultadoColetivo = totalMeta > 0 ? Math.min(1, totalRealizado / totalMeta) : null;
 
   const regionalId = options.scope?.type === 'REGIONAL' ? options.scope.regionals[0] : undefined;
   const costCenterId = options.scope?.type === 'COST_CENTER' ? options.scope.costCenters[0] : undefined;
@@ -287,24 +297,34 @@ export const calculateCollectiveMonthlyResult = (
     costCenterId,
     realIFS_GREG: realByGroup.GREG.realIFS,
     realAloj_GREG: realByGroup.GREG.realAlojamento,
+    realHotel_GREG: realByGroup.GREG.realHotel,
     realIFS_GESTOR: realByGroup.GESTOR.realIFS,
     realAloj_GESTOR: realByGroup.GESTOR.realAlojamento,
+    realHotel_GESTOR: realByGroup.GESTOR.realHotel,
     realIFS_SUPSSMA: realByGroup.SUPSSMA.realIFS,
     realAloj_SUPSSMA: realByGroup.SUPSSMA.realAlojamento,
+    realHotel_SUPSSMA: realByGroup.SUPSSMA.realHotel,
     realIFS_TST: realByGroup.TST.realIFS,
     realAloj_TST: realByGroup.TST.realAlojamento,
+    realHotel_TST: realByGroup.TST.realHotel,
     realIFS_ENCARREGADO: realByGroup.ENCARREGADO.realIFS,
     realAloj_ENCARREGADO: realByGroup.ENCARREGADO.realAlojamento,
+    realHotel_ENCARREGADO: realByGroup.ENCARREGADO.realHotel,
     metaIFS_GREG: metaByGroup.GREG.metaIFS,
     metaAloj_GREG: metaByGroup.GREG.metaAlojamento,
+    metaHotel_GREG: metaByGroup.GREG.metaHotel,
     metaIFS_GESTOR: metaByGroup.GESTOR.metaIFS,
     metaAloj_GESTOR: metaByGroup.GESTOR.metaAlojamento,
+    metaHotel_GESTOR: metaByGroup.GESTOR.metaHotel,
     metaIFS_SUPSSMA: metaByGroup.SUPSSMA.metaIFS,
     metaAloj_SUPSSMA: metaByGroup.SUPSSMA.metaAlojamento,
+    metaHotel_SUPSSMA: metaByGroup.SUPSSMA.metaHotel,
     metaIFS_TST: metaByGroup.TST.metaIFS,
     metaAloj_TST: metaByGroup.TST.metaAlojamento,
+    metaHotel_TST: metaByGroup.TST.metaHotel,
     metaIFS_ENCARREGADO: metaByGroup.ENCARREGADO.metaIFS,
     metaAloj_ENCARREGADO: metaByGroup.ENCARREGADO.metaAlojamento,
+    metaHotel_ENCARREGADO: metaByGroup.ENCARREGADO.metaHotel,
     totalRealizado,
     totalMeta,
     resultadoColetivo,

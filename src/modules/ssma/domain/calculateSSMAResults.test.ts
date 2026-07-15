@@ -46,6 +46,7 @@ const target = (overrides: Partial<SSMAMonthlyTarget>): SSMAMonthlyTarget => ({
     roleSnapshot: 'SSMA_TECHNICIAN',
     metaIFS: 1,
     metaAlojamento: 1,
+    metaHotel: 1,
     active: true,
     ...overrides
 });

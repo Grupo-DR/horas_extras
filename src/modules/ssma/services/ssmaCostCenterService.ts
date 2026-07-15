@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, getDoc, setDoc, updateDoc, query, where } from 'firebase/firestore';
+import { collection, doc, getDocs, getDoc, setDoc, updateDoc, query, where, deleteDoc } from 'firebase/firestore';
 import { db } from '../../../../services/firebaseConfig';
 import { SSMACostCenter } from '../types';
 import { Scope, UserProfileDoc } from '../../iam/types';
@@ -122,6 +122,18 @@ export const ssmaCostCenterService = {
     },
 
     remove: async (id: string, currentUser: UserProfileDoc): Promise<void> => {
-        await ssmaCostCenterService.disable(id, 'Remocao logica solicitada pelo usuario.', currentUser);
+        const existing = await ssmaCostCenterService.getById(id);
+        if (!existing) return;
+
+        await deleteDoc(doc(db, COLLECTION, id));
+
+        await ssmaAuditService.createSSMAAuditLog({
+            action: 'DELETE' as any,
+            entityType: 'COST_CENTER',
+            entityId: id,
+            entityLabelSnapshot: `${existing.code} - ${existing.name}`,
+            reason: 'Exclusão permanente solicitada pelo usuário.',
+            before: existing as any
+        }, currentUser);
     }
 };

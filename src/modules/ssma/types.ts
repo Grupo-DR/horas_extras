@@ -1,7 +1,7 @@
 // src/modules/ssma/types.ts
 import { SSMARole } from '../iam/types';
 
-export type SSMAInspectionType = 'IFS' | 'ALOJAMENTO';
+export type SSMAInspectionType = string;
 
 export type SSMAFunctionGroup = 'MANAGER' | 'SITE_MANAGER' | 'FOREMAN' | 'SUPERVISOR' | 'TECHNICIAN';
 
@@ -170,14 +170,34 @@ export interface SSMAMonthlyTarget extends AuditableRecord {
     roleSnapshot: SSMARole;
     metaIFS: number;
     metaAlojamento: number;
+    metaHotel: number;
     active: boolean;
+}
+
+export interface SSMAChecklistItem {
+    id: string; // ID gerado (ex: hash ou UUID baseado na descrição)
+    inspectionType: string;
+    category: string;
+    ncClassification: string;
+    description: string;
+    validityStart?: string;
+    validityEnd?: string;
+}
+
+export type SSMAInspectionItemStatus = 'CONFORME' | 'NAO_CONFORME' | 'NA' | 'PENDENTE';
+
+export interface SSMAInspectionItemResult {
+    itemId: string;
+    status: SSMAInspectionItemStatus;
+    comment: string;
+    evidenceUrls: string[];
 }
 
 export interface SSMAInspectionEvent extends AuditableRecord {
     id: string;
     competence: string; // YYYY-MM
     date: string; // YYYY-MM-DD
-    inspectionType: 'IFS' | 'ALOJAMENTO';
+    inspectionType: string; // Era 'IFS' | 'ALOJAMENTO', agora dinâmico
     regionalId: string;
     regionalNameSnapshot: string;
     costCenterId: string;
@@ -188,7 +208,8 @@ export interface SSMAInspectionEvent extends AuditableRecord {
     executorEmailSnapshot?: string;
     executorFunctionGroup: SSMATargetFunctionGroup;
     executorRoleSnapshot: SSMARole;
-    comments?: string;
+    comments?: string; // Comentário geral (legado ou opcional)
+    items?: SSMAInspectionItemResult[]; // Resultados granulares dos itens
     status: 'VALID' | 'CANCELLED';
     cancelledAt?: string;
     cancelledBy?: string;
@@ -221,9 +242,11 @@ export interface SSMAMonthlyPersonResult {
     functionGroup: SSMATargetFunctionGroup;
     realIFS: number;
     realAlojamento: number;
+    realHotel: number;
     realTotal: number;
     metaIFS: number;
     metaAlojamento: number;
+    metaHotel: number;
     metaTotal: number;
     resultadoIndividual: number | null;
     status: 'SEM_META' | 'ATENDE' | 'NAO_ATENDE' | 'REALIZADO_SEM_META';
@@ -238,24 +261,34 @@ export interface SSMAMonthlyCollectiveResult {
     costCenterId?: string;
     realIFS_GREG: number;
     realAloj_GREG: number;
+    realHotel_GREG: number;
     realIFS_GESTOR: number;
     realAloj_GESTOR: number;
+    realHotel_GESTOR: number;
     realIFS_SUPSSMA: number;
     realAloj_SUPSSMA: number;
+    realHotel_SUPSSMA: number;
     realIFS_TST: number;
     realAloj_TST: number;
+    realHotel_TST: number;
     realIFS_ENCARREGADO: number;
     realAloj_ENCARREGADO: number;
+    realHotel_ENCARREGADO: number;
     metaIFS_GREG: number;
     metaAloj_GREG: number;
+    metaHotel_GREG: number;
     metaIFS_GESTOR: number;
     metaAloj_GESTOR: number;
+    metaHotel_GESTOR: number;
     metaIFS_SUPSSMA: number;
     metaAloj_SUPSSMA: number;
+    metaHotel_SUPSSMA: number;
     metaIFS_TST: number;
     metaAloj_TST: number;
+    metaHotel_TST: number;
     metaIFS_ENCARREGADO: number;
     metaAloj_ENCARREGADO: number;
+    metaHotel_ENCARREGADO: number;
     totalRealizado: number;
     totalMeta: number;
     resultadoColetivo: number | null;

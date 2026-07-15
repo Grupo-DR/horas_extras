@@ -11,9 +11,10 @@ import FilterBar, { FilterState } from '@/src/modules/human-capital/components/F
 import Planning from '@/src/modules/human-capital/components/Planning';
 import HeadcountUpload from '@/src/modules/human-capital/components/HeadcountUpload';
 import HeadcountGovernance from '@/src/modules/human-capital/components/HeadcountGovernance';
+import CostCenterStructure from '@/src/modules/human-capital/components/CostCenterStructure';
 import { canAccessSettings, canManageHeadcount, canPlan } from '../iam/types';
 import { formatDateForApi } from '@/src/modules/human-capital/utils/formatters';
-import { LayoutDashboard, Table, Settings, CheckCircle2, AlertTriangle, Sparkles, CalendarRange, Lock, BarChart3, Activity, RefreshCw, XCircle, Loader2 } from 'lucide-react';
+import { LayoutDashboard, Table, Settings, CheckCircle2, AlertTriangle, Sparkles, CalendarRange, Lock, BarChart3, Activity, RefreshCw, XCircle, Loader2, Briefcase } from 'lucide-react';
 import { ApiConfig, OvertimeRecord, FetchStatus, UserProfile, ManualEmployee, GlobalEmployee, HeadcountRecord, TotvsQueryMeta } from '@/src/modules/human-capital/types';
 import { CorporateSidebar, SidebarItem } from '../../components/navigation/CorporateSidebar';
 import { useNavigate } from 'react-router-dom';
@@ -37,6 +38,7 @@ const DEFAULT_CONFIG: ApiConfig = {
 enum Tab {
   DASHBOARD = 'dashboard',
   ABSENTEEISM = 'absenteeism',
+  COST_CENTER_STRUCTURE = 'cost_center_structure',
   DATA = 'data',
   PLANNING = 'planning',
   ANALYSIS = 'analysis',
@@ -521,14 +523,26 @@ const HumanCapitalDashboard: React.FC = () => {
     const years = new Set<string>();
     const regionals = new Set<string>();
 
+    const normalizeRoleStr = (s?: string) => s ? s.trim().replace(/\s+/g, ' ') : '';
+
     scopedData.forEach(item => {
-      if (item.FUNCAO) functions.add(item.FUNCAO);
+      const normRole = normalizeRoleStr(item.FUNCAO);
+      if (normRole) functions.add(normRole);
       if (item.CODCCUSTO) {
-        costCenters.add(item.CODCCUSTO);
-        regionals.add(getRegional(item.CODCCUSTO));
+        costCenters.add(item.CODCCUSTO.trim());
+        regionals.add(getRegional(item.CODCCUSTO.trim()));
       }
-      if (item.EVENTO) events.add(item.EVENTO);
+      if (item.EVENTO) events.add(item.EVENTO.trim());
       if (item.DATA) years.add(new Date(item.DATA).getFullYear().toString());
+    });
+
+    headcountRecords.forEach(record => {
+      const normRole = normalizeRoleStr(record.funcao);
+      if (normRole) functions.add(normRole);
+      if (record.centroCusto) {
+        costCenters.add(record.centroCusto.trim());
+        regionals.add(getRegional(record.centroCusto.trim()));
+      }
     });
 
     return {
@@ -538,7 +552,7 @@ const HumanCapitalDashboard: React.FC = () => {
       years: Array.from(years).sort().reverse(),
       regionals: Array.from(regionals).sort()
     };
-  }, [scopedData]);
+  }, [scopedData, headcountRecords]);
 
   const filteredData = useMemo(() => {
     return scopedData.filter(item => {
@@ -624,10 +638,15 @@ const HumanCapitalDashboard: React.FC = () => {
     if (!effectiveUser) return [];
     const items: SidebarItem[] = [
       { key: Tab.DASHBOARD, label: "Visão Geral", icon: LayoutDashboard, onClick: () => setActiveTab(Tab.DASHBOARD), isActive: activeTab === Tab.DASHBOARD },
-      { key: Tab.ABSENTEEISM, label: "Absenteísmo", icon: Activity, onClick: () => setActiveTab(Tab.ABSENTEEISM), isActive: activeTab === Tab.ABSENTEEISM },
       { key: Tab.ANALYSIS, label: "Análise de Dados", icon: BarChart3, onClick: () => setActiveTab(Tab.ANALYSIS), isActive: activeTab === Tab.ANALYSIS },
       { key: Tab.DATA, label: "Histórico", icon: Table, onClick: () => setActiveTab(Tab.DATA), isActive: activeTab === Tab.DATA },
     ];
+    
+    // Restringir temporariamente para validação da gerência
+    if (effectiveUser.isSuperAdmin) {
+      items.push({ key: Tab.ABSENTEEISM, label: "Absenteísmo", icon: Activity, onClick: () => setActiveTab(Tab.ABSENTEEISM), isActive: activeTab === Tab.ABSENTEEISM });
+      items.push({ key: Tab.COST_CENTER_STRUCTURE, label: "Estrutura", icon: Briefcase, onClick: () => setActiveTab(Tab.COST_CENTER_STRUCTURE), isActive: activeTab === Tab.COST_CENTER_STRUCTURE });
+    }
     if (effectiveUser.isSuperAdmin || canPlan(effectiveUser.role)) items.push({ key: Tab.PLANNING, label: "Planejamento", icon: CalendarRange, onClick: () => setActiveTab(Tab.PLANNING), isActive: activeTab === Tab.PLANNING });
 
     if (effectiveUser.isSuperAdmin || canAccessSettings(effectiveUser.role)) {
@@ -664,6 +683,7 @@ const HumanCapitalDashboard: React.FC = () => {
             <h2 className="text-xl font-bold text-gray-800 tracking-tight">
               {activeTab === Tab.DASHBOARD && 'Dashboard Geral'}
               {activeTab === Tab.ABSENTEEISM && 'Dashboard de Absenteísmo'}
+              {activeTab === Tab.COST_CENTER_STRUCTURE && 'Estrutura dos Centros de Custo'}
               {activeTab === Tab.ANALYSIS && 'Análise de Dados'}
               {activeTab === Tab.DATA && 'Histórico de Registros'}
               {activeTab === Tab.PLANNING && 'Planejamento de Horas'}
@@ -699,7 +719,7 @@ const HumanCapitalDashboard: React.FC = () => {
             </div>
           )}
 
-          {(activeTab === Tab.DASHBOARD || activeTab === Tab.DATA || activeTab === Tab.ANALYSIS || activeTab === Tab.ABSENTEEISM) && (
+          {(activeTab === Tab.DASHBOARD || activeTab === Tab.DATA || activeTab === Tab.ANALYSIS || activeTab === Tab.ABSENTEEISM || activeTab === Tab.COST_CENTER_STRUCTURE) && (
             <FilterBar filters={filters} setFilters={setFilters} options={filterOptions} onClear={clearFilters} />
           )}
 
@@ -741,6 +761,17 @@ const HumanCapitalDashboard: React.FC = () => {
               />
             )}
             {!shouldBlockTotvsDataTab && activeTab === Tab.DATA && <DataGrid data={filteredData} rawData={headcountRecords.length > 0 ? trustedTotvsData : undefined} />}
+            {activeTab === Tab.COST_CENTER_STRUCTURE && (
+              <CostCenterStructure 
+                headcountRecords={headcountRecords} 
+                costCenterFilter={filters.costCenter}
+                regionalFilter={filters.regional}
+                roleFilter={filters.function}
+                periodStart={comparisonPeriod.periodStart}
+                periodEnd={comparisonPeriod.periodEnd}
+                selectedMonth={selectedMonthKey}
+              />
+            )}
             {!shouldBlockTotvsDataTab && activeTab === Tab.ANALYSIS && (
               <AnalysisPanel
                 data={filteredData}

@@ -28,8 +28,10 @@ import { useSSMARegionals } from '../../hooks/useSSMARegionals';
 import { useSSMACostCenters } from '../../hooks/useSSMACostCenters';
 import { useAuth } from '@/contexts/AuthContext';
 import { canManageSSMARegisters } from '../../domain/permissions';
+import { ChecklistUpload } from '../Settings/ChecklistUpload';
+import { CreateForemanModal } from './CreateForemanModal';
 
-type SubTabType = 'colaboradores' | 'regionais' | 'obras';
+type SubTabType = 'colaboradores' | 'regionais' | 'obras' | 'checklist';
 
 type FuncaoLabel = 'Gerente Regional' | 'Gestor de Obra' | 'Supervisor de SSMA' | 'Técnico de Segurança' | 'Encarregado';
 
@@ -76,7 +78,7 @@ export default function RegistersView() {
   const { profile } = useAuth();
   const canManage = canManageSSMARegisters(profile);
   
-  const { data: dbColaboradores, create: createEmployee, update: updateEmployee, disable: disableEmployee, loading: empLoading } = useSSMAEmployees();
+  const { data: dbColaboradores, refetch: refetchEmp, loading: empLoading } = useSSMAEmployees();
   const { data: dbRegionals, create: createRegional, update: updateRegional, disable: disableRegional, remove: removeRegional, loading: regLoading } = useSSMARegionals();
   const { data: dbCostCenters, create: createCostCenter, update: updateCostCenter, disable: disableCostCenter, remove: removeCostCenter, loading: ccLoading } = useSSMACostCenters();
 
@@ -86,6 +88,8 @@ export default function RegistersView() {
   const [colaboradores, setLocalColabs] = useState<Colaborador[]>([]);
   const [regionals, setLocalRegs] = useState<Regional[]>([]);
   const [costCenters, setLocalCcs] = useState<CostCenter[]>([]);
+  
+  const [isCreateForemanOpen, setIsCreateForemanOpen] = useState(false);
 
   useEffect(() => {
     setLocalColabs(dbColaboradores.map(c => ({
@@ -319,12 +323,24 @@ export default function RegistersView() {
           }`}
         >
           <Building2 className="w-4.5 h-4.5 shrink-0" />
-          <span>Cadastro Obras</span>
+          <span>Cadastro de Obras</span>
           <span className={`ml-1.5 text-xs px-2 py-0.5 rounded-full font-bold ${
             activeSubTab === 'obras' ? 'bg-blue-700/80 text-white' : 'bg-slate-100 text-slate-600'
           }`}>
             {costCenters.length}
           </span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('checklist')}
+          className={`flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm transition cursor-pointer ${
+            activeSubTab === 'checklist'
+              ? 'bg-blue-600 text-white font-bold shadow-xs'
+              : 'text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <Settings className="w-4.5 h-4.5 shrink-0" />
+          <span>Checklist Excel</span>
         </button>
       </div>
 
@@ -410,9 +426,20 @@ export default function RegistersView() {
                             <span className="text-[10px] text-slate-500 font-medium leading-none">{role.subtitulo}</span>
                           </div>
                         </div>
-                        <span className="font-mono text-[10px] font-black bg-white/80 text-slate-600 px-1.5 py-0.5 rounded-md border border-brand-border">
-                          {filtered.length}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[10px] font-black bg-white/80 text-slate-600 px-1.5 py-0.5 rounded-md border border-brand-border">
+                            {filtered.length}
+                          </span>
+                          {canManage && role.funcao === 'Encarregado' && (
+                            <button
+                              onClick={() => setIsCreateForemanOpen(true)}
+                              title="Adicionar Encarregado"
+                              className="p-1 bg-white hover:bg-slate-100 text-slate-600 rounded-md border border-brand-border transition-colors shadow-sm"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       {/* Collaborators list */}
@@ -926,7 +953,18 @@ export default function RegistersView() {
             </div>
           )}
 
+          {activeSubTab === 'checklist' && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+               <ChecklistUpload />
+            </div>
+          )}
         </div>
-      </div>
+
+      <CreateForemanModal 
+        isOpen={isCreateForemanOpen} 
+        onClose={() => setIsCreateForemanOpen(false)} 
+        onSuccess={() => refetchEmp()} 
+      />
+    </div>
   );
 }

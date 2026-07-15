@@ -29,7 +29,7 @@ export const validateInspectionEventInput = (
 ): void => {
     if (!isValidCompetence(event.competence)) throw new Error('Competencia invalida. Use YYYY-MM.');
     if (!isValidISODate(event.date)) throw new Error('Data invalida. Use YYYY-MM-DD.');
-    if (!isValidInspectionType(event.inspectionType)) throw new Error('Tipo de inspecao invalido.');
+    if (!event.inspectionType) throw new Error('Tipo de inspecao invalido.');
     if (!event.regionalId) throw new Error('Regional obrigatoria.');
     if (!event.costCenterId) throw new Error('Centro de custo obrigatorio.');
     if (!event.executorUid) throw new Error('Executor obrigatorio.');
@@ -43,12 +43,14 @@ export const validateMonthlyTargetInput = (target: {
     functionGroup: SSMATargetFunctionGroup;
     metaIFS: number;
     metaAlojamento: number;
+    metaHotel: number;
 }): void => {
     if (!isValidCompetence(target.competence)) throw new Error('Competencia invalida. Use YYYY-MM.');
     if (!target.employeeUid) throw new Error('Colaborador obrigatorio.');
     if (!isValidTargetFunctionGroup(target.functionGroup)) throw new Error('Grupo de meta invalido.');
     validateNonNegativeMeta(target.metaIFS, 'Meta IFS');
     validateNonNegativeMeta(target.metaAlojamento, 'Meta Alojamento');
+    validateNonNegativeMeta(target.metaHotel, 'Meta Hotel');
 };
 
 export const validateCancelReason = (reason: string): void => {

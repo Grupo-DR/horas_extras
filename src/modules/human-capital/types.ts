@@ -196,6 +196,4 @@ export interface HeadcountUploadResult {
     periodEnd?: string;
     /** Chapas únicas com pelo menos um registro válido */
     uniqueChapas: number;
-    /** true se não há nenhum erro de negócio (pode haver linhas estruturalmente inválidas) */
-    isBusinessValid: boolean;
 }

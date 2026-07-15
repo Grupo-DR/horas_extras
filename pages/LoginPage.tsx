@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Play, Loader2 } from 'lucide-react';
+import { getAuth, sendPasswordResetEmail } from 'firebase/auth';
 
 
 export const LoginPage: React.FC = () => {
@@ -25,8 +26,15 @@ export const LoginPage: React.FC = () => {
         try {
             setIsLoading(true);
 
+            let loginEmail = email.trim();
+            // Se o usuário digitou apenas números ou formato de CPF (sem @)
+            const numbersOnly = loginEmail.replace(/\D/g, '');
+            if (numbersOnly.length === 11 && !loginEmail.includes('@')) {
+                loginEmail = `${numbersOnly}@encarregado.dr`;
+            }
+
             // 1. Perform Auth
-            await login(email, password);
+            await login(loginEmail, password);
 
             // 2. Success - Redirect
             toast.success('Bem-vindo ao Portal DR Nexus!');
@@ -39,6 +47,29 @@ export const LoginPage: React.FC = () => {
             setIsLoading(false);
 
             toast.error(error.message || 'Erro ao realizar login.');
+        }
+    };
+
+    const handleForgotPassword = async () => {
+        if (!email.trim()) {
+            toast.error('Por favor, informe seu e-mail no campo acima para resetar a senha.');
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            const auth = getAuth();
+            await sendPasswordResetEmail(auth, email.trim());
+            setIsLoading(false);
+            toast.success('E-mail de recuperação enviado! Verifique sua caixa de entrada (e spam).');
+        } catch (error: any) {
+            setIsLoading(false);
+            console.error('Password Reset Error:', error);
+            if (error.code === 'auth/user-not-found') {
+                toast.error('Nenhum usuário encontrado com este e-mail.');
+            } else {
+                toast.error('Erro ao enviar e-mail de recuperação. Verifique o e-mail digitado.');
+            }
         }
     };
 
@@ -94,13 +125,13 @@ export const LoginPage: React.FC = () => {
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div>
                             <label htmlFor="email" className="block text-xs font-medium text-slate-300 mb-1 ml-1 uppercase tracking-wide">
-                                Acesso Corporativo
+                                E-mail Corporativo ou CPF
                             </label>
                             <input
-                                type="email"
+                                type="text"
                                 id="email"
                                 className="w-full bg-black/30 border border-white/10 rounded-lg py-3 px-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
-                                placeholder="usuario@grupodr.com.br"
+                                placeholder="usuario@grupodr.com.br ou 000.000.000-00"
                                 value={email}
                                 onChange={e => setEmail(e.target.value)}
                                 autoFocus
@@ -108,9 +139,18 @@ export const LoginPage: React.FC = () => {
                         </div>
 
                         <div>
-                            <label htmlFor="password" className="block text-xs font-medium text-slate-300 mb-1 ml-1 uppercase tracking-wide">
-                                Senha
-                            </label>
+                            <div className="flex items-center justify-between mb-1 ml-1">
+                                <label htmlFor="password" className="block text-xs font-medium text-slate-300 uppercase tracking-wide">
+                                    Senha
+                                </label>
+                                <button 
+                                    type="button" 
+                                    onClick={handleForgotPassword}
+                                    className="text-xs text-blue-400 hover:text-blue-300 hover:underline transition-all"
+                                >
+                                    Esqueci minha senha
+                                </button>
+                            </div>
                             <input
                                 type="password"
                                 id="password"

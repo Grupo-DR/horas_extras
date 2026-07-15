@@ -19,9 +19,14 @@ import { InspectionEventTable } from './InspectionEventTable';
 
 const currentCompetence = () => new Date().toISOString().slice(0, 7);
 
-export const InspectionEventsPage: React.FC = () => {
+interface Props {
+  openEventId?: string | null;
+  onEventClosed?: () => void;
+}
+
+export const InspectionEventsPage: React.FC<Props> = ({ openEventId, onEventClosed }) => {
     const { profile } = useAuth();
-    const [activeTab, setActiveTab] = useState<'events' | 'legacy'>('events');
+    const [activeTab, setActiveTab] = useState<'events'>('events');
     const [filters, setFilters] = useState<SSMAInspectionEventFilters>({ competence: currentCompetence(), status: 'VALID' });
     const [formOpen, setFormOpen] = useState(false);
     const [editingEvent, setEditingEvent] = useState<SSMAInspectionEvent | null>(null);
@@ -96,6 +101,16 @@ export const InspectionEventsPage: React.FC = () => {
             .catch(err => toast.error(err.message || 'Erro ao carregar contagem de evidencias.'));
     }, [events, countsVersion]);
 
+    useEffect(() => {
+        if (openEventId && events.length > 0) {
+            const eventToOpen = events.find(e => e.id === openEventId);
+            if (eventToOpen) {
+                openEditModal(eventToOpen);
+                onEventClosed?.();
+            }
+        }
+    }, [openEventId, events, onEventClosed]);
+
     const openCreateModal = () => {
         setEditingEvent(null);
         setFormOpen(true);
@@ -107,40 +122,68 @@ export const InspectionEventsPage: React.FC = () => {
     };
 
     const handleSubmit = async (
-        input: CreateSSMAInspectionEventInput,
-        files: File[],
+        { input, generalFiles, itemFiles }: any, // FormSubmitData
         originalEvent?: SSMAInspectionEvent | null
     ) => {
         try {
+            let eventId = originalEvent?.id;
+            let currentEvent: SSMAInspectionEvent | undefined = originalEvent || undefined;
+
             if (originalEvent) {
                 await updateEvent(originalEvent, input);
                 toast.success('Lancamento atualizado.');
-                setFormOpen(false);
-                setEditingEvent(null);
-                await refetch();
-                return;
+                currentEvent = { ...originalEvent, ...input };
+            } else {
+                eventId = await createEvent(input);
+                currentEvent = {
+                    ...input,
+                    id: eventId!,
+                    createdAt: new Date().toISOString(),
+                    createdBy: profile?.uid,
+                    createdByNameSnapshot: profile?.displayName
+                };
             }
 
-            const eventId = await createEvent(input);
-            const createdEvent: SSMAInspectionEvent = {
-                ...input,
-                id: eventId,
-                createdAt: new Date().toISOString(),
-                createdBy: profile?.uid,
-                createdByNameSnapshot: profile?.displayName
-            };
+            if (!currentEvent) return;
 
-            for (const file of files) {
-                await uploadEvidence(createdEvent, file);
+            let uploadedAny = false;
+
+            // Upload General Files
+            for (const file of generalFiles) {
+                await uploadEvidence(currentEvent, file);
+                uploadedAny = true;
             }
 
-            toast.success(files.length ? 'Lancamento criado com evidencias.' : 'Lancamento criado.');
+            // Upload Item Files and update item's evidenceUrls
+            if (itemFiles.length > 0) {
+                const updatedItems = [...(currentEvent.items || [])];
+                
+                for (const { itemId, files } of itemFiles) {
+                    const itemIndex = updatedItems.findIndex(i => i.itemId === itemId);
+                    if (itemIndex > -1) {
+                        for (const file of files) {
+                            const evidence = await uploadEvidence(currentEvent, file);
+                            uploadedAny = true;
+                            // append url to item
+                            updatedItems[itemIndex].evidenceUrls = [...(updatedItems[itemIndex].evidenceUrls || []), evidence.downloadUrl];
+                        }
+                    }
+                }
+
+                // If any item photos were uploaded, we must update the event again to save the URLs
+                await updateEvent(currentEvent, { ...currentEvent, items: updatedItems });
+            }
+
+            if (!originalEvent) {
+                toast.success(uploadedAny ? 'Inspeção criada com evidências.' : 'Inspeção criada.');
+            }
+
             setFormOpen(false);
             setEditingEvent(null);
             setCountsVersion(version => version + 1);
             await refetch();
         } catch (err: any) {
-            toast.error(err.message || 'Erro ao salvar lancamento.');
+            toast.error(err.message || 'Erro ao salvar inspeção.');
         }
     };
 
@@ -148,12 +191,12 @@ export const InspectionEventsPage: React.FC = () => {
         if (!cancelEventTarget) return;
         try {
             await cancelEvent(cancelEventTarget, cancelReason);
-            toast.success('Lancamento cancelado.');
+            toast.success('Lançamento cancelado.');
             setCancelEventTarget(null);
             setCancelReason('');
             await refetch();
         } catch (err: any) {
-            toast.error(err.message || 'Erro ao cancelar lancamento.');
+            toast.error(err.message || 'Erro ao cancelar lançamento.');
         }
     };
 
@@ -163,8 +206,7 @@ export const InspectionEventsPage: React.FC = () => {
         <div className="space-y-4">
             <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
                 <div>
-                    <h1 className="text-xl font-semibold text-gray-900">Lancamentos de inspecao</h1>
-                    <p className="text-sm text-gray-500">Eventos reais em obra, com executor separado do usuario que registrou.</p>
+                    <h1 className="text-xl font-semibold text-gray-900">Lançamentos de Inspeção</h1>
                 </div>
                 <button
                     type="button"
@@ -173,23 +215,20 @@ export const InspectionEventsPage: React.FC = () => {
                     className="inline-flex h-10 items-center justify-center gap-2 rounded bg-gray-900 px-4 text-sm font-semibold text-white transition hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     <Plus size={16} />
-                    Novo lancamento
+                    Novo lançamento
                 </button>
             </div>
 
             {!allowedCostCenters.length && (
                 <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                    Nenhuma obra vinculada ao seu escopo SSMA. Solicite revisao do acesso para criar ou visualizar lancamentos.
+                    Nenhuma obra vinculada ao seu escopo SSMA. Solicite revisao do acesso para criar ou visualizar lançamentos.
                 </div>
             )}
 
             <div className="flex gap-2 border-b border-gray-200">
-                <button type="button" onClick={() => setActiveTab('events')} className={`border-b-2 px-3 py-2 text-sm font-semibold ${activeTab === 'events' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Eventos reais</button>
-                <button type="button" onClick={() => setActiveTab('legacy')} className={`border-b-2 px-3 py-2 text-sm font-semibold ${activeTab === 'legacy' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500'}`}>Legado</button>
+                <button type="button" className={`border-b-2 px-3 py-2 text-sm font-semibold border-gray-900 text-gray-900`}>Eventos reais</button>
             </div>
 
-            {activeTab === 'events' ? (
-                <>
                     <InspectionEventFilters
                         filters={filters}
                         regionals={allowedRegionals}
@@ -214,12 +253,6 @@ export const InspectionEventsPage: React.FC = () => {
                             setCancelReason('');
                         }}
                     />
-                </>
-            ) : (
-                <div className="rounded border border-dashed border-gray-200 bg-white p-8 text-sm text-gray-600">
-                    Dados legados e lancamentos sinteticos nao sao exibidos na listagem principal da Sprint 3.
-                </div>
-            )}
 
             <InspectionEventFormModal
                 open={formOpen}

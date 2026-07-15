@@ -8,9 +8,10 @@ import { useSSMAEmployees } from '../../hooks/useSSMAEmployees';
 import { MonthlyTargetUpsertInput, useSSMAMonthlyTargets } from '../../hooks/useSSMAMonthlyTargets';
 import { SSMAMonthlyTarget, SSMAEmployee, SSMATargetFunctionGroup } from '../../types';
 
-type DraftTarget = {
+interface DraftTarget {
   metaIFS: number;
   metaAlojamento: number;
+  metaHotel: number;
 };
 
 const currentCompetence = () => new Date().toISOString().slice(0, 7);
@@ -113,7 +114,8 @@ export const RulesView: React.FC = () => {
       const existing = targetByEmployeeUid.get(uid);
       nextDrafts[targetId(competence, employee)] = {
         metaIFS: existing?.metaIFS || 0,
-        metaAlojamento: existing?.metaAlojamento || 0
+        metaAlojamento: existing?.metaAlojamento || 0,
+        metaHotel: existing?.metaHotel || 0
       };
     });
     setDrafts(nextDrafts);
@@ -129,6 +131,7 @@ export const RulesView: React.FC = () => {
       [id]: {
         metaIFS: prev[id]?.metaIFS || 0,
         metaAlojamento: prev[id]?.metaAlojamento || 0,
+        metaHotel: prev[id]?.metaHotel || 0,
         [field]: numericValue
       }
     }));
@@ -148,6 +151,7 @@ export const RulesView: React.FC = () => {
         roleSnapshot: (employee.roleSnapshot || 'SSMA_TECHNICIAN') as any,
         metaIFS: previous?.metaIFS ?? draft?.metaIFS ?? 0,
         metaAlojamento: previous?.metaAlojamento ?? draft?.metaAlojamento ?? 0,
+        metaHotel: previous?.metaHotel ?? draft?.metaHotel ?? 0,
         active: true
       };
     });
@@ -233,6 +237,7 @@ export const RulesView: React.FC = () => {
                 <th className="px-3 py-3">Grupo</th>
                 <th className="px-3 py-3 text-center">Meta IFS</th>
                 <th className="px-3 py-3 text-center">Meta Alojamento</th>
+                <th className="px-3 py-3 text-center">Meta Hotel</th>
                 <th className="px-3 py-3 text-center">Meta Total</th>
               </tr>
             </thead>
@@ -244,7 +249,7 @@ export const RulesView: React.FC = () => {
               ) : (
                 visibleEmployees.map(employee => {
                   const id = targetId(competence, employee);
-                  const draft = drafts[id] || { metaIFS: 0, metaAlojamento: 0 };
+                  const draft = drafts[id] || { metaIFS: 0, metaAlojamento: 0, metaHotel: 0 };
                   return (
                     <tr key={employee.uid || employee.id} className="hover:bg-gray-50">
                       <td className="px-3 py-3">
@@ -262,7 +267,12 @@ export const RulesView: React.FC = () => {
                       <td className="px-3 py-3 text-center">
                         <input type="number" min="0" value={draft.metaAlojamento} onChange={event => updateDraft(employee, 'metaAlojamento', event.target.value)} disabled={!editable} className="h-9 w-24 rounded border border-gray-300 px-2 text-center text-sm disabled:bg-gray-50" />
                       </td>
-                      <td className="px-3 py-3 text-center font-semibold text-gray-900">{draft.metaIFS + draft.metaAlojamento}</td>
+                      <td className="px-3 py-3 text-center">
+                        <input type="number" min="0" value={draft.metaHotel} onChange={event => updateDraft(employee, 'metaHotel', event.target.value)} disabled={!editable} className="h-9 w-24 rounded border border-gray-300 px-2 text-center text-sm disabled:bg-gray-50" />
+                      </td>
+                      <td className="px-3 py-3 text-center font-semibold text-gray-900">
+                        {draft.metaIFS + draft.metaAlojamento + draft.metaHotel}
+                      </td>
                     </tr>
                   );
                 })

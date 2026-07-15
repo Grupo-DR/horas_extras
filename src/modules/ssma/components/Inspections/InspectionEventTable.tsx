@@ -32,22 +32,21 @@ export const InspectionEventTable: React.FC<Props> = ({ profile, events, evidenc
                     <thead className="bg-gray-50">
                         <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                             <th className="px-3 py-3">Data</th>
-                            <th className="px-3 py-3">Competencia</th>
                             <th className="px-3 py-3">Regional</th>
                             <th className="px-3 py-3">Obra</th>
                             <th className="px-3 py-3">Tipo</th>
                             <th className="px-3 py-3">Executor</th>
-                            <th className="px-3 py-3">Funcao</th>
+                            <th className="px-3 py-3">Função</th>
                             <th className="px-3 py-3">Status</th>
-                            <th className="px-3 py-3">Evidencias</th>
-                            <th className="px-3 py-3">Acoes</th>
+                            <th className="px-3 py-3 text-center">Conforme</th>
+                            <th className="px-3 py-3">Evidências</th>
+                            <th className="px-3 py-3">Ações</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 bg-white">
                         {events.map(event => (
                             <tr key={event.id} className="align-top text-gray-700 hover:bg-gray-50/70">
                                 <td className="whitespace-nowrap px-3 py-3">{event.date}</td>
-                                <td className="whitespace-nowrap px-3 py-3">{event.competence}</td>
                                 <td className="min-w-36 px-3 py-3">{event.regionalNameSnapshot}</td>
                                 <td className="min-w-52 px-3 py-3">
                                     <div className="font-medium text-gray-900">{event.costCenterNameSnapshot}</div>
@@ -60,6 +59,17 @@ export const InspectionEventTable: React.FC<Props> = ({ profile, events, evidenc
                                 </td>
                                 <td className="whitespace-nowrap px-3 py-3">{targetFunctionGroupLabel(event.executorFunctionGroup)}</td>
                                 <td className="whitespace-nowrap px-3 py-3"><InspectionEventStatusBadge status={event.status} /></td>
+                                <td className="whitespace-nowrap px-3 py-3 text-center">
+                                    {event.items && event.items.length > 0 ? (
+                                        event.items.some(i => i.status === 'NAO_CONFORME') ? (
+                                            <span className="inline-flex rounded bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700">Não Conforme</span>
+                                        ) : (
+                                            <span className="inline-flex rounded bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">Conforme</span>
+                                        )
+                                    ) : (
+                                        <span className="text-xs text-gray-400">-</span>
+                                    )}
+                                </td>
                                 <td className="whitespace-nowrap px-3 py-3">
                                     <span className="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">
                                         <Paperclip size={13} />

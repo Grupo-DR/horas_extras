@@ -38,7 +38,7 @@ export default function SSMAApp() {
 
   const getPageTitle = () => {
     switch (activeTab) {
-      case 'dashboard': return 'Dashboard SSMA';
+      case 'dashboard': return 'Saúde, Segurança e Meio Ambiente';
       case 'inspections': return 'Inspeções SSMA';
       case 'registers': return 'Cadastros e Entidades';
       case 'rules': return 'Metas SSMA';
@@ -49,7 +49,7 @@ export default function SSMAApp() {
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
       <CorporateSidebar
-        brand={{ topLogoSrc: "/assets/dr-logo.png", title: "SSMA", subtitle: "Operações & Controle" }}
+        brand={{ topLogoSrc: "/assets/dr-logo.png", title: "SSMA", subtitle: "Gestão de Inspeções" }}
         items={sidebarItems}
         userDisplay={{
           name: profile?.displayName || 'Usuário',

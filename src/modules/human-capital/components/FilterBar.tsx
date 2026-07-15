@@ -106,61 +106,22 @@ const FilterBar: React.FC<FilterBarProps> = ({ filters, setFilters, options, onC
 
     const sel = 'h-7 px-2 border border-gray-200 rounded-md text-[11px] text-gray-700 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 transition-all';
     const divider = <div className="h-4 w-px bg-gray-200 shrink-0" />;
-    const modeButtons = [
-        { mode: 'PAYROLL' as const, icon: <ArrowRightLeft size={10} />, label: 'Compet\u00eancia (Folha)', active: 'text-blue-600' },
-        { mode: 'ANNUAL' as const, icon: <CalendarClock size={10} />, label: 'Anual', active: 'text-purple-600' },
-        { mode: 'CUSTOM' as const, icon: <CalendarRange size={10} />, label: 'Personalizado', active: 'text-orange-600' },
-    ];
 
     return (
         <div className="bg-white px-3 py-2 rounded-xl shadow-sm border border-gray-100">
             <div className="flex items-center gap-2 flex-nowrap overflow-x-auto no-scrollbar">
-                <div className="flex items-center gap-0.5 bg-gray-100 p-0.5 rounded-md shrink-0">
-                    {modeButtons.map(({ mode, icon, label, active }) => (
-                        <button
-                            key={mode}
-                            onClick={() => handleModeChange(mode)}
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase whitespace-nowrap transition-all flex items-center gap-1 ${currentMode === mode ? `bg-white shadow-sm ${active}` : 'text-gray-400 hover:text-gray-600'}`}
-                        >
-                            {icon} {label}
-                        </button>
-                    ))}
+                <div className="flex items-center gap-1.5 shrink-0">
+                    <select value={filters.year} onChange={(e) => handleYearMonthChange('year', e.target.value)} className={sel}>
+                        {options.years.map(year => <option key={year} value={year}>{year}</option>)}
+                    </select>
+                    <select value={filters.month} onChange={(e) => handleYearMonthChange('month', e.target.value)} className={sel + ' max-w-[160px]'}>
+                        {Array.from({ length: 12 }, (_, index) => index + 1).map(monthNumber => (
+                            <option key={monthNumber} value={String(monthNumber).padStart(2, '0')}>
+                                {getMonthLabel(monthNumber)}
+                            </option>
+                        ))}
+                    </select>
                 </div>
-
-                {divider}
-
-                {currentMode === 'CUSTOM' ? (
-                    <div className="flex items-center gap-1 border border-orange-200 rounded-md bg-orange-50/30 px-2 h-7 shrink-0">
-                        <input
-                            type="date"
-                            value={filters.startDate}
-                            onChange={(e) => setFilters(prev => ({ ...prev, startDate: e.target.value }))}
-                            className="text-[11px] font-bold text-gray-700 bg-transparent border-none focus:outline-none w-[118px]"
-                        />
-                        <span className="text-gray-400 text-[10px] font-bold">-&gt;</span>
-                        <input
-                            type="date"
-                            value={filters.endDate}
-                            onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value }))}
-                            className="text-[11px] font-bold text-gray-700 bg-transparent border-none focus:outline-none w-[118px]"
-                        />
-                    </div>
-                ) : (
-                    <div className="flex items-center gap-1.5 shrink-0">
-                        <select value={filters.year} onChange={(e) => handleYearMonthChange('year', e.target.value)} className={sel}>
-                            {options.years.map(year => <option key={year} value={year}>{year}</option>)}
-                        </select>
-                        {currentMode !== 'ANNUAL' && (
-                            <select value={filters.month} onChange={(e) => handleYearMonthChange('month', e.target.value)} className={sel + ' max-w-[160px]'}>
-                                {Array.from({ length: 12 }, (_, index) => index + 1).map(monthNumber => (
-                                    <option key={monthNumber} value={String(monthNumber).padStart(2, '0')}>
-                                        {getMonthLabel(monthNumber)}
-                                    </option>
-                                ))}
-                            </select>
-                        )}
-                    </div>
-                )}
 
                 {divider}
 

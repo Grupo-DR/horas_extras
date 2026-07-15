@@ -76,6 +76,7 @@ export const ssmaMigrationService = {
                         roleSnapshot: item.role,
                         metaIFS: item.targetIFS,
                         metaAlojamento: item.targetAloj,
+                        metaHotel: 0,
                         active: true
                     }, currentUser);
                     targetsCreated++;

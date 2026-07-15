@@ -40,7 +40,7 @@ export const employeeFunctionGroupToTargetGroup = (employee: SSMAEmployee): SSMA
 export const targetFunctionGroupLabel = (group: SSMATargetFunctionGroup): string => {
     switch (group) {
         case 'GREG':
-            return 'GREG';
+            return 'Ger. Regional';
         case 'GESTOR':
             return 'Gestor';
         case 'SUPSSMA':
