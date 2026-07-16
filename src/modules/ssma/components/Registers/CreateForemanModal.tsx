@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { X, UserPlus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { app } from '../../../../../services/firebaseConfig';
+import { ssmaForemanService } from '../../services/ssmaForemanService';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CreateForemanModalProps {
     isOpen: boolean;
@@ -11,43 +11,21 @@ interface CreateForemanModalProps {
 }
 
 export const CreateForemanModal: React.FC<CreateForemanModalProps> = ({ isOpen, onClose, onSuccess }) => {
+    const { profile } = useAuth();
     const [name, setName] = useState('');
-    const [cpf, setCpf] = useState('');
-    const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
 
     if (!isOpen) return null;
 
-    const formatCpf = (value: string) => {
-        const v = value.replace(/\D/g, '');
-        return v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-    };
-
-    const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = e.target.value.replace(/\D/g, '');
-        if (val.length <= 11) {
-            setCpf(formatCpf(val));
-        }
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const cleanCpf = cpf.replace(/\D/g, '');
         
         if (!name.trim()) return toast.warning('Preencha o nome do encarregado.');
-        if (cleanCpf.length !== 11) return toast.warning('CPF inválido.');
-        if (password.length < 6) return toast.warning('A senha deve ter no mínimo 6 caracteres.');
+        if (!profile) return toast.error('Usuário não autenticado.');
 
         try {
             setLoading(true);
-            const functions = getFunctions(app, 'us-central1');
-            const createForeman = httpsCallable(functions, 'ssmaCreateForemanAccount');
-            
-            await createForeman({
-                name: name.trim(),
-                cpf: cleanCpf,
-                password: password
-            });
+            await ssmaForemanService.create({ name: name.trim() }, profile as any);
 
             toast.success('Encarregado cadastrado com sucesso!');
             onSuccess();
@@ -90,32 +68,6 @@ export const CreateForemanModal: React.FC<CreateForemanModalProps> = ({ isOpen, 
                             placeholder="Ex: João da Silva"
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
                             autoFocus
-                        />
-                    </div>
-                    
-                    <div>
-                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                            CPF (Usuário)
-                        </label>
-                        <input
-                            type="text"
-                            value={cpf}
-                            onChange={handleCpfChange}
-                            placeholder="000.000.000-00"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-mono"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                            Senha
-                        </label>
-                        <input
-                            type="text"
-                            value={password}
-                            onChange={e => setPassword(e.target.value)}
-                            placeholder="Mínimo 6 caracteres"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-mono"
                         />
                     </div>
 

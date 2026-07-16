@@ -22,7 +22,7 @@ import {
 
 export interface SSMADashboardFilters {
     year?: number;
-    competence?: string;
+    competences?: string[];
     regionalId?: string;
     costCenterId?: string;
 }
@@ -75,7 +75,7 @@ export const useSSMADashboard = (initialFilters: SSMADashboardFilters) => {
     const { profile } = useAuth();
     const [filters, setFilters] = useState<SSMADashboardFilters>({
         ...initialFilters,
-        competence: initialFilters.competence || (initialFilters.year ? `${initialFilters.year}-01` : currentCompetence())
+        competences: initialFilters.competences || (initialFilters.year ? [`${initialFilters.year}-01`] : [currentCompetence()])
     });
 
     const [loading, setLoading] = useState(false);
@@ -98,17 +98,18 @@ export const useSSMADashboard = (initialFilters: SSMADashboardFilters) => {
             setLoading(true);
             setError(null);
 
-            const competence = filters.competence || currentCompetence();
+            const competences = filters.competences && filters.competences.length > 0 ? filters.competences : [currentCompetence()];
             const userScope = profile?.isSuperAdmin || profile?.modules?.ssma?.role === 'SSMA_MANAGER' || profile?.modules?.ssma?.role === 'SSMA_ADMIN'
                 ? { type: 'ALL' as const }
                 : profile?.modules?.ssma?.scope;
 
-            const [fetchedRegionals, fetchedCostCenters, fetchedProfiles, fetchedEvents, fetchedTargets] = await Promise.all([
+            const [fetchedRegionals, fetchedCostCenters, fetchedProfiles, fetchedEvents, fetchedTargets, fetchedForemen] = await Promise.all([
                 ssmaRegionalService.list(),
                 ssmaCostCenterService.listByScope(userScope),
                 getAllProfiles(),
-                profile ? ssmaInspectionEventService.listByCompetenceForUser(competence, profile) : Promise.resolve([]),
-                ssmaMonthlyTargetService.listByCompetence(competence)
+                profile ? ssmaInspectionEventService.listByCompetenceForUser(competences, profile) : Promise.resolve([]),
+                ssmaMonthlyTargetService.listByCompetence(competences),
+                import('../services/ssmaForemanService').then(m => m.ssmaForemanService.list())
             ]);
 
             const mappedEmployees: SSMAEmployee[] = fetchedProfiles
@@ -124,6 +125,21 @@ export const useSSMADashboard = (initialFilters: SSMADashboardFilters) => {
                     costCenterIds: user.modules.ssma!.scope?.type === 'COST_CENTER' ? user.modules.ssma!.scope.costCenters : undefined,
                     active: true
                 }));
+
+            const mappedForemen: SSMAEmployee[] = fetchedForemen
+                .filter(f => f.active !== false)
+                .map(f => ({
+                    id: f.id,
+                    uid: f.id,
+                    name: f.name,
+                    email: '',
+                    functionGroup: 'FOREMAN',
+                    roleSnapshot: 'SSMA_FOREMAN' as any,
+                    costCenterIds: fetchedCostCenters.filter(cc => cc.encarregadoIds?.includes(f.id)).map(cc => cc.id),
+                    active: true
+                }));
+                
+            mappedEmployees.push(...mappedForemen);
 
             const activeCostCenters = fetchedCostCenters.filter(costCenter => costCenter.active !== false);
             const activeRegionals = fetchedRegionals.filter(regional => regional.active !== false);
@@ -165,11 +181,16 @@ export const useSSMADashboard = (initialFilters: SSMADashboardFilters) => {
                 ? collectiveEmployees
                 : collectiveEmployees.filter(employee => employee.uid === profile?.uid);
 
-            const targetByUid = new Map(fetchedTargets.filter(target => target.active !== false).map(target => [target.employeeUid, target]));
-            const calculatedPersonResults = individualEmployees.map(employee => calculatePersonMonthlyResult({ ...employee, competence } as any, fetchedEvents, targetByUid.get(employee.uid || employee.id)));
+            const targetsByUid = new Map<string, SSMAMonthlyTarget[]>();
+            fetchedTargets.filter(t => t.active !== false).forEach(target => {
+                const existing = targetsByUid.get(target.employeeUid) || [];
+                existing.push(target);
+                targetsByUid.set(target.employeeUid, existing);
+            });
+            const calculatedPersonResults = individualEmployees.map(employee => calculatePersonMonthlyResult({ ...employee, competences } as any, fetchedEvents, targetsByUid.get(employee.uid || employee.id)));
             const collectiveEmployeeUids = collectiveEmployees.map(employee => employee.uid || employee.id);
             const calculatedCollective = calculateCollectiveMonthlyResult(scopedEvents, fetchedTargets, {
-                competence,
+                competences,
                 scope: selectedScope,
                 employeeUids: collectiveEmployeeUids
             });

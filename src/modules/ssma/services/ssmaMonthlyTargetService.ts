@@ -107,7 +107,20 @@ export const ssmaMonthlyTargetService = {
         }, currentUser);
     },
 
-    listByCompetence: async (competence: string): Promise<SSMAMonthlyTarget[]> => {
+    listByCompetence: async (competence: string | string[]): Promise<SSMAMonthlyTarget[]> => {
+        if (Array.isArray(competence)) {
+            if (competence.length === 0) return [];
+            const result: SSMAMonthlyTarget[] = [];
+            // Firestore 'in' queries support up to 10 items.
+            for (let i = 0; i < competence.length; i += 10) {
+                const chunkArray = competence.slice(i, i + 10);
+                const q = query(collection(db, COLLECTION), where('competence', 'in', chunkArray));
+                const snap = await getDocs(q);
+                result.push(...snap.docs.map(d => ({ id: d.id, ...d.data() } as SSMAMonthlyTarget)));
+            }
+            return result;
+        }
+        
         const q = query(collection(db, COLLECTION), where('competence', '==', competence));
         const snap = await getDocs(q);
         return snap.docs.map(d => ({ id: d.id, ...d.data() } as SSMAMonthlyTarget));

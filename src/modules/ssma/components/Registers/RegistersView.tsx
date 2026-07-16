@@ -26,12 +26,13 @@ import {
 import { useSSMAEmployees } from '../../hooks/useSSMAEmployees';
 import { useSSMARegionals } from '../../hooks/useSSMARegionals';
 import { useSSMACostCenters } from '../../hooks/useSSMACostCenters';
+import { useSSMAForemen } from '../../hooks/useSSMAForemen';
 import { useAuth } from '@/contexts/AuthContext';
 import { canManageSSMARegisters } from '../../domain/permissions';
 import { ChecklistUpload } from '../Settings/ChecklistUpload';
 import { CreateForemanModal } from './CreateForemanModal';
 
-type SubTabType = 'colaboradores' | 'regionais' | 'obras' | 'checklist';
+type SubTabType = 'colaboradores' | 'encarregados' | 'regionais' | 'obras' | 'checklist';
 
 type FuncaoLabel = 'Gerente Regional' | 'Gestor de Obra' | 'Supervisor de SSMA' | 'Técnico de Segurança' | 'Encarregado';
 
@@ -62,6 +63,12 @@ export interface Regional {
   ativo: boolean;
 }
 
+export interface ForemanLocal {
+  id: string;
+  nome: string;
+  ativo: boolean;
+}
+
 export interface CostCenter {
   id: string;
   codigo: string;
@@ -81,13 +88,15 @@ export default function RegistersView() {
   const { data: dbColaboradores, refetch: refetchEmp, loading: empLoading } = useSSMAEmployees();
   const { data: dbRegionals, create: createRegional, update: updateRegional, disable: disableRegional, remove: removeRegional, loading: regLoading } = useSSMARegionals();
   const { data: dbCostCenters, create: createCostCenter, update: updateCostCenter, disable: disableCostCenter, remove: removeCostCenter, loading: ccLoading } = useSSMACostCenters();
+  const { data: dbForemen, create: createForeman, update: updateForeman, disable: disableForeman, remove: removeForeman, loading: foremenLoading } = useSSMAForemen();
 
-  const loading = empLoading || regLoading || ccLoading;
+  const loading = empLoading || regLoading || ccLoading || foremenLoading;
 
   // Local state to simulate synchronous updates while waiting for refresh
   const [colaboradores, setLocalColabs] = useState<Colaborador[]>([]);
   const [regionals, setLocalRegs] = useState<Regional[]>([]);
   const [costCenters, setLocalCcs] = useState<CostCenter[]>([]);
+  const [foremen, setLocalForemen] = useState<ForemanLocal[]>([]);
   
   const [isCreateForemanOpen, setIsCreateForemanOpen] = useState(false);
 
@@ -111,6 +120,14 @@ export default function RegistersView() {
   }, [dbRegionals]);
 
   useEffect(() => {
+    setLocalForemen(dbForemen.map(f => ({
+      id: f.id,
+      nome: f.name,
+      ativo: f.active !== false
+    })));
+  }, [dbForemen]);
+
+  useEffect(() => {
     setLocalCcs(dbCostCenters.map(cc => ({
       id: cc.id,
       codigo: cc.code,
@@ -130,6 +147,10 @@ export default function RegistersView() {
   const [editingRegId, setEditingRegId] = useState<string | null>(null);
   const [regNome, setRegNome] = useState('');
   const [regResponsavelId, setRegResponsavelId] = useState('');
+
+  // Step 2.5: Foremen Form state
+  const [editingForemanId, setEditingForemanId] = useState<string | null>(null);
+  const [foremanNome, setForemanNome] = useState('');
 
   // Step 3: Obras (Cost Centers) Form state
   const [editingObraId, setEditingObraId] = useState<string | null>(null);
@@ -151,6 +172,17 @@ export default function RegistersView() {
        await disableRegional(id, 'Desativado pelo usuário');
     }
     setLocalRegs(prev => prev.map(x => x.id === id ? { ...x, ativo: r.ativo === false ? true : false } : x));
+  };
+
+  const toggleForemanStatus = async (id: string) => {
+    const f = foremen.find(x => x.id === id);
+    if (!f) return;
+    if (f.ativo === false) {
+       await updateForeman(id, { active: true });
+    } else {
+       await disableForeman(id, 'Desativado pelo usuário');
+    }
+    setLocalForemen(prev => prev.map(x => x.id === id ? { ...x, ativo: f.ativo === false ? true : false } : x));
   };
 
   const toggleObraStatus = async (id: string) => {
@@ -183,6 +215,19 @@ export default function RegistersView() {
       }
       setRegNome('');
       setRegResponsavelId('');
+    } else if (activeSubTab === 'encarregados') {
+      if (!foremanNome.trim()) return;
+      if (editingForemanId) {
+        await updateForeman(editingForemanId, {
+          name: foremanNome.trim()
+        });
+        setLocalForemen(prev => prev.map(f => f.id === editingForemanId ? { ...f, nome: foremanNome.trim() } : f));
+        setEditingForemanId(null);
+      } else {
+        const id = await createForeman({ name: foremanNome.trim(), active: true });
+        setLocalForemen(prev => [...prev, { id, nome: foremanNome.trim(), ativo: true }]);
+      }
+      setForemanNome('');
     } else if (activeSubTab === 'obras') {
       if (!obraCodigo.trim() || !obraNome.trim() || !obraRegionalId) {
         alert('Por favor, preencha o código, nome da obra e selecione a regional.');
@@ -242,6 +287,12 @@ export default function RegistersView() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const startEditForeman = (f: ForemanLocal) => {
+    setEditingForemanId(f.id);
+    setForemanNome(f.nome);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const startEditObra = (cc: CostCenter) => {
     setEditingObraId(cc.id);
     setObraCodigo(cc.codigo);
@@ -259,6 +310,17 @@ export default function RegistersView() {
       await removeRegional(id);
       setLocalRegs(prev => prev.filter(item => item.id !== id));
       setLocalCcs(prev => prev.map(cc => cc.regionalId === id ? { ...cc, regionalId: '' } : cc));
+    }
+  };
+
+  const handleHardDeleteForeman = async (id: string) => {
+    if (window.confirm('Excluir COMPLETAMENTE este encarregado? Esta ação não pode ser desfeita.')) {
+      await removeForeman(id);
+      setLocalForemen(prev => prev.filter(item => item.id !== id));
+      setLocalCcs(prev => prev.map(cc => ({
+        ...cc,
+        encarregadoIds: cc.encarregadoIds?.filter(eid => eid !== id) || []
+      })));
     }
   };
 
@@ -315,6 +377,23 @@ export default function RegistersView() {
         </button>
 
         <button
+          onClick={() => setActiveSubTab('encarregados')}
+          className={`flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm transition cursor-pointer ${
+            activeSubTab === 'encarregados'
+              ? 'bg-blue-600 text-white font-bold shadow-xs'
+              : 'text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <Briefcase className="w-4.5 h-4.5 shrink-0" />
+          <span>Encarregados</span>
+          <span className={`ml-1.5 text-xs px-2 py-0.5 rounded-full font-bold ${
+            activeSubTab === 'encarregados' ? 'bg-blue-700/80 text-white' : 'bg-slate-100 text-slate-600'
+          }`}>
+            {foremen.length}
+          </span>
+        </button>
+
+        <button
           onClick={() => setActiveSubTab('obras')}
           className={`flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm transition cursor-pointer ${
             activeSubTab === 'obras'
@@ -360,7 +439,7 @@ export default function RegistersView() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                   {
                     funcao: 'Gerente Regional' as const,
@@ -393,14 +472,6 @@ export default function RegistersView() {
                     placeholder: 'Ex: Pedro TST',
                     colorClass: 'emerald',
                     icon: ShieldCheck,
-                  },
-                  {
-                    funcao: 'Encarregado' as const,
-                    titulo: 'Encarregado',
-                    subtitulo: 'Líder de Equipe',
-                    placeholder: 'Ex: José Encarregado',
-                    colorClass: 'slate',
-                    icon: Layers,
                   }
                 ].map((role) => {
                   const filtered = colaboradores.filter((c) => c.funcao === role.funcao);
@@ -477,6 +548,110 @@ export default function RegistersView() {
                               </div>
                             );
                           })
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 1.5: FOREMEN PANEL */}
+          {activeSubTab === 'encarregados' && (
+            <div className="space-y-6">
+              {canManage && (
+                <div className="bg-white p-5 rounded-2xl border border-brand-border shadow-xs">
+                  <div className="mb-4">
+                    <span className="text-[10px] bg-amber-50 text-amber-700 font-extrabold px-2 py-1 rounded-full uppercase tracking-wider">
+                      Cadastro de Encarregados
+                    </span>
+                    <h4 className="text-base font-black text-brand-ink mt-2">{editingForemanId ? 'Editar Encarregado' : 'Cadastrar Novo Encarregado'}</h4>
+                    <p className="text-xs text-slate-500 mt-1">Crie encarregados para que sejam atribuídos às obras e avaliados pelas inspeções de campo.</p>
+                  </div>
+                  
+                  <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4 items-end">
+                    <div className="flex-1 w-full">
+                      <label className="block text-xs font-semibold text-slate-500 mb-1">Nome Completo</label>
+                      <input
+                        type="text"
+                        value={foremanNome}
+                        onChange={(e) => setForemanNome(e.target.value)}
+                        placeholder="Ex: João da Silva..."
+                        className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition"
+                      />
+                    </div>
+                    
+                    <div className="flex gap-2 w-full sm:w-auto">
+                      {editingForemanId && (
+                        <button
+                          type="button"
+                          onClick={() => { setEditingForemanId(null); setForemanNome(''); }}
+                          className="flex-1 sm:flex-none h-10 px-4 flex items-center justify-center rounded-lg font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
+                        >
+                          Cancelar
+                        </button>
+                      )}
+                      <button
+                        type="submit"
+                        disabled={!foremanNome.trim()}
+                        className="flex-1 sm:flex-none h-10 px-5 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-sm shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Check className="w-4 h-4" />
+                        {editingForemanId ? 'Salvar' : 'Cadastrar'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {foremen.map(f => {
+                  const isAtivo = f.ativo !== false;
+                  return (
+                    <div key={f.id} className={`bg-white rounded-xl border p-3.5 flex flex-col justify-between transition-all group ${!isAtivo ? 'opacity-60 border-slate-200' : 'border-brand-border hover:border-blue-300 hover:shadow-md'}`}>
+                      <div>
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <h4 className={`text-sm font-black leading-tight break-all ${!isAtivo ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
+                            {f.nome}
+                          </h4>
+                          <div className={`shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${isAtivo ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                            {isAtivo ? 'Ativo' : 'Inativo'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-slate-100 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => toggleForemanStatus(f.id)}
+                          title={isAtivo ? 'Desativar' : 'Reativar'}
+                          className={`flex-1 flex items-center justify-center gap-1.5 p-1.5 rounded-lg text-xs font-bold transition-colors ${
+                            isAtivo 
+                            ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' 
+                            : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                          }`}
+                        >
+                          <Power className="w-3.5 h-3.5" />
+                          {isAtivo ? 'Desativar' : 'Reativar'}
+                        </button>
+                        
+                        {canManage && (
+                          <>
+                            <button
+                              onClick={() => startEditForeman(f)}
+                              title="Editar"
+                              className="p-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg transition-colors"
+                            >
+                              <Settings className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleHardDeleteForeman(f.id)}
+                              title="Excluir Permanentemente"
+                              className="p-1.5 bg-red-50 text-red-700 hover:bg-red-100 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -764,11 +939,11 @@ export default function RegistersView() {
                         Atribuir Encarregados da Obra
                       </label>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {colaboradores.filter((c) => c.funcao === 'Encarregado' && c.ativo !== false).length === 0 ? (
+                        {foremen.filter((c) => c.ativo !== false).length === 0 ? (
                           <p className="text-xs text-slate-400 italic col-span-full">Nenhum encarregado ativo cadastrado.</p>
                         ) : (
-                          colaboradores
-                            .filter((c) => c.funcao === 'Encarregado' && c.ativo !== false)
+                          foremen
+                            .filter((c) => c.ativo !== false)
                             .map((c) => {
                               const isChecked = obraEncarregadoIds.includes(c.id);
                               return (
@@ -842,7 +1017,7 @@ export default function RegistersView() {
                       const supObj = colaboradores.find((c) => c.id === item.supervisorId || (c as any).uid === item.supervisorId);
                       
                       const assignedTsts = colaboradores.filter((c) => item.tstIds?.includes(c.id) || item.tstIds?.includes((c as any).uid));
-                      const assignedEncs = colaboradores.filter((c) => item.encarregadoIds?.includes(c.id) || item.encarregadoIds?.includes((c as any).uid));
+                      const assignedEncs = foremen.filter((f) => item.encarregadoIds?.includes(f.id));
                       const isAtivo = item.ativo !== false;
 
                       return (

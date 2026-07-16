@@ -115,13 +115,24 @@ export const ssmaInspectionEventService = {
         }, currentUser);
     },
 
-    listByCompetence: async (competence: string): Promise<SSMAInspectionEvent[]> => {
+    listByCompetence: async (competence: string | string[]): Promise<SSMAInspectionEvent[]> => {
+        if (Array.isArray(competence)) {
+            if (competence.length === 0) return [];
+            const result: SSMAInspectionEvent[] = [];
+            for (let i = 0; i < competence.length; i += 10) {
+                const chunkArray = competence.slice(i, i + 10);
+                const q = query(collection(db, COLLECTION), where('competence', 'in', chunkArray));
+                const snap = await getDocs(q);
+                result.push(...snap.docs.map(d => ({ id: d.id, ...d.data() } as SSMAInspectionEvent)));
+            }
+            return result;
+        }
         const q = query(collection(db, COLLECTION), where('competence', '==', competence));
         const snap = await getDocs(q);
         return snap.docs.map(d => ({ id: d.id, ...d.data() } as SSMAInspectionEvent));
     },
 
-    listByCompetenceAndScope: async (competence: string, scope: Scope): Promise<SSMAInspectionEvent[]> => {
+    listByCompetenceAndScope: async (competence: string | string[], scope: Scope): Promise<SSMAInspectionEvent[]> => {
         if (scope.type === 'ALL') {
             return ssmaInspectionEventService.listByCompetence(competence);
         }
@@ -129,13 +140,27 @@ export const ssmaInspectionEventService = {
         if (scope.type === 'REGIONAL' && scope.regionals) {
             const result: SSMAInspectionEvent[] = [];
             for (const regionalIds of chunk(scope.regionals)) {
-                const q = query(
-                    collection(db, COLLECTION),
-                    where('competence', '==', competence),
-                    where('regionalId', 'in', regionalIds)
-                );
-                const snap = await getDocs(q);
-                result.push(...snap.docs.map(d => ({ id: d.id, ...d.data() } as SSMAInspectionEvent)));
+                let q;
+                if (Array.isArray(competence)) {
+                    // Firestore doesn't support multiple 'in' clauses, so we fetch by regionalIds and filter in memory if multiple competences.
+                    q = query(
+                        collection(db, COLLECTION),
+                        where('regionalId', 'in', regionalIds)
+                    );
+                    const snap = await getDocs(q);
+                    const filtered = snap.docs
+                        .map(d => ({ id: d.id, ...d.data() } as SSMAInspectionEvent))
+                        .filter(e => competence.includes(e.competence));
+                    result.push(...filtered);
+                } else {
+                    q = query(
+                        collection(db, COLLECTION),
+                        where('competence', '==', competence),
+                        where('regionalId', 'in', regionalIds)
+                    );
+                    const snap = await getDocs(q);
+                    result.push(...snap.docs.map(d => ({ id: d.id, ...d.data() } as SSMAInspectionEvent)));
+                }
             }
             return result;
         }
@@ -143,13 +168,26 @@ export const ssmaInspectionEventService = {
         if (scope.type === 'COST_CENTER' && scope.costCenters) {
             const result: SSMAInspectionEvent[] = [];
             for (const costCenterIds of chunk(scope.costCenters)) {
-                const q = query(
-                    collection(db, COLLECTION),
-                    where('competence', '==', competence),
-                    where('costCenterId', 'in', costCenterIds)
-                );
-                const snap = await getDocs(q);
-                result.push(...snap.docs.map(d => ({ id: d.id, ...d.data() } as SSMAInspectionEvent)));
+                let q;
+                if (Array.isArray(competence)) {
+                    q = query(
+                        collection(db, COLLECTION),
+                        where('costCenterId', 'in', costCenterIds)
+                    );
+                    const snap = await getDocs(q);
+                    const filtered = snap.docs
+                        .map(d => ({ id: d.id, ...d.data() } as SSMAInspectionEvent))
+                        .filter(e => competence.includes(e.competence));
+                    result.push(...filtered);
+                } else {
+                    q = query(
+                        collection(db, COLLECTION),
+                        where('competence', '==', competence),
+                        where('costCenterId', 'in', costCenterIds)
+                    );
+                    const snap = await getDocs(q);
+                    result.push(...snap.docs.map(d => ({ id: d.id, ...d.data() } as SSMAInspectionEvent)));
+                }
             }
             return result;
         }
@@ -157,7 +195,7 @@ export const ssmaInspectionEventService = {
         return [];
     },
 
-    listByCompetenceForUser: async (competence: string, currentUser: UserProfileDoc): Promise<SSMAInspectionEvent[]> => {
+    listByCompetenceForUser: async (competence: string | string[], currentUser: UserProfileDoc): Promise<SSMAInspectionEvent[]> => {
         if (currentUser.isSuperAdmin || currentUser.modules?.ssma?.role === 'SSMA_MANAGER' || currentUser.modules?.ssma?.role === 'SSMA_ADMIN') {
             return ssmaInspectionEventService.listByCompetence(competence);
         }

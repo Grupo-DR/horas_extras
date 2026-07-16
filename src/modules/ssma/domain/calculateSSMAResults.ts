@@ -198,14 +198,16 @@ export const aggregateMetaByFunctionGroup = (targets: SSMAMonthlyTarget[]): SSMA
 export const calculatePersonMonthlyResult = (
   employee: SSMAEmployee,
   events: SSMAInspectionEvent[],
-  target?: SSMAMonthlyTarget | null
+  target?: SSMAMonthlyTarget[] | SSMAMonthlyTarget | null
 ): SSMAMonthlyPersonResult => {
-  const competence = target?.competence || (employee as any).competence || events[0]?.competence || getCompetenceFromDate(new Date().toISOString());
+  const targetList = target ? (Array.isArray(target) ? target : [target]) : [];
+  const primaryTarget = targetList[0];
+  const competencesArray = (employee as any).competences || [getCompetenceFromDate(new Date().toISOString())];
   const employeeUid = employee.uid || employee.id;
-  const functionGroup = target?.functionGroup || mapRoleToFunctionGroup(((employee as any).roleSnapshot || 'SSMA_TECHNICIAN') as SSMARole);
+  const functionGroup = primaryTarget?.functionGroup || mapRoleToFunctionGroup(((employee as any).roleSnapshot || 'SSMA_TECHNICIAN') as SSMARole);
 
   const personEvents = events.filter(
-    event => event.status === 'VALID' && event.competence === competence && event.executorUid === employeeUid
+    event => event.status === 'VALID' && competencesArray.includes(event.competence) && event.executorUid === employeeUid
   );
 
   const realIFS = personEvents.filter(event => event.inspectionType.toUpperCase().includes('IFS') || event.inspectionType.toUpperCase().includes('FRENTE DE SERVI')).length;
@@ -213,9 +215,18 @@ export const calculatePersonMonthlyResult = (
   const realHotel = personEvents.filter(event => event.inspectionType.toUpperCase().includes('HOTEL')).length;
   const realTotal = realIFS + realAlojamento + realHotel;
 
-  const metaIFS = target?.active === false ? 0 : target?.metaIFS || 0;
-  const metaAlojamento = target?.active === false ? 0 : target?.metaAlojamento || 0;
-  const metaHotel = target?.active === false ? 0 : target?.metaHotel || 0;
+  let metaIFS = 0;
+  let metaAlojamento = 0;
+  let metaHotel = 0;
+  
+  targetList.forEach(t => {
+      if (t.active !== false) {
+          metaIFS += t.metaIFS || 0;
+          metaAlojamento += t.metaAlojamento || 0;
+          metaHotel += t.metaHotel || 0;
+      }
+  });
+  
   const metaTotal = metaIFS + metaAlojamento + metaHotel;
 
   let resultadoIndividual: number | null = null;
@@ -229,10 +240,10 @@ export const calculatePersonMonthlyResult = (
   }
 
   return {
-    id: `${competence}_${employeeUid}`,
-    competence,
+    id: `${competencesArray.join('-')}_${employeeUid}`,
+    competence: competencesArray.length === 1 ? competencesArray[0] : 'ACUMULADO',
     employeeUid,
-    employeeNameSnapshot: target?.employeeNameSnapshot || employee.name,
+    employeeNameSnapshot: primaryTarget?.employeeNameSnapshot || employee.name,
     functionGroup,
     realIFS,
     realAlojamento,
@@ -249,7 +260,7 @@ export const calculatePersonMonthlyResult = (
 };
 
 export interface CalculateCollectiveMonthlyResultOptions {
-  competence?: string;
+  competences?: string[];
   scope?: Scope;
   employeeUids?: string[];
 }
@@ -259,10 +270,10 @@ export const calculateCollectiveMonthlyResult = (
   targets: SSMAMonthlyTarget[],
   options: CalculateCollectiveMonthlyResultOptions = {}
 ): SSMAMonthlyCollectiveResult => {
-  const competence = options.competence || targets[0]?.competence || events[0]?.competence || getCompetenceFromDate(new Date().toISOString());
+  const competencesArray = options.competences && options.competences.length > 0 ? options.competences : [targets[0]?.competence || events[0]?.competence || getCompetenceFromDate(new Date().toISOString())];
   const allowedEmployeeUids = options.employeeUids ? new Set(options.employeeUids) : null;
 
-  let filteredEvents = events.filter(event => event.status === 'VALID' && event.competence === competence);
+  let filteredEvents = events.filter(event => event.status === 'VALID' && competencesArray.includes(event.competence));
   if (options.scope?.type === 'REGIONAL') {
     filteredEvents = filteredEvents.filter(event => options.scope?.type === 'REGIONAL' && options.scope.regionals.includes(event.regionalId));
   } else if (options.scope?.type === 'COST_CENTER') {
@@ -273,7 +284,7 @@ export const calculateCollectiveMonthlyResult = (
   }
 
   const activeTargets = targets.filter(target => {
-    if (target.active === false || target.competence !== competence) return false;
+    if (target.active === false || !competencesArray.includes(target.competence)) return false;
     return !allowedEmployeeUids || allowedEmployeeUids.has(target.employeeUid);
   });
 
@@ -290,8 +301,8 @@ export const calculateCollectiveMonthlyResult = (
   const idSuffix = regionalId || costCenterId || 'ALL';
 
   return {
-    id: `${competence}_${scopeType}_${idSuffix}`,
-    competence,
+    id: `${competencesArray.join('-')}_${scopeType}_${idSuffix}`,
+    competence: competencesArray.length === 1 ? competencesArray[0] : 'ACUMULADO',
     scopeType,
     regionalId,
     costCenterId,

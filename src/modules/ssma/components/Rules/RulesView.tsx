@@ -6,6 +6,7 @@ import { employeeFunctionGroupToTargetGroup, targetFunctionGroupLabel } from '..
 import { useSSMACostCenters } from '../../hooks/useSSMACostCenters';
 import { useSSMAEmployees } from '../../hooks/useSSMAEmployees';
 import { MonthlyTargetUpsertInput, useSSMAMonthlyTargets } from '../../hooks/useSSMAMonthlyTargets';
+import { useSSMAForemen } from '../../hooks/useSSMAForemen';
 import { SSMAMonthlyTarget, SSMAEmployee, SSMATargetFunctionGroup } from '../../types';
 
 interface DraftTarget {
@@ -81,10 +82,22 @@ export const RulesView: React.FC = () => {
 
   const editable = canEditTargets(profile);
   const { data: employees, loading: employeesLoading } = useSSMAEmployees();
+  const { data: foremen, loading: foremenLoading } = useSSMAForemen();
   const { data: costCenters, loading: costCentersLoading } = useSSMACostCenters();
   const { targets, loading: targetsLoading, saving, error, bulkUpsertTargets, copyFromPreviousCompetence } = useSSMAMonthlyTargets(competence);
 
-  const activeEmployees = useMemo(() => employees.filter(employee => employee.active !== false && employee.uid), [employees]);
+  const activeEmployees = useMemo(() => {
+    const activeEmps = employees.filter(employee => employee.active !== false && employee.uid);
+    const activeForemen = foremen.filter(f => f.active !== false).map(f => ({
+      ...f,
+      uid: f.id,
+      functionGroup: 'FOREMAN' as const,
+      roleSnapshot: 'SSMA_FOREMAN' as const,
+      costCenterIds: costCenters.filter(cc => cc.encarregadoIds?.includes(f.id)).map(cc => cc.id)
+    }));
+    return [...activeEmps, ...activeForemen] as SSMAEmployee[];
+  }, [employees, foremen, costCenters]);
+  
   const scopedEmployees = useMemo(() => getScopedEmployees(profile, activeEmployees, costCenters), [activeEmployees, costCenters, profile]);
   const targetByEmployeeUid = useMemo(() => {
     const map = new Map<string, SSMAMonthlyTarget>();
@@ -121,7 +134,7 @@ export const RulesView: React.FC = () => {
     setDrafts(nextDrafts);
   }, [competence, scopedEmployees, targetByEmployeeUid]);
 
-  const loading = employeesLoading || costCentersLoading || targetsLoading;
+  const loading = employeesLoading || foremenLoading || costCentersLoading || targetsLoading;
 
   const updateDraft = (employee: SSMAEmployee, field: keyof DraftTarget, value: string) => {
     const numericValue = Math.max(0, Number(value) || 0);

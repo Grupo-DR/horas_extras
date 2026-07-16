@@ -42,6 +42,12 @@ export interface SSMACostCenter extends AuditableRecord {
     active: boolean;
 }
 
+export interface SSMAForeman extends AuditableRecord {
+    id: string;
+    name: string;
+    active: boolean;
+}
+
 export interface SSMAEmployee extends AuditableRecord {
     id: string;
     uid?: string;

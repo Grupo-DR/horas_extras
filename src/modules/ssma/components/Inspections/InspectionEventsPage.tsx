@@ -7,6 +7,7 @@ import { useCancelSSMAInspectionEvent } from '../../hooks/useCancelSSMAInspectio
 import { useCreateSSMAInspectionEvent, CreateSSMAInspectionEventInput } from '../../hooks/useCreateSSMAInspectionEvent';
 import { useSSMACostCenters } from '../../hooks/useSSMACostCenters';
 import { useSSMAEmployees } from '../../hooks/useSSMAEmployees';
+import { useSSMAForemen } from '../../hooks/useSSMAForemen';
 import { useSSMAEvidenceUpload } from '../../hooks/useSSMAEvidenceUpload';
 import { SSMAInspectionEventFilters, useSSMAInspectionEvents } from '../../hooks/useSSMAInspectionEvents';
 import { useSSMARegionals } from '../../hooks/useSSMARegionals';
@@ -38,6 +39,7 @@ export const InspectionEventsPage: React.FC<Props> = ({ openEventId, onEventClos
     const { data: regionalsRaw, loading: regionalsLoading } = useSSMARegionals();
     const { data: costCentersRaw, loading: costCentersLoading } = useSSMACostCenters();
     const { data: employeesRaw, loading: employeesLoading } = useSSMAEmployees();
+    const { data: foremenRaw, loading: foremenLoading } = useSSMAForemen();
     const { events, loading: eventsLoading, error, refetch } = useSSMAInspectionEvents(filters);
     const { createEvent, loading: creating } = useCreateSSMAInspectionEvent();
     const { updateEvent, loading: updating } = useUpdateSSMAInspectionEvent();
@@ -52,7 +54,7 @@ export const InspectionEventsPage: React.FC<Props> = ({ openEventId, onEventClos
     const allowedCostCenterIds = useMemo(() => new Set(allowedCostCenters.map(costCenter => costCenter.id)), [allowedCostCenters]);
 
     const scopedEmployees = useMemo(() => {
-        return employeesRaw.filter(employee => {
+        const allowedEmployees = employeesRaw.filter(employee => {
             if (!employee.uid) return false;
             if (profile?.isSuperAdmin || profile?.modules?.ssma?.role === 'SSMA_ADMIN' || profile?.modules?.ssma?.role === 'SSMA_MANAGER') return true;
             const isAssignedToAllowedCostCenter = activeCostCenters.some(costCenter => {
@@ -74,7 +76,17 @@ export const InspectionEventsPage: React.FC<Props> = ({ openEventId, onEventClos
             }
             return employee.uid === profile?.uid || isAssignedToAllowedCostCenter || employee.costCenterIds?.some(costCenterId => allowedCostCenterIds.has(costCenterId));
         });
-    }, [activeCostCenters, allowedCostCenterIds, allowedRegionalIds, employeesRaw, profile]);
+        
+        const activeForemen = foremenRaw.filter(f => f.active !== false).map(f => ({
+            ...f,
+            uid: f.id,
+            functionGroup: 'FOREMAN' as const,
+            roleSnapshot: 'SSMA_FOREMAN' as const,
+            costCenterIds: activeCostCenters.filter(cc => cc.encarregadoIds?.includes(f.id)).map(cc => cc.id)
+        })) as any[];
+        
+        return [...allowedEmployees, ...activeForemen];
+    }, [activeCostCenters, allowedCostCenterIds, allowedRegionalIds, employeesRaw, foremenRaw, profile]);
 
     const canCreateAny = !!allowedCostCenters.length && canCreateEvent(profile, {
         regionalId: allowedCostCenters[0].regionalId,
