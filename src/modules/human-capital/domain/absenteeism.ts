@@ -28,19 +28,14 @@ export function isAbsenteeismEvent(evento?: string): boolean {
 
 export function calculateAvailableHours(headcount: HeadcountRecord[], chapa: string, costCenter: string): number {
   // Encontrar o registro de headcount aplicável.
-  // Por enquanto, somamos as distribuições de todos os registros da chapa no CC no período.
-  // TODO: evoluir para calendário oficial de dias úteis/feriados para períodos parciais.
   const records = headcount.filter(h => h.chapa === chapa && h.centroCusto === costCenter);
   if (records.length === 0) return 0;
   
-  // 176 horas é a base mensal padrão.
-  let totalAvailable = 0;
-  records.forEach(r => {
-    // distribuição = 1 (100%), 0.5 (50%), etc.
-    totalAvailable += 176 * (r.distribuicao || 1);
-  });
-  
-  return totalAvailable;
+  // A base de horas é MENSAL para o cálculo do custo/hora.
+  // Padrão CLT = 220 horas.
+  // Usamos a distribuição do primeiro registro (caso haja mais de um no período).
+  const distribuicao = records[0].distribuicao || 1;
+  return 220 * distribuicao;
 }
 
 export function calculateHourlyCost(salary: number, availableHours: number): number {
@@ -129,12 +124,12 @@ export function calculateAbsenteeismSummary(
   const uniqueChapasHeadcount = new Set<string>();
   globalHeadcountRecords.forEach(h => {
     uniqueChapasHeadcount.add(h.chapa);
-    availableHours += 176 * (h.distribuicao || 1);
+    availableHours += 220 * (h.distribuicao || 1); // Padrão 220h
   });
   
   if (availableHours === 0) {
       // Fallback para evitar divisão por zero se não tiver headcount
-      availableHours = impactedChapas.size > 0 ? impactedChapas.size * 176 : 176;
+      availableHours = impactedChapas.size > 0 ? impactedChapas.size * 220 : 220;
   }
 
   const absenteeismRate = totalHours / availableHours;
@@ -279,11 +274,12 @@ export function calculateAbsenteeismMonthlyEvolution(facts: AbsenteeismFact[], g
     monthKeys.forEach(monthKey => {
         const monthFacts = facts.filter(f => f.monthKey === monthKey);
         
-        // TODO: Filtrar globalHeadcount para apenas os registros vigentes em monthKey.
-        // Como o headcount upload ainda tem limitações de datas normatizadas,
-        // usaremos o headcount inteiro ou os registros que cobrem esse mês.
-        // Assumimos que globalHeadcount já foi filtrado para o mês atual pelo componente.
-        const monthHc = globalHeadcount; 
+        // Filtrar globalHeadcount para apenas os registros vigentes em monthKey.
+        const monthHc = globalHeadcount.filter(h => {
+            const startMonth = h.dataInicio.substring(0, 7);
+            const endMonth = h.dataFim.substring(0, 7);
+            return startMonth <= monthKey && endMonth >= monthKey;
+        }); 
         
         const summary = calculateAbsenteeismSummary(monthFacts, monthHc);
         const targetRate = DEFAULT_ABSENTEEISM_TARGETS.totalRate;

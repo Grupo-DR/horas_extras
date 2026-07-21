@@ -642,8 +642,8 @@ const HumanCapitalDashboard: React.FC = () => {
       { key: Tab.DATA, label: "Histórico", icon: Table, onClick: () => setActiveTab(Tab.DATA), isActive: activeTab === Tab.DATA },
     ];
     
-    // Restringir temporariamente para validação da gerência
-    if (effectiveUser.isSuperAdmin) {
+    // Liberado para a gerência e administradores de Capital Humano
+    if (effectiveUser.isSuperAdmin || canManageHeadcount(effectiveUser.role)) {
       items.push({ key: Tab.ABSENTEEISM, label: "Absenteísmo", icon: Activity, onClick: () => setActiveTab(Tab.ABSENTEEISM), isActive: activeTab === Tab.ABSENTEEISM });
       items.push({ key: Tab.COST_CENTER_STRUCTURE, label: "Estrutura", icon: Briefcase, onClick: () => setActiveTab(Tab.COST_CENTER_STRUCTURE), isActive: activeTab === Tab.COST_CENTER_STRUCTURE });
     }
