@@ -764,7 +764,7 @@ const ProfileManager: React.FC = () => {
                                                     value={(editingUser.modules.human_capital.scope as any).regionals?.join(', ') || ''}
                                                     onChange={(e) => {
                                                         const val = e.target.value;
-                                                        const regionals = val.split(',').map(s => s.trim()).filter(s => s);
+                                                        const regionals = val.split(',').map(s => s.trim());
                                                         setEditingUser({
                                                             ...editingUser,
                                                             modules: {
@@ -791,7 +791,7 @@ const ProfileManager: React.FC = () => {
                                                     value={(editingUser.modules.human_capital.scope as any).costCenters?.join(', ') || ''}
                                                     onChange={(e) => {
                                                         const val = e.target.value;
-                                                        const costCenters = val.split(',').map(s => s.trim()).filter(s => s);
+                                                        const costCenters = val.split(',').map(s => s.trim());
                                                         setEditingUser({
                                                             ...editingUser,
                                                             modules: {
