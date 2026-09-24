@@ -49,6 +49,9 @@ export const CC_MASTER: CCInfo[] = [
   { ccNorm: "304402", name: "INFRANORTE - ARARAQUARA", regional: "Regional 02" },
   { ccNorm: "304403", name: "LIMPEZA DE LASTRO ZMA/ZDZ", regional: "Regional 02" },
   { ccNorm: "304601", name: "EXECUÇÃO DE REDE DE AGUA SERVIDA", regional: "Regional 02" },
+  { ccNorm: "304701", name: "VALE - MANUTENCAO DE ATIVOS", regional: "Regional 02" },
+  { ccNorm: "304801", name: "VL! PAULISTA", regional: "Regional 02" },
+
 
   // ── OUTROS ───────────────────────────────────────────────────────────────
   { ccNorm: "302701", name: "VLI TC IBAMA", regional: "Outros" },
