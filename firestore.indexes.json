@@ -105,6 +105,14 @@
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "plannedHours", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "construction_uploads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "workId", "order": "ASCENDING" },
+        { "fieldPath": "uploadedAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
