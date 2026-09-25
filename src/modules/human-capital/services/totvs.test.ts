@@ -4,15 +4,13 @@ import {
     fetchOvertimeData,
     fetchOvertimeDataWithMeta,
     TotvsIntegrationError,
+    TotvsTransport,
 } from './totvs';
 import { ApiConfig } from '../types';
 
 const config: ApiConfig = {
-    url: 'https://totvs.example.test/api',
-    username: 'user',
-    password: 'pass',
     startDate: '01/01/2026',
-    endDate: '31/01/2026',
+    endDate: '01/31/2026',
 };
 
 const rawRecord = {
@@ -25,15 +23,14 @@ const rawRecord = {
     HORA_EXTRA_60: 2.15,
 };
 
-const mockFetch = (body: unknown, init?: { ok?: boolean; status?: number }) => {
-    const response = {
-        ok: init?.ok ?? true,
-        status: init?.status ?? 200,
-        json: vi.fn().mockResolvedValue(body),
-    } as unknown as Response;
+/** Simula a Cloud Function hcFetchOvertime devolvendo o payload informado. */
+const transportReturning = (body: unknown): TotvsTransport => vi.fn().mockResolvedValue(body);
 
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response));
-};
+/** Simula um erro da Cloud Function, no formato do SDK do Firebase. */
+const transportFailing = (error: unknown): TotvsTransport => vi.fn().mockRejectedValue(error);
+
+const callableError = (code: string, details?: Record<string, unknown>) =>
+    Object.assign(new Error('callable error'), { code, details });
 
 describe('TOTVS overtime service', () => {
     beforeEach(() => {
@@ -41,14 +38,11 @@ describe('TOTVS overtime service', () => {
     });
 
     afterEach(() => {
-        vi.unstubAllGlobals();
         vi.restoreAllMocks();
     });
 
     it('processes a valid array response', async () => {
-        mockFetch([rawRecord]);
-
-        const result = await fetchOvertimeDataWithMeta(config);
+        const result = await fetchOvertimeDataWithMeta(config, transportReturning([rawRecord]));
 
         expect(result.meta.status).toBe('SUCCESS');
         expect(result.meta.source).toBe('TOTVS_API');
@@ -65,28 +59,30 @@ describe('TOTVS overtime service', () => {
         ]);
     });
 
-    it('processes a valid response wrapped in Items', async () => {
-        mockFetch({ Items: [rawRecord] });
+    it('sends only the period to the server, never credentials', async () => {
+        const transport = transportReturning([]);
 
-        const data = await fetchOvertimeData(config);
+        await fetchOvertimeDataWithMeta(config, transport);
+
+        expect(transport).toHaveBeenCalledWith({ startDate: '01/01/2026', endDate: '01/31/2026' });
+    });
+
+    it('processes a valid response wrapped in Items', async () => {
+        const data = await fetchOvertimeData(config, transportReturning({ Items: [rawRecord] }));
 
         expect(data).toHaveLength(1);
         expect(data[0].HORAS).toBe(2.25);
     });
 
     it('processes a valid response wrapped in items', async () => {
-        mockFetch({ items: [rawRecord] });
-
-        const data = await fetchOvertimeData(config);
+        const data = await fetchOvertimeData(config, transportReturning({ items: [rawRecord] }));
 
         expect(data).toHaveLength(1);
         expect(data[0].CHAPA).toBe('1001');
     });
 
     it('returns an empty result for a valid empty response', async () => {
-        mockFetch([]);
-
-        const result = await fetchOvertimeDataWithMeta(config);
+        const result = await fetchOvertimeDataWithMeta(config, transportReturning([]));
 
         expect(result.data).toEqual([]);
         expect(result.meta.status).toBe('EMPTY');
@@ -97,50 +93,56 @@ describe('TOTVS overtime service', () => {
     it.each([
         [401, 'HTTP_UNAUTHORIZED'],
         [403, 'HTTP_FORBIDDEN'],
-    ] as const)('throws a clear auth error for HTTP %s', async (status, code) => {
-        mockFetch({ message: 'denied' }, { ok: false, status });
+    ] as const)('throws a clear auth error when TOTVS answers HTTP %s', async (status, code) => {
+        const transport = transportFailing(callableError('functions/unavailable', { totvsCode: code, httpStatus: status }));
 
-        await expect(fetchOvertimeData(config)).rejects.toMatchObject({
+        await expect(fetchOvertimeData(config, transport)).rejects.toMatchObject({
             name: 'TotvsIntegrationError',
             code,
             httpStatus: status,
         });
     });
 
-    it('throws a clear API error for HTTP 500', async () => {
-        mockFetch({ message: 'server error' }, { ok: false, status: 500 });
+    it('throws a clear API error when TOTVS answers HTTP 500', async () => {
+        const transport = transportFailing(callableError('functions/unavailable', { totvsCode: 'HTTP_ERROR', httpStatus: 500 }));
 
-        await expect(fetchOvertimeData(config)).rejects.toMatchObject({
+        await expect(fetchOvertimeData(config, transport)).rejects.toMatchObject({
             name: 'TotvsIntegrationError',
             code: 'HTTP_ERROR',
             httpStatus: 500,
         });
     });
 
-    it('throws on an unexpected response format', async () => {
-        mockFetch({ value: 'not an array' });
+    it('reports access denied when the user has no Capital Humano access', async () => {
+        const transport = transportFailing(callableError('functions/permission-denied'));
 
-        await expect(fetchOvertimeData(config)).rejects.toMatchObject({
+        await expect(fetchOvertimeData(config, transport)).rejects.toMatchObject({
+            name: 'TotvsIntegrationError',
+            code: 'HTTP_FORBIDDEN',
+            userMessage: 'Seu perfil não tem acesso aos dados da TOTVS.',
+        });
+    });
+
+    it('throws on an unexpected response format', async () => {
+        await expect(fetchOvertimeData(config, transportReturning({ value: 'not an array' }))).rejects.toMatchObject({
             name: 'TotvsIntegrationError',
             code: 'UNEXPECTED_FORMAT',
         });
     });
 
     it('throws on network failures', async () => {
-        vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('network down')));
+        const transport = transportFailing(new TypeError('network down'));
 
-        await expect(fetchOvertimeData(config)).rejects.toMatchObject({
+        await expect(fetchOvertimeData(config, transport)).rejects.toMatchObject({
             name: 'TotvsIntegrationError',
             code: 'NETWORK_ERROR',
         });
     });
 
     it('never returns simulated data when the integration fails', async () => {
-        mockFetch({ invalid: true });
-
         let error: unknown;
         try {
-            await fetchOvertimeData(config);
+            await fetchOvertimeData(config, transportReturning({ invalid: true }));
         } catch (e) {
             error = e;
         }

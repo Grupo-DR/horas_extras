@@ -219,28 +219,61 @@ export const deleteSalaryAllocationsByMonthKeys = async (monthKeys: string[]): P
 // --- PLANNING ---
 
 export const upsertPlanningRecords = async (records: PlanningRecord[], user: UserProfile) => {
-    const batch = writeBatch(db);
-    records.forEach(r => {
-        // ID: Use r.id if present, or construct
-        // ID: plan_YYYY-MM-DD_CHAPA_CC_TYPE
-        if (!r.date || !r.chapa) return;
-        const id = r.id || `plan_${r.date}_${r.chapa}_${r.costCenter}_${r.type}`;
-        const ref = doc(db, COL_PLANNING, id);
+    const valid = records.filter(r => !!r.date && !!r.chapa);
+    // Lotes de 400, mesmo padrão de salários e colaboradores.
+    for (const part of chunk(valid, 400)) {
+        const batch = writeBatch(db);
+        part.forEach(r => {
+            // ID: Use r.id if present, or construct
+            // ID: plan_YYYY-MM-DD_CHAPA_CC_TYPE
+            const id = r.id || `plan_${r.date}_${r.chapa}_${r.costCenter}_${r.type}`;
+            const ref = doc(db, COL_PLANNING, id);
 
-        const data = clean({
-            ...r,
-            plannedHours: safeNumber(r.plannedHours),
-            regional: getCCRegional(r.costCenter || '')
+            const data = clean({
+                ...r,
+                plannedHours: safeNumber(r.plannedHours),
+                regional: getCCRegional(r.costCenter || '')
+            });
+
+            batch.set(ref, {
+                ...data,
+                id, // ensure ID is saved
+                updatedAt: Timestamp.now(),
+                updatedBy: user.email
+            }, { merge: true });
         });
+        await batch.commit();
+    }
+};
 
-        batch.set(ref, {
-            ...data,
-            id, // ensure ID is saved
-            updatedAt: Timestamp.now(),
-            updatedBy: user.email
-        }, { merge: true });
-    });
-    await batch.commit();
+export type PlanningStatusPatch = Pick<
+    PlanningRecord,
+    'status' | 'approvedBy' | 'approvedAt' | 'submittedBy' | 'submittedAt' | 'rejectedBy' | 'rejectedAt' | 'rejectionReason'
+>;
+
+/**
+ * Altera apenas o status (e metadados da transição) de documentos existentes.
+ * Não regrava horas: enviar, aprovar ou devolver nunca sobrescreve uma edição
+ * de horas feita por outra pessoa depois que a fila foi carregada.
+ * Usa update (e não set) para falhar se o documento não existir.
+ */
+export const updatePlanningStatus = async (
+    ids: string[],
+    patch: PlanningStatusPatch,
+    user: UserProfile
+) => {
+    const data = clean(patch);
+    for (const part of chunk(Array.from(new Set(ids.filter(Boolean))), 400)) {
+        const batch = writeBatch(db);
+        part.forEach(id => {
+            batch.update(doc(db, COL_PLANNING, id), {
+                ...data,
+                updatedAt: Timestamp.now(),
+                updatedBy: user.email
+            });
+        });
+        await batch.commit();
+    }
 };
 
 export const getPlanningRecords = async (monthKey: string, type: 'DAILY' | 'MONTHLY', scope?: Scope) => {
@@ -503,6 +536,22 @@ export const replaceHeadcountRecords = async (
         uploadedAt: meta.uploadedAt,
         replacedAt: new Date().toISOString(),
     }, user);
+};
+
+/**
+ * Busca registros diários com horas (> 0) em um status, em qualquer data.
+ * Usada pelas filas do gerente e do diretor, que não dependem da competência da tela.
+ * Requer os índices compostos (status, plannedHours) de firestore.indexes.json.
+ */
+export const getPlanningRecordsByStatus = async (
+    status: 'draft' | 'pending' | 'approved' | 'rejected',
+    scope?: Scope
+): Promise<PlanningRecord[]> => {
+    const rows = await getScopedDocs<PlanningRecord>(COL_PLANNING, scope, 'costCenter', [
+        where('status', '==', status),
+        where('plannedHours', '>', 0)
+    ]);
+    return rows.filter(r => r.type === 'DAILY' && isCostCenterInHumanCapitalScope(scope, r.costCenter || ''));
 };
 
 /**

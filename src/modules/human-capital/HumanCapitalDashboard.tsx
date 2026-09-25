@@ -26,11 +26,9 @@ import { saveGlobalEmployees, getGlobalEmployeesSync, getHeadcountSync, getHeadc
 import { gerarOvertimeRateado } from '@/src/modules/human-capital/utils/headcountRateio';
 import { formatDateKey, getPayrollCompetencyMonthKey, getPayrollCompetencyMonthKeysForRange } from '@/src/modules/human-capital/utils/overtime';
 
-// Configuração padrão da API TOTVS
+// Período padrão da consulta TOTVS (MM/DD/AAAA).
+// Endereço e credenciais ficam somente na Cloud Function hcFetchOvertime.
 const DEFAULT_CONFIG: ApiConfig = {
-  url: 'https://drconstrutora116480.rm.cloudtotvs.com.br:8051/api/framework/v1/consultaSQLServer/RealizaConsulta/TOTVSTOTAL/0/P',
-  username: 'api',
-  password: 'drdr@Prov!!',
   startDate: '07/01/2025',
   endDate: '01/01/2027'
 };

@@ -115,18 +115,87 @@ export const savePlanning = async (plans: PlanningRecord[], user: UserProfile): 
 
     if (safeRecords.length === 0) return;
 
-    try {
-        if (isOnline()) {
-            await FirestoreService.upsertPlanningRecords(safeRecords, user);
-        } else {
-            console.warn("Offline: Saving planning to local cache only.");
-        }
+    // A gravação só é considerada concluída após confirmação do Firestore.
+    // Antes, falhas (sem conexão, permissão negada) eram engolidas e a tela
+    // mostrava "submetido" sem que o aprovador recebesse nada.
+    if (!isOnline()) {
+        throw new Error('Sem conexão com a internet. Nada foi gravado; tente novamente quando estiver online.');
+    }
 
-        // Also update local cache/storage for fallback
-        updateLocalPlanningCache(safeRecords);
-    } catch (error) {
+    try {
+        await FirestoreService.upsertPlanningRecords(safeRecords, user);
+    } catch (error: any) {
         console.error("Save Planning Failed:", error);
-        updateLocalPlanningCache(safeRecords); // Fallback
+        const code = error?.code ? ` (${error.code})` : '';
+        throw new Error(
+            error?.code === 'permission-denied'
+                ? 'Permissão negada pelo servidor: seu perfil não pode fazer esta alteração.'
+                : `Falha ao gravar no servidor${code}. Nada foi confirmado; tente novamente.`
+        );
+    }
+
+    updateLocalPlanningCache(safeRecords);
+};
+
+/**
+ * Aplica uma transição de status (enviar, aprovar, devolver) nos registros informados.
+ * Lança erro se não houver conexão ou se o servidor recusar; só então a tela confirma.
+ */
+export const transitionPlanningStatus = async (
+    records: PlanningRecord[],
+    patch: FirestoreService.PlanningStatusPatch,
+    user: UserProfile
+): Promise<void> => {
+    if (records.length === 0) return;
+    if (!isOnline()) {
+        throw new Error('Sem conexão com a internet. Nada foi alterado; tente novamente quando estiver online.');
+    }
+
+    try {
+        await FirestoreService.updatePlanningStatus(
+            records.map(r => r.id || `${r.chapa}_${r.costCenter}_${r.type || 'DAILY'}_${r.date}`),
+            patch,
+            user
+        );
+    } catch (error: any) {
+        console.error('Transition Planning Failed:', error);
+        const code = error?.code ? ` (${error.code})` : '';
+        throw new Error(
+            error?.code === 'permission-denied'
+                ? 'Permissão negada pelo servidor: seu perfil não pode fazer esta alteração.'
+                : `Falha ao gravar no servidor${code}. Nada foi confirmado; tente novamente.`
+        );
+    }
+
+    updateLocalPlanningCache(records.map(r => ({ ...r, ...patch })));
+};
+
+/**
+ * Fila de registros com horas em um status, independente da competência.
+ * Se a consulta por status falhar (ex.: índice ainda não publicado), usa as
+ * competências informadas como alternativa e sinaliza que a fila é parcial.
+ */
+export const getPlanningQueue = async (
+    status: 'draft' | 'pending' | 'rejected',
+    user: UserProfile,
+    fallbackMonthKeys: string[]
+): Promise<{ records: PlanningRecord[]; partial: boolean }> => {
+    try {
+        if (!isOnline()) throw new Error('Offline');
+        const records = await FirestoreService.getPlanningRecordsByStatus(status, user.scope);
+        return { records, partial: false };
+    } catch (error) {
+        console.warn(`[getPlanningQueue] consulta por status '${status}' falhou; usando competências da tela.`, error);
+        const chunks = await Promise.all(
+            Array.from(new Set(fallbackMonthKeys)).map(monthKey => getPlanning(undefined, monthKey, 'DAILY', user))
+        );
+        const byId = new Map<string, PlanningRecord>();
+        chunks.flat().forEach(r => {
+            if ((r.status || 'draft') === status && Number(r.plannedHours) > 0) {
+                byId.set(r.id || `${r.chapa}_${r.costCenter}_${r.date}`, r);
+            }
+        });
+        return { records: Array.from(byId.values()), partial: true };
     }
 };
 

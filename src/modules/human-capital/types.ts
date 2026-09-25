@@ -13,10 +13,11 @@ export interface OvertimeRecord {
     VALOR: number;
 }
 
+/**
+ * Período da consulta de horas extras no TOTVS (MM/DD/AAAA).
+ * Endereço e credenciais ficam somente no servidor (Cloud Function hcFetchOvertime).
+ */
 export interface ApiConfig {
-    url: string;
-    username: string;
-    password?: string;
     startDate: string;
     endDate: string;
 }
@@ -84,9 +85,18 @@ export interface PlanningRecord {
     date: string;
     type: 'DAILY' | 'MONTHLY';
     plannedHours: number;
+    /**
+     * draft = aguardando gerente | pending = aguardando diretor |
+     * approved = aprovado | rejected = devolvido ao engenheiro.
+     */
     status?: 'draft' | 'pending' | 'approved' | 'rejected';
     approvedBy?: string;
     approvedAt?: string;
+    submittedBy?: string;
+    submittedAt?: string;
+    rejectedBy?: string;
+    rejectedAt?: string;
+    rejectionReason?: string;
 }
 
 export interface SalaryRecord {

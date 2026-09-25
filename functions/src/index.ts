@@ -547,3 +547,6 @@ export const auditSSMAEvidenceWrite = functions.firestore
             competence: after.competence
         });
     });
+
+// Capital Humano: consulta TOTVS pelo servidor (senha no Secret Manager).
+export { hcFetchOvertime } from "./hcTotvs";

@@ -1,423 +1,434 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Briefcase, Calendar, CheckCircle2, Clock, X, XCircle } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Briefcase, Calendar, CheckCircle2, Eye, PencilLine, RefreshCw, Send, Undo2, X } from 'lucide-react';
+import { PlanningRecord } from '../types';
 import { getCCName, getCCRegional } from '../data/ccMaster';
 import { formatDecimalHours } from '../utils/formatters';
+import {
+    PlanningQueueGroup,
+    estimateOvertimeCost,
+    getPlanningHours,
+    isDateInRange
+} from '../utils/planningWorkflow';
 
-type ApprovalStatus = 'approved' | 'pending' | 'draft' | 'rejected' | string;
-type KnownApprovalStatus = 'approved' | 'pending' | 'draft' | 'rejected';
+export type QueueTone = 'amber' | 'blue' | 'rose';
 
-interface ApprovalDetailRow {
-    id: string;
-    date: string;
-    ccName: string;
-    employeeName: string;
-    employeeRole: string;
-    hours: number;
-    status: ApprovalStatus;
-}
-
-interface ApprovalRecord {
-    id: string;
+export interface QueueReadOnlySection {
+    key: string;
+    title: string;
     description: string;
-    costCenter: string;
-    headcount: number;
-    plannedHours: number;
-    customEstCost: number;
-    estStatus?: ApprovalStatus;
-    detailRows?: ApprovalDetailRow[];
+    tone: QueueTone;
+    groups: PlanningQueueGroup[];
+    showRejectionReason?: boolean;
 }
 
-interface ApprovalPanelProps {
-    records: ApprovalRecord[];
-    onApprove: (costCenter: string) => void;
-    onReject: (costCenter: string) => void;
-    mode: 'DAILY' | 'MONTHLY';
+interface PlanningQueuePanelProps {
+    title: string;
+    subtitle: string;
+    /** Rótulo do status dos registros acionáveis, ex.: "Aguardando diretor". */
+    actionableLabel: string;
+    actionableTone: QueueTone;
+    actionable: PlanningQueueGroup[];
+    readOnlySections: QueueReadOnlySection[];
+    primaryActionLabel: string;
+    primaryActionIcon: 'approve' | 'send';
+    confirmPrimaryMessage: (costCenter: string, count: number, start: string, end: string) => string;
+    onPrimary: (records: PlanningRecord[]) => Promise<boolean>;
+    /** Quando presente, habilita "Devolver ao engenheiro" com motivo obrigatório. */
+    onReturn?: (records: PlanningRecord[], reason: string) => Promise<boolean>;
+    /** Quando presente, habilita "Editar horas" (abre a grade da obra). */
+    onEdit?: (costCenter: string, firstDate: string) => void;
+    roleByChapa: Record<string, string>;
+    salaryByChapa: Record<string, number>;
+    loading: boolean;
+    busy: boolean;
+    partial: boolean;
+    onRefresh: () => void;
+    emptyTitle: string;
+    emptyMessage: string;
 }
 
-interface StatusMetrics {
-    approved: number;
-    pending: number;
-    draft: number;
-    rejected: number;
-}
+const toneClasses: Record<QueueTone, { badge: string; soft: string; text: string }> = {
+    amber: { badge: 'bg-amber-100 text-amber-700', soft: 'bg-amber-50 border-amber-200', text: 'text-amber-700' },
+    blue: { badge: 'bg-blue-100 text-blue-700', soft: 'bg-blue-50 border-blue-200', text: 'text-blue-700' },
+    rose: { badge: 'bg-rose-100 text-rose-700', soft: 'bg-rose-50 border-rose-200', text: 'text-rose-700' }
+};
 
-const formatDateBR = (value: string): string => {
+const formatDateBR = (value?: string): string => {
     if (!value) return '-';
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
-
-    const parsed = new Date(`${value}T00:00:00`);
-    if (Number.isNaN(parsed.getTime())) return value;
-    return parsed.toLocaleDateString('pt-BR');
+    const [y, m, d] = value.split('-');
+    return `${d}/${m}/${y}`;
 };
 
-const statusBadgeClass = (status: ApprovalStatus): string => {
-    if (status === 'pending') return 'bg-amber-100 text-amber-700';
-    if (status === 'approved') return 'bg-emerald-100 text-emerald-700';
-    if (status === 'draft') return 'bg-blue-100 text-blue-700';
-    if (status === 'rejected') return 'bg-rose-100 text-rose-700';
-    return 'bg-slate-100 text-slate-600';
+const formatCurrency = (value: number): string =>
+    `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const todayKey = (): string => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 };
 
-const createStatusMetrics = (): StatusMetrics => ({
-    approved: 0,
-    pending: 0,
-    draft: 0,
-    rejected: 0
-});
+const MIN_REASON_LENGTH = 5;
 
-const normalizeStatus = (status?: ApprovalStatus): KnownApprovalStatus => {
-    const normalized = String(status || 'draft').toLowerCase();
-    if (normalized === 'approved' || normalized === 'pending' || normalized === 'draft' || normalized === 'rejected') {
-        return normalized;
-    }
-    return 'draft';
-};
+export const PlanningQueuePanel: React.FC<PlanningQueuePanelProps> = ({
+    title,
+    subtitle,
+    actionableLabel,
+    actionableTone,
+    actionable,
+    readOnlySections,
+    primaryActionLabel,
+    primaryActionIcon,
+    confirmPrimaryMessage,
+    onPrimary,
+    onReturn,
+    onEdit,
+    roleByChapa,
+    salaryByChapa,
+    loading,
+    busy,
+    partial,
+    onRefresh,
+    emptyTitle,
+    emptyMessage
+}) => {
+    const [selected, setSelected] = useState<{ group: PlanningQueueGroup; readOnly: boolean; tone: QueueTone; label: string } | null>(null);
+    const [rangeStart, setRangeStart] = useState('');
+    const [rangeEnd, setRangeEnd] = useState('');
+    const [returnReason, setReturnReason] = useState('');
+    const [isReturning, setIsReturning] = useState(false);
 
-const normalizeHours = (value: number | string | undefined | null): number => {
-    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
-    if (typeof value === 'string') {
-        const parsed = Number(value.replace(',', '.'));
-        return Number.isFinite(parsed) ? parsed : 0;
-    }
-    return 0;
-};
+    const today = todayKey();
 
-const addStatusMetric = (metrics: StatusMetrics, status: ApprovalStatus, value: number = 1) => {
-    const normalized = normalizeStatus(status);
-    metrics[normalized] += value;
-};
+    const groupCost = (records: PlanningRecord[]) =>
+        records.reduce((sum, r) => sum + estimateOvertimeCost(getPlanningHours(r.plannedHours), salaryByChapa[r.chapa], r.date), 0);
 
-const getNonApprovedCount = (metrics: StatusMetrics): number =>
-    metrics.pending + metrics.draft + metrics.rejected;
+    const openGroup = (group: PlanningQueueGroup, readOnly: boolean, tone: QueueTone, label: string) => {
+        setSelected({ group, readOnly, tone, label });
+        setRangeStart(group.firstDate);
+        setRangeEnd(group.lastDate);
+        setReturnReason('');
+        setIsReturning(false);
+    };
 
-export const ApprovalPanel: React.FC<ApprovalPanelProps> = ({ records, onApprove, onReject, mode }) => {
-    const [selectedCC, setSelectedCC] = useState<string | null>(null);
-
-    // Group records by cost center
-    const grouped = useMemo(() => {
-        const map = new Map<string, {
-            name: string;
-            regional: string;
-            totalHours: number;
-            totalCost: number;
-            headcount: number;
-            statusBreakdown: StatusMetrics;
-            statusHours: StatusMetrics;
-            records: ApprovalRecord[];
-            detailRows: ApprovalDetailRow[];
-        }>();
-
-        records.forEach((r) => {
-            const cc = r.costCenter || 'S/ CC';
-            if (!map.has(cc)) {
-                map.set(cc, {
-                    name: getCCName(cc),
-                    regional: getCCRegional(cc),
-                    totalHours: 0,
-                    totalCost: 0,
-                    headcount: 0,
-                    statusBreakdown: createStatusMetrics(),
-                    statusHours: createStatusMetrics(),
-                    records: [],
-                    detailRows: []
-                });
-            }
-
-            const group = map.get(cc)!;
-            const recordHours = normalizeHours(r.plannedHours);
-            const recordCost = Number(r.customEstCost) || 0;
-            const recordHeadcount = Number(r.headcount) || 0;
-            const normalizedRows = Array.isArray(r.detailRows)
-                ? r.detailRows
-                    .map((row) => ({
-                        ...row,
-                        hours: normalizeHours(row.hours),
-                        status: normalizeStatus(row.status)
-                    }))
-                    .filter((row) => row.hours > 0)
-                : [];
-
-            group.totalCost += recordCost;
-            group.headcount = Math.max(group.headcount, recordHeadcount);
-            group.records.push(r);
-
-            if (normalizedRows.length > 0) {
-                normalizedRows.forEach((row) => {
-                    group.totalHours += row.hours;
-                    addStatusMetric(group.statusBreakdown, row.status);
-                    addStatusMetric(group.statusHours, row.status, row.hours);
-                    group.detailRows.push(row);
-                });
-            } else if (recordHours > 0) {
-                const status = normalizeStatus(r.estStatus);
-                group.totalHours += recordHours;
-                addStatusMetric(group.statusBreakdown, status);
-                addStatusMetric(group.statusHours, status, recordHours);
-            }
-        });
-
-        return Array.from(map.entries())
-            .filter(([_, data]) => data.statusBreakdown.pending > 0)
-            .map(([cc, data]) => {
-                const statusOrder: Record<KnownApprovalStatus, number> = {
-                    pending: 0,
-                    draft: 1,
-                    rejected: 2,
-                    approved: 3
-                };
-                const orderedRows = [...data.detailRows].sort((a, b) => {
-                    const statusDiff = statusOrder[normalizeStatus(a.status)] - statusOrder[normalizeStatus(b.status)];
-                    if (statusDiff !== 0) return statusDiff;
-                    if (a.date === b.date) {
-                        if (a.ccName === b.ccName) {
-                            return a.employeeName.localeCompare(b.employeeName);
-                        }
-                        return a.ccName.localeCompare(b.ccName);
-                    }
-                    return a.date.localeCompare(b.date);
-                });
-
-                return [cc, { ...data, detailRows: orderedRows }] as const;
-            })
-            .sort((a, b) => b[1].totalCost - a[1].totalCost);
-    }, [records]);
-
-    const selectedGroup = useMemo(
-        () => grouped.find(([cc]) => cc === selectedCC) ?? null,
-        [grouped, selectedCC]
-    );
-
-    const renderStatusSummary = (statusBreakdown: StatusMetrics, statusHours: StatusMetrics) => (
-        <div className="flex flex-wrap gap-2">
-            {statusBreakdown.pending > 0 && (
-                <span className="px-2 py-1 rounded-md bg-amber-50 text-amber-700 text-[10px] font-bold uppercase">
-                    Pendentes: {statusBreakdown.pending} ({formatDecimalHours(statusHours.pending)})
-                </span>
-            )}
-            {statusBreakdown.approved > 0 && (
-                <span className="px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase">
-                    Aprovados: {statusBreakdown.approved} ({formatDecimalHours(statusHours.approved)})
-                </span>
-            )}
-            {statusBreakdown.draft > 0 && (
-                <span className="px-2 py-1 rounded-md bg-blue-50 text-blue-700 text-[10px] font-bold uppercase">
-                    Rascunhos: {statusBreakdown.draft} ({formatDecimalHours(statusHours.draft)})
-                </span>
-            )}
-            {statusBreakdown.rejected > 0 && (
-                <span className="px-2 py-1 rounded-md bg-rose-50 text-rose-700 text-[10px] font-bold uppercase">
-                    Rejeitados: {statusBreakdown.rejected} ({formatDecimalHours(statusHours.rejected)})
-                </span>
-            )}
-        </div>
-    );
+    // Se a fila foi recarregada, reposiciona o grupo aberto (ou fecha se sumiu).
+    useEffect(() => {
+        if (!selected) return;
+        const pool = selected.readOnly
+            ? readOnlySections.flatMap(section => section.groups)
+            : actionable;
+        const fresh = pool.find(g => g.costCenter === selected.group.costCenter);
+        if (!fresh) {
+            setSelected(null);
+        } else if (fresh !== selected.group) {
+            setSelected(prev => (prev ? { ...prev, group: fresh } : prev));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [actionable, readOnlySections]);
 
     useEffect(() => {
-        if (!selectedCC) return;
-
+        if (!selected) return;
         const onKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') {
-                setSelectedCC(null);
-            }
+            if (event.key === 'Escape') setSelected(null);
         };
-
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, [selectedCC]);
+    }, [selected]);
 
-    const handleApprove = (costCenter: string) => {
-        if (window.confirm(`Voce ira aprovar as planilhas pendentes da obra ${costCenter}. Continuar?`)) {
-            onApprove(costCenter);
-            setSelectedCC(null);
-        }
+    const filteredRecords = useMemo(() => {
+        if (!selected) return [];
+        return selected.group.records.filter(r => isDateInRange(r.date, rangeStart, rangeEnd));
+    }, [selected, rangeStart, rangeEnd]);
+
+    const filteredHours = filteredRecords.reduce((sum, r) => sum + getPlanningHours(r.plannedHours), 0);
+    const filteredCost = groupCost(filteredRecords);
+    const filteredEmployees = new Set(filteredRecords.map(r => r.chapa)).size;
+
+    const handlePrimary = async () => {
+        if (!selected || filteredRecords.length === 0) return;
+        const message = confirmPrimaryMessage(selected.group.costCenter, filteredRecords.length, rangeStart, rangeEnd);
+        if (!window.confirm(message)) return;
+        const ok = await onPrimary(filteredRecords);
+        if (ok) setSelected(null);
     };
 
-    const handleReject = (costCenter: string) => {
-        if (window.confirm(`Voce ira devolver as planilhas pendentes da obra ${costCenter}, retornando ao status Rascunho. Continuar?`)) {
-            onReject(costCenter);
-            setSelectedCC(null);
-        }
+    const handleReturn = async () => {
+        if (!selected || !onReturn || filteredRecords.length === 0) return;
+        const reason = returnReason.trim();
+        if (reason.length < MIN_REASON_LENGTH) return;
+        if (!window.confirm(`Devolver ${filteredRecords.length} lançamento(s) da obra ${selected.group.costCenter} ao engenheiro?`)) return;
+        const ok = await onReturn(filteredRecords, reason);
+        if (ok) setSelected(null);
     };
 
-    if (grouped.length === 0) {
+    const renderGroupCard = (group: PlanningQueueGroup, readOnly: boolean, tone: QueueTone, label: string, showReason?: boolean) => {
+        const classes = toneClasses[tone];
+        const started = group.firstDate <= today;
         return (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center flex flex-col items-center justify-center">
-                <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mb-4">
-                    <CheckCircle2 size={32} className="text-emerald-500" />
+            <div key={`${label}_${group.costCenter}`} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                        <div className="mt-1 p-2 bg-indigo-100 text-indigo-700 rounded-lg shrink-0">
+                            <Briefcase size={18} />
+                        </div>
+                        <div className="min-w-0">
+                            <h4 className="font-bold text-slate-800 text-sm truncate">{group.costCenter} - {getCCName(group.costCenter)}</h4>
+                            <p className="text-xs text-slate-500 mt-0.5">{getCCRegional(group.costCenter)}</p>
+                        </div>
+                    </div>
+                    <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase shrink-0 ${classes.badge}`}>{label}</span>
                 </div>
-                <h3 className="text-xl font-bold text-slate-800">Tudo em dia!</h3>
-                <p className="text-slate-500 mt-2">Nenhum centro de custo aguardando aprovacao no momento.</p>
+
+                <div className="p-4 grid grid-cols-3 gap-3">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Período</span>
+                        <span className="text-xs font-bold text-slate-700">{formatDateBR(group.firstDate)} a {formatDateBR(group.lastDate)}</span>
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Horas / Pessoas</span>
+                        <span className="text-sm font-black font-mono text-slate-700">{formatDecimalHours(group.totalHours)} · {group.employeeCount}</span>
+                    </div>
+                    <div className="flex flex-col text-right">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Custo estimado</span>
+                        <span className="text-sm font-black font-mono text-emerald-700">{formatCurrency(groupCost(group.records))}</span>
+                    </div>
+                </div>
+
+                {(started || (showReason && group.lastRejectionReason)) && (
+                    <div className="px-4 pb-3 space-y-2">
+                        {started && (
+                            <p className="flex items-center gap-1.5 text-[11px] font-bold text-rose-600">
+                                <AlertTriangle size={12} /> O período já começou em {formatDateBR(group.firstDate)}.
+                            </p>
+                        )}
+                        {showReason && group.lastRejectionReason && (
+                            <p className="text-[11px] text-rose-700 bg-rose-50 border border-rose-100 rounded-md px-2 py-1.5">
+                                <span className="font-bold">Motivo da devolução:</span> {group.lastRejectionReason}
+                            </p>
+                        )}
+                    </div>
+                )}
+
+                <div className="p-3 bg-slate-50 border-t border-slate-100 mt-auto">
+                    <button
+                        onClick={() => openGroup(group, readOnly, tone, label)}
+                        className={`w-full py-2 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 ${readOnly ? 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
+                    >
+                        {readOnly ? <><Eye size={16} /> Ver lançamentos</> : <><Calendar size={16} /> Revisar</>}
+                    </button>
+                </div>
             </div>
         );
-    }
+    };
+
+    const hasAnyReadOnly = readOnlySections.some(section => section.groups.length > 0);
 
     return (
         <>
-            <div className="space-y-4 animate-fade-in">
-                <div className="flex items-center gap-2 mb-6">
-                    <AlertCircle size={20} className="text-amber-500" />
-                    <h3 className="font-bold text-slate-800">Obras aguardando aprovacao</h3>
+            <div className="space-y-8 animate-fade-in">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <div>
+                        <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                            <AlertCircle size={20} className={toneClasses[actionableTone].text} /> {title}
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-1">{subtitle}</p>
+                    </div>
+                    <button
+                        onClick={onRefresh}
+                        disabled={loading}
+                        className="self-start md:self-auto px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-600 text-xs font-bold uppercase flex items-center gap-2 hover:bg-slate-50 disabled:opacity-50"
+                    >
+                        <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Atualizar
+                    </button>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {grouped.map(([cc, data]) => (
-                        <div key={cc} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col transition-all hover:shadow-md">
-                            <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-start justify-between">
-                                <div className="flex items-start gap-3">
-                                    <div className="mt-1 p-2 bg-indigo-100 text-indigo-700 rounded-lg">
-                                        <Briefcase size={18} />
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-slate-800 text-sm">{cc} - {data.name}</h4>
-                                        <p className="text-xs text-slate-500 mt-0.5">{data.regional}</p>
-                                    </div>
-                                </div>
-                                <div className="flex bg-amber-100 text-amber-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase items-center gap-1 shrink-0">
-                                    <Clock size={12} /> {data.statusBreakdown.pending} pendente{data.statusBreakdown.pending === 1 ? '' : 's'}
-                                </div>
-                            </div>
+                {partial && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                        Não foi possível consultar todas as competências. A lista mostra apenas o período selecionado na tela.
+                        Verifique se os índices do Firestore foram publicados.
+                    </div>
+                )}
 
-                            <div className="p-5 flex-1 grid grid-cols-3 gap-4">
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Efetivo</span>
-                                    <span className="text-lg font-black font-mono text-slate-700">{data.headcount}</span>
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Horas planejadas</span>
-                                    <span className="text-lg font-black font-mono text-slate-700">{formatDecimalHours(data.totalHours)}</span>
-                                </div>
-                                <div className="flex flex-col text-right">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Custo estimado</span>
-                                    <span className="text-lg font-black font-mono text-emerald-700">R$ {data.totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                                </div>
-                            </div>
-
-                            <div className="px-5 pb-3 space-y-2">
-                                {renderStatusSummary(data.statusBreakdown, data.statusHours)}
-                                {(data.statusBreakdown.approved > 0 || data.statusBreakdown.draft > 0 || data.statusBreakdown.rejected > 0) && (
-                                    <p className="text-[10px] text-slate-400 italic">
-                                        Aprovados: {data.statusBreakdown.approved} | Nao aprovados: {getNonApprovedCount(data.statusBreakdown)}. Apenas os registros pendentes serao afetados na aprovacao.
-                                    </p>
-                                )}
-                            </div>
-
-                            <div className="p-4 bg-slate-50 border-t border-slate-100">
-                                <button
-                                    onClick={() => setSelectedCC(cc)}
-                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <Calendar size={16} /> Revisar planejamento
-                                </button>
-                            </div>
+                {loading && actionable.length === 0 ? (
+                    <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-400 text-sm">Carregando...</div>
+                ) : actionable.length === 0 ? (
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-10 text-center flex flex-col items-center justify-center">
+                        <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center mb-3">
+                            <CheckCircle2 size={28} className="text-emerald-500" />
                         </div>
-                    ))}
-                </div>
+                        <h3 className="text-lg font-bold text-slate-800">{emptyTitle}</h3>
+                        <p className="text-slate-500 mt-1 text-sm">{emptyMessage}</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                        {actionable.map(group => renderGroupCard(group, false, actionableTone, actionableLabel))}
+                    </div>
+                )}
+
+                {hasAnyReadOnly && readOnlySections.map(section => section.groups.length > 0 && (
+                    <div key={section.key} className="space-y-3">
+                        <div className={`rounded-xl border px-4 py-3 ${toneClasses[section.tone].soft}`}>
+                            <p className={`text-sm font-bold ${toneClasses[section.tone].text}`}>{section.title}</p>
+                            <p className="text-xs text-slate-600 mt-0.5">{section.description}</p>
+                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                            {section.groups.map(group => renderGroupCard(group, true, section.tone, section.title, section.showRejectionReason))}
+                        </div>
+                    </div>
+                ))}
             </div>
 
-            {selectedGroup && (
+            {selected && (
                 <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 backdrop-blur-sm p-3">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[96vw] overflow-hidden flex flex-col max-h-[92vh]">
                         <div className="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white shrink-0">
                             <div>
-                                <h3 className="text-lg font-bold">{selectedGroup[0]} - {selectedGroup[1].name}</h3>
-                                <p className="text-indigo-200 text-xs mt-0.5">
-                                    {selectedGroup[1].regional} | {selectedGroup[1].statusBreakdown.pending} pendente{selectedGroup[1].statusBreakdown.pending === 1 ? '' : 's'} | {selectedGroup[1].statusBreakdown.approved} aprovado{selectedGroup[1].statusBreakdown.approved === 1 ? '' : 's'}
-                                </p>
+                                <h3 className="text-lg font-bold">{selected.group.costCenter} - {getCCName(selected.group.costCenter)}</h3>
+                                <p className="text-indigo-200 text-xs mt-0.5">{getCCRegional(selected.group.costCenter)} | {selected.label}</p>
                             </div>
-                            <button
-                                onClick={() => setSelectedCC(null)}
-                                className="p-2 hover:bg-white/20 rounded-full transition-colors"
-                                title="Fechar"
-                            >
+                            <button onClick={() => setSelected(null)} className="p-2 hover:bg-white/20 rounded-full transition-colors" title="Fechar">
                                 <X size={20} />
                             </button>
                         </div>
 
-                        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Efetivo</span>
-                                <span className="text-lg font-black font-mono text-slate-700">{selectedGroup[1].headcount}</span>
+                        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex flex-col lg:flex-row lg:items-end gap-4">
+                            <div className="flex items-end gap-3">
+                                <div className="flex flex-col">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase mb-1">De</label>
+                                    <input
+                                        type="date"
+                                        value={rangeStart}
+                                        min={selected.group.firstDate}
+                                        max={rangeEnd || selected.group.lastDate}
+                                        onChange={e => setRangeStart(e.target.value)}
+                                        className="border border-slate-300 rounded-lg px-3 py-2 text-sm"
+                                    />
+                                </div>
+                                <div className="flex flex-col">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase mb-1">Até</label>
+                                    <input
+                                        type="date"
+                                        value={rangeEnd}
+                                        min={rangeStart || selected.group.firstDate}
+                                        max={selected.group.lastDate}
+                                        onChange={e => setRangeEnd(e.target.value)}
+                                        className="border border-slate-300 rounded-lg px-3 py-2 text-sm"
+                                    />
+                                </div>
                             </div>
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Horas planejadas</span>
-                                <span className="text-lg font-black font-mono text-slate-700">{formatDecimalHours(selectedGroup[1].totalHours)}</span>
+                            <div className="grid grid-cols-3 gap-6 lg:ml-auto">
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Pessoas</span>
+                                    <span className="text-lg font-black font-mono text-slate-700">{filteredEmployees}</span>
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Horas</span>
+                                    <span className="text-lg font-black font-mono text-slate-700">{formatDecimalHours(filteredHours)}</span>
+                                </div>
+                                <div className="flex flex-col text-right">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Custo estimado</span>
+                                    <span className="text-lg font-black font-mono text-emerald-700">{formatCurrency(filteredCost)}</span>
+                                </div>
                             </div>
-                            <div className="flex flex-col text-left md:text-right">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Custo estimado</span>
-                                <span className="text-lg font-black font-mono text-emerald-700">R$ {selectedGroup[1].totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                            </div>
-                        </div>
-
-                        <div className="px-6 py-3 border-b border-slate-200 bg-white">
-                            {renderStatusSummary(selectedGroup[1].statusBreakdown, selectedGroup[1].statusHours)}
                         </div>
 
                         <div className="flex-1 overflow-auto">
-                            {selectedGroup[1].detailRows.length === 0 ? (
-                                <div className="py-16 text-center text-slate-400 px-6">
-                                    <Calendar size={40} className="mx-auto mb-3 opacity-30" />
-                                    <p className="font-bold text-slate-600">Sem linhas diarias pendentes para exibir.</p>
-                                    <p className="text-sm mt-1">
-                                        {mode === 'MONTHLY'
-                                            ? 'A visualizacao detalhada por dia depende da base diaria (modo diario).'
-                                            : 'Os registros pendentes não possuem horas lançadas no período selecionado.'}
-                                    </p>
-                                </div>
+                            {filteredRecords.length === 0 ? (
+                                <div className="py-16 text-center text-slate-400 text-sm">Nenhum lançamento no intervalo escolhido.</div>
                             ) : (
-                                <table className="w-full text-xs min-w-[860px]">
+                                <table className="w-full text-xs min-w-[760px]">
                                     <thead className="sticky top-0 z-20 bg-slate-100 text-slate-600">
                                         <tr>
                                             <th className="px-4 py-3 text-left font-black uppercase tracking-wider text-[10px] border-b border-slate-200">Data</th>
-                                            <th className="px-4 py-3 text-left font-black uppercase tracking-wider text-[10px] border-b border-slate-200">Centro de Custo</th>
                                             <th className="px-4 py-3 text-left font-black uppercase tracking-wider text-[10px] border-b border-slate-200">Colaborador</th>
-                                            <th className="px-4 py-3 text-left font-black uppercase tracking-wider text-[10px] border-b border-slate-200">Funcao</th>
+                                            <th className="px-4 py-3 text-left font-black uppercase tracking-wider text-[10px] border-b border-slate-200">Função</th>
                                             <th className="px-4 py-3 text-right font-black uppercase tracking-wider text-[10px] border-b border-slate-200">Horas</th>
-                                            <th className="px-4 py-3 text-right font-black uppercase tracking-wider text-[10px] border-b border-slate-200">Status</th>
+                                            <th className="px-4 py-3 text-right font-black uppercase tracking-wider text-[10px] border-b border-slate-200">Custo est.</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {selectedGroup[1].detailRows.map((row) => (
-                                            <tr key={row.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                                <td className="px-4 py-3 text-slate-600">{formatDateBR(row.date)}</td>
-                                                <td className="px-4 py-3 text-slate-700 font-semibold">{row.ccName}</td>
-                                                <td className="px-4 py-3 text-slate-700">{row.employeeName}</td>
-                                                <td className="px-4 py-3 text-slate-500">{row.employeeRole || '-'}</td>
-                                                <td className="px-4 py-3 text-right font-mono font-black text-slate-700">{formatDecimalHours(row.hours)}</td>
-                                                <td className="px-4 py-3 text-right">
-                                                    <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${statusBadgeClass(row.status)}`}>
-                                                        {row.status}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {filteredRecords.map(r => {
+                                            const hours = getPlanningHours(r.plannedHours);
+                                            return (
+                                                <tr key={r.id || `${r.chapa}_${r.date}`} className="border-b border-slate-100 hover:bg-slate-50">
+                                                    <td className="px-4 py-2.5 text-slate-600">{formatDateBR(r.date)}</td>
+                                                    <td className="px-4 py-2.5 text-slate-700">
+                                                        <span className="font-semibold">{r.nome || `Chapa ${r.chapa}`}</span>
+                                                        <span className="ml-2 text-[10px] text-slate-400 font-mono">{r.chapa}</span>
+                                                    </td>
+                                                    <td className="px-4 py-2.5 text-slate-500">{roleByChapa[r.chapa] || '-'}</td>
+                                                    <td className="px-4 py-2.5 text-right font-mono font-black text-slate-700">{formatDecimalHours(hours)}</td>
+                                                    <td className="px-4 py-2.5 text-right font-mono text-emerald-700">
+                                                        {salaryByChapa[r.chapa] ? formatCurrency(estimateOvertimeCost(hours, salaryByChapa[r.chapa], r.date)) : 'sem salário'}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             )}
                         </div>
 
+                        {!selected.readOnly && onReturn && isReturning && (
+                            <div className="px-6 py-3 border-t border-slate-200 bg-rose-50">
+                                <label className="text-[10px] font-bold text-rose-700 uppercase">Motivo da devolução (obrigatório)</label>
+                                <textarea
+                                    value={returnReason}
+                                    onChange={e => setReturnReason(e.target.value)}
+                                    rows={2}
+                                    placeholder="Explique ao engenheiro o que precisa ser ajustado"
+                                    className="mt-1 w-full border border-rose-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-rose-300 outline-none bg-white"
+                                />
+                            </div>
+                        )}
+
                         <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shrink-0">
                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                                Linhas detalhadas: {selectedGroup[1].detailRows.length}
+                                Lançamentos no intervalo: {filteredRecords.length} de {selected.group.records.length}
                             </p>
-                            <div className="flex gap-2 w-full sm:w-auto">
-                                <button
-                                    onClick={() => setSelectedCC(null)}
-                                    className="flex-1 sm:flex-none px-4 py-2 text-slate-500 font-bold text-sm hover:bg-slate-100 rounded-lg transition-colors"
-                                >
+                            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                                <button onClick={() => setSelected(null)} className="px-4 py-2 text-slate-500 font-bold text-sm hover:bg-slate-100 rounded-lg transition-colors">
                                     Fechar
                                 </button>
-                                <button
-                                    onClick={() => handleReject(selectedGroup[0])}
-                                    className="flex-1 sm:flex-none px-4 bg-white hover:bg-rose-50 border border-slate-200 text-rose-600 py-2 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <XCircle size={16} /> Devolver
-                                </button>
-                                <button
-                                    onClick={() => handleApprove(selectedGroup[0])}
-                                    className="flex-1 sm:flex-none px-4 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <CheckCircle2 size={16} /> Aprovar planejamento
-                                </button>
+                                {!selected.readOnly && onEdit && (
+                                    <button
+                                        onClick={() => { onEdit(selected.group.costCenter, rangeStart || selected.group.firstDate); setSelected(null); }}
+                                        className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg font-bold text-sm hover:bg-slate-100 flex items-center gap-2"
+                                    >
+                                        <PencilLine size={16} /> Editar horas
+                                    </button>
+                                )}
+                                {!selected.readOnly && onReturn && (
+                                    isReturning ? (
+                                        <button
+                                            onClick={handleReturn}
+                                            disabled={busy || returnReason.trim().length < MIN_REASON_LENGTH || filteredRecords.length === 0}
+                                            className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold text-sm flex items-center gap-2 disabled:opacity-50"
+                                        >
+                                            <Undo2 size={16} /> Confirmar devolução
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={() => setIsReturning(true)}
+                                            disabled={busy}
+                                            className="px-4 py-2 bg-white border border-slate-200 text-rose-600 hover:bg-rose-50 rounded-lg font-bold text-sm flex items-center gap-2 disabled:opacity-50"
+                                        >
+                                            <Undo2 size={16} /> Devolver ao engenheiro
+                                        </button>
+                                    )
+                                )}
+                                {!selected.readOnly && (
+                                    <button
+                                        onClick={handlePrimary}
+                                        disabled={busy || filteredRecords.length === 0}
+                                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-sm flex items-center gap-2 disabled:opacity-50"
+                                    >
+                                        {busy
+                                            ? <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                                            : primaryActionIcon === 'send' ? <Send size={16} /> : <CheckCircle2 size={16} />}
+                                        {primaryActionLabel}
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -426,4 +437,3 @@ export const ApprovalPanel: React.FC<ApprovalPanelProps> = ({ records, onApprove
         </>
     );
 };
-
