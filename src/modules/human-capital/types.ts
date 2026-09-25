@@ -13,10 +13,11 @@ export interface OvertimeRecord {
     VALOR: number;
 }
 
+/**
+ * Período da consulta de horas extras no TOTVS (MM/DD/AAAA).
+ * Endereço e credenciais ficam somente no servidor (Cloud Function hcFetchOvertime).
+ */
 export interface ApiConfig {
-    url: string;
-    username: string;
-    password?: string;
     startDate: string;
     endDate: string;
 }

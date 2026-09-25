@@ -169,16 +169,6 @@ export const parseTotvsResponse = (data: TotvsRawRecord[]): OvertimeRecord[] => 
     return records;
 };
 
-const buildFetchUrl = (config: ApiConfig): string => {
-    let fetchUrl = config.url;
-    if (!fetchUrl.includes('parameters=') && config.startDate && config.endDate) {
-        const joinChar = fetchUrl.includes('?') ? '&' : '?';
-        const params = `PLN_B1_D=${config.startDate};PLN_B2_D=${config.endDate}`;
-        fetchUrl = `${fetchUrl}${joinChar}parameters=${params}`;
-    }
-    return fetchUrl;
-};
-
 const getHttpError = (status: number): { code: TotvsErrorCode; userMessage: string } => {
     if (status === 401) {
         return {
@@ -200,40 +190,90 @@ const getHttpError = (status: number): { code: TotvsErrorCode; userMessage: stri
     };
 };
 
-export const fetchOvertimeDataWithMeta = async (config: ApiConfig): Promise<TotvsQueryResult> => {
-    try {
-        const authString = globalThis.btoa(`${config.username}:${config.password || ''}`);
-        const response = await fetch(buildFetchUrl(config), {
-            method: 'GET',
-            headers: {
-                Authorization: `Basic ${authString}`,
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-            },
-        });
+/**
+ * Transporte da consulta: recebe o período e devolve a resposta bruta do TOTVS.
+ * Em produção é a Cloud Function hcFetchOvertime; nos testes, um mock.
+ */
+export type TotvsTransport = (period: ApiConfig) => Promise<unknown>;
 
-        if (!response.ok) {
-            const httpError = getHttpError(response.status);
-            throw buildError(
-                config,
-                httpError.code,
-                `API TOTVS retornou status ${response.status}.`,
-                httpError.userMessage,
-                { httpStatus: response.status }
-            );
+interface TotvsCallableErrorLike {
+    code?: string;
+    message?: string;
+    details?: { totvsCode?: TotvsErrorCode; httpStatus?: number };
+}
+
+const TOTVS_ERROR_CODES: TotvsErrorCode[] = [
+    'HTTP_UNAUTHORIZED',
+    'HTTP_FORBIDDEN',
+    'HTTP_ERROR',
+    'UNEXPECTED_FORMAT',
+    'NETWORK_ERROR',
+];
+
+/** Chama a função do servidor. A senha do TOTVS nunca passa pelo navegador. */
+const callTotvsFunction: TotvsTransport = async (period) => {
+    const [{ getFunctions, httpsCallable }, { app }] = await Promise.all([
+        import('firebase/functions'),
+        import('@/services/firebaseConfig'),
+    ]);
+    const callable = httpsCallable<ApiConfig, { items: unknown }>(
+        getFunctions(app, 'us-central1'),
+        'hcFetchOvertime',
+        { timeout: 130_000 }
+    );
+    const result = await callable({ startDate: period.startDate, endDate: period.endDate });
+    return result.data?.items;
+};
+
+/** Converte o erro da função (ou do transporte) no erro padronizado da integração. */
+const toIntegrationError = (config: ApiConfig, error: unknown): TotvsIntegrationError => {
+    const err = (error || {}) as TotvsCallableErrorLike;
+    const totvsCode = err.details?.totvsCode;
+    const httpStatus = err.details?.httpStatus;
+
+    if (totvsCode && TOTVS_ERROR_CODES.includes(totvsCode)) {
+        if (totvsCode === 'HTTP_UNAUTHORIZED' || totvsCode === 'HTTP_FORBIDDEN' || totvsCode === 'HTTP_ERROR') {
+            const httpError = getHttpError(httpStatus ?? 0);
+            return buildError(config, totvsCode, err.message || httpError.userMessage, httpError.userMessage, { httpStatus, cause: error });
         }
+        if (totvsCode === 'UNEXPECTED_FORMAT') {
+            return buildError(config, totvsCode, err.message || 'Formato inesperado.', 'Formato inesperado retornado pela TOTVS.', { cause: error });
+        }
+    }
 
+    if (err.code === 'functions/permission-denied' || err.code === 'functions/unauthenticated') {
+        return buildError(
+            config,
+            'HTTP_FORBIDDEN',
+            err.message || 'Acesso negado pela função do servidor.',
+            'Seu perfil não tem acesso aos dados da TOTVS.',
+            { cause: error }
+        );
+    }
+
+    if (err.code === 'functions/invalid-argument') {
+        return buildError(config, 'HTTP_ERROR', err.message || 'Período inválido.', err.message || 'Período inválido para consulta da TOTVS.', { cause: error });
+    }
+
+    return buildError(
+        config,
+        'NETWORK_ERROR',
+        err.message || 'Falha de conexao ao consultar a API TOTVS.',
+        'Falha de conexao com a API TOTVS. Verifique a integracao ou tente novamente.',
+        { cause: error }
+    );
+};
+
+export const fetchOvertimeDataWithMeta = async (
+    config: ApiConfig,
+    transport: TotvsTransport = callTotvsFunction
+): Promise<TotvsQueryResult> => {
+    try {
         let payload: unknown;
         try {
-            payload = await response.json();
-        } catch (cause) {
-            throw buildError(
-                config,
-                'UNEXPECTED_FORMAT',
-                'Resposta da API TOTVS nao pode ser interpretada como JSON.',
-                'Formato inesperado retornado pela TOTVS.',
-                { cause }
-            );
+            payload = await transport(config);
+        } catch (error) {
+            throw toIntegrationError(config, error);
         }
 
         const rawItems = extractRawItems(payload);
@@ -254,24 +294,16 @@ export const fetchOvertimeDataWithMeta = async (config: ApiConfig): Promise<Totv
             meta: createMeta(config, status, rawItems.length, parsed.length),
         };
     } catch (error) {
-        if (error instanceof TotvsIntegrationError) {
-            logTotvsError(error);
-            throw error;
-        }
-
-        const networkError = buildError(
-            config,
-            'NETWORK_ERROR',
-            'Falha de conexao ao consultar a API TOTVS.',
-            'Falha de conexao com a API TOTVS. Verifique a integracao ou tente novamente.',
-            { cause: error }
-        );
-        logTotvsError(networkError);
-        throw networkError;
+        const integrationError = error instanceof TotvsIntegrationError ? error : toIntegrationError(config, error);
+        logTotvsError(integrationError);
+        throw integrationError;
     }
 };
 
-export const fetchOvertimeData = async (config: ApiConfig): Promise<OvertimeRecord[]> => {
-    const result = await fetchOvertimeDataWithMeta(config);
+export const fetchOvertimeData = async (
+    config: ApiConfig,
+    transport: TotvsTransport = callTotvsFunction
+): Promise<OvertimeRecord[]> => {
+    const result = await fetchOvertimeDataWithMeta(config, transport);
     return result.data;
 };
