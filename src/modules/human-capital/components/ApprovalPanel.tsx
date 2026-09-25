@@ -5,7 +5,12 @@ import { getCCName, getCCRegional } from '../data/ccMaster';
 import { formatDecimalHours } from '../utils/formatters';
 import {
     PlanningQueueGroup,
+    SalaryByCompetency,
     estimateOvertimeCost,
+    estimateQueueCost,
+    formatCompetencyLabel,
+    getCompetencyTiming,
+    getPlanningCompetency,
     getPlanningHours,
     isDateInRange
 } from '../utils/planningWorkflow';
@@ -38,7 +43,8 @@ interface PlanningQueuePanelProps {
     /** Quando presente, habilita "Editar horas" (abre a grade da obra). */
     onEdit?: (costCenter: string, firstDate: string) => void;
     roleByChapa: Record<string, string>;
-    salaryByChapa: Record<string, number>;
+    /** Salários por competência da folha: cada cartão usa o salário da própria competência. */
+    salariesByCompetency: SalaryByCompetency;
     loading: boolean;
     busy: boolean;
     partial: boolean;
@@ -84,7 +90,7 @@ export const PlanningQueuePanel: React.FC<PlanningQueuePanelProps> = ({
     onReturn,
     onEdit,
     roleByChapa,
-    salaryByChapa,
+    salariesByCompetency,
     loading,
     busy,
     partial,
@@ -100,8 +106,10 @@ export const PlanningQueuePanel: React.FC<PlanningQueuePanelProps> = ({
 
     const today = todayKey();
 
-    const groupCost = (records: PlanningRecord[]) =>
-        records.reduce((sum, r) => sum + estimateOvertimeCost(getPlanningHours(r.plannedHours), salaryByChapa[r.chapa], r.date), 0);
+    const groupCost = (records: PlanningRecord[]) => estimateQueueCost(records, salariesByCompetency);
+
+    const salaryOf = (record: PlanningRecord): number | undefined =>
+        salariesByCompetency[getPlanningCompetency(record.date)]?.[record.chapa];
 
     const openGroup = (group: PlanningQueueGroup, readOnly: boolean, tone: QueueTone, label: string) => {
         setSelected({ group, readOnly, tone, label });
@@ -117,7 +125,7 @@ export const PlanningQueuePanel: React.FC<PlanningQueuePanelProps> = ({
         const pool = selected.readOnly
             ? readOnlySections.flatMap(section => section.groups)
             : actionable;
-        const fresh = pool.find(g => g.costCenter === selected.group.costCenter);
+        const fresh = pool.find(g => g.key === selected.group.key);
         if (!fresh) {
             setSelected(null);
         } else if (fresh !== selected.group) {
@@ -141,7 +149,8 @@ export const PlanningQueuePanel: React.FC<PlanningQueuePanelProps> = ({
     }, [selected, rangeStart, rangeEnd]);
 
     const filteredHours = filteredRecords.reduce((sum, r) => sum + getPlanningHours(r.plannedHours), 0);
-    const filteredCost = groupCost(filteredRecords);
+    const filteredCostInfo = groupCost(filteredRecords);
+    const filteredCost = filteredCostInfo.cost;
     const filteredEmployees = new Set(filteredRecords.map(r => r.chapa)).size;
 
     const handlePrimary = async () => {
@@ -163,9 +172,12 @@ export const PlanningQueuePanel: React.FC<PlanningQueuePanelProps> = ({
 
     const renderGroupCard = (group: PlanningQueueGroup, readOnly: boolean, tone: QueueTone, label: string, showReason?: boolean) => {
         const classes = toneClasses[tone];
-        const started = group.firstDate <= today;
+        const timing = getCompetencyTiming(group.competency, today);
+        const costInfo = groupCost(group.records);
+        const missingCount = costInfo.missingSalaryChapas.length;
+        const hasNotes = timing !== 'future' || missingCount > 0 || (showReason && group.lastRejectionReason);
         return (
-            <div key={`${label}_${group.costCenter}`} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            <div key={`${label}_${group.key}`} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
                 <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
                         <div className="mt-1 p-2 bg-indigo-100 text-indigo-700 rounded-lg shrink-0">
@@ -176,29 +188,48 @@ export const PlanningQueuePanel: React.FC<PlanningQueuePanelProps> = ({
                             <p className="text-xs text-slate-500 mt-0.5">{getCCRegional(group.costCenter)}</p>
                         </div>
                     </div>
-                    <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase shrink-0 ${classes.badge}`}>{label}</span>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                        <span className="px-2 py-1 rounded-md text-[11px] font-black bg-slate-800 text-white">
+                            Folha {formatCompetencyLabel(group.competency)}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${classes.badge}`}>{label}</span>
+                    </div>
                 </div>
 
                 <div className="p-4 grid grid-cols-3 gap-3">
                     <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Período</span>
-                        <span className="text-xs font-bold text-slate-700">{formatDateBR(group.firstDate)} a {formatDateBR(group.lastDate)}</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Competência</span>
+                        <span className="text-xs font-bold text-slate-700">{formatDateBR(group.competencyStart)} a {formatDateBR(group.competencyEnd)}</span>
+                        <span className="text-[10px] text-slate-400">Lançamentos: {formatDateBR(group.firstDate)} a {formatDateBR(group.lastDate)}</span>
                     </div>
                     <div className="flex flex-col">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Horas / Pessoas</span>
                         <span className="text-sm font-black font-mono text-slate-700">{formatDecimalHours(group.totalHours)} · {group.employeeCount}</span>
                     </div>
                     <div className="flex flex-col text-right">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Custo estimado</span>
-                        <span className="text-sm font-black font-mono text-emerald-700">{formatCurrency(groupCost(group.records))}</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                            {missingCount > 0 ? 'Custo parcial' : 'Custo estimado'}
+                        </span>
+                        <span className={`text-sm font-black font-mono ${missingCount > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>{formatCurrency(costInfo.cost)}</span>
                     </div>
                 </div>
 
-                {(started || (showReason && group.lastRejectionReason)) && (
+                {hasNotes && (
                     <div className="px-4 pb-3 space-y-2">
-                        {started && (
+                        {timing === 'closed' && (
                             <p className="flex items-center gap-1.5 text-[11px] font-bold text-rose-600">
-                                <AlertTriangle size={12} /> O período já começou em {formatDateBR(group.firstDate)}.
+                                <AlertTriangle size={12} /> Competência encerrada em {formatDateBR(group.competencyEnd)}: horas não aprovadas antes da folha.
+                            </p>
+                        )}
+                        {timing === 'open' && (
+                            <p className="flex items-center gap-1.5 text-[11px] font-bold text-amber-600">
+                                <AlertTriangle size={12} /> Competência em andamento: termina em {formatDateBR(group.competencyEnd)}.
+                            </p>
+                        )}
+                        {missingCount > 0 && (
+                            <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-100 rounded-md px-2 py-1.5">
+                                <span className="font-bold">{missingCount} pessoa(s) sem salário na folha de {formatCompetencyLabel(group.competency)}</span>
+                                {' '}({formatDecimalHours(costInfo.missingSalaryHours)} fora do custo). Verifique o headcount dessa competência.
                             </p>
                         )}
                         {showReason && group.lastRejectionReason && (
@@ -284,7 +315,9 @@ export const PlanningQueuePanel: React.FC<PlanningQueuePanelProps> = ({
                         <div className="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white shrink-0">
                             <div>
                                 <h3 className="text-lg font-bold">{selected.group.costCenter} - {getCCName(selected.group.costCenter)}</h3>
-                                <p className="text-indigo-200 text-xs mt-0.5">{getCCRegional(selected.group.costCenter)} | {selected.label}</p>
+                                <p className="text-indigo-200 text-xs mt-0.5">
+                                    {getCCRegional(selected.group.costCenter)} | Folha {formatCompetencyLabel(selected.group.competency)} ({formatDateBR(selected.group.competencyStart)} a {formatDateBR(selected.group.competencyEnd)}) | {selected.label}
+                                </p>
                             </div>
                             <button onClick={() => setSelected(null)} className="p-2 hover:bg-white/20 rounded-full transition-colors" title="Fechar">
                                 <X size={20} />
@@ -326,8 +359,12 @@ export const PlanningQueuePanel: React.FC<PlanningQueuePanelProps> = ({
                                     <span className="text-lg font-black font-mono text-slate-700">{formatDecimalHours(filteredHours)}</span>
                                 </div>
                                 <div className="flex flex-col text-right">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Custo estimado</span>
-                                    <span className="text-lg font-black font-mono text-emerald-700">{formatCurrency(filteredCost)}</span>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                                        {filteredCostInfo.missingSalaryChapas.length > 0
+                                            ? `Custo parcial (${filteredCostInfo.missingSalaryChapas.length} sem salário)`
+                                            : 'Custo estimado'}
+                                    </span>
+                                    <span className={`text-lg font-black font-mono ${filteredCostInfo.missingSalaryChapas.length > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>{formatCurrency(filteredCost)}</span>
                                 </div>
                             </div>
                         </div>
@@ -359,7 +396,9 @@ export const PlanningQueuePanel: React.FC<PlanningQueuePanelProps> = ({
                                                     <td className="px-4 py-2.5 text-slate-500">{roleByChapa[r.chapa] || '-'}</td>
                                                     <td className="px-4 py-2.5 text-right font-mono font-black text-slate-700">{formatDecimalHours(hours)}</td>
                                                     <td className="px-4 py-2.5 text-right font-mono text-emerald-700">
-                                                        {salaryByChapa[r.chapa] ? formatCurrency(estimateOvertimeCost(hours, salaryByChapa[r.chapa], r.date)) : 'sem salário'}
+                                                        {salaryOf(r)
+                                                            ? formatCurrency(estimateOvertimeCost(hours, salaryOf(r), r.date))
+                                                            : <span className="text-amber-700 font-bold">sem salário na folha</span>}
                                                     </td>
                                                 </tr>
                                             );
