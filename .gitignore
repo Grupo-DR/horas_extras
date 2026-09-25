@@ -29,3 +29,5 @@ json_firebase
 
 # Gerado pelo build das Functions (functions/scripts/sync-shared.js)
 functions/src/shared/
+
+audits/
