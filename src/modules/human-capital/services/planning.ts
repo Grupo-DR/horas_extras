@@ -8,10 +8,6 @@ import {
     getSalaryCompetenciesToReplace
 } from '../utils/headcountSalary';
 
-// Cache in-memory to avoid excessive reads during session if needed, 
-// though we primarily trust Firestore or fallback to localStorage.
-let planningCache: PlanningRecord[] = [];
-
 // Helper to check if online (rudimentary)
 const isOnline = () => navigator.onLine;
 
@@ -85,6 +81,7 @@ export const savePlanning = async (plans: PlanningRecord[], user: UserProfile): 
     }
 
     updateLocalPlanningCache(safeRecords);
+    invalidateApprovedPlanning();
 };
 
 /**
@@ -118,6 +115,7 @@ export const transitionPlanningStatus = async (
     }
 
     updateLocalPlanningCache(records.map(r => ({ ...r, ...patch })));
+    invalidateApprovedPlanning();
 };
 
 /**
@@ -149,40 +147,77 @@ export const getPlanningQueue = async (
     }
 };
 
-const updateLocalPlanningCache = (plans: PlanningRecord[]) => {
-    if (planningCache.length === 0) {
-        try {
-            const data = localStorage.getItem('hc_planning_records_v2');
-            if (data) planningCache = JSON.parse(data) || [];
-        } catch (e) {
-            console.error("Erro ao hidratar cache:", e);
-        }
-    }
-    // Merge into local cache
-    plans.forEach(plan => {
-        const index = planningCache.findIndex(
-            p => p.chapa === plan.chapa && p.date === plan.date && p.type === plan.type && p.costCenter === plan.costCenter
-        );
-        if (index >= 0) {
-            planningCache[index] = plan;
-        } else {
-            planningCache.push(plan);
-        }
-    });
-    // Persist to localStorage for offline survival
+// ─── Cache local do planejamento ────────────────────────────────────────────
+// Antes: lista com busca linear por registro (custo quadrático, ~1,5 s de tela
+// travada por mês consultado) e gravação de TODOS os documentos no localStorage
+// a cada consulta, estourando a cota do navegador.
+// Agora: mapa por chave, só registros úteis (com horas, enviados ou aprovados)
+// e gravação no localStorage agrupada.
+
+const PLANNING_CACHE_KEY = 'hc_planning_records_v2';
+const PLANNING_CACHE_MAX = 8000;
+const PLANNING_PERSIST_DELAY_MS = 1500;
+
+const planningCacheKey = (p: Pick<PlanningRecord, 'chapa' | 'costCenter' | 'date' | 'type'>): string =>
+    `${p.chapa}|${p.costCenter}|${p.date}|${p.type}`;
+
+/** Rascunhos com zero horas são resíduos de gravações antigas: não vale guardar. */
+const isWorthCaching = (p: PlanningRecord): boolean =>
+    (Number(p.plannedHours) || 0) > 0 || p.status === 'approved' || p.status === 'pending';
+
+let planningCacheMap: Map<string, PlanningRecord> | null = null;
+let planningPersistTimer: ReturnType<typeof setTimeout> | null = null;
+
+const hydratePlanningCache = (): Map<string, PlanningRecord> => {
+    if (planningCacheMap) return planningCacheMap;
+    planningCacheMap = new Map();
     try {
-        localStorage.setItem('hc_planning_records_v2', JSON.stringify(planningCache));
+        const data = localStorage.getItem(PLANNING_CACHE_KEY);
+        const rows = data ? (JSON.parse(data) || []) as PlanningRecord[] : [];
+        rows.forEach(p => {
+            if (p && p.date && isWorthCaching(p)) planningCacheMap!.set(planningCacheKey(p), p);
+        });
     } catch (e) {
-        if (e && typeof e === 'object' && ('name' in e && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22))) {
-            console.warn("Storage Quota Exceeded. Pruning planning cache...");
-            const pruned = [...planningCache].sort((a,b) => b.date.localeCompare(a.date)).slice(0, 8000);
-            try {
-                localStorage.setItem('hc_planning_records_v2', JSON.stringify(pruned));
-                planningCache = pruned;
-            } catch (r) {}
+        console.error("Erro ao hidratar cache de planejamento:", e);
+    }
+    return planningCacheMap;
+};
+
+const persistPlanningCache = () => {
+    const rows = Array.from(hydratePlanningCache().values());
+    try {
+        localStorage.setItem(PLANNING_CACHE_KEY, JSON.stringify(rows));
+    } catch {
+        // Cota do navegador: mantém só os mais recentes.
+        try {
+            const pruned = [...rows].sort((a, b) => b.date.localeCompare(a.date)).slice(0, PLANNING_CACHE_MAX);
+            localStorage.setItem(PLANNING_CACHE_KEY, JSON.stringify(pruned));
+        } catch {
+            // Sem espaço: o cache em memória continua valendo nesta sessão.
         }
     }
 };
+
+const schedulePlanningCachePersist = () => {
+    if (planningPersistTimer) return;
+    planningPersistTimer = setTimeout(() => {
+        planningPersistTimer = null;
+        persistPlanningCache();
+    }, PLANNING_PERSIST_DELAY_MS);
+};
+
+const updateLocalPlanningCache = (plans: PlanningRecord[]) => {
+    const map = hydratePlanningCache();
+    plans.forEach(plan => {
+        if (!plan || !plan.date) return;
+        const key = planningCacheKey(plan);
+        if (isWorthCaching(plan)) map.set(key, plan);
+        else map.delete(key);
+    });
+    schedulePlanningCachePersist();
+};
+
+const readCachedPlanning = (): PlanningRecord[] => Array.from(hydratePlanningCache().values());
 
 export const getPlanning = async (
     costCenter: string | undefined,
@@ -203,19 +238,14 @@ export const getPlanning = async (
             updateLocalPlanningCache(records);
         } else {
             // Fallback to local
-            const data = localStorage.getItem('hc_planning_records_v2');
-            if (data) {
-                planningCache = JSON.parse(data);
-                // Filter locally
-                records = planningCache.filter(p => {
-                    const pMonth = p.date.substring(0, 7);
-                    return (
-                        pMonth === monthKey &&
-                        p.type === type &&
-                        isCostCenterInHumanCapitalScope(user?.scope, p.costCenter || '')
-                    );
-                });
-            }
+            records = readCachedPlanning().filter(p => {
+                const pMonth = p.date.substring(0, 7);
+                return (
+                    pMonth === monthKey &&
+                    p.type === type &&
+                    isCostCenterInHumanCapitalScope(user?.scope, p.costCenter || '')
+                );
+            });
         }
 
         // Apply Cost Center filter if specific CC requested (on top of scope)
@@ -227,21 +257,15 @@ export const getPlanning = async (
 
     } catch (error) {
         console.error("Get Planning Failed (using fallback):", error);
-        // Fallback
-        const data = localStorage.getItem('hc_planning_records_v2');
-        if (data) {
-            const all = JSON.parse(data) as PlanningRecord[];
-            return all.filter(p => {
-                const pMonth = p.date.substring(0, 7);
-                return (
-                    pMonth === monthKey &&
-                    p.type === type &&
-                    isCostCenterInHumanCapitalScope(user?.scope, p.costCenter || '') &&
-                    (!costCenter || p.costCenter === costCenter)
-                );
-            });
-        }
-        return [];
+        return readCachedPlanning().filter(p => {
+            const pMonth = p.date.substring(0, 7);
+            return (
+                pMonth === monthKey &&
+                p.type === type &&
+                isCostCenterInHumanCapitalScope(user?.scope, p.costCenter || '') &&
+                (!costCenter || p.costCenter === costCenter)
+            );
+        });
     }
 };
 
@@ -424,23 +448,63 @@ export const migrateToFirestore = async (user: UserProfile) => {
 };
 
 // --- LEGACY SUPPORT ---
-// Add this to satisfy Dashboard.tsx imports until refactor
-// --- LEGACY SUPPORT ---
-// Fix: removed async to prevent 'forEach is not a function' crash in legacy Dashboard
-// --- LEGACY SUPPORT ---
-// Fix: removed async to prevent 'forEach is not a function' crash in legacy Dashboard
-export const getAllPlanningRecords = (): PlanningRecord[] => {
-    try {
-        const data = localStorage.getItem('hc_planning_records_v2');
-        if (data) {
-            // FIX: Ensure we never return null if parse result is null (which happens for string "null")
-            return (JSON.parse(data) || []) as PlanningRecord[];
-        }
-    } catch (error) {
-        console.error("Error reading local planning records:", error);
+// Leitura síncrona do cache (usada para a primeira renderização da Análise).
+export const getAllPlanningRecords = (): PlanningRecord[] => readCachedPlanning();
+
+// --- PLANEJAMENTO APROVADO (Visão Geral e Análise) ---
+
+const APPROVED_PLANNING_TTL_MS = 60_000;
+const approvedPlanningInFlight = new Map<string, { at: number; promise: Promise<PlanningRecord[]> }>();
+
+const loadApprovedPlanningMonth = async (monthKey: string, user?: UserProfile): Promise<PlanningRecord[]> => {
+    if (!isOnline()) {
+        return readCachedPlanning().filter(p =>
+            p.date.substring(0, 7) === monthKey &&
+            p.type === 'DAILY' &&
+            p.status === 'approved' &&
+            isCostCenterInHumanCapitalScope(user?.scope, p.costCenter || '')
+        );
     }
-    return [];
+    try {
+        // Só aprovados: ~10x menos documentos que o mês inteiro.
+        const rows = await FirestoreService.getApprovedPlanningRecords(monthKey, user?.scope);
+        updateLocalPlanningCache(rows);
+        return rows;
+    } catch (error) {
+        // Ex.: índice (status, date) ainda não publicado. Mantém o comportamento antigo.
+        console.warn(`[getApprovedPlanning] consulta por status falhou para ${monthKey}; usando o mês inteiro.`, error);
+        const rows = await getPlanning(undefined, monthKey, 'DAILY', user);
+        return rows.filter(p => p.status === 'approved');
+    }
 };
+
+/**
+ * Planejamento aprovado com horas nos meses de calendário informados.
+ * Busca os meses em paralelo e compartilha o resultado entre as telas por
+ * alguns segundos, para a Visão Geral e a Análise não repetirem a mesma consulta.
+ */
+export const getApprovedPlanning = (monthKeys: string[], user?: UserProfile): Promise<PlanningRecord[]> => {
+    const keys = normalizeMonthKeys(monthKeys).sort();
+    const cacheKey = `${user?.id || user?.email || 'anon'}|${JSON.stringify(user?.scope || null)}|${keys.join(',')}`;
+    const cached = approvedPlanningInFlight.get(cacheKey);
+    if (cached && Date.now() - cached.at < APPROVED_PLANNING_TTL_MS) return cached.promise;
+
+    const promise = Promise.all(keys.map(monthKey => loadApprovedPlanningMonth(monthKey, user)))
+        .then(chunks => {
+            const dedup = new Map<string, PlanningRecord>();
+            chunks.flat().forEach(p => {
+                if ((Number(p.plannedHours) || 0) > 0) dedup.set(p.id || planningCacheKey(p), p);
+            });
+            return Array.from(dedup.values());
+        });
+
+    approvedPlanningInFlight.set(cacheKey, { at: Date.now(), promise });
+    promise.catch(() => approvedPlanningInFlight.delete(cacheKey));
+    return promise;
+};
+
+/** Invalida o compartilhamento após aprovar/devolver, para as telas recarregarem. */
+const invalidateApprovedPlanning = () => approvedPlanningInFlight.clear();
 
 // --- LEGACY SYNC GETTERS ---
 export const getBudgetsSync = (): BudgetRecord[] => {
