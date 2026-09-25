@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, ManualEmployee, GlobalEmployee, HeadcountRecord } from '../types';
-import { savePlanning, getPlanning, getSalaries, getSalariesSync, saveBudgets, getBudgetsSync, getAllBudgetsAsync, deleteBudgets, deleteAllBudgets, saveGlobalEmployees, getGlobalEmployeesAsync, getGlobalEmployeesSync, getAllPlanningRecordsFromFirestore, getPlanningQueue, transitionPlanningStatus } from '../services/planning';
+import { savePlanning, getPlanning, getSalaries, getSalariesSync, saveBudgets, getBudgetsSync, getAllBudgetsAsync, deleteBudgets, deleteAllBudgets, saveGlobalEmployees, getGlobalEmployeesAsync, getGlobalEmployeesSync, getAllPlanningRecordsFromFirestore, getPlanningQueue, transitionPlanningStatus, getSalariesForMonthKeys } from '../services/planning';
 import { canManageBudgets } from '../../iam/types';
 import { PlanningQueuePanel } from './ApprovalPanel';
 import {
     PLANNING_STATUS_LABELS,
+    SalaryByCompetency,
     buildPlanningQueue,
+    buildSalaryByCompetency,
+    getPlanningCompetency,
     getPlanningWorkflowCapabilities,
     isPlanningStatusEditable,
     normalizePlanningStatus,
@@ -1463,6 +1466,35 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
         rejected: buildPlanningQueue(queueRecords.rejected)
     }), [queueRecords]);
 
+    // Salários de TODAS as competências presentes nas filas: o cartão de julho
+    // usa o salário da folha de julho, mesmo com a tela posicionada em setembro.
+    const [queueSalaries, setQueueSalaries] = useState<SalaryByCompetency>({});
+    const queueCompetencies = useMemo(() => {
+        const keys = new Set<string>();
+        [...queueRecords.draft, ...queueRecords.pending, ...queueRecords.rejected].forEach(r => {
+            const competency = getPlanningCompetency(r.date);
+            if (competency) keys.add(competency);
+        });
+        return Array.from(keys).sort();
+    }, [queueRecords]);
+    const queueCompetenciesKey = queueCompetencies.join(',');
+
+    useEffect(() => {
+        if (queueCompetencies.length === 0) {
+            setQueueSalaries({});
+            return;
+        }
+        let cancelled = false;
+        getSalariesForMonthKeys(queueCompetencies, user)
+            .then(rows => {
+                if (!cancelled) setQueueSalaries(buildSalaryByCompetency(rows));
+            })
+            .catch(error => console.error('Erro ao carregar salários das competências da fila:', error));
+        return () => { cancelled = true; };
+        // queueCompetenciesKey evita recarregar quando a lista é a mesma.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [queueCompetenciesKey, user]);
+
     const refreshAfterTransition = () => {
         setQueueToken(token => token + 1);
         setPlansReloadToken(token => token + 1);
@@ -2026,7 +2058,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                     onPrimary={handleApproveRecords}
                     onReturn={handleReturnRecords}
                     roleByChapa={employeeRoleByChapa}
-                    salaryByChapa={salaries}
+                    salariesByCompetency={queueSalaries}
                     loading={queueLoading}
                     busy={saving}
                     partial={queuePartial}
@@ -2058,7 +2090,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                     onPrimary={handleSubmitRecordsToDirector}
                     onEdit={handleEditFromQueue}
                     roleByChapa={employeeRoleByChapa}
-                    salaryByChapa={salaries}
+                    salariesByCompetency={queueSalaries}
                     loading={queueLoading}
                     busy={saving}
                     partial={queuePartial}

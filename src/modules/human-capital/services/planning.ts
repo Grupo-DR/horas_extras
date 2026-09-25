@@ -1,8 +1,12 @@
 
 import { PlanningRecord, BudgetRecord, SalaryAllocation, UserProfile, HeadcountRecord, HeadcountUploadMeta } from '../types';
 import * as FirestoreService from './firestoreCH';
-import { getPayrollCompetencyMonthKey, getPayrollCompetencyMonthKeysForRange } from '../utils/overtime';
 import { isCostCenterInHumanCapitalScope } from '../utils/scopeFilters';
+import {
+    buildSalaryAllocationsFromHeadcount,
+    getSalaryAllocationId,
+    getSalaryCompetenciesToReplace
+} from '../utils/headcountSalary';
 
 // Cache in-memory to avoid excessive reads during session if needed, 
 // though we primarily trust Firestore or fallback to localStorage.
@@ -18,9 +22,6 @@ const normalizeMonthKeys = (monthKeys?: string | string[]): string[] => {
     const keys = Array.isArray(monthKeys) ? monthKeys : [monthKeys];
     return Array.from(new Set(keys.filter(Boolean)));
 };
-
-const getSalaryAllocationId = (salary: SalaryAllocation): string =>
-    `${salary.monthKey}__${salary.chapa}__${salary.costCenter}`;
 
 const readSalaryCache = (): SalaryAllocation[] => {
     try {
@@ -43,57 +44,6 @@ const writeSalaryCache = (salaries: SalaryAllocation[], replaceMonthKeys?: strin
     salaries.forEach(s => merged.set(getSalaryAllocationId(s), s));
 
     localStorage.setItem(SALARY_CACHE_KEY, JSON.stringify(Array.from(merged.values())));
-};
-
-const buildSalaryAllocationsFromHeadcount = (records: HeadcountRecord[]): SalaryAllocation[] => {
-    const allocations = new Map<string, SalaryAllocation>();
-
-    records.forEach(record => {
-        if (!record.salario || record.salario <= 0) return;
-
-        // Salário do headcount deve cair em uma única competência de folha.
-        // A referência mais estável para isso é a data final da vigência do lote.
-        const monthKey =
-            getPayrollCompetencyMonthKey(record.dataFim) ||
-            getPayrollCompetencyMonthKey(record.dataInicio) ||
-            record.dataFim.substring(0, 7) ||
-            record.dataInicio.substring(0, 7);
-
-        if (!monthKey) return;
-
-        const allocation: SalaryAllocation = {
-            monthKey,
-            chapa: record.chapa,
-            salary: record.salario!,
-            allocation: record.distribuicao || 1,
-            costCenter: record.centroCusto,
-            status: 'A'
-        };
-
-        allocations.set(getSalaryAllocationId(allocation), allocation);
-    });
-
-    return Array.from(allocations.values());
-};
-
-const getSalaryReplaceMonthKeysFromHeadcount = (records: HeadcountRecord[]): string[] => {
-    const keys = new Set<string>();
-
-    records.forEach(record => {
-        getPayrollCompetencyMonthKeysForRange(record.dataInicio, record.dataFim)
-            .forEach(monthKey => keys.add(monthKey));
-
-        [
-            getPayrollCompetencyMonthKey(record.dataInicio),
-            getPayrollCompetencyMonthKey(record.dataFim),
-            record.dataInicio?.substring(0, 7),
-            record.dataFim?.substring(0, 7)
-        ]
-            .filter(Boolean)
-            .forEach(monthKey => keys.add(monthKey as string));
-    });
-
-    return Array.from(keys);
 };
 
 // --- PLANNING ---
@@ -660,8 +610,10 @@ export const replaceHeadcount = async (
     localStorage.setItem(HC_CACHE_KEY, JSON.stringify(tagged));
 
     // Salários passam a ter fonte única: upload de headcount com coluna `salario`.
+    // Só as competências que o arquivo traz são substituídas; as anteriores
+    // (ex.: julho, quando o upload é de setembro) são preservadas.
     const salaryAllocations = buildSalaryAllocationsFromHeadcount(records);
-    const replaceMonthKeys = getSalaryReplaceMonthKeysFromHeadcount(records);
+    const replaceMonthKeys = getSalaryCompetenciesToReplace(salaryAllocations);
     if (replaceMonthKeys.length > 0) {
         await saveSalaries(salaryAllocations, user, { replaceMonthKeys });
     }

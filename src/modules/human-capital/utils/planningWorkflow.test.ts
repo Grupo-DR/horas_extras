@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { PlanningRecord } from '../types';
 import {
     buildPlanningQueue,
+    buildSalaryByCompetency,
     estimateOvertimeCost,
+    estimateQueueCost,
+    formatCompetencyLabel,
+    getCompetencyRange,
+    getCompetencyTiming,
+    getPlanningCompetency,
     getPlanningWorkflowCapabilities,
     isPlanningStatusEditable,
     normalizePlanningStatus,
@@ -82,20 +88,46 @@ describe('edição por status', () => {
     });
 });
 
-describe('fila por obra', () => {
-    it('agrupa por centro de custo, ignora zeros e ordena pelo lançamento mais antigo', () => {
+describe('fila por obra e competência da folha', () => {
+    it('agrupa por centro de custo na mesma competência e ignora zeros', () => {
         const groups = buildPlanningQueue([
             rec({ costCenter: 'B', date: '2026-09-10', plannedHours: 2 }),
             rec({ costCenter: 'A', date: '2026-09-15', plannedHours: 3, chapa: '1' }),
             rec({ costCenter: 'A', date: '2026-09-16', plannedHours: 1, chapa: '2' }),
-            rec({ costCenter: 'C', date: '2026-08-01', plannedHours: 0 })
+            rec({ costCenter: 'C', date: '2026-09-01', plannedHours: 0 })
         ]);
 
-        expect(groups.map(g => g.costCenter)).toEqual(['B', 'A']);
-        expect(groups[1].totalHours).toBe(4);
-        expect(groups[1].employeeCount).toBe(2);
-        expect(groups[1].firstDate).toBe('2026-09-15');
-        expect(groups[1].lastDate).toBe('2026-09-16');
+        expect(groups.map(g => g.key)).toEqual(['A|2026-09', 'B|2026-09']);
+        expect(groups[0].totalHours).toBe(4);
+        expect(groups[0].employeeCount).toBe(2);
+        expect(groups[0].firstDate).toBe('2026-09-15');
+        expect(groups[0].lastDate).toBe('2026-09-16');
+    });
+
+    it('nunca mistura competências: uma obra com lançamentos de junho a setembro vira um cartão por folha', () => {
+        const groups = buildPlanningQueue([
+            rec({ costCenter: '302801', date: '2026-06-22' }), // folha de julho (21/06 a 20/07)
+            rec({ costCenter: '302801', date: '2026-07-20' }), // ainda julho
+            rec({ costCenter: '302801', date: '2026-07-21' }), // folha de agosto
+            rec({ costCenter: '302801', date: '2026-09-18' })  // folha de setembro
+        ]);
+
+        expect(groups.map(g => g.competency)).toEqual(['2026-07', '2026-08', '2026-09']);
+        expect(groups[0].records).toHaveLength(2);
+        expect(groups[0].competencyStart).toBe('2026-06-21');
+        expect(groups[0].competencyEnd).toBe('2026-07-20');
+    });
+
+    it('trata a virada de ano na competência de janeiro', () => {
+        expect(getPlanningCompetency('2025-12-21')).toBe('2026-01');
+        expect(getCompetencyRange('2026-01')).toEqual({ start: '2025-12-21', end: '2026-01-20' });
+        expect(formatCompetencyLabel('2026-07')).toBe('Julho/2026');
+    });
+
+    it('classifica a competência como encerrada, em andamento ou futura', () => {
+        expect(getCompetencyTiming('2026-07', '2026-09-24')).toBe('closed');
+        expect(getCompetencyTiming('2026-10', '2026-09-24')).toBe('open');
+        expect(getCompetencyTiming('2026-11', '2026-09-24')).toBe('future');
     });
 
     it('mantém a mesma pessoa em obras diferentes separada (sem misturar CCs)', () => {
@@ -113,6 +145,35 @@ describe('fila por obra', () => {
             rec({ date: '2026-09-02', status: 'rejected', rejectionReason: 'recente', rejectedAt: '2026-09-02T10:00:00Z' })
         ]);
         expect(group.lastRejectionReason).toBe('recente');
+    });
+});
+
+describe('custo pelo salário da competência', () => {
+    const salaries = buildSalaryByCompetency([
+        { monthKey: '2026-07', chapa: '1', salary: 2200 },
+        { monthKey: '2026-09', chapa: '1', salary: 4400 },
+        { monthKey: '2026-09', chapa: '1', salary: 3000 } // segunda alocação: vale o maior
+    ]);
+
+    it('pendência de julho usa o salário de julho, mesmo existindo salário de setembro', () => {
+        // 2026-07-06 é segunda-feira: 1h × 2200/220 × 1,6 = 16
+        const { cost, missingSalaryChapas } = estimateQueueCost([rec({ chapa: '1', date: '2026-07-06', plannedHours: 1 })], salaries);
+        expect(cost).toBeCloseTo(16);
+        expect(missingSalaryChapas).toEqual([]);
+    });
+
+    it('usa o maior salário quando a pessoa tem mais de uma alocação na competência', () => {
+        expect(salaries['2026-09']['1']).toBe(4400);
+    });
+
+    it('quem não tem salário na competência fica fora do custo e é informado, não vira zero silencioso', () => {
+        const result = estimateQueueCost([
+            rec({ chapa: '1', date: '2026-07-06', plannedHours: 1 }),
+            rec({ chapa: '2', date: '2026-07-07', plannedHours: 3 })
+        ], salaries);
+        expect(result.cost).toBeCloseTo(16);
+        expect(result.missingSalaryChapas).toEqual(['2']);
+        expect(result.missingSalaryHours).toBe(3);
     });
 });
 
