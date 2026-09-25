@@ -117,6 +117,32 @@ service cloud.firestore {
       return !data.keys().hasAny(['status']) || data.status in ['draft', 'pending', 'approved', 'rejected'];
     }
 
+    // ── Fluxo do planejamento de horas extras ────────────────────────────────
+    // draft    = salvo pelo engenheiro, aguardando o gerente regional
+    // pending  = enviado pelo gerente, aguardando o diretor
+    // approved = aprovado pelo diretor
+    // rejected = devolvido pelo diretor ao engenheiro (com motivo)
+    function isCHManager() {
+      return hasHumanCapitalAccess() && hcRole() in ['CH_MANAGER', 'HC_MANAGER'];
+    }
+
+    function planningStatus(data) {
+      return data.keys().hasAny(['status']) ? data.status : 'draft';
+    }
+
+    function planningHoursUnchanged() {
+      return request.resource.data.plannedHours == resource.data.plannedHours;
+    }
+
+    // Quem pode levar um registro do status `fromStatus` para `toStatus`.
+    function canTransitionPlanning(fromStatus, toStatus) {
+      return canApproveCH() ||
+        // Gerente: edita o que ainda não foi enviado e envia ao diretor.
+        (isCHManager() && fromStatus in ['draft', 'rejected'] && toStatus in ['draft', 'pending']) ||
+        // Engenheiro (e demais planejadores): só salva o que ainda não foi enviado.
+        (fromStatus in ['draft', 'rejected'] && toStatus == 'draft');
+    }
+
     function validCHPlanning(data) {
       return data.keys().hasAll(['chapa', 'nome', 'costCenter', 'date', 'type', 'plannedHours']) &&
         data.chapa is string &&
@@ -337,11 +363,23 @@ service cloud.firestore {
 
     match /hc_planning_records/{recordId} {
       allow read: if isAuthenticated() && isCHAuditorReader() && isCHScopedData(resource.data);
-      allow create: if isAuthenticated() && isCHPlanner() && validCHPlanning(request.resource.data) && isCHScopedData(request.resource.data);
+      allow create: if isAuthenticated() && isCHPlanner() &&
+        validCHPlanning(request.resource.data) &&
+        isCHScopedData(request.resource.data) &&
+        canTransitionPlanning('draft', planningStatus(request.resource.data));
       allow update: if isAuthenticated() && isCHPlanner() &&
         validCHPlanning(request.resource.data) &&
         isCHScopedData(resource.data) &&
-        isCHScopedData(request.resource.data);
+        isCHScopedData(request.resource.data) &&
+        (
+          // Diretor/admin: qualquer alteração.
+          canApproveCH() ||
+          // Demais: transição permitida ao perfil; o envio ao diretor não altera horas.
+          (
+            canTransitionPlanning(planningStatus(resource.data), planningStatus(request.resource.data)) &&
+            (planningStatus(request.resource.data) != 'pending' || planningHoursUnchanged())
+          )
+        );
       allow delete: if isAuthenticated() && canManageCHReferenceData();
     }
 

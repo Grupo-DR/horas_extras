@@ -1,12 +1,23 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { OvertimeRecord, UserProfile, PlanningRecord, BudgetRecord, ManualEmployee, GlobalEmployee, HeadcountRecord } from '../types';
-import { savePlanning, getPlanning, getSalaries, getSalariesSync, saveBudgets, getBudgetsSync, getAllBudgetsAsync, deleteBudgets, deleteAllBudgets, saveGlobalEmployees, getGlobalEmployeesAsync, getGlobalEmployeesSync, getAllPlanningRecordsFromFirestore } from '../services/planning';
-import { canApprove, canManageBudgets } from '../../iam/types';
-import { ApprovalPanel } from './ApprovalPanel';
+import { savePlanning, getPlanning, getSalaries, getSalariesSync, saveBudgets, getBudgetsSync, getAllBudgetsAsync, deleteBudgets, deleteAllBudgets, saveGlobalEmployees, getGlobalEmployeesAsync, getGlobalEmployeesSync, getAllPlanningRecordsFromFirestore, getPlanningQueue, transitionPlanningStatus } from '../services/planning';
+import { canManageBudgets } from '../../iam/types';
+import { PlanningQueuePanel } from './ApprovalPanel';
+import {
+    PLANNING_STATUS_LABELS,
+    buildPlanningQueue,
+    getPlanningWorkflowCapabilities,
+    isPlanningStatusEditable,
+    normalizePlanningStatus,
+    planningDocId,
+    planningKey,
+    resolveStatusAfterEdit
+} from '../utils/planningWorkflow';
+import { getPayrollCompetencyMonthKey } from '../utils/overtime';
 import { getCCName, getCCRegional } from '../data/ccMaster';
 import { isRecordInHumanCapitalScope } from '../utils/scopeFilters';
 
-import { Users, Wallet, TrendingUp, Calculator, CheckCircle2, AlertTriangle, X, ChevronLeft, ChevronRight, Save, FileUp, FileDown, ArrowUpRight, ArrowDownRight, LayoutList, Trash2, Mail, Copy } from 'lucide-react';
+import { Users, Wallet, TrendingUp, Calculator, CheckCircle2, AlertTriangle, X, ChevronLeft, ChevronRight, Save, FileUp, FileDown, ArrowUpRight, ArrowDownRight, LayoutList, Trash2, Mail, Copy, Send, Undo2 } from 'lucide-react';
 import { formatDecimalHours, parseTimeToDecimal } from '../utils/formatters';
 import * as XLSX from 'xlsx';
 import { PlanningTable } from './PlanningTable';
@@ -554,8 +565,10 @@ const CostCenterPlanModal: React.FC<{
     planRangeEnd: string;
     onSave: (costCenter: string, localNums: Record<string, number>) => Promise<void>;
     planStatuses: Record<string, string>;
+    planReasons: Record<string, string>;
+    canEditOpen: boolean;
     canOverrideLock: boolean;
-}> = ({ isOpen, onClose, costCenter, memberChapas, memberNames, memberFuncoes, plans, periodStart, periodEnd, planRangeStart, planRangeEnd, onSave, planStatuses, canOverrideLock }) => {
+}> = ({ isOpen, onClose, costCenter, memberChapas, memberNames, memberFuncoes, plans, periodStart, periodEnd, planRangeStart, planRangeEnd, onSave, planStatuses, planReasons, canEditOpen, canOverrideLock }) => {
     const [saving, setSaving] = useState(false);
     const [localValues, setLocalValues] = useState<Record<string, string>>({});
     const [searchTerm, setSearchTerm] = useState('');
@@ -659,34 +672,35 @@ const CostCenterPlanModal: React.FC<{
 
     const handleSaveClick = async () => {
         setSaving(true);
-        const numericMap: Record<string, number> = {};
-        memberChapas.forEach(chapa => {
-            days.forEach(day => {
-                const dk = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
-                const fullKey = `${chapa}_${costCenter}_${dk}`;
-                const numericVal = parseTimeToDecimal(localValues[`${chapa}_${dk}`] || '0');
-                const existingHours = plans[fullKey] ?? 0;
-                const existingStatus = planStatuses[fullKey] || 'draft';
+        try {
+            const numericMap: Record<string, number> = {};
+            memberChapas.forEach(chapa => {
+                days.forEach(day => {
+                    const dk = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+                    const fullKey = `${chapa}_${costCenter}_${dk}`;
+                    const numericVal = parseTimeToDecimal(localValues[`${chapa}_${dk}`] || '0');
+                    const existingHours = plans[fullKey] ?? 0;
+                    const existingStatus = normalizePlanningStatus(planStatuses[fullKey]);
 
-                // FIX 4 — O modal só envia ao caller entradas com dados relevantes:
-                // • Tem horas novas (> 0): sempre inclui.
-                // • Tinha horas antes e agora está zerado E não é aprovado:
-                //   usuário limpou explicitamente → inclui para apagar no Firestore.
-                // • Aprovado com horas > 0 e valor do modal = 0: NÃO inclui
-                //   (o usuário pode ter deixado o campo em branco, mas o registro
-                //   aprovado é imutável — a guarda nas camadas 3C e 2 bloqueariam
-                //   de qualquer forma, mas evitar envio é mais eficiente).
-                const shouldInclude =
-                    numericVal > 0 ||
-                    (existingHours > 0 && existingStatus !== 'approved' && existingStatus !== 'pending');
+                    // Envia ao caller: horas novas (> 0) ou limpeza explícita de um dia
+                    // editável que tinha horas. Dias enviados/aprovados zerados na tela
+                    // não são incluídos: o registro é imutável para quem não sobrepõe o bloqueio.
+                    const shouldInclude =
+                        numericVal > 0 ||
+                        (existingHours > 0 && existingStatus !== 'approved' && existingStatus !== 'pending');
 
-                if (shouldInclude) {
-                    numericMap[fullKey] = numericVal;
-                }
+                    if (shouldInclude) {
+                        numericMap[fullKey] = numericVal;
+                    }
+                });
             });
-        });
-        await onSave(costCenter, numericMap);
-        setSaving(false);
+            await onSave(costCenter, numericMap);
+        } catch (error) {
+            // A mensagem já foi exibida pelo caller; mantém os valores digitados na tela.
+            console.error(error);
+        } finally {
+            setSaving(false);
+        }
     };
 
     if (!isOpen) return null;
@@ -843,10 +857,12 @@ const CostCenterPlanModal: React.FC<{
                                                 const isSun = day.getDay() === 0;
                                                 const isSat = day.getDay() === 6;
                                                 const hasValue = parseTimeToDecimal(strVal) > 0;
-                                                const recordStatus = planStatuses[`${chapa}_${costCenter}_${dk}`] || 'draft';
+                                                const recordStatus = normalizePlanningStatus(planStatuses[`${chapa}_${costCenter}_${dk}`]);
+                                                const rejectionReason = planReasons[`${chapa}_${costCenter}_${dk}`];
+                                                const isReturned = recordStatus === 'rejected';
                                                 const hasRange = !!planRangeStart && !!planRangeEnd;
                                                 const isOutsideRange = hasRange && (dk < planRangeStart || dk > planRangeEnd);
-                                                const isLocked = (!canOverrideLock && (recordStatus === 'approved' || recordStatus === 'pending')) || isOutsideRange;
+                                                const isLocked = !isPlanningStatusEditable(recordStatus, { canEditOpen, canOverrideLock, canSubmitToDirector: false, canApprove: false }) || isOutsideRange;
 
                                                 return (
                                                     <td key={dk} className={`px-0.5 py-1 text-center ${isSun ? 'bg-red-50' : isSat ? 'bg-orange-50' : ''} ${isOutsideRange ? 'opacity-40 bg-slate-100' : ''}`}>
@@ -857,11 +873,18 @@ const CostCenterPlanModal: React.FC<{
                                                             className={`w-10 text-center text-[11px] border rounded px-1 py-0.5 outline-none font-mono transition-colors
                                                                 ${hasValue ? 'border-blue-300 bg-blue-50 text-blue-800 font-bold' : 'border-gray-200 bg-white text-gray-300'}
                                                                 ${isLocked ? 'cursor-not-allowed opacity-60 bg-gray-100 ring-1 ring-gray-300' : 'focus:ring-1 focus:ring-blue-400'}
+                                                                ${isReturned && !isLocked ? 'ring-2 ring-rose-400 bg-rose-50' : ''}
                                                                 ${isOutsideRange ? 'opacity-40 bg-slate-100 border-slate-200 text-slate-400' : ''}
                                                             `}
                                                             placeholder="--"
                                                             disabled={isLocked}
-                                                            title={isOutsideRange ? 'Bloqueado: Fora do período selecionado' : (isLocked ? `Status: ${recordStatus}. Apenas aprovadores podem editar.` : undefined)}
+                                                            title={isOutsideRange
+                                                                ? 'Bloqueado: Fora do período selecionado'
+                                                                : isLocked
+                                                                    ? `${PLANNING_STATUS_LABELS[recordStatus]}. Apenas o diretor pode alterar.`
+                                                                    : isReturned
+                                                                        ? `Devolvido pelo diretor${rejectionReason ? `: ${rejectionReason}` : ''}. Ajuste e salve para reenviar ao gerente.`
+                                                                        : PLANNING_STATUS_LABELS[recordStatus]}
                                                         />
                                                     </td>
                                                 );
@@ -893,7 +916,7 @@ const CostCenterPlanModal: React.FC<{
                             className="px-5 py-2 bg-blue-600 text-white font-bold text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
                         >
                             {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Save size={15} />}
-                            Salvar Planejamento
+                            {canEditOpen && !canOverrideLock ? 'Salvar e enviar ao gerente' : 'Salvar Planejamento'}
                         </button>
                     </div>
                 </div>
@@ -907,7 +930,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
         const now = new Date();
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     });
-    const [activeSubTab, setActiveSubTab] = useState<'PLANNING' | 'APPROVAL'>('PLANNING');
+    const [activeSubTab, setActiveSubTab] = useState<'PLANNING' | 'EVALUATION' | 'APPROVAL'>('PLANNING');
 
     const [ccFilter, setCcFilter] = useState<string>('');
     const [regionalFilter, setRegionalFilter] = useState<string>('');
@@ -960,6 +983,17 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
     const [alert, setAlert] = useState<{ type: 'success' | 'error', message: string } | null>(null);
     const canManagePlanningBudgets = user.isSuperAdmin || canManageBudgets(user.role);
     const isAdministradorMaster = user.role === 'CH_ADMIN' || user.isSuperAdmin;
+    const workflowCaps = useMemo(
+        () => getPlanningWorkflowCapabilities(user.role, user.isSuperAdmin),
+        [user.role, user.isSuperAdmin]
+    );
+
+    // Estado original carregado do banco, por chave chapa_cc_data. Serve para
+    // gravar somente o que o usuário alterou (e não reenviar a grade inteira).
+    const loadedPlansRef = useRef<Record<string, number>>({});
+    const loadedIdsRef = useRef<Record<string, string>>({});
+    const [planReasons, setPlanReasons] = useState<Record<string, string>>({});
+    const [plansReloadToken, setPlansReloadToken] = useState(0);
 
     const handleExportPlanningJSON = async () => {
         setExporting(true);
@@ -1159,6 +1193,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
     }, [employees, manualEmployees, globalEmployees.length, user, isAuthorizedCostCenter]);
 
     useEffect(() => {
+        let cancelled = false;
         const loadPlans = async () => {
             let records: PlanningRecord[] = [];
             const startMonthStr = formatDateKey(periodStart).slice(0, 7);
@@ -1173,31 +1208,39 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                 records = [...records, ...recs2];
             }
 
+            if (cancelled) return;
+
             const planMap: Record<string, number> = {};
             const statusMap: Record<string, string> = {};
+            const reasonMap: Record<string, string> = {};
+            const loadedMap: Record<string, number> = {};
+            const idMap: Record<string, string> = {};
             records.forEach(r => {
-                const key = `${r.chapa}_${r.costCenter}_${r.date}`;
-                // FIX 3A — Só armazena horas no planMap se o registro tem horas reais
-                // ou status relevante (approved/pending). Zeros de rascunhos são
-                // resíduos de saves anteriores e NÃO devem ser re-gravados no próximo save.
-                // Manter apenas o statusMap para esses casos garante que o UI ainda
-                // renderiza o status correto, sem expor o zero ao fluxo de gravação.
-                const hasRealHours = (r.plannedHours ?? 0) > 0;
-                const isRelevantStatus = r.status === 'approved' || r.status === 'pending';
+                const key = planningKey(r);
+                const hours = Number(r.plannedHours) || 0;
+                loadedMap[key] = hours;
+                if (r.id) idMap[key] = r.id;
 
-                if (hasRealHours || isRelevantStatus) {
-                    planMap[key] = r.plannedHours ?? 0;
+                // Só expõe na grade horas reais ou status relevante (approved/pending).
+                // Zeros de rascunho são resíduos de gravações antigas de grade completa.
+                const isRelevantStatus = r.status === 'approved' || r.status === 'pending';
+                if (hours > 0 || isRelevantStatus) {
+                    planMap[key] = hours;
                 }
-                // Sempre rastreia o status (para UI de bloqueio/ícones)
-                if (r.status) {
-                    statusMap[key] = r.status;
+                statusMap[key] = normalizePlanningStatus(r.status);
+                if (r.status === 'rejected' && r.rejectionReason) {
+                    reasonMap[key] = r.rejectionReason;
                 }
             });
+            loadedPlansRef.current = loadedMap;
+            loadedIdsRef.current = idMap;
             setPlans(planMap);
             setPlanStatuses(statusMap);
+            setPlanReasons(reasonMap);
         };
-        loadPlans();
-    }, [selectedMonth, periodStart, periodEnd, user]);
+        loadPlans().catch(error => console.error('Erro ao carregar planejamento:', error));
+        return () => { cancelled = true; };
+    }, [selectedMonth, periodStart, periodEnd, user, plansReloadToken]);
 
     const displayCostCenters = useMemo(() => {
         const ccMap = new Map<string, { id: string; costCenter: string; memberChapas: string[]; regional: string }>();
@@ -1223,6 +1266,26 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
             })
             .sort((a, b) => a.costCenter.localeCompare(b.costCenter));
     }, [uniqueEmployees, ccFilter, regionalFilter, isAuthorizedCostCenter]);
+
+    /** Dias devolvidos pelo diretor na competência, por obra visível. */
+    const returnedSummary = useMemo(() => {
+        const visible = new Set(displayCostCenters.map(cc => cc.costCenter));
+        const map = new Map<string, { costCenter: string; days: number; hours: number; reason?: string }>();
+        Object.entries(planStatuses).forEach(([key, status]) => {
+            if (status !== 'rejected') return;
+            const hours = plans[key] || 0;
+            if (hours <= 0) return;
+            const parts = key.split('_');
+            const costCenter = parts.slice(1, -1).join('_');
+            if (!visible.has(costCenter)) return;
+            const item = map.get(costCenter) || { costCenter, days: 0, hours: 0 };
+            item.days += 1;
+            item.hours += hours;
+            item.reason = item.reason || planReasons[key];
+            map.set(costCenter, item);
+        });
+        return Array.from(map.values()).sort((a, b) => a.costCenter.localeCompare(b.costCenter));
+    }, [displayCostCenters, planStatuses, plans, planReasons]);
 
     const emailDraft = useMemo<EmailDraftData | null>(() => {
         const monthParts = selectedMonth.split('-');
@@ -1345,100 +1408,147 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
     }, [displayCostCenters, employeeRoleByChapa, plans, salaries, selectedMonth, submissionRange, uniqueEmployees, user.email, user.name]);
 
     // Helper to get Employee Object
-    const getEmpObj = (chapa: string) => uniqueEmployees.find(e => e.chapa === chapa);
+    // Busca pela chapa E pelo CC: a mesma pessoa pode estar em mais de uma obra.
+    const getEmpObj = (chapa: string, costCenter?: string) =>
+        (costCenter ? uniqueEmployees.find(e => e.chapa === chapa && e.cc === costCenter) : undefined)
+        || uniqueEmployees.find(e => e.chapa === chapa);
 
-    const handleApproveCC = async (cc: string) => {
-        if (!isAuthorizedCostCenter(cc)) {
-            setAlert({ type: 'error', message: 'Voce nao possui acesso a este Centro de Custo.' });
-            return;
+    // ─── Filas do fluxo (independentes da competência selecionada) ────────────
+    type QueueStatus = 'draft' | 'pending' | 'rejected';
+    const [queueRecords, setQueueRecords] = useState<Record<QueueStatus, PlanningRecord[]>>({ draft: [], pending: [], rejected: [] });
+    const [queueLoading, setQueueLoading] = useState(false);
+    const [queuePartial, setQueuePartial] = useState(false);
+    const [queueToken, setQueueToken] = useState(0);
+
+    const queueStatuses = useMemo<QueueStatus[]>(() => {
+        if (activeSubTab === 'APPROVAL') return ['pending', 'draft', 'rejected'];
+        if (activeSubTab === 'EVALUATION') return ['draft', 'rejected'];
+        return [];
+    }, [activeSubTab]);
+
+    useEffect(() => {
+        if (queueStatuses.length === 0) return;
+        let cancelled = false;
+        setQueueLoading(true);
+        const fallbackMonths = [formatDateKey(periodStart).slice(0, 7), formatDateKey(periodEnd).slice(0, 7)];
+
+        Promise.all(queueStatuses.map(status =>
+            getPlanningQueue(status, user, fallbackMonths).then(result => ({ status, result }))
+        ))
+            .then(results => {
+                if (cancelled) return;
+                const next: Record<QueueStatus, PlanningRecord[]> = { draft: [], pending: [], rejected: [] };
+                let partial = false;
+                results.forEach(({ status, result }) => {
+                    next[status] = result.records.filter(r => isAuthorizedCostCenter(r.costCenter));
+                    partial = partial || result.partial;
+                });
+                setQueueRecords(next);
+                setQueuePartial(partial);
+            })
+            .catch(error => {
+                console.error(error);
+                if (!cancelled) setAlert({ type: 'error', message: 'Erro ao carregar a fila de planejamento.' });
+            })
+            .finally(() => {
+                if (!cancelled) setQueueLoading(false);
+            });
+
+        return () => { cancelled = true; };
+    }, [queueStatuses, user, periodStart, periodEnd, queueToken, isAuthorizedCostCenter]);
+
+    const queueGroups = useMemo(() => ({
+        draft: buildPlanningQueue(queueRecords.draft),
+        pending: buildPlanningQueue(queueRecords.pending),
+        rejected: buildPlanningQueue(queueRecords.rejected)
+    }), [queueRecords]);
+
+    const refreshAfterTransition = () => {
+        setQueueToken(token => token + 1);
+        setPlansReloadToken(token => token + 1);
+    };
+
+    const runTransition = async (
+        records: PlanningRecord[],
+        expectedStatus: 'draft' | 'pending',
+        patch: Parameters<typeof transitionPlanningStatus>[1],
+        successMessage: (count: number) => string
+    ): Promise<boolean> => {
+        const eligible = records.filter(r =>
+            isAuthorizedCostCenter(r.costCenter) &&
+            normalizePlanningStatus(r.status) === expectedStatus &&
+            (Number(r.plannedHours) || 0) > 0
+        );
+        if (eligible.length === 0) {
+            setAlert({ type: 'error', message: `Nenhum lançamento "${PLANNING_STATUS_LABELS[expectedStatus]}" na seleção.` });
+            return false;
         }
 
         setSaving(true);
         try {
-            // Get all records for this CC and Month that are 'pending'
-            const startMonthStr = formatDateKey(periodStart).slice(0, 7);
-            const endMonthStr = formatDateKey(periodEnd).slice(0, 7);
-
-            let allRecs = await getPlanning(undefined, startMonthStr, 'DAILY', user);
-            if (startMonthStr !== endMonthStr) {
-                const recs2 = await getPlanning(undefined, endMonthStr, 'DAILY', user);
-                allRecs = [...allRecs, ...recs2];
-            }
-
-            const pendingRecs = allRecs.filter(
-                r => r.costCenter === cc && r.status === 'pending' && parseTimeToDecimal(String(r.plannedHours ?? '0')) > 0
-            );
-            if (pendingRecs.length === 0) {
-                setAlert({ type: 'error', message: 'Nenhum registro pendente para este Centro de Custo.' });
-                return;
-            }
-
-            const approvedRecs = pendingRecs.map(r => ({
-                ...r,
-                status: 'approved' as const,
-                approvedBy: user.email,
-                approvedAt: new Date().toISOString()
-            }));
-
-            await savePlanning(approvedRecs, user);
-
-            // Refresh local state
-            const newStatuses = { ...planStatuses };
-            approvedRecs.forEach(r => {
-                const key = `${r.chapa}_${r.costCenter}_${r.date}`;
-                newStatuses[key] = 'approved';
-            });
-            setPlanStatuses(newStatuses);
-
-            setAlert({ type: 'success', message: `Planejamento de ${cc} aprovado com sucesso!` });
-        } catch (error) {
+            await transitionPlanningStatus(eligible, patch, user);
+            setAlert({ type: 'success', message: successMessage(eligible.length) });
+            refreshAfterTransition();
+            return true;
+        } catch (error: any) {
             console.error(error);
-            setAlert({ type: 'error', message: 'Erro ao aprovar planejamento.' });
+            setAlert({ type: 'error', message: error?.message || 'Erro ao gravar a alteração.' });
+            return false;
         } finally {
             setSaving(false);
         }
     };
 
-    const handleRejectCC = async (cc: string) => {
-        if (!isAuthorizedCostCenter(cc)) {
-            setAlert({ type: 'error', message: 'Voce nao possui acesso a este Centro de Custo.' });
-            return;
+    /** Gerente regional: envia ao diretor o que o engenheiro salvou. */
+    const handleSubmitRecordsToDirector = async (records: PlanningRecord[]): Promise<boolean> => {
+        if (!workflowCaps.canSubmitToDirector) {
+            setAlert({ type: 'error', message: 'Somente o gerente regional pode enviar ao diretor.' });
+            return false;
         }
+        return runTransition(
+            records,
+            'draft',
+            { status: 'pending', submittedBy: user.email, submittedAt: new Date().toISOString() },
+            count => `${count} lançamento(s) enviados para aprovação do diretor.`
+        );
+    };
 
-        setSaving(true);
-        try {
-            const startMonthStr = formatDateKey(periodStart).slice(0, 7);
-            const endMonthStr = formatDateKey(periodEnd).slice(0, 7);
-
-            let allRecs = await getPlanning(undefined, startMonthStr, 'DAILY', user);
-            if (startMonthStr !== endMonthStr) {
-                const recs2 = await getPlanning(undefined, endMonthStr, 'DAILY', user);
-                allRecs = [...allRecs, ...recs2];
-            }
-
-            const pendingRecs = allRecs.filter(r => r.costCenter === cc && r.status === 'pending');
-            const rejectedRecs = pendingRecs.map(r => ({
-                ...r,
-                status: 'draft' as const // Returning to draft so they can edit
-            }));
-
-            await savePlanning(rejectedRecs, user);
-
-            // Refresh local state
-            const newStatuses = { ...planStatuses };
-            rejectedRecs.forEach(r => {
-                const key = `${r.chapa}_${r.costCenter}_${r.date}`;
-                newStatuses[key] = 'draft';
-            });
-            setPlanStatuses(newStatuses);
-
-            setAlert({ type: 'success', message: `Planejamento de ${cc} devolvido para ajuste.` });
-        } catch (error) {
-            console.error(error);
-            setAlert({ type: 'error', message: 'Erro ao rejeitar planejamento.' });
-        } finally {
-            setSaving(false);
+    /** Diretor: aprova o que o gerente enviou. */
+    const handleApproveRecords = async (records: PlanningRecord[]): Promise<boolean> => {
+        if (!workflowCaps.canApprove) {
+            setAlert({ type: 'error', message: 'Seu perfil não pode aprovar.' });
+            return false;
         }
+        return runTransition(
+            records,
+            'pending',
+            { status: 'approved', approvedBy: user.email, approvedAt: new Date().toISOString() },
+            count => `${count} lançamento(s) aprovados.`
+        );
+    };
+
+    /** Diretor: devolve ao engenheiro, com motivo obrigatório. */
+    const handleReturnRecords = async (records: PlanningRecord[], reason: string): Promise<boolean> => {
+        if (!workflowCaps.canApprove) {
+            setAlert({ type: 'error', message: 'Seu perfil não pode devolver planejamentos.' });
+            return false;
+        }
+        return runTransition(
+            records,
+            'pending',
+            { status: 'rejected', rejectedBy: user.email, rejectedAt: new Date().toISOString(), rejectionReason: reason },
+            count => `${count} lançamento(s) devolvidos ao engenheiro.`
+        );
+    };
+
+    /** Abre a grade da obra na competência do primeiro lançamento da fila. */
+    const handleEditFromQueue = (costCenter: string, firstDate: string) => {
+        const competency = getPayrollCompetencyMonthKey(firstDate);
+        if (competency) setSelectedMonth(competency);
+        setCcFilter('');
+        setRegionalFilter('');
+        setActiveSubTab('PLANNING');
+        setCcPlanModalId(costCenter);
     };
 
     const handleCostCenterPlanSave = async (costCenter: string, numericMap: Record<string, number>) => {
@@ -1450,62 +1560,87 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
         const ccData = displayCostCenters.find(cc => cc.costCenter === costCenter);
         if (!ccData) return;
 
-        setPlans(prev => ({ ...prev, ...numericMap }));
         const mergedPlans = { ...plans, ...numericMap };
         const recordsToSave: PlanningRecord[] = [];
+        const nextStatuses: Record<string, string> = {};
+        let resubmittedCount = 0;
 
         ccData.memberChapas.forEach(chapa => {
-            const emp = getEmpObj(chapa);
-            if (!emp) return;
+            const emp = getEmpObj(chapa, costCenter);
             const curr = new Date(periodStart);
             while (curr <= periodEnd) {
                 const dateKey = formatDateKey(curr);
+                curr.setDate(curr.getDate() + 1);
+
                 const key = `${chapa}_${costCenter}_${dateKey}`;
                 const hours = mergedPlans[key];
-                const originalStatus = (planStatuses[key] as PlanningRecord['status']) || 'draft';
+                if (hours === undefined) continue; // dia não tocado
 
-                // FIX 3C — Mesmas guards de imutabilidade do handleSave.
+                const originalStatus = normalizePlanningStatus(planStatuses[key]);
+                if (!isPlanningStatusEditable(originalStatus, workflowCaps)) continue; // bloqueado para este perfil
+                if (originalStatus === 'approved' && hours <= 0) continue; // aprovado nunca é zerado aqui
 
-                // REGRA 1: Chave não presente no mapa → não foi tocada → pular.
-                if (hours === undefined) {
-                    curr.setDate(curr.getDate() + 1);
-                    continue;
-                }
+                const loadedHours = loadedPlansRef.current[key];
+                const existsInDb = loadedHours !== undefined;
+                const changed = (loadedHours ?? 0) !== hours;
+                // Devolvido salvo novamente (mesmo sem mudança) volta para o gerente.
+                const resubmit = originalStatus === 'rejected' && hours > 0;
 
-                // REGRA 2: Aprovados com horas = 0 são intocáveis por este fluxo.
-                if (originalStatus === 'approved' && hours <= 0) {
-                    curr.setDate(curr.getDate() + 1);
-                    continue;
-                }
+                if (!changed && !resubmit) continue;
+                if (!existsInDb && hours <= 0) continue; // não cria registro vazio
 
-                // REGRA 3: Ghost records de rascunho não são persistidos.
-                if (hours <= 0 && originalStatus === 'draft') {
-                    curr.setDate(curr.getDate() + 1);
-                    continue;
-                }
-
-                // Preserva status: approved e pending nunca regridem via save de gestor.
-                const finalStatus: PlanningRecord['status'] =
-                    (originalStatus === 'approved' || originalStatus === 'pending') && hours > 0
-                        ? originalStatus
-                        : 'draft';
+                const status = resolveStatusAfterEdit(originalStatus);
+                if (originalStatus === 'rejected') resubmittedCount++;
 
                 recordsToSave.push({
-                    id: `${chapa}_${costCenter}_DAILY_${dateKey}`,
+                    id: loadedIdsRef.current[key] || planningDocId(chapa, costCenter, dateKey),
                     chapa,
-                    nome: emp.nome,
+                    nome: emp?.nome || memberNames[chapa] || `Colaborador (Chapa ${chapa})`,
                     costCenter,
                     date: dateKey,
                     type: 'DAILY',
                     plannedHours: hours,
-                    status: finalStatus
+                    status
                 });
-                curr.setDate(curr.getDate() + 1);
+                nextStatuses[key] = status;
             }
         });
 
-        await savePlanning(recordsToSave, user);
-        setAlert({ type: 'success', message: `Planejamento do Centro de Custo ${costCenter} salvo!` });
+        if (recordsToSave.length === 0) {
+            setAlert({ type: 'success', message: 'Nenhuma alteração para salvar.' });
+            return;
+        }
+
+        try {
+            await savePlanning(recordsToSave, user);
+        } catch (error: any) {
+            console.error(error);
+            setAlert({ type: 'error', message: error?.message || 'Erro ao salvar planejamento.' });
+            throw error;
+        }
+
+        recordsToSave.forEach(r => {
+            const key = planningKey(r);
+            loadedPlansRef.current[key] = r.plannedHours;
+            loadedIdsRef.current[key] = r.id;
+        });
+        setPlans(prev => {
+            const next = { ...prev };
+            recordsToSave.forEach(r => { next[planningKey(r)] = r.plannedHours; });
+            return next;
+        });
+        setPlanStatuses(prev => ({ ...prev, ...nextStatuses }));
+        setPlanReasons(prev => {
+            const next = { ...prev };
+            recordsToSave.forEach(r => { delete next[planningKey(r)]; });
+            return next;
+        });
+
+        const destination = workflowCaps.canSubmitToDirector
+            ? 'Use "Enviar ao diretor" quando a avaliação estiver concluída.'
+            : 'Aguardando avaliação do gerente regional.';
+        const resubmitted = resubmittedCount > 0 ? ` ${resubmittedCount} dia(s) devolvido(s) voltaram para o gerente.` : '';
+        setAlert({ type: 'success', message: `Planejamento do CC ${costCenter} salvo. ${destination}${resubmitted}` });
     };
 
     // Calculate Global Stats (Filtered)
@@ -1628,93 +1763,60 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
         if (budgetInputRef.current) budgetInputRef.current.value = '';
     };
 
-    const handleSave = async (submitPending: boolean = false) => {
-        if (submitPending && !emailDraft) {
-            setAlert({ type: 'error', message: 'Nao ha horas planejadas no intervalo selecionado para enviar para aprovacao.' });
-            return;
-        }
+    /**
+     * Lançamentos "Aguardando gerente" já gravados, dentro do intervalo de envio
+     * e dos filtros visíveis (CC/regional). É exatamente o que será enviado.
+     */
+    const draftRecordsInSubmissionRange = useMemo<PlanningRecord[]>(() => {
+        const list: PlanningRecord[] = [];
+        const rangeStart = parseDateKeyLocal(submissionRange.start);
+        const rangeEnd = parseDateKeyLocal(submissionRange.end);
 
-        setSaving(true);
-        const recordsToSave: PlanningRecord[] = [];
-        const nextStatuses = { ...planStatuses };
-
-        try {
-            uniqueEmployees.forEach(emp => {
-                const curr = new Date(periodStart);
-                while (curr <= periodEnd) {
-                    const dateKey = formatDateKey(curr);
-                    const key = `${emp.chapa}_${emp.cc}_${dateKey}`;
-                    const hours = plans[key];
-                    const originalStatus = (planStatuses[key] as PlanningRecord['status']) || 'draft';
-
-                    // FIX 3B — Guards de imutabilidade: três regras antes de incluir no payload.
-
-                    // REGRA 1: Não tocar o que não foi carregado nesta sessão.
-                    // hours === undefined → chave ausente no planMap → dia intocado → pular.
-                    if (hours === undefined) {
-                        curr.setDate(curr.getDate() + 1);
-                        continue;
-                    }
-
-                    // REGRA 2: Registros aprovados com horas = 0 no state local são resíduos
-                    // do carregamento (approved sem horas reais, ex: dias fora da escala aprovada).
-                    // Nunca sobrescrever via este fluxo — apenas approve/reject podem alterar.
-                    if (originalStatus === 'approved' && hours <= 0) {
-                        curr.setDate(curr.getDate() + 1);
-                        continue;
-                    }
-
-                    // REGRA 3: Rascunhos com 0 horas são ghost records. Não persistir.
-                    // (O usuário não programou nada para este dia — não criar registro vazio.)
-                    if (hours <= 0 && originalStatus === 'draft') {
-                        curr.setDate(curr.getDate() + 1);
-                        continue;
-                    }
-
-                    const isWithinRange = dateKey >= submissionRange.start && dateKey <= submissionRange.end;
-                    const hasHours = hours > 0;
-
-                    // Determina o status final preservando imutabilidade.
-                    let finalStatus: PlanningRecord['status'];
-                    if (originalStatus === 'approved') {
-                        // Approved é imutável por este fluxo — só approve/reject explícito muda.
-                        finalStatus = 'approved';
-                    } else if (submitPending) {
-                        finalStatus = isWithinRange && hasHours ? 'pending' : (hasHours ? originalStatus : 'draft');
-                    } else {
-                        // Save-draft: não regredir pending → draft.
-                        finalStatus = (originalStatus === 'pending' && hasHours) ? 'pending' : (hasHours ? 'draft' : 'draft');
-                    }
-
-                    recordsToSave.push({
-                        id: `${emp.chapa}_${emp.cc}_DAILY_${dateKey}`,
-                        chapa: emp.chapa,
-                        nome: emp.nome,
-                        costCenter: emp.cc,
+        displayCostCenters.forEach(cc => {
+            cc.memberChapas.forEach(chapa => {
+                const emp = uniqueEmployees.find(e => e.chapa === chapa && e.cc === cc.costCenter);
+                const cursor = new Date(rangeStart);
+                while (cursor <= rangeEnd) {
+                    const dateKey = formatDateKey(cursor);
+                    cursor.setDate(cursor.getDate() + 1);
+                    const key = `${chapa}_${cc.costCenter}_${dateKey}`;
+                    const hours = plans[key] || 0;
+                    if (hours <= 0) continue;
+                    if (normalizePlanningStatus(planStatuses[key]) !== 'draft') continue;
+                    if (loadedPlansRef.current[key] === undefined) continue; // ainda não gravado
+                    list.push({
+                        id: loadedIdsRef.current[key] || planningDocId(chapa, cc.costCenter, dateKey),
+                        chapa,
+                        nome: emp?.nome || chapa,
+                        costCenter: cc.costCenter,
                         date: dateKey,
                         type: 'DAILY',
                         plannedHours: hours,
-                        status: finalStatus
+                        status: 'draft'
                     });
-
-                    nextStatuses[key] = finalStatus;
-                    curr.setDate(curr.getDate() + 1);
                 }
             });
+        });
+        return list;
+    }, [displayCostCenters, uniqueEmployees, plans, planStatuses, submissionRange]);
 
-            await savePlanning(recordsToSave, user);
-            setPlanStatuses(nextStatuses);
-            setAlert({ type: 'success', message: submitPending ? 'Planejamento submetido para aprovacao!' : 'Rascunho salvo!' });
-
-            if (submitPending) {
-                setIsEmailDraftOpen(true);
-            }
-        } catch (error) {
-            console.error(error);
-            setAlert({ type: 'error', message: 'Erro ao salvar planejamento.' });
-        } finally {
-            setSaving(false);
+    const handleSubmitPeriodToDirector = async () => {
+        const records = draftRecordsInSubmissionRange;
+        if (records.length === 0) {
+            setAlert({ type: 'error', message: 'Nao ha horas aguardando o gerente no intervalo e filtros selecionados.' });
+            return;
         }
+        const ccCount = new Set(records.map(r => r.costCenter)).size;
+        const totalHours = records.reduce((sum, r) => sum + (Number(r.plannedHours) || 0), 0);
+        const confirmed = window.confirm(
+            `Enviar ao diretor ${records.length} lançamento(s), ${formatDecimalHours(totalHours)} em ${ccCount} centro(s) de custo, ` +
+            `de ${formatDateBR(submissionRange.start)} a ${formatDateBR(submissionRange.end)}?\n\n` +
+            'Somente as obras visíveis com os filtros atuais serão enviadas. Os demais dias continuam aguardando o gerente.'
+        );
+        if (!confirmed) return;
+
+        const ok = await handleSubmitRecordsToDirector(records);
+        if (ok) setIsEmailDraftOpen(true);
     };
 
     const handleOpenEmailDraft = () => {
@@ -1785,7 +1887,9 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                     planRangeEnd={planRangeEnd}
                     onSave={handleCostCenterPlanSave}
                     planStatuses={planStatuses}
-                    canOverrideLock={(user.role === 'CH_ADMIN' || user.role === 'CH_APPROVER')}
+                    planReasons={planReasons}
+                    canEditOpen={workflowCaps.canEditOpen}
+                    canOverrideLock={workflowCaps.canOverrideLock}
                 />
             )}
 
@@ -1864,7 +1968,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                 </div>
             </div>
 
-            {canApprove(user.role) && (
+            {(workflowCaps.canSubmitToDirector || workflowCaps.canApprove) && (
                 <div className="flex border-b border-slate-200 mb-6 bg-white rounded-t-xl overflow-hidden shadow-sm">
                     <button
                         onClick={() => setActiveSubTab('PLANNING')}
@@ -1872,86 +1976,95 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                     >
                         <LayoutList size={18} /> Elaboração de Escalas
                     </button>
-                    <button
-                        onClick={() => setActiveSubTab('APPROVAL')}
-                        className={`flex-1 py-4 text-sm font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeSubTab === 'APPROVAL' ? 'bg-indigo-600 text-white shadow-inner' : 'text-slate-500 hover:bg-slate-50'}`}
-                    >
-                        <CheckCircle2 size={18} /> Aprovação / Liberação
-                    </button>
+                    {workflowCaps.canSubmitToDirector && (
+                        <button
+                            onClick={() => setActiveSubTab('EVALUATION')}
+                            className={`flex-1 py-4 text-sm font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeSubTab === 'EVALUATION' ? 'bg-sky-600 text-white shadow-inner' : 'text-slate-500 hover:bg-slate-50'}`}
+                        >
+                            <Send size={18} /> Avaliação do Gerente
+                        </button>
+                    )}
+                    {workflowCaps.canApprove && (
+                        <button
+                            onClick={() => setActiveSubTab('APPROVAL')}
+                            className={`flex-1 py-4 text-sm font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeSubTab === 'APPROVAL' ? 'bg-indigo-600 text-white shadow-inner' : 'text-slate-500 hover:bg-slate-50'}`}
+                        >
+                            <CheckCircle2 size={18} /> Aprovação do Diretor
+                        </button>
+                    )}
                 </div>
             )}
 
-            {activeSubTab === 'APPROVAL' ? (
-                <ApprovalPanel
-                    records={displayCostCenters.map(cc => {
-                        const ccEmployees = cc.memberChapas
-                            .map(chapa => getEmpObj(chapa))
-                            .filter(e => !!e);
-
-                        let totalHours = 0;
-                        let totalCost = 0;
-                        let hasPending = false;
-                        let hasDraft = false;
-                        const detailRows: Array<{
-                            id: string;
-                            date: string;
-                            ccName: string;
-                            employeeName: string;
-                            employeeRole: string;
-                            hours: number;
-                            status: string;
-                        }> = [];
-
-                        ccEmployees.forEach((emp: any) => {
-                            const salary = salaries[emp.chapa];
-                            const curr = new Date(periodStart);
-                            while (curr <= periodEnd) {
-                                const dateKey = formatDateKey(curr);
-                                const key = `${emp.chapa}_${emp.cc}_${dateKey}`;
-                                const hours = plans[key] || 0;
-                                totalHours += hours;
-                                if (salary && hours > 0) {
-                                    const isSunday = curr.getDay() === 0;
-                                    const baseHour = salary / 220;
-                                    const multiplier = isSunday ? 2.0 : 1.6;
-                                    totalCost += baseHour * multiplier * hours;
-                                }
-                                const st = planStatuses[key] || 'approved';
-                                if (st === 'pending') hasPending = true;
-                                if (st === 'draft' && hours > 0) hasDraft = true;
-                                if (hours > 0) {
-                                    detailRows.push({
-                                        id: `${cc.id}_${key}`,
-                                        date: dateKey,
-                                        ccName: `CC ${cc.costCenter}`,
-                                        employeeName: emp.nome,
-                                        employeeRole: memberFuncoes[emp.chapa] || 'Sem função',
-                                        hours,
-                                        status: st
-                                    });
-                                }
-                                curr.setDate(curr.getDate() + 1);
-                            }
-                        });
-
-                        const ccStatus = hasPending ? 'pending' : (hasDraft ? 'draft' : 'approved');
-
-                        return {
-                            id: cc.id,
-                            description: `Centro de Custo ${cc.costCenter}`,
-                            costCenter: cc.costCenter,
-                            headcount: cc.memberChapas.length,
-                            plannedHours: totalHours,
-                            customEstCost: totalCost,
-                            estStatus: ccStatus,
-                            date: selectedMonth,
-                            shift: 'Integral',
-                            detailRows
-                        };
-                    })}
-                    onApprove={handleApproveCC}
-                    onReject={handleRejectCC}
-                    mode="DAILY"
+            {activeSubTab === 'APPROVAL' && workflowCaps.canApprove ? (
+                <PlanningQueuePanel
+                    title="Aguardando aprovação do diretor"
+                    subtitle="Lançamentos enviados pelos gerentes regionais, de qualquer competência, dos mais antigos para os mais novos."
+                    actionableLabel={PLANNING_STATUS_LABELS.pending}
+                    actionableTone="amber"
+                    actionable={queueGroups.pending}
+                    readOnlySections={[
+                        {
+                            key: 'draft',
+                            title: PLANNING_STATUS_LABELS.draft,
+                            description: 'Planejado pelo engenheiro e ainda não enviado pelo gerente regional. Somente leitura: acompanhe e cobre o envio.',
+                            tone: 'blue',
+                            groups: queueGroups.draft
+                        },
+                        {
+                            key: 'rejected',
+                            title: PLANNING_STATUS_LABELS.rejected,
+                            description: 'Devolvido por você e aguardando ajuste do engenheiro.',
+                            tone: 'rose',
+                            groups: queueGroups.rejected,
+                            showRejectionReason: true
+                        }
+                    ]}
+                    primaryActionLabel="Aprovar"
+                    primaryActionIcon="approve"
+                    confirmPrimaryMessage={(cc, count, start, end) =>
+                        `Aprovar ${count} lançamento(s) da obra ${cc}, de ${formatDateBR(start)} a ${formatDateBR(end)}?`}
+                    onPrimary={handleApproveRecords}
+                    onReturn={handleReturnRecords}
+                    roleByChapa={employeeRoleByChapa}
+                    salaryByChapa={salaries}
+                    loading={queueLoading}
+                    busy={saving}
+                    partial={queuePartial}
+                    onRefresh={() => setQueueToken(token => token + 1)}
+                    emptyTitle="Nada aguardando sua aprovação"
+                    emptyMessage="Veja abaixo o que ainda está com os gerentes regionais."
+                />
+            ) : activeSubTab === 'EVALUATION' && workflowCaps.canSubmitToDirector ? (
+                <PlanningQueuePanel
+                    title="Aguardando avaliação do gerente"
+                    subtitle="Horas salvas pelos engenheiros, de qualquer competência. Revise, ajuste se precisar e envie ao diretor."
+                    actionableLabel={PLANNING_STATUS_LABELS.draft}
+                    actionableTone="blue"
+                    actionable={queueGroups.draft}
+                    readOnlySections={[
+                        {
+                            key: 'rejected',
+                            title: PLANNING_STATUS_LABELS.rejected,
+                            description: 'O diretor devolveu. Depois que o engenheiro ajustar e salvar, volta para esta fila.',
+                            tone: 'rose',
+                            groups: queueGroups.rejected,
+                            showRejectionReason: true
+                        }
+                    ]}
+                    primaryActionLabel="Enviar ao diretor"
+                    primaryActionIcon="send"
+                    confirmPrimaryMessage={(cc, count, start, end) =>
+                        `Enviar ao diretor ${count} lançamento(s) da obra ${cc}, de ${formatDateBR(start)} a ${formatDateBR(end)}?`}
+                    onPrimary={handleSubmitRecordsToDirector}
+                    onEdit={handleEditFromQueue}
+                    roleByChapa={employeeRoleByChapa}
+                    salaryByChapa={salaries}
+                    loading={queueLoading}
+                    busy={saving}
+                    partial={queuePartial}
+                    onRefresh={() => setQueueToken(token => token + 1)}
+                    emptyTitle="Nada aguardando sua avaliação"
+                    emptyMessage="Quando um engenheiro salvar horas, a obra aparece aqui."
                 />
             ) : (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -2009,28 +2122,29 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                             <div className="self-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
                                 Salários vêm do headcount ativo
                             </div>
-                            <button onClick={() => handleSave(false)} disabled={saving} className="bg-gray-100 text-gray-700 px-6 py-2.5 rounded-lg text-sm font-bold uppercase hover:bg-gray-200 transition flex items-center gap-2 shadow-sm">
-                                <Save size={18} /> Salvar Rascunho
-                            </button>
-                            <button
-                                onClick={handleOpenEmailDraft}
-                                disabled={!emailDraft}
-                                className="bg-white text-slate-700 border border-slate-200 px-4 py-2.5 rounded-lg text-sm font-bold uppercase hover:bg-slate-50 transition flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                <Mail size={16} /> Gerar E-mail do Periodo
-                            </button>
-                            <button onClick={() => {
-                                const submitStart = submissionRange.start;
-                                const submitEnd = submissionRange.end;
-                                if (window.confirm(`Atencao: somente o periodo personalizado de ${formatDateBR(submitStart)} a ${formatDateBR(submitEnd)} sera submetido para aprovacao. Os demais dias permanecerao em rascunho/abertos. Deseja prosseguir?`)) {
-                                    handleSave(true);
-                                }
-                            }} disabled={saving} className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-bold uppercase hover:bg-blue-700 transition flex items-center gap-2 shadow-md">
-                                {saving ? <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : <CheckCircle2 size={18} />} Enviar Periodo P/ Aprovar
-                            </button>
+                            {workflowCaps.canSubmitToDirector && (
+                                <>
+                                    <button
+                                        onClick={handleOpenEmailDraft}
+                                        disabled={!emailDraft}
+                                        className="bg-white text-slate-700 border border-slate-200 px-4 py-2.5 rounded-lg text-sm font-bold uppercase hover:bg-slate-50 transition flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <Mail size={16} /> Gerar E-mail do Periodo
+                                    </button>
+                                    <button
+                                        onClick={handleSubmitPeriodToDirector}
+                                        disabled={saving || draftRecordsInSubmissionRange.length === 0}
+                                        title={draftRecordsInSubmissionRange.length === 0 ? 'Nenhuma hora aguardando o gerente no intervalo e filtros atuais' : undefined}
+                                        className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-bold uppercase hover:bg-blue-700 transition flex items-center gap-2 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {saving ? <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : <Send size={18} />} Enviar ao diretor ({draftRecordsInSubmissionRange.length})
+                                    </button>
+                                </>
+                            )}
                         </div>
                         </div>
 
+                        {workflowCaps.canSubmitToDirector ? (
                         <div className={`rounded-2xl border px-4 py-4 ${isCustomSubmissionRange ? 'border-amber-200 bg-amber-50' : 'border-sky-200 bg-sky-50'}`}>
                             <div className="flex flex-col 2xl:flex-row 2xl:items-end 2xl:justify-between gap-4">
                                 <div className="space-y-1">
@@ -2038,7 +2152,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                                         {isCustomSubmissionRange ? 'Periodo personalizado de envio ativo' : 'Periodo padrao de envio'}
                                     </p>
                                     <p className="text-sm font-bold text-slate-800">
-                                        O e-mail gerado e o envio para aprovacao consideram somente o periodo abaixo.
+                                        O e-mail gerado e o envio ao diretor consideram somente o periodo abaixo e as obras visiveis nos filtros.
                                     </p>
                                     <p className="text-xs text-slate-600">
                                         Folha: {formatDateBR(payrollRangeStart)} a {formatDateBR(payrollRangeEnd)} | Envio: {formatDateBR(submissionRange.start)} a {formatDateBR(submissionRange.end)}
@@ -2083,6 +2197,33 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                                 </div>
                             </div>
                         </div>
+                        ) : (
+                            <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs text-slate-700">
+                                <span className="font-bold text-sky-800">Como funciona:</span> salve as horas da sua obra na grade do centro de custo.
+                                Elas ficam <span className="font-bold">aguardando o gerente regional</span>, que avalia e envia ao diretor.
+                                Você pode lançar aos poucos, uma ou duas semanas por vez.
+                            </div>
+                        )}
+
+                        {returnedSummary.length > 0 && (
+                            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 space-y-2">
+                                <p className="text-sm font-bold text-rose-700 flex items-center gap-2">
+                                    <Undo2 size={16} /> Horas devolvidas pelo diretor nesta competência
+                                </p>
+                                {returnedSummary.map(item => (
+                                    <div key={item.costCenter} className="text-xs text-slate-700 flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
+                                        <span className="font-bold">{item.costCenter} - {getCCName(item.costCenter)}</span>
+                                        <span>{item.days} dia(s), {formatDecimalHours(item.hours)}</span>
+                                        {item.reason && <span className="text-rose-700">Motivo: {item.reason}</span>}
+                                        {workflowCaps.canEditOpen && (
+                                            <button onClick={() => setCcPlanModalId(item.costCenter)} className="md:ml-auto self-start text-rose-700 font-bold underline">
+                                                Ajustar e salvar
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     <div className="p-6 bg-gray-50 min-h-[400px]">
@@ -2096,6 +2237,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                                 let totalDraftHours = 0;
                                 let totalPendingHours = 0;
                                 let totalApprovedHours = 0;
+                                let totalRejectedHours = 0;
                                 let totalCost = 0;
 
                                 const memberRecords = ccEmployees.map((emp: any) => {
@@ -2103,6 +2245,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                                     let draftHours = 0;
                                     let pendingHours = 0;
                                     let approvedHours = 0;
+                                    let rejectedHours = 0;
                                     let empCost = 0;
                                     const salary = salaries[emp.chapa];
 
@@ -2110,13 +2253,14 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                                     while (curr <= periodEnd) {
                                         const key = `${emp.chapa}_${cc.costCenter}_${formatDateKey(curr)}`;
                                         const hours = plans[key] || 0;
-                                        const status = planStatuses[key] || 'draft';
+                                        const status = normalizePlanningStatus(planStatuses[key]);
                                         
                                         empHours += hours;
                                         if (hours > 0) {
                                             if (status === 'draft') draftHours += hours;
                                             else if (status === 'pending') pendingHours += hours;
                                             else if (status === 'approved') approvedHours += hours;
+                                            else if (status === 'rejected') rejectedHours += hours;
                                         }
 
                                         if (salary && hours > 0) {
@@ -2132,6 +2276,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                                     totalDraftHours += draftHours;
                                     totalPendingHours += pendingHours;
                                     totalApprovedHours += approvedHours;
+                                    totalRejectedHours += rejectedHours;
                                     totalCost += empCost;
 
                                     return {
@@ -2142,6 +2287,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                                         draftHours,
                                         pendingHours,
                                         approvedHours,
+                                        rejectedHours,
                                         customEstCost: empCost
                                     };
                                 });
@@ -2155,6 +2301,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                                     draftHours: totalDraftHours,
                                     pendingHours: totalPendingHours,
                                     approvedHours: totalApprovedHours,
+                                    rejectedHours: totalRejectedHours,
                                     customEstCost: totalCost,
                                     date: selectedMonth,
                                     shift: 'Integral',

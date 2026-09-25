@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Building2, Briefcase, User, Calendar, Lock, Clock, FileEdit, PencilLine } from 'lucide-react';
+import { Building2, Briefcase, User, Calendar, Lock, Clock, FileEdit, PencilLine, Undo2 } from 'lucide-react';
 import { getCCRegional, getCCName, normalizeCC } from '../data/ccMaster';
 import { formatDecimalHours } from '../utils/formatters';
 
@@ -8,6 +8,7 @@ interface PlanningMetrics {
     draftHours: number;
     pendingHours: number;
     approvedHours: number;
+    rejectedHours: number;
     totalHeadcount: number;
     estimatedCost: number;
 }
@@ -20,6 +21,7 @@ interface PlanningMemberRecord {
     draftHours?: number;
     pendingHours?: number;
     approvedHours?: number;
+    rejectedHours?: number;
     customEstCost: number;
     estStatus?: string;
 }
@@ -33,6 +35,7 @@ interface PlanningCostCenterRecord {
     draftHours?: number;
     pendingHours?: number;
     approvedHours?: number;
+    rejectedHours?: number;
     customEstCost: number;
     estStatus?: string;
     members?: PlanningMemberRecord[];
@@ -51,6 +54,7 @@ const statusIcon = (status?: string) => {
     if (status === 'approved') return <Lock size={12} className="text-emerald-500" />;
     if (status === 'pending') return <Clock size={12} className="text-amber-500" />;
     if (status === 'draft') return <FileEdit size={12} className="text-blue-400" />;
+    if (status === 'rejected') return <Undo2 size={12} className="text-rose-500" />;
     return null;
 };
 
@@ -88,6 +92,7 @@ const PlanningTreeRow: React.FC<{
                     <span className="w-16 text-right text-xs font-mono text-slate-500">{formatDecimalHours(rec.draftHours || 0)}</span>
                     <span className="w-16 text-right text-xs font-mono text-amber-500">{formatDecimalHours(rec.pendingHours || 0)}</span>
                     <span className="w-16 text-right text-xs font-mono text-emerald-500">{formatDecimalHours(rec.approvedHours || 0)}</span>
+                    <span className="w-16 text-right text-xs font-mono text-rose-500">{formatDecimalHours(rec.rejectedHours || 0)}</span>
                     <span className="w-20 text-right text-xs font-mono font-bold text-slate-800">{formatDecimalHours(rec.plannedHours)}</span>
                     <span className="w-24 text-right text-xs font-mono text-emerald-600 font-semibold">R$ {formatCost(rec.customEstCost)}</span>
                     <div className="w-20" />
@@ -126,6 +131,7 @@ const PlanningTreeRow: React.FC<{
                     <div className="w-16 text-right text-xs font-mono text-slate-500">{formatDecimalHours(node.metrics.draftHours)}</div>
                     <div className="w-16 text-right text-xs font-mono text-amber-500">{formatDecimalHours(node.metrics.pendingHours)}</div>
                     <div className="w-16 text-right text-xs font-mono text-emerald-600">{formatDecimalHours(node.metrics.approvedHours)}</div>
+                    <div className="w-16 text-right text-xs font-mono text-rose-500">{formatDecimalHours(node.metrics.rejectedHours)}</div>
                     <div className="w-20 text-right text-xs font-mono font-black text-slate-800">{formatDecimalHours(node.metrics.totalHours)}</div>
                     <div className="w-24 text-right text-xs font-mono font-black text-emerald-700">R$ {formatCost(node.metrics.estimatedCost)}</div>
                     <div className="w-20 flex justify-end">
@@ -175,18 +181,19 @@ export const PlanningTable: React.FC<PlanningTableProps> = ({ records, onPlanCC 
             const draft = Number(r.draftHours) || 0;
             const pending = Number(r.pendingHours) || 0;
             const approved = Number(r.approvedHours) || 0;
+            const rejected = Number(r.rejectedHours) || 0;
             const headcount = Number(r.headcount) || 0;
             const estCost = Number(r.customEstCost) || 0;
 
             if (!regionalMap.has(reg)) {
-                regionalMap.set(reg, { metrics: { totalHours: 0, draftHours: 0, pendingHours: 0, approvedHours: 0, totalHeadcount: 0, estimatedCost: 0 }, ccs: new Map() });
+                regionalMap.set(reg, { metrics: { totalHours: 0, draftHours: 0, pendingHours: 0, approvedHours: 0, rejectedHours: 0, totalHeadcount: 0, estimatedCost: 0 }, ccs: new Map() });
             }
 
             const regData = regionalMap.get(reg)!;
             if (!regData.ccs.has(cc)) {
                 regData.ccs.set(cc, {
                     name: `${cc} - ${ccName}`,
-                    metrics: { totalHours: 0, draftHours: 0, pendingHours: 0, approvedHours: 0, totalHeadcount: 0, estimatedCost: 0 },
+                    metrics: { totalHours: 0, draftHours: 0, pendingHours: 0, approvedHours: 0, rejectedHours: 0, totalHeadcount: 0, estimatedCost: 0 },
                     record: r
                 });
             }
@@ -196,6 +203,7 @@ export const PlanningTable: React.FC<PlanningTableProps> = ({ records, onPlanCC 
             regData.metrics.draftHours += draft;
             regData.metrics.pendingHours += pending;
             regData.metrics.approvedHours += approved;
+            regData.metrics.rejectedHours += rejected;
             regData.metrics.totalHeadcount += headcount;
             regData.metrics.estimatedCost += estCost;
 
@@ -203,6 +211,7 @@ export const PlanningTable: React.FC<PlanningTableProps> = ({ records, onPlanCC 
             ccData.metrics.draftHours += draft;
             ccData.metrics.pendingHours += pending;
             ccData.metrics.approvedHours += approved;
+            ccData.metrics.rejectedHours += rejected;
             ccData.metrics.totalHeadcount += headcount;
             ccData.metrics.estimatedCost += estCost;
             ccData.record = r;
@@ -232,6 +241,7 @@ export const PlanningTable: React.FC<PlanningTableProps> = ({ records, onPlanCC 
                                         draftHours: member.draftHours || 0,
                                         pendingHours: member.pendingHours || 0,
                                         approvedHours: member.approvedHours || 0,
+                                        rejectedHours: member.rejectedHours || 0,
                                         totalHeadcount: 1,
                                         estimatedCost: member.customEstCost || 0
                                     },
@@ -258,20 +268,21 @@ export const PlanningTable: React.FC<PlanningTableProps> = ({ records, onPlanCC 
 
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col animate-fade-in">
-            <div className="flex items-center justify-between py-3 pr-4 pl-4 bg-slate-100 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider min-w-[900px]">
+            <div className="flex items-center justify-between py-3 pr-4 pl-4 bg-slate-100 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider min-w-[980px]">
                 <span className="flex-1">Estrutura Operacional (Regional &gt; Centro de Custo &gt; Colaborador)</span>
                 <div className="flex items-center gap-6 justify-end shrink-0">
                     <span className="w-16 text-center" title="Efetivo Convocado">Efetivo</span>
-                    <span className="w-16 text-right" title="Horas em Rascunho">Rascunho</span>
-                    <span className="w-16 text-right" title="Horas Pendentes">Pendente</span>
-                    <span className="w-16 text-right" title="Horas Aprovadas">Aprovado</span>
+                    <span className="w-16 text-right" title="Salvas pelo engenheiro, aguardando avaliação do gerente regional">Ag. gerente</span>
+                    <span className="w-16 text-right" title="Enviadas pelo gerente, aguardando aprovação do diretor">Ag. diretor</span>
+                    <span className="w-16 text-right" title="Aprovadas pelo diretor">Aprovado</span>
+                    <span className="w-16 text-right" title="Devolvidas pelo diretor ao engenheiro para ajuste">Devolvido</span>
                     <span className="w-20 text-right" title="Volume Total de Horas">Total Hrs</span>
                     <span className="w-24 text-right" title="Custo Estimado">Custo (R$)</span>
                     <span className="w-20 text-center">Ações</span>
                 </div>
             </div>
 
-            <div className="min-w-[900px]">
+            <div className="min-w-[980px]">
                 {hierarchicalData.map(node => (
                     <PlanningTreeRow key={node.id} node={node} level={0} onPlanCC={onPlanCC} />
                 ))}

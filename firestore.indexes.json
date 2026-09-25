@@ -79,6 +79,32 @@
         { "fieldPath": "regional", "order": "ASCENDING" },
         { "fieldPath": "date", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "hc_planning_records",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "plannedHours", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "hc_planning_records",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "costCenter", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "plannedHours", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "hc_planning_records",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "regional", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "plannedHours", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
