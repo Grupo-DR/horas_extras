@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { OvertimeRecord, UserProfile, BudgetRecord } from '../types';
 import { Clock, Briefcase, TrendingUp, Wallet, Calculator, Search, Building2, AlertTriangle, Moon, Scale, Percent, ArrowUpRight, ArrowDownRight, X, User, Users, DollarSign, ListFilter, ShieldAlert, Zap, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { formatDecimalHours, parseTimeToDecimal } from '../utils/formatters';
-import { getSalariesForMonthKeys, getSalariesSync, getBudgetsSync, getGlobalEmployeesAsync, getGlobalEmployeesSync, getAllBudgetsAsync, getPlanning } from '../services/planning';
+import { getSalariesForMonthKeys, getSalariesSync, getBudgetsSync, getGlobalEmployeesAsync, getGlobalEmployeesSync, getAllBudgetsAsync, getApprovedPlanning } from '../services/planning';
 import { getCCName, getCCRegional, normalizeCC } from '../data/ccMaster';
 import { getPeriodStats } from '../utils/dateUtils';
 import { isRecordInHumanCapitalScope } from '../utils/scopeFilters';
@@ -504,69 +504,16 @@ const Dashboard: React.FC<DashboardProps> = ({ data, allData, regional, budgetMo
     let cancelled = false;
 
     const refreshPlanning = async () => {
-      const monthKeysArray = planningMonthKeys;
-      console.groupCollapsed('DASHBOARD_PLANNING_SYNC');
-      console.log('Periodo exibido:', { periodStartKey, periodEndKey });
-
-      console.log('Meses calendario consultados:', monthKeysArray);
-      console.log(`DASHBOARD_PLANNING_SYNC: Iniciando sincronização para chaves:`, monthKeysArray);
-
-      const loaded: import('../types').PlanningRecord[] = [];
-
-      // Dispara a busca para cada mês relevante
-      for (const monthKey of monthKeysArray) {
-        if (cancelled) {
-          console.groupEnd();
-          return;
-        }
-        try {
-          const rows = await getPlanning(undefined, monthKey, 'DAILY', user || undefined);
-          console.log(`DASHBOARD_PLANNING_SYNC: Recebidos ${rows.length} registros para ${monthKey}`);
-          loaded.push(...rows);
-        } catch (e) {
-          console.error(`Falha ao sincronizar planejamento no Dashboard para ${monthKey}:`, e);
-        }
-      }
-
-      if (!cancelled) {
-        // Consolidação e Deduplicação em memória (Fonte: Resultado direto do serviço)
-        const dedup = new Map<string, import('../types').PlanningRecord>();
-        loaded.forEach(p => {
-          // Chave única estável: id ou combinação chapa+CC+data
-          const key = p.id || `${p.chapa}__${p.costCenter}__${p.date}__${p.type}`;
-          dedup.set(key, p);
-        });
-
-        const allRecords = Array.from(dedup.values());
-
-        // REGRA DE NEGÓCIO: Apenas aprovados no Dashboard
-        const approvedOnly = allRecords.filter(
-          p => (!p.status || p.status === 'approved') && getPlanningHoursValue((p as { plannedHours?: number | string | null }).plannedHours) > 0
+      try {
+        // Só aprovados, meses em paralelo, resultado compartilhado com a Análise.
+        const approved = await getApprovedPlanning(planningMonthKeys, user || undefined);
+        if (cancelled) return;
+        // REGRA DE NEGÓCIO: apenas aprovados com horas no Dashboard.
+        setPlanningRecords(
+          approved.filter(p => getPlanningHoursValue((p as { plannedHours?: number | string | null }).plannedHours) > 0)
         );
-        const periodFiltered = approvedOnly.filter(p => {
-          if (p.type !== 'DAILY') return false;
-          const planningDateKey = toDateKey(p.date);
-          return !!planningDateKey && planningDateKey >= periodStartKey && planningDateKey <= periodEndKey;
-        });
-        const normalizedPlannedHours = periodFiltered.reduce(
-          (sum, p) => sum + getPlanningHoursValue((p as { plannedHours?: number | string | null }).plannedHours),
-          0
-        );
-
-        console.log('Total consolidado antes do filtro de status:', allRecords.length);
-        console.log('Total aprovado apos filtro de status:', approvedOnly.length);
-        console.log('Total aprovado apos filtro de periodo:', periodFiltered.length);
-        console.log('Total de horas normalizado apos filtro de periodo:', normalizedPlannedHours);
-        if (periodFiltered[0]) {
-          console.log('Amostra de plannedHours apos filtro:', {
-            value: (periodFiltered[0] as { plannedHours?: number | string | null }).plannedHours,
-            type: typeof (periodFiltered[0] as { plannedHours?: number | string | null }).plannedHours,
-            normalized: getPlanningHoursValue((periodFiltered[0] as { plannedHours?: number | string | null }).plannedHours)
-          });
-        }
-
-        setPlanningRecords(approvedOnly);
-        console.groupEnd();
+      } catch (e) {
+        console.error('Falha ao sincronizar planejamento aprovado no Dashboard:', e);
       }
     };
 

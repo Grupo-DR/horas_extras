@@ -1057,10 +1057,6 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
 
         headcountRecords.forEach(h => {
             if (!isAuthorizedCostCenter(h.centroCusto)) return;
-            if (h.chapa && String(h.chapa).includes('1846')) {
-                console.log("DIAGNOSTIC: 1846 found (raw chapa: " + h.chapa + "):", h);
-                console.log("DIAGNOSTIC: Range Check for " + h.chapa + ":", { dataInicio: h.dataInicio, planRangeEnd, dataFim: h.dataFim, planRangeStart });
-            }
              if (h.dataInicio <= planRangeEnd && h.dataFim >= planRangeStart) {
                  const key = `${h.chapa}_${h.centroCusto}`;
                  if (!map.has(key)) {
@@ -1202,14 +1198,10 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
             const startMonthStr = formatDateKey(periodStart).slice(0, 7);
             const endMonthStr = formatDateKey(periodEnd).slice(0, 7);
 
-            // Fetch for all accessible to user
-            const recs1 = await getPlanning(undefined, startMonthStr, 'DAILY', user);
-            records = [...recs1];
-
-            if (startMonthStr !== endMonthStr) {
-                const recs2 = await getPlanning(undefined, endMonthStr, 'DAILY', user);
-                records = [...records, ...recs2];
-            }
+            // Meses de calendário da folha buscados em paralelo.
+            const months = startMonthStr === endMonthStr ? [startMonthStr] : [startMonthStr, endMonthStr];
+            const chunks = await Promise.all(months.map(month => getPlanning(undefined, month, 'DAILY', user)));
+            records = chunks.flat();
 
             if (cancelled) return;
 

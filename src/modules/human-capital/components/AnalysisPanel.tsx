@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { getCCName, getCCRegional } from '../data/ccMaster';
 import EmployeeDailyComparisonModal from './EmployeeDailyComparisonModal';
-import { getAllPlanningRecords, getPlanning } from '../services/planning';
+import { getAllPlanningRecords, getApprovedPlanning } from '../services/planning';
 import {
     ResponsiveContainer, ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid,
     Tooltip, Legend, Cell, LabelList, BarChart, ReferenceLine
@@ -2451,7 +2451,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, allData, periodStar
     // ─── Sincronização de planejamento aprovado (espelho do DASHBOARD_PLANNING_SYNC) ───
     // Inicializa com cache local para renderização imediata enquanto o Firestore carrega
     const [planningRecords, setPlanningRecords] = useState<PlanningRecord[]>(
-        () => getAllPlanningRecords().filter(r => !r.status || r.status === 'approved')
+        () => getAllPlanningRecords().filter(r => r.status === 'approved' && Number(r.plannedHours) > 0)
     );
 
     const periodStartKey = useMemo(() => formatDateKey(periodStart), [periodStart]);
@@ -2466,32 +2466,12 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, allData, periodStar
         let cancelled = false;
 
         const syncPlanning = async () => {
-            const loaded: PlanningRecord[] = [];
-
-            for (const monthKey of planningMonthKeys) {
-                if (cancelled) return;
-                try {
-                    const rows = await getPlanning(undefined, monthKey, 'DAILY', user || undefined);
-                    loaded.push(...rows);
-                } catch (e) {
-                    console.error(`AnalysisPanel: falha ao carregar planejamento para ${monthKey}:`, e);
-                }
-            }
-
-            if (!cancelled) {
-                // Deduplicação por ID estável
-                const dedup = new Map<string, PlanningRecord>();
-                loaded.forEach(p => {
-                    const key = p.id || `${p.chapa}__${p.costCenter}__${p.date}__${p.type}`;
-                    dedup.set(key, p);
-                });
-
-                // Apenas aprovados com horas > 0
-                const approved = Array.from(dedup.values()).filter(
-                    p => (!p.status || p.status === 'approved') && Number(p.plannedHours) > 0
-                );
-
-                setPlanningRecords(approved);
+            try {
+                // Só aprovados com horas, meses em paralelo, resultado compartilhado com a Visão Geral.
+                const approved = await getApprovedPlanning(planningMonthKeys, user || undefined);
+                if (!cancelled) setPlanningRecords(approved);
+            } catch (e) {
+                console.error('AnalysisPanel: falha ao carregar planejamento aprovado:', e);
             }
         };
 

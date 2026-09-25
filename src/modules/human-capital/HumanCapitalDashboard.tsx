@@ -14,6 +14,7 @@ import HeadcountGovernance from '@/src/modules/human-capital/components/Headcoun
 import CostCenterStructure from '@/src/modules/human-capital/components/CostCenterStructure';
 import { canAccessSettings, canManageHeadcount, canPlan } from '../iam/types';
 import { formatDateForApi } from '@/src/modules/human-capital/utils/formatters';
+import { getCompetencyRange, getPlanningCompetency } from '@/src/modules/human-capital/utils/planningWorkflow';
 import { LayoutDashboard, Table, Settings, CheckCircle2, AlertTriangle, Sparkles, CalendarRange, Lock, BarChart3, Activity, RefreshCw, XCircle, Loader2, Briefcase } from 'lucide-react';
 import { ApiConfig, OvertimeRecord, FetchStatus, UserProfile, ManualEmployee, GlobalEmployee, HeadcountRecord, TotvsQueryMeta } from '@/src/modules/human-capital/types';
 import { CorporateSidebar, SidebarItem } from '../../components/navigation/CorporateSidebar';
@@ -190,17 +191,27 @@ const TotvsBlockingState: React.FC<{
 // regionalMap agora vem de ccMaster.ts — fonte única de verdade
 // getRegional delegado para getCCRegional do master
 
+/**
+ * Filtros iniciais na competência VIGENTE da folha (21 do mês anterior a 20).
+ * Antes o painel abria sempre em janeiro/2026, com uma consulta vazia ao TOTVS
+ * a cada abertura antes de o usuário escolher o período.
+ */
 const getInitialFilters = (): FilterState => {
+  const now = new Date();
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const competency = getPlanningCompetency(todayKey);
+  const { start, end } = getCompetencyRange(competency);
+  const [year, month] = competency.split('-');
   return {
     searchTerm: '',
-    startDate: '2025-12-21',
-    endDate: '2026-01-20',
+    startDate: start,
+    endDate: end,
     function: '',
     costCenter: '',
     regional: '',
     type: '',
-    year: '2026',
-    month: '01',
+    year,
+    month,
     dateMode: 'PAYROLL'
   };
 };

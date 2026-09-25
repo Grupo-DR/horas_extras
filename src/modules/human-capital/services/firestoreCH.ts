@@ -276,6 +276,20 @@ export const updatePlanningStatus = async (
     }
 };
 
+/**
+ * Registros diários APROVADOS do mês de calendário (AAAA-MM).
+ * Usada pela Visão Geral e pela Análise, que só consomem aprovados: evita baixar
+ * os milhares de rascunhos sem horas do mês. Requer os índices (status, date).
+ */
+export const getApprovedPlanningRecords = async (monthKey: string, scope?: Scope): Promise<PlanningRecord[]> => {
+    const rows = await getScopedDocs<PlanningRecord>(COL_PLANNING, scope, 'costCenter', [
+        where('status', '==', 'approved'),
+        where('date', '>=', monthKey),
+        where('date', '<=', monthKey + '')
+    ]);
+    return rows.filter(r => r.type === 'DAILY' && isCostCenterInHumanCapitalScope(scope, r.costCenter || ''));
+};
+
 export const getPlanningRecords = async (monthKey: string, type: 'DAILY' | 'MONTHLY', scope?: Scope) => {
     // Note: We need to filter by month start.
     // 'date' field is string 'YYYY-MM-DD' or 'YYYY-MM'.
