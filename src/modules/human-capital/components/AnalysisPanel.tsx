@@ -1006,7 +1006,8 @@ const DistributionHistogram: React.FC<{ data: OvertimeRecord[]; onBucketClick?: 
                     </button>
                 </div>
             )}
-            <div className="flex-1 w-full min-h-[200px]">
+            {/* Altura fixa: dentro da seção recolhível não há altura definida e o gráfico ficava com 0px. */}
+            <div className="w-full h-[260px]">
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={buckets} layout="vertical" margin={{ left: 40 }}>
                         <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
@@ -2612,7 +2613,8 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ data, allData, periodStar
             </AnalysisSection>
 
             {/* Grid de Análises Detalhadas (Drill-down) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* items-start: abrir um cartão não estica o outro com espaço em branco. */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                 <AnalysisSection
                     title="Distribuição por Colaborador"
                     icon={<PieChart size={20} />}
