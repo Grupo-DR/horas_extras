@@ -46,7 +46,7 @@ export const powerBiReports: PowerBiReport[] = [
     id: 'saldoContratual',
     title: 'Saldo Contratual',
     area: 'Gestão de Contratos',
-    url: 'https://app.powerbi.com/view?r=eyJrIjoiN2I3YTNlYjMtNjA4ZC00ZmI1LWExNWYtMGQxZjAxMTY4YTk4IiwidCI6ImZhMmNlZmIyLTgzMWQtNGJkZS1iNGI5LTA5ZDM4NGE4NGZmZCJ9'
+    url: 'https://app.powerbi.com/view?r=eyJrIjoiZGM3YjBmMWMtNTBhMy00OGE5LWIxNGQtMTQwYzE5MTNmMjI3IiwidCI6ImZhMmNlZmIyLTgzMWQtNGJkZS1iNGI5LTA5ZDM4NGE4NGZmZCJ9'
   },
   {
     id: 'obrigacoesContratuais',
