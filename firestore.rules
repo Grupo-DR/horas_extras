@@ -557,6 +557,68 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // ── Status das Bases (Centro de Inteligência / Power BI) ──
+    // Leitura: quem tem acesso à área BI. Escrita: somente super admin.
+
+    function hasBiAreaAccess(area) {
+      let profile = getUserProfile();
+      return profile != null && (
+        profile.isSuperAdmin == true ||
+        area in profile.get('modules', {}).get('bi_reports', [])
+      );
+    }
+
+    function isValidBiSchedule(data) {
+      return data.area is string && data.area.size() > 0 &&
+        data.days is list && data.days.size() <= 7 &&
+        data.times is list && data.times.size() <= 24 &&
+        data.updatedAt == request.time &&
+        data.updatedBy == request.auth.uid;
+    }
+
+    function isValidBiDataSource(data) {
+      return data.area is string && data.area.size() > 0 &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 120 &&
+        data.version is string && data.version.size() <= 60 &&
+        (!('kind' in data) || data.kind in ['current', 'historical']);
+    }
+
+    match /bi_report_schedules/{reportId} {
+      allow read: if isAuthenticated() && hasBiAreaAccess(resource.data.area);
+      allow create, update: if isAuthenticated() && isSuperAdmin() && isValidBiSchedule(request.resource.data);
+      allow delete: if isAuthenticated() && isSuperAdmin();
+    }
+
+    match /bi_data_sources/{sourceId} {
+      allow read: if isAuthenticated() && hasBiAreaAccess(resource.data.area);
+      allow create: if isAuthenticated() && isSuperAdmin() &&
+        isValidBiDataSource(request.resource.data) &&
+        request.resource.data.lastUpdatedAt == null;
+      // lastUpdatedAt pode ser manual (registro retroativo), mas nunca no futuro
+      allow update: if isAuthenticated() && isSuperAdmin() &&
+        isValidBiDataSource(request.resource.data) &&
+        request.resource.data.area == resource.data.area &&
+        (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['lastUpdatedAt']) ||
+          (request.resource.data.lastUpdatedAt is timestamp && request.resource.data.lastUpdatedAt <= request.time)
+        );
+      allow delete: if isAuthenticated() && isSuperAdmin();
+    }
+
+    // Histórico imutável: só inclusão. "at" (data da base) pode ser retroativo;
+    // "registeredAt" é sempre o horário do servidor, para auditoria.
+    match /bi_data_source_updates/{updateId} {
+      allow read: if isAuthenticated() && isSuperAdmin();
+      allow create: if isAuthenticated() && isSuperAdmin() &&
+        request.resource.data.sourceId is string &&
+        request.resource.data.version is string &&
+        request.resource.data.at is timestamp &&
+        request.resource.data.at <= request.time &&
+        request.resource.data.registeredAt == request.time &&
+        request.resource.data.by == request.auth.uid;
+      allow update, delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
