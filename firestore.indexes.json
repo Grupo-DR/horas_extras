@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "bi_data_source_updates",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sourceId", "order": "ASCENDING" },
+        { "fieldPath": "at", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "ssma_inspection_events",
       "queryScope": "COLLECTION",
       "fields": [

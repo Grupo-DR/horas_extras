@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Activity, Calendar, BarChart2 } from 'lucide-react';
+import { BarChart2, Database } from 'lucide-react';
 import { powerBiReports, PowerBiReport } from '../../data/powerbiReports';
 import { CorporateSidebar, SidebarItem } from '../../components/navigation/CorporateSidebar';
+import { BiStatusPanel } from './BiStatusPanel';
 import { useAuth } from '../../../contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -13,6 +14,7 @@ export const PowerBiView: React.FC = () => {
   const area = searchParams.get('area');
 
   const [availableReports, setAvailableReports] = useState<PowerBiReport[]>([]);
+  // null = tela "Status das Bases" (primeira opção da sidebar e tela inicial)
   const [selectedReport, setSelectedReport] = useState<PowerBiReport | null>(null);
 
   useEffect(() => {
@@ -27,19 +29,29 @@ export const PowerBiView: React.FC = () => {
         (r) => r.area.toLowerCase() === area.toLowerCase()
       );
       setAvailableReports(filtered);
-      if (filtered.length > 0) {
-        setSelectedReport(filtered[0]);
-      }
     }
   }, [area, hasModuleAccess, navigate]);
 
-  const sidebarItems: SidebarItem[] = availableReports.map((report) => ({
-    key: report.id,
-    label: report.title,
-    icon: BarChart2,
-    onClick: () => setSelectedReport(report),
-    isActive: selectedReport?.id === report.id,
-  }));
+  useEffect(() => {
+    setSelectedReport(null);
+  }, [area]);
+
+  const sidebarItems: SidebarItem[] = [
+    {
+      key: 'bi-status',
+      label: 'Status das Bases',
+      icon: Database,
+      onClick: () => setSelectedReport(null),
+      isActive: selectedReport === null,
+    },
+    ...availableReports.map((report) => ({
+      key: report.id,
+      label: report.title,
+      icon: BarChart2,
+      onClick: () => setSelectedReport(report),
+      isActive: selectedReport?.id === report.id,
+    })),
+  ];
 
   const handleLogout = () => {
     logout();
@@ -89,13 +101,9 @@ export const PowerBiView: React.FC = () => {
                 />
               </div>
             </>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8 text-center">
-              <Activity className="w-16 h-16 mb-4 text-slate-200" />
-              <p className="text-lg font-medium text-slate-600">Selecione um relatório</p>
-              <p className="text-sm mt-1">Escolha um dos painéis no menu lateral para visualizar.</p>
-            </div>
-          )}
+          ) : area ? (
+            <BiStatusPanel area={area} reports={availableReports} />
+          ) : null}
         </div>
       </div>
     </div>
