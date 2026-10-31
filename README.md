@@ -20,6 +20,7 @@
 12. [Módulo Contratos e Produção](#-módulo-contratos-e-produção)
 13. [Módulo Obra (Construction)](#-módulo-obra-construction)
 14. [Deploy e Ambientes](#-deploy-e-ambientes)
+    - [Versionamento](#versionamento)
 15. [Variáveis de Ambiente](#-variáveis-de-ambiente)
 16. [Fluxos de Trabalho Importantes](#-fluxos-de-trabalho-importantes)
 17. [Pendências e Roadmap](#-pendências-e-roadmap)
@@ -487,25 +488,38 @@ O componente `DocumentImportModal` permite arrastar PDFs de BM (Boletim de Medi�
 
 ### Ambiente Atual
 
-O projeto está atualmente configurado para deploy no **Netlify** (arquivo `netlify.toml` na raiz) e usa **Firebase** como backend.
+O front-end é publicado na **Vercel**: cada push na `main` gera o deploy de produção
+automaticamente (`vercel.json` cuida do redirecionamento da SPA). O backend é o **Firebase**.
+O `netlify.toml` é legado e não é usado em produção.
 
-```toml
-# netlify.toml
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-```
-
-### Para fazer deploy manual
+### Build local
 
 ```bash
-# Build
-npm run build
-
-# O diretório de saída é /dist
-# Configurar no Netlify: Base directory = ./, Build command = npm run build, Publish directory = dist
+npm run build   # saída em /dist
 ```
+
+### Versionamento
+
+A versão do sistema aparece no canto inferior direito de todas as telas, no formato
+`v1.0.0 · 582d65c`: a versão do `package.json` e o commit publicado. A data da publicação
+aparece ao passar o mouse; fora de produção o selo fica amarelo e indica o ambiente.
+
+**Regra: toda entrega que vai para a `main` atualiza a versão e o changelog.**
+
+1. Escolha o tipo de mudança ([SemVer](https://semver.org/lang/pt-BR/)):
+
+   | Comando | Quando usar | Exemplo |
+   |---------|-------------|---------|
+   | `npm run release:patch` | Correção sem mudar o uso | 1.0.0 → 1.0.1 |
+   | `npm run release:minor` | Funcionalidade nova, compatível | 1.0.1 → 1.1.0 |
+   | `npm run release:major` | Mudança que quebra uso, dados ou permissões | 1.1.0 → 2.0.0 |
+
+2. Adicione no topo do `CHANGELOG.md` a seção `## [x.y.z] - AAAA-MM-DD`, com o que mudou
+   para o usuário (Adicionado, Alterado, Corrigido, Segurança).
+3. Faça o commit junto com a entrega.
+
+O commit e a data são preenchidos sozinhos na build (`vite.config.ts`). O `npm test`
+falha se a versão do `package.json` não tiver entrada no `CHANGELOG.md`.
 
 ### Firebase Cloud Functions
 
