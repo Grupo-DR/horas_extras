@@ -393,7 +393,9 @@ service cloud.firestore {
         canTransitionPlanning(planningStatus(resource.data), planningStatus(request.resource.data)) &&
         // Envio, aprovação e devolução mudam só o status, nunca as horas.
         (isSuperAdmin() || planningStatus(request.resource.data) == 'draft' || planningHoursUnchanged());
-      allow delete: if isAuthenticated() && canManageCHReferenceData();
+      // Nenhuma tela apaga lançamentos; exclusão só por super admin (suporte),
+      // para que horas aprovadas não sumam fora do fluxo de aprovação.
+      allow delete: if isAuthenticated() && isSuperAdmin();
     }
 
     match /hc_budgets/{budgetId} {

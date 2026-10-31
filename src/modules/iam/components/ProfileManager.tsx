@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { UserProfileDoc, CHRole, CommercialRole, SSMARole, Scope, ScopeType, ConstructionRole, canManageProfiles } from '../types';
+import { UserProfileDoc, CHRole, CommercialRole, SSMARole, Scope, ScopeType, ConstructionRole, canManageProfiles, normalizeScopeCostCenters } from '../types';
 import { getAllProfiles, updateUserRoles, createUserProfile, deleteUserProfile } from '../profileService';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../contexts/AuthContext';
@@ -93,10 +93,13 @@ const ProfileManager: React.FC = () => {
                 role: editingUser.modules.commercial.role
             } : undefined;
 
+            const hcScope = editingUser.modules.human_capital?.scope;
             const hc = editingUser.modules.human_capital ? {
                 enabled: editingUser.modules.human_capital.enabled,
                 role: editingUser.modules.human_capital.role,
-                scope: editingUser.modules.human_capital.scope
+                scope: hcScope?.type === 'COST_CENTER'
+                    ? { type: 'COST_CENTER' as const, costCenters: normalizeScopeCostCenters(hcScope.costCenters) }
+                    : hcScope!
             } : undefined;
 
             const construction_vli = editingUser.modules.construction_vli ? {
@@ -127,7 +130,10 @@ const ProfileManager: React.FC = () => {
             });
 
             // Update local state
-            setUsers(prev => prev.map(u => u.uid === editingUser.uid ? editingUser : u));
+            const savedUser = hc
+                ? { ...editingUser, modules: { ...editingUser.modules, human_capital: { ...editingUser.modules.human_capital!, scope: hc.scope } } }
+                : editingUser;
+            setUsers(prev => prev.map(u => u.uid === editingUser.uid ? savedUser : u));
             setEditingUser(null);
             toast.success("Perfil atualizado com sucesso!");
         } catch (err) {
@@ -787,7 +793,7 @@ const ProfileManager: React.FC = () => {
                                                 <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Centros de Custo (separados por vírgula)</label>
                                                 <input
                                                     type="text"
-                                                    placeholder="1001, 301201..."
+                                                    placeholder="302801, 10301..."
                                                     value={(editingUser.modules.human_capital.scope as any).costCenters?.join(', ') || ''}
                                                     onChange={(e) => {
                                                         const val = e.target.value;
@@ -805,7 +811,7 @@ const ProfileManager: React.FC = () => {
                                                     }}
                                                     className="w-full p-2 border rounded-lg text-sm"
                                                 />
-                                                <p className="text-[10px] text-gray-400 mt-1">Ex: 3.012.01 (pontos são removidos automaticamente na validação se preferir)</p>
+                                                <p className="text-[10px] text-gray-400 mt-1">Use o código sem ponto, como nos lançamentos (ex.: 302801). Pontos e espaços são removidos ao salvar.</p>
                                             </div>
                                         )}
                                     </div>
