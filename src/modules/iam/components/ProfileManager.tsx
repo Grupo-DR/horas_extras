@@ -24,6 +24,8 @@ import { app } from '../../../../services/firebaseConfig';
 const ProfileManager: React.FC = () => {
     const navigate = useNavigate();
     const { profile } = useAuth();
+    // Liberações individuais (ex.: Auditoria de Ponto) só são concedidas por super admin.
+    const canGrantFeatures = profile?.isSuperAdmin === true;
     const [users, setUsers] = useState<UserProfileDoc[]>([]);
     const [filteredUsers, setFilteredUsers] = useState<UserProfileDoc[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -126,7 +128,8 @@ const ProfileManager: React.FC = () => {
                 construction_vli,
                 construction_rdo,
                 ssma,
-                bi_reports
+                bi_reports,
+                features: canGrantFeatures ? { clockinAudit: editingUser.features?.clockinAudit === true } : undefined
             });
 
             // Update local state
@@ -813,6 +816,24 @@ const ProfileManager: React.FC = () => {
                                                 />
                                                 <p className="text-[10px] text-gray-400 mt-1">Use o código sem ponto, como nos lançamentos (ex.: 302801). Pontos e espaços são removidos ao salvar.</p>
                                             </div>
+                                        )}
+
+                                        {canGrantFeatures && (
+                                            <label className="flex items-start justify-between gap-4 pt-3 border-t border-gray-200 cursor-pointer">
+                                                <span>
+                                                    <span className="block text-sm font-medium text-gray-700">Auditoria de Ponto (piloto)</span>
+                                                    <span className="block text-[10px] text-gray-400">Acesso a CPF e localização das batidas. Liberação individual, só super admin concede.</span>
+                                                </span>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={editingUser.features?.clockinAudit === true}
+                                                    onChange={(e) => setEditingUser({
+                                                        ...editingUser,
+                                                        features: { ...editingUser.features, clockinAudit: e.target.checked }
+                                                    })}
+                                                    className="mt-1 w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                                />
+                                            </label>
                                         )}
                                     </div>
                                 )}

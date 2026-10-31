@@ -362,9 +362,14 @@ service cloud.firestore {
         data.active is bool;
     }
 
+    // Liberações individuais (features, ex.: Auditoria de Ponto) só por super admin.
     match /user_profiles/{userId} {
       allow read: if isAuthenticated() && (request.auth.uid == userId || isIAMAdmin());
-      allow write: if isAuthenticated() && isIAMAdmin();
+      allow create: if isAuthenticated() && isIAMAdmin() &&
+        (isSuperAdmin() || !request.resource.data.keys().hasAny(['features']));
+      allow update: if isAuthenticated() && isIAMAdmin() &&
+        (isSuperAdmin() || request.resource.data.get('features', {}) == resource.data.get('features', {}));
+      allow delete: if isAuthenticated() && isIAMAdmin();
     }
 
     match /user_directory/{userId} {
