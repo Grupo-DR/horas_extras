@@ -8,11 +8,11 @@ export type Scope =
 export type CommercialRole = 'COMMERCIAL_ADMIN' | 'COMMERCIAL_VIEWER' | 'IAM_ADMIN';
 
 export type CHRole =
-    | 'CH_ADMIN'              // Type 01: All access + Plan + CRUD Profiles
-    | 'CH_MANAGER'            // Type 02: Regional + Plan
-    | 'CH_COSTCENTER_PLANNER' // Type 03: CostCenter + Plan
-    | 'CH_APPROVER'           // Type 04: Approver Level
-    | 'CH_AUDITOR_VIEWER';    // Type 05: All + Read Only
+    | 'CH_ADMIN'              // Administração do módulo (RH): cadastros + fluxo do gerente; não aprova
+    | 'CH_MANAGER'            // Gerente de obra ou de setor: revisa/planeja e envia ao diretor
+    | 'CH_COSTCENTER_PLANNER' // Engenheiro: planeja e envia ao gerente
+    | 'CH_APPROVER'           // Diretor/Presidente: aprova ou devolve
+    | 'CH_AUDITOR_VIEWER';    // Somente leitura
 
 export type LegacyCHRole =
     | CHRole
@@ -131,7 +131,7 @@ export const canReadAll = (role?: LegacyCHRole): boolean => {
 export const canApprove = (role?: LegacyCHRole): boolean => {
     const normalizedRole = normalizeCHRole(role);
     if (!normalizedRole) return false;
-    return ['CH_ADMIN', 'CH_APPROVER'].includes(normalizedRole);
+    return normalizedRole === 'CH_APPROVER';
 };
 
 export const canAccessSettings = (role?: LegacyCHRole): boolean => {

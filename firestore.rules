@@ -80,8 +80,9 @@ service cloud.firestore {
       ];
     }
 
+    // Diretor/Presidente (e super admin, para suporte). Administrador CH não aprova.
     function canApproveCH() {
-      return hasHumanCapitalAccess() && hcRole() in ['CH_ADMIN', 'CH_APPROVER', 'HC_ADMIN', 'HC_APPROVER'];
+      return isSuperAdmin() || (hasHumanCapitalAccess() && hcRole() in ['CH_APPROVER', 'HC_APPROVER']);
     }
 
     function isCHAllScope() {
@@ -124,8 +125,22 @@ service cloud.firestore {
     // pending  = enviado pelo gerente, aguardando o diretor
     // approved = aprovado pelo diretor
     // rejected = devolvido pelo diretor ao engenheiro (com motivo)
+
+    // Gerente (obra ou setor) e Administrador CH: revisam/planejam e enviam ao diretor.
     function isCHManager() {
-      return hasHumanCapitalAccess() && hcRole() in ['CH_MANAGER', 'HC_MANAGER'];
+      return hasHumanCapitalAccess() && hcRole() in ['CH_MANAGER', 'HC_MANAGER', 'CH_ADMIN', 'HC_ADMIN'];
+    }
+
+    // Quem lança horas. O diretor/presidente não lança: só aprova ou devolve.
+    function isCHHoursPlanner() {
+      return hasHumanCapitalAccess() && hcRole() in [
+        'CH_ADMIN',
+        'CH_MANAGER',
+        'CH_COSTCENTER_PLANNER',
+        'HC_ADMIN',
+        'HC_MANAGER',
+        'HC_COSTCENTER_PLANNER'
+      ];
     }
 
     function planningStatus(data) {
@@ -138,11 +153,13 @@ service cloud.firestore {
 
     // Quem pode levar um registro do status `fromStatus` para `toStatus`.
     function canTransitionPlanning(fromStatus, toStatus) {
-      return canApproveCH() ||
-        // Gerente: edita o que ainda não foi enviado e envia ao diretor.
+      return isSuperAdmin() ||
+        // Diretor/Presidente: aprova ou devolve o que o gerente enviou.
+        (canApproveCH() && fromStatus == 'pending' && toStatus in ['approved', 'rejected']) ||
+        // Gerente/Administrador CH: edita o que ainda não foi enviado e envia ao diretor.
         (isCHManager() && fromStatus in ['draft', 'rejected'] && toStatus in ['draft', 'pending']) ||
-        // Engenheiro (e demais planejadores): só salva o que ainda não foi enviado.
-        (fromStatus in ['draft', 'rejected'] && toStatus == 'draft');
+        // Engenheiro: só salva o que ainda não foi enviado.
+        (isCHHoursPlanner() && fromStatus in ['draft', 'rejected'] && toStatus == 'draft');
     }
 
     function validCHPlanning(data) {
@@ -373,15 +390,9 @@ service cloud.firestore {
         validCHPlanning(request.resource.data) &&
         isCHScopedData(resource.data) &&
         isCHScopedData(request.resource.data) &&
-        (
-          // Diretor/admin: qualquer alteração.
-          canApproveCH() ||
-          // Demais: transição permitida ao perfil; o envio ao diretor não altera horas.
-          (
-            canTransitionPlanning(planningStatus(resource.data), planningStatus(request.resource.data)) &&
-            (planningStatus(request.resource.data) != 'pending' || planningHoursUnchanged())
-          )
-        );
+        canTransitionPlanning(planningStatus(resource.data), planningStatus(request.resource.data)) &&
+        // Envio, aprovação e devolução mudam só o status, nunca as horas.
+        (isSuperAdmin() || planningStatus(request.resource.data) == 'draft' || planningHoursUnchanged());
       allow delete: if isAuthenticated() && canManageCHReferenceData();
     }
 

@@ -566,13 +566,14 @@ const CostCenterPlanModal: React.FC<{
     periodEnd: Date;
     planRangeStart: string;
     planRangeEnd: string;
-    onSave: (costCenter: string, localNums: Record<string, number>) => Promise<void>;
+    onSave: (costCenter: string, localNums: Record<string, number>, submitToDirector: boolean) => Promise<void>;
     planStatuses: Record<string, string>;
     planReasons: Record<string, string>;
     canEditOpen: boolean;
     canOverrideLock: boolean;
-}> = ({ isOpen, onClose, costCenter, memberChapas, memberNames, memberFuncoes, plans, periodStart, periodEnd, planRangeStart, planRangeEnd, onSave, planStatuses, planReasons, canEditOpen, canOverrideLock }) => {
-    const [saving, setSaving] = useState(false);
+    canSubmitToDirector: boolean;
+}> = ({ isOpen, onClose, costCenter, memberChapas, memberNames, memberFuncoes, plans, periodStart, periodEnd, planRangeStart, planRangeEnd, onSave, planStatuses, planReasons, canEditOpen, canOverrideLock, canSubmitToDirector }) => {
+    const [saving, setSaving] = useState<false | 'save' | 'submit'>(false);
     const [localValues, setLocalValues] = useState<Record<string, string>>({});
     const [searchTerm, setSearchTerm] = useState('');
     const [roleFilter, setRoleFilter] = useState('');
@@ -673,8 +674,8 @@ const CostCenterPlanModal: React.FC<{
         setSelectedMembers({});
     };
 
-    const handleSaveClick = async () => {
-        setSaving(true);
+    const handleSaveClick = async (submitToDirector: boolean) => {
+        setSaving(submitToDirector ? 'submit' : 'save');
         try {
             const numericMap: Record<string, number> = {};
             memberChapas.forEach(chapa => {
@@ -697,7 +698,7 @@ const CostCenterPlanModal: React.FC<{
                     }
                 });
             });
-            await onSave(costCenter, numericMap);
+            await onSave(costCenter, numericMap, submitToDirector);
         } catch (error) {
             // A mensagem já foi exibida pelo caller; mantém os valores digitados na tela.
             console.error(error);
@@ -913,14 +914,26 @@ const CostCenterPlanModal: React.FC<{
                     </p>
                     <div className="flex gap-2">
                         <button onClick={onClose} className="px-4 py-2 text-slate-500 font-bold text-sm hover:bg-slate-100 rounded-lg transition-colors">Fechar</button>
-                        <button
-                            onClick={handleSaveClick}
-                            disabled={saving || memberChapas.length === 0}
-                            className="px-5 py-2 bg-blue-600 text-white font-bold text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
-                        >
-                            {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Save size={15} />}
-                            {canEditOpen && !canOverrideLock ? 'Salvar e enviar ao gerente' : 'Salvar Planejamento'}
-                        </button>
+                        {(canEditOpen || canOverrideLock) && (
+                            <button
+                                onClick={() => handleSaveClick(false)}
+                                disabled={!!saving || memberChapas.length === 0}
+                                className={`px-5 py-2 font-bold text-sm rounded-lg transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50 ${canSubmitToDirector ? 'bg-white text-blue-700 border border-blue-200 hover:bg-blue-50' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                            >
+                                {saving === 'save' ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Save size={15} />}
+                                {canSubmitToDirector ? 'Salvar' : 'Salvar e enviar ao gerente'}
+                            </button>
+                        )}
+                        {canSubmitToDirector && (
+                            <button
+                                onClick={() => handleSaveClick(true)}
+                                disabled={!!saving || memberChapas.length === 0}
+                                className="px-5 py-2 bg-blue-600 text-white font-bold text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
+                            >
+                                {saving === 'submit' ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Send size={15} />}
+                                Salvar e enviar ao diretor
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -1575,7 +1588,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
         setCcPlanModalId(costCenter);
     };
 
-    const handleCostCenterPlanSave = async (costCenter: string, numericMap: Record<string, number>) => {
+    const handleCostCenterPlanSave = async (costCenter: string, numericMap: Record<string, number>, submitToDirector = false) => {
         if (!isAuthorizedCostCenter(costCenter)) {
             setAlert({ type: 'error', message: 'Voce nao possui acesso a este Centro de Custo.' });
             return;
@@ -1630,17 +1643,20 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
             }
         });
 
-        if (recordsToSave.length === 0) {
+        const submits = submitToDirector && workflowCaps.canSubmitToDirector;
+        if (recordsToSave.length === 0 && !submits) {
             setAlert({ type: 'success', message: 'Nenhuma alteração para salvar.' });
             return;
         }
 
-        try {
-            await savePlanning(recordsToSave, user);
-        } catch (error: any) {
-            console.error(error);
-            setAlert({ type: 'error', message: error?.message || 'Erro ao salvar planejamento.' });
-            throw error;
+        if (recordsToSave.length > 0) {
+            try {
+                await savePlanning(recordsToSave, user);
+            } catch (error: any) {
+                console.error(error);
+                setAlert({ type: 'error', message: error?.message || 'Erro ao salvar planejamento.' });
+                throw error;
+            }
         }
 
         recordsToSave.forEach(r => {
@@ -1660,11 +1676,86 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
             return next;
         });
 
+        if (submits) {
+            await submitCostCenterDraftsToDirector(costCenter, ccData.memberChapas, mergedPlans, { ...planStatuses, ...nextStatuses });
+            return;
+        }
+
         const destination = workflowCaps.canSubmitToDirector
-            ? 'Use "Enviar ao diretor" quando a avaliação estiver concluída.'
+            ? 'Quando concluir, use "Salvar e enviar ao diretor".'
             : 'Aguardando avaliação do gerente regional.';
         const resubmitted = resubmittedCount > 0 ? ` ${resubmittedCount} dia(s) devolvido(s) voltaram para o gerente.` : '';
         setAlert({ type: 'success', message: `Planejamento do CC ${costCenter} salvo. ${destination}${resubmitted}` });
+    };
+
+    /**
+     * Gerente/administrador: depois de salvar a grade da obra, envia ao diretor os dias
+     * "Aguardando gerente" com horas no período, os dele e os do engenheiro.
+     * São duas gravações porque a regra só aceita o envio sem alteração de horas.
+     */
+    const submitCostCenterDraftsToDirector = async (
+        costCenter: string,
+        memberChapas: string[],
+        currentPlans: Record<string, number>,
+        currentStatuses: Record<string, string>
+    ) => {
+        const drafts: PlanningRecord[] = [];
+        memberChapas.forEach(chapa => {
+            const emp = getEmpObj(chapa, costCenter);
+            const curr = new Date(periodStart);
+            while (curr <= periodEnd) {
+                const dateKey = formatDateKey(curr);
+                curr.setDate(curr.getDate() + 1);
+                const key = `${chapa}_${costCenter}_${dateKey}`;
+                const hours = currentPlans[key] || 0;
+                if (hours <= 0) continue;
+                if (normalizePlanningStatus(currentStatuses[key]) !== 'draft') continue;
+                if (loadedPlansRef.current[key] === undefined) continue; // ainda não gravado
+                drafts.push({
+                    id: loadedIdsRef.current[key] || planningDocId(chapa, costCenter, dateKey),
+                    chapa,
+                    nome: emp?.nome || memberNames[chapa] || chapa,
+                    costCenter,
+                    date: dateKey,
+                    type: 'DAILY',
+                    plannedHours: hours,
+                    status: 'draft'
+                });
+            }
+        });
+
+        if (drafts.length === 0) {
+            setAlert({ type: 'success', message: `Planejamento do CC ${costCenter} salvo. Nenhum dia aguardando envio ao diretor neste período.` });
+            return;
+        }
+
+        try {
+            await transitionPlanningStatus(
+                drafts,
+                { status: 'pending', submittedBy: user.email, submittedAt: new Date().toISOString() },
+                user
+            );
+        } catch (error: any) {
+            console.error(error);
+            setAlert({
+                type: 'error',
+                message: `Planejamento do CC ${costCenter} salvo, mas não foi enviado ao diretor: ${error?.message || 'erro desconhecido.'} Tente "Enviar ao diretor" na Avaliação do Gerente.`
+            });
+            refreshAfterTransition();
+            throw error;
+        }
+
+        setPlanStatuses(prev => {
+            const next = { ...prev };
+            drafts.forEach(r => { next[planningKey(r)] = 'pending'; });
+            return next;
+        });
+        setQueueToken(token => token + 1);
+        const totalHours = drafts.reduce((sum, r) => sum + r.plannedHours, 0);
+        setAlert({
+            type: 'success',
+            message: `CC ${costCenter}: ${drafts.length} lançamento(s), ${formatDecimalHours(totalHours)}, enviados para aprovação do diretor.`
+        });
     };
 
     // Calculate Global Stats (Filtered)
@@ -1914,6 +2005,7 @@ const Planning: React.FC<PlanningProps> = ({ user, employees, manualEmployees, h
                     planReasons={planReasons}
                     canEditOpen={workflowCaps.canEditOpen}
                     canOverrideLock={workflowCaps.canOverrideLock}
+                    canSubmitToDirector={workflowCaps.canSubmitToDirector}
                 />
             )}
 
