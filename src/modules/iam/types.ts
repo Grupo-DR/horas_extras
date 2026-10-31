@@ -104,6 +104,15 @@ export const normalizeCHRole = (role?: string): CHRole | undefined => {
         : undefined;
 };
 
+/**
+ * CCs do escopo do Capital Humano no formato gravado nos lançamentos e no
+ * headcount: sem pontos (3028.01 → 302801), sem vazios e sem repetidos.
+ * As regras do Firestore comparam o valor exato; com ponto, o usuário via a
+ * obra mas não conseguia gravar.
+ */
+export const normalizeScopeCostCenters = (costCenters: string[]): string[] =>
+    Array.from(new Set(costCenters.map(cc => cc.replace(/\./g, '').trim()).filter(Boolean)));
+
 export const canPlan = (role?: LegacyCHRole): boolean => {
     const normalizedRole = normalizeCHRole(role);
     if (!normalizedRole) return false;
