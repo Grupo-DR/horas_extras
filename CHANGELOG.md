@@ -4,6 +4,19 @@ Todas as mudanças relevantes do DR Nexus, da mais nova para a mais antiga.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, seção "Versionamento".
 
+## [1.2.0] - 2026-10-31
+
+### Adicionado
+- IAM: caixa "Auditoria de Ponto (piloto)" no perfil, visível só para super admin, para
+  liberar ou retirar o acesso sem mexer direto no banco.
+
+### Segurança
+- Regras do Firestore: só super admin altera liberações individuais (`features`) de um
+  perfil; administradores do IAM continuam editando papéis e escopos.
+
+### Documentação
+- README: papéis do Capital Humano, formato dos centros de custo e liberações individuais.
+
 ## [1.1.1] - 2026-10-31
 
 ### Alterado

@@ -191,6 +191,8 @@ export const updateUserRoles = async (uid: string, iamUpdates: {
     construction_rdo?: { enabled: boolean; role: 'CONSTRUCTION_ADMIN' | 'CONSTRUCTION_MANAGER' | 'CONSTRUCTION_VIEWER' };
     ssma?: { enabled: boolean; role: import('./types').SSMARole; scope: any };
     bi_reports?: string[];
+    /** Liberações individuais; só super admin pode alterar (ver firestore.rules). */
+    features?: import('./types').UserFeatures;
 }) => {
     const ref = doc(db, COLLECTION, uid);
     const updates: any = {};
@@ -200,6 +202,10 @@ export const updateUserRoles = async (uid: string, iamUpdates: {
     if (iamUpdates.construction_rdo) updates['modules.construction_rdo'] = iamUpdates.construction_rdo;
     if (iamUpdates.ssma) updates['modules.ssma'] = iamUpdates.ssma;
     if (iamUpdates.bi_reports !== undefined) updates['modules.bi_reports'] = iamUpdates.bi_reports;
+    // Campo a campo, para não apagar liberações que esta tela não conhece.
+    Object.entries(iamUpdates.features ?? {}).forEach(([key, value]) => {
+        updates[`features.${key}`] = value;
+    });
 
     updates['updatedAt'] = new Date().toISOString();
     await updateDoc(ref, updates);

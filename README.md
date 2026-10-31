@@ -300,32 +300,60 @@ Cada usuário tem um documento em `/user_profiles/{uid}` com a seguinte estrutur
 {
   name: string;
   email: string;
-  isSuperAdmin?: boolean;  // Acesso total ao sistema
+  isSuperAdmin?: boolean;  // Suporte técnico: acesso total (campo pode não existir)
   modules: {
-    commercial?: { role: 'VIEWER' | 'EDITOR' | 'IAM_ADMIN' };
-    human_capital?: { role: CHRole; scope?: Scope };
-    construction?: { role: string };
-  }
+    commercial?: { role: 'COMMERCIAL_ADMIN' | 'COMMERCIAL_VIEWER' | 'IAM_ADMIN' };
+    human_capital?: { enabled: boolean; role: CHRole; scope: Scope };
+    // ...demais módulos
+  };
+  features?: { clockinAudit?: boolean };  // Liberações individuais (pilotos)
 }
 ```
+
+> Nas regras do Firestore, leia campos opcionais sempre com `get('campo', padrão)`.
+> Acessar um campo inexistente gera erro e a regra **nega** o acesso: foi o que bloqueou
+> 38 perfis sem `isSuperAdmin` em outubro de 2026.
 
 ### Roles do Módulo Capital Humano (`CHRole`)
 
-| Role | Permissões |
-|------|-----------|
-| `ADMIN` | Acesso total, gerencia usuários e configurações |
-| `APPROVER` | Aprova/rejeita planejamentos de horas extras |
-| `MANAGER` | Visualiza e planeja para seu centro de custo |
-| `VIEWER` | Apenas visualização |
+Fluxo das horas extras: engenheiro salva → gerente envia ao diretor → diretor aprova ou devolve
+ao engenheiro. A devolução corrigida volta ao gerente.
+
+| Role | Nome no IAM | Planeja | Envia ao diretor | Aprova/devolve |
+|------|-------------|---------|------------------|----------------|
+| `CH_COSTCENTER_PLANNER` | Planejador de CC (engenheiro) | ✅ seus CCs | — (vai ao gerente) | — |
+| `CH_MANAGER` | Gerente (obra ou setor) | ✅ seus CCs | ✅ | — |
+| `CH_ADMIN` | Administrador CH (não aprova) | ✅ todos | ✅ | — |
+| `CH_APPROVER` | Diretor/Presidente (aprova) | — | — | ✅ só o que foi enviado |
+| `CH_AUDITOR_VIEWER` | Auditor | — | — | — |
+
+- Envio, aprovação e devolução mudam só o status, nunca as horas.
+- Só super admin altera horas enviadas/aprovadas e apaga lançamentos.
+- `CH_ADMIN` também mantém os cadastros (headcount, salários, orçamento).
+- Papéis `HC_*` são legado e equivalem aos `CH_*`.
 
 ### Scope (Escopo)
 
-O campo `scope` limita o que o usuário pode ver:
 ```typescript
-{
-  costCenters?: string[]; // CCs específicos que o usuário pode acessar
-}
+{ type: 'ALL' }
+{ type: 'REGIONAL'; regionals: string[] }      // ex.: ['Regional 01']
+{ type: 'COST_CENTER'; costCenters: string[] } // ex.: ['302801', '10301'], sempre sem ponto
 ```
+
+Os centros de custo ficam **sem ponto**, no mesmo formato dos lançamentos e do headcount. As
+regras do Firestore comparam o valor exato; o IAM remove pontos e espaços ao salvar.
+
+### Liberações individuais (`features`)
+
+Funcionalidades em piloto ou com dados sensíveis são liberadas por pessoa, independentemente
+do papel. Ficam fora de `modules` porque o IAM regrava o bloco de cada módulo ao salvar.
+
+| Liberação | O que abre | Quem concede |
+|-----------|-----------|--------------|
+| `clockinAudit` | Aba Auditoria de Ponto (CPF e localização das batidas) e a Cloud Function `hcFetchEmployees` | Só super admin, no IAM (caixa "Auditoria de Ponto") |
+
+A liberação é verificada na tela, nas regras do Firestore e na Cloud Function. Super admin
+não tem acesso automático.
 
 ### Como criar um novo usuário admin
 
