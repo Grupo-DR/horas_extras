@@ -135,17 +135,12 @@ export const canPlan = (role?: LegacyCHRole): boolean => {
     return ['CH_ADMIN', 'CH_MANAGER', 'CH_COSTCENTER_PLANNER', 'CH_APPROVER'].includes(normalizedRole);
 };
 
-export const canManageProfiles = (profile: UserProfileDoc | null | undefined): boolean => {
-    if (!profile) return false;
-    if (profile.isSuperAdmin) return true;
-    return (
-        profile.modules.human_capital?.role === 'CH_ADMIN' ||
-        profile.modules.commercial?.role === 'COMMERCIAL_ADMIN' ||
-        profile.modules.commercial?.role === 'IAM_ADMIN' ||
-        profile.modules.construction_vli?.role === 'CONSTRUCTION_ADMIN' ||
-        profile.modules.construction_rdo?.role === 'CONSTRUCTION_ADMIN'
-    );
-};
+/**
+ * Gestão de usuários (IAM): só super admin e admin do IAM, o mesmo critério das
+ * regras do Firestore (isIAMAdmin) e das Cloud Functions de contas (verifyAdmin).
+ */
+export const canManageProfiles = (profile: UserProfileDoc | null | undefined): boolean =>
+    !!profile && (profile.isSuperAdmin === true || profile.modules.commercial?.role === 'IAM_ADMIN');
 
 export const canReadAll = (role?: LegacyCHRole): boolean => {
     const normalizedRole = normalizeCHRole(role);

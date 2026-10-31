@@ -4,6 +4,14 @@ Todas as mudanças relevantes do DR Nexus, da mais nova para a mais antiga.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, seção "Versionamento".
 
+## [1.2.1] - 2026-10-31
+
+### Segurança
+- Gestão de usuários e Cloud Functions de contas só para super admin e admin do IAM, o mesmo
+  critério das regras do Firestore. Administradores CH, Comercial e Obras deixam de ver a
+  página (que já não funcionava para eles).
+- Cloud Functions de contas passam a Node.js 22.
+
 ## [1.2.0] - 2026-10-31
 
 ### Adicionado

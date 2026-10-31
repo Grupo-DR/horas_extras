@@ -11,7 +11,7 @@ const auth = admin.auth();
  * Verifies if the caller is an IAM Admin or Super Admin.
  */
 async function verifyAdmin(context) {
-    var _a, _b, _c, _d;
+    var _a, _b;
     if (!context.auth) {
         throw new functions.https.HttpsError("unauthenticated", "O usuário deve estar logado.");
     }
@@ -22,13 +22,11 @@ async function verifyAdmin(context) {
     if (!profile) {
         throw new functions.https.HttpsError("permission-denied", "Perfil de usuário não encontrado.");
     }
+    // Mesmo critério de isIAMAdmin() nas regras do Firestore: só super admin e admin do IAM
+    // administram contas. Administrador CH não (decisão de 31/10/2026).
     const isSuperAdmin = profile.isSuperAdmin === true;
     const isIamAdmin = ((_b = (_a = profile.modules) === null || _a === void 0 ? void 0 : _a.commercial) === null || _b === void 0 ? void 0 : _b.role) === 'IAM_ADMIN';
-    const hcRole = (_d = (_c = profile.modules) === null || _c === void 0 ? void 0 : _c.human_capital) === null || _d === void 0 ? void 0 : _d.role;
-    // Temporary compatibility for profiles created before the CH_* role standard.
-    const isHcAdmin = hcRole === 'CH_ADMIN' || hcRole === 'HC_ADMIN';
-    // Se o usuário não tiver nível suficiente, barre
-    if (!isSuperAdmin && !isIamAdmin && !isHcAdmin) {
+    if (!isSuperAdmin && !isIamAdmin) {
         throw new functions.https.HttpsError("permission-denied", "Acesso negado. Requer permissão de Administrador IAM.");
     }
     return { uid, email };
