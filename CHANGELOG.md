@@ -4,6 +4,18 @@ Todas as mudanças relevantes do DR Nexus, da mais nova para a mais antiga.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, seção "Versionamento".
 
+## [1.1.0] - 2026-10-31
+
+### Adicionado
+- Capital Humano: aba Auditoria de Ponto (Carol Clock In), em piloto. Importação da exportação
+  da Carol, mapa e cercas por obra, linha do tempo e detalhe das batidas, cruzamento por CPF
+  com o cadastro do RM.
+
+### Segurança
+- Auditoria de Ponto liberada individualmente (`features.clockinAudit` no perfil), na tela,
+  nas regras do Firestore e na Cloud Function `hcFetchEmployees`. Super admin não tem acesso
+  automático.
+
 ## [1.0.0] - 2026-10-31
 
 Primeira versão numerada. Passa a ser exibida no canto inferior direito de todas as telas.
