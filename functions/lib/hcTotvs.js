@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.hcFetchOvertime = void 0;
+exports.hcFetchEmployees = exports.hcFetchOvertime = void 0;
 /**
  * Consulta de horas extras no TOTVS feita pelo servidor.
  *
@@ -19,7 +19,10 @@ const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 const ccMaster_1 = require("./shared/ccMaster");
 const TOTVS_API_PASSWORD = (0, params_1.defineSecret)("TOTVS_API_PASSWORD");
-const TOTVS_API_URL = "https://drconstrutora116480.rm.cloudtotvs.com.br:8051/api/framework/v1/consultaSQLServer/RealizaConsulta/TOTVSTOTAL/0/P";
+const TOTVS_QUERY_BASE = "https://drconstrutora116480.rm.cloudtotvs.com.br:8051/api/framework/v1/consultaSQLServer/RealizaConsulta";
+const TOTVS_API_URL = `${TOTVS_QUERY_BASE}/TOTVSTOTAL/0/P`;
+/** Cadastro de funcionários do RM (consulta "DADOS SOLIDES"). */
+const TOTVS_EMPLOYEES_URL = `${TOTVS_QUERY_BASE}/${encodeURIComponent("DADOS SOLIDES")}/0/P`;
 const TOTVS_API_USERNAME = "api";
 const HC_ROLES = ["CH_ADMIN", "CH_MANAGER", "CH_COSTCENTER_PLANNER", "CH_APPROVER", "CH_AUDITOR_VIEWER"];
 const FIRESTORE_IN_LIMIT = 10;
@@ -58,30 +61,32 @@ const chunk = (items, size) => {
         result.push(items.slice(i, i + size));
     return result;
 };
-/** Lê o perfil do usuário e devolve o escopo do Capital Humano, ou recusa o acesso. */
-const resolveHumanCapitalScope = async (uid) => {
-    var _a;
+/** Lê o perfil do usuário e devolve escopo e liberações do Capital Humano, ou recusa o acesso. */
+const resolveHumanCapitalAccess = async (uid) => {
+    var _a, _b;
     const snap = await admin.firestore().collection("user_profiles").doc(uid).get();
     const profile = snap.data();
     if (!profile)
         throw new https_1.HttpsError("permission-denied", "Perfil de usuário não encontrado.");
+    const canAuditClockin = ((_a = profile.features) === null || _a === void 0 ? void 0 : _a.clockinAudit) === true;
     if (profile.isSuperAdmin === true)
-        return { type: "ALL" };
-    const hc = (_a = profile.modules) === null || _a === void 0 ? void 0 : _a.human_capital;
+        return { scope: { type: "ALL" }, canAuditClockin };
+    const hc = (_b = profile.modules) === null || _b === void 0 ? void 0 : _b.human_capital;
     if (!hc || hc.enabled !== true || !HC_ROLES.includes(normalizeRole(hc.role))) {
         throw new https_1.HttpsError("permission-denied", "Sem acesso ao módulo Capital Humano.");
     }
     const scope = hc.scope;
     if (!scope || scope.type === "ALL")
-        return { type: "ALL" };
+        return { scope: { type: "ALL" }, canAuditClockin };
     if (scope.type === "REGIONAL") {
-        return { type: "REGIONAL", regionals: (scope.regionals || []).filter(Boolean) };
+        return { scope: { type: "REGIONAL", regionals: (scope.regionals || []).filter(Boolean) }, canAuditClockin };
     }
     if (scope.type === "COST_CENTER") {
-        return { type: "COST_CENTER", costCenters: (scope.costCenters || []).filter(Boolean) };
+        return { scope: { type: "COST_CENTER", costCenters: (scope.costCenters || []).filter(Boolean) }, canAuditClockin };
     }
     throw new https_1.HttpsError("permission-denied", "Escopo do Capital Humano inválido.");
 };
+const resolveHumanCapitalScope = async (uid) => (await resolveHumanCapitalAccess(uid)).scope;
 /**
  * Chapas que o headcount aloca em alguma obra do escopo durante o período.
  * O portal rateia as horas pelo headcount, então um colaborador lotado no TOTVS
@@ -115,8 +120,9 @@ const extractRawItems = (payload) => {
         return null;
     return items.every(item => item && typeof item === "object" && !Array.isArray(item)) ? items : null;
 };
-const fetchTotvs = async (startDate, endDate) => {
-    const url = `${TOTVS_API_URL}?parameters=PLN_B1_D=${startDate};PLN_B2_D=${endDate}`;
+const fetchTotvs = (startDate, endDate) => fetchTotvsQuery(`${TOTVS_API_URL}?parameters=PLN_B1_D=${startDate};PLN_B2_D=${endDate}`, "hcFetchOvertime");
+/** Executa uma consulta SQL do RM e devolve os itens brutos. */
+const fetchTotvsQuery = async (url, tag) => {
     const auth = btoa(`${TOTVS_API_USERNAME}:${TOTVS_API_PASSWORD.value()}`);
     let response;
     try {
@@ -127,14 +133,14 @@ const fetchTotvs = async (startDate, endDate) => {
         });
     }
     catch (error) {
-        logger.error("[hcFetchOvertime] falha de rede ao consultar o TOTVS", { message: String(error) });
+        logger.error(`[${tag}] falha de rede ao consultar o TOTVS`, { message: String(error) });
         throw new https_1.HttpsError("unavailable", "Falha de conexão com a API TOTVS.", { totvsCode: "NETWORK_ERROR" });
     }
     if (!response.ok) {
         const totvsCode = response.status === 401 ? "HTTP_UNAUTHORIZED"
             : response.status === 403 ? "HTTP_FORBIDDEN"
                 : "HTTP_ERROR";
-        logger.error("[hcFetchOvertime] TOTVS respondeu com erro", { status: response.status });
+        logger.error(`[${tag}] TOTVS respondeu com erro`, { status: response.status });
         throw new https_1.HttpsError("unavailable", `API TOTVS retornou status ${response.status}.`, {
             totvsCode,
             httpStatus: response.status,
@@ -199,5 +205,62 @@ exports.hcFetchOvertime = (0, https_1.onCall)({
         total: items.length,
     });
     return { items: visible };
+});
+/** "2021-06-25T00:00:00-03:00" → "2021-06-25". */
+const toDateOnly = (value) => {
+    if (typeof value !== "string")
+        return null;
+    const match = /^(\d{4}-\d{2}-\d{2})/.exec(value.trim());
+    return match ? match[1] : null;
+};
+const pickEmployee = (item) => {
+    var _a, _b, _c, _d, _e;
+    const cpf = String((_a = item.CPF) !== null && _a !== void 0 ? _a : "").replace(/\D/g, "");
+    const chapa = String((_b = item.CHAPA) !== null && _b !== void 0 ? _b : "").trim();
+    if (!chapa && !cpf)
+        return null;
+    return {
+        chapa,
+        nome: String((_c = item.NOME) !== null && _c !== void 0 ? _c : "").trim(),
+        cpf: cpf ? cpf.padStart(11, "0") : "",
+        funcao: String((_d = item.NOME1) !== null && _d !== void 0 ? _d : "").trim(),
+        codCCusto: String((_e = item.CODCCUSTO) !== null && _e !== void 0 ? _e : "").trim(),
+        dataAdmissao: toDateOnly(item.DATAADMISSAO),
+        dataDemissao: toDateOnly(item.DATADEMISSAO),
+    };
+};
+/**
+ * Funcionários do RM (chapa, nome, CPF, função, CC, admissão/demissão) para
+ * cruzar as batidas da Carol por CPF. CPF é dado pessoal: só quem tem a
+ * liberação da Auditoria de Ponto (a mesma das regras do Firestore).
+ * Escopo restrito filtra pelo CC — códigos no formato antigo do RM (ex.: "2019")
+ * podem não casar com o CC_MASTER e ficam de fora para esses usuários.
+ */
+exports.hcFetchEmployees = (0, https_1.onCall)({
+    region: "us-central1",
+    secrets: [TOTVS_API_PASSWORD],
+    timeoutSeconds: 120,
+    memory: "512MiB",
+}, async (request) => {
+    if (!request.auth) {
+        throw new https_1.HttpsError("unauthenticated", "O usuário deve estar logado.");
+    }
+    const { scope, canAuditClockin } = await resolveHumanCapitalAccess(request.auth.uid);
+    if (!canAuditClockin) {
+        throw new https_1.HttpsError("permission-denied", "Auditoria de Ponto não liberada para este perfil.");
+    }
+    const items = await fetchTotvsQuery(TOTVS_EMPLOYEES_URL, "hcFetchEmployees");
+    const employees = items
+        .map(pickEmployee)
+        .filter((e) => e !== null)
+        .filter(e => scope.type === "ALL" || isCostCenterInScope(scope, e.codCCusto));
+    // Sem CPF/nome no log.
+    logger.info("[hcFetchEmployees] consulta atendida", {
+        uid: request.auth.uid,
+        scope: scope.type,
+        returned: employees.length,
+        total: items.length,
+    });
+    return { employees };
 });
 //# sourceMappingURL=hcTotvs.js.map

@@ -147,6 +147,22 @@
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "date", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "hc_clockin_days",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "costCenter", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "hc_clockin_days",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "regional", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

@@ -455,6 +455,51 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && canManageCHReferenceData();
     }
 
+    // ── Auditoria de Ponto (Carol Clock In) ─────────────────────────────────
+    // Um documento por dia + CC com o array de batidas. Contém CPF e localização:
+    // acesso só com a liberação individual user_profiles.features.clockinAudit
+    // (gravada apenas por administradores do IAM; super admin não tem acesso automático).
+    function canAccessClockinAudit() {
+      let profile = getUserProfile();
+      return profile != null && profile.get('features', {}).get('clockinAudit', false) == true;
+    }
+
+    function validCHClockinDay(data) {
+      return data.keys().hasAll(['date', 'costCenter', 'regional', 'punches', 'importId']) &&
+        validDate(data.date) &&
+        data.costCenter is string &&
+        data.regional is string &&
+        data.punches is list &&
+        data.punches.size() <= 800 &&
+        data.importId is string;
+    }
+
+    function validCHClockinFences(data) {
+      return data.keys().hasAll(['costCenter', 'regional', 'sites']) &&
+        data.costCenter is string &&
+        data.regional is string &&
+        data.sites is list &&
+        data.sites.size() <= 50;
+    }
+
+    match /hc_clockin_days/{dayId} {
+      allow read: if isAuthenticated() && canAccessClockinAudit();
+      allow create, update: if isAuthenticated() && canAccessClockinAudit() && validCHClockinDay(request.resource.data);
+      allow delete: if isAuthenticated() && canAccessClockinAudit();
+    }
+
+    match /hc_clockin_imports/{importId} {
+      allow read: if isAuthenticated() && canAccessClockinAudit();
+      allow create: if isAuthenticated() && canAccessClockinAudit();
+      allow update, delete: if false;
+    }
+
+    match /hc_clockin_fences/{costCenter} {
+      allow read: if isAuthenticated() && canAccessClockinAudit();
+      allow create, update: if isAuthenticated() && canAccessClockinAudit() && validCHClockinFences(request.resource.data);
+      allow delete: if isAuthenticated() && canAccessClockinAudit();
+    }
+
     match /hc_audit_logs/{logId} {
       allow read: if isAuthenticated() && hasHumanCapitalAccess() && (isCHAdmin() || canApproveCH() || hcRole() in ['CH_AUDITOR_VIEWER', 'HC_AUDITOR_VIEWER']);
       allow create: if isAuthenticated() && hasHumanCapitalAccess() && validCHAuditLog(request.resource.data);

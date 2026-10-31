@@ -54,6 +54,12 @@ export interface UserProfileDoc {
 
     isSuperAdmin?: boolean; // Developer/Backup
 
+    /**
+     * Funcionalidades liberadas individualmente (pilotos). Fica fora de `modules`
+     * porque o IAM regrava o bloco de cada módulo ao salvar o perfil.
+     */
+    features?: UserFeatures;
+
     status?: 'invited' | 'active' | 'disabled';
 
     modules: {
@@ -92,7 +98,17 @@ export interface UserProfileDoc {
     disableReason?: string;
 }
 
+/** Funcionalidades liberadas por pessoa, independentes do papel no módulo. */
+export interface UserFeatures {
+    /** Auditoria de Ponto (Carol Clock In): CPF e localização das batidas. */
+    clockinAudit?: boolean;
+}
+
 // Helpers
+
+/** Auditoria de Ponto: só perfis com a liberação explícita (nem super admin entra sem ela). */
+export const canAccessClockinAudit = (profile: Pick<UserProfileDoc, 'features'> | null | undefined): boolean =>
+    profile?.features?.clockinAudit === true;
 
 export const normalizeCHRole = (role?: string): CHRole | undefined => {
     if (!role) return undefined;

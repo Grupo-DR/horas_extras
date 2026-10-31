@@ -77,7 +77,7 @@ const getScopedConstraintGroups = (
     return [];
 };
 
-const getScopedDocs = async <T,>(
+export const getScopedDocs = async <T,>(
     collectionName: string,
     scope: Scope | undefined,
     costCenterField = 'costCenter',

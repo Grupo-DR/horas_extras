@@ -12,10 +12,11 @@ import Planning from '@/src/modules/human-capital/components/Planning';
 import HeadcountUpload from '@/src/modules/human-capital/components/HeadcountUpload';
 import HeadcountGovernance from '@/src/modules/human-capital/components/HeadcountGovernance';
 import CostCenterStructure from '@/src/modules/human-capital/components/CostCenterStructure';
-import { canAccessSettings, canManageHeadcount, canPlan } from '../iam/types';
+import ClockinAuditView from '@/src/modules/human-capital/clockin/components/ClockinAuditView';
+import { canAccessClockinAudit, canAccessSettings, canManageHeadcount, canPlan } from '../iam/types';
 import { formatDateForApi } from '@/src/modules/human-capital/utils/formatters';
 import { getCompetencyRange, getPlanningCompetency } from '@/src/modules/human-capital/utils/planningWorkflow';
-import { LayoutDashboard, Table, Settings, CheckCircle2, AlertTriangle, Sparkles, CalendarRange, Lock, BarChart3, Activity, RefreshCw, XCircle, Loader2, Briefcase } from 'lucide-react';
+import { LayoutDashboard, Table, Settings, CheckCircle2, AlertTriangle, Sparkles, CalendarRange, Lock, BarChart3, Activity, RefreshCw, XCircle, Loader2, Briefcase, Fingerprint } from 'lucide-react';
 import { ApiConfig, OvertimeRecord, FetchStatus, UserProfile, ManualEmployee, GlobalEmployee, HeadcountRecord, TotvsQueryMeta } from '@/src/modules/human-capital/types';
 import { CorporateSidebar, SidebarItem } from '../../components/navigation/CorporateSidebar';
 import { useNavigate } from 'react-router-dom';
@@ -38,6 +39,7 @@ enum Tab {
   DASHBOARD = 'dashboard',
   ABSENTEEISM = 'absenteeism',
   COST_CENTER_STRUCTURE = 'cost_center_structure',
+  CLOCKIN_AUDIT = 'clockin_audit',
   DATA = 'data',
   PLANNING = 'planning',
   ANALYSIS = 'analysis',
@@ -246,7 +248,8 @@ const HumanCapitalDashboard: React.FC = () => {
         ? profile.modules.human_capital.scope.costCenters[0] 
         : undefined,
       avatar: profile.avatarUrl || '👤',
-      isSuperAdmin: profile.isSuperAdmin
+      isSuperAdmin: profile.isSuperAdmin,
+      canAuditClockin: canAccessClockinAudit(profile)
     };
   }, [profile]);
 
@@ -656,6 +659,9 @@ const HumanCapitalDashboard: React.FC = () => {
       items.push({ key: Tab.ABSENTEEISM, label: "Absenteísmo", icon: Activity, onClick: () => setActiveTab(Tab.ABSENTEEISM), isActive: activeTab === Tab.ABSENTEEISM });
       items.push({ key: Tab.COST_CENTER_STRUCTURE, label: "Estrutura", icon: Briefcase, onClick: () => setActiveTab(Tab.COST_CENTER_STRUCTURE), isActive: activeTab === Tab.COST_CENTER_STRUCTURE });
     }
+    if (effectiveUser.canAuditClockin) {
+      items.push({ key: Tab.CLOCKIN_AUDIT, label: "Auditoria de Ponto", icon: Fingerprint, onClick: () => setActiveTab(Tab.CLOCKIN_AUDIT), isActive: activeTab === Tab.CLOCKIN_AUDIT });
+    }
     if (effectiveUser.isSuperAdmin || canPlan(effectiveUser.role)) items.push({ key: Tab.PLANNING, label: "Planejamento", icon: CalendarRange, onClick: () => setActiveTab(Tab.PLANNING), isActive: activeTab === Tab.PLANNING });
 
     if (effectiveUser.isSuperAdmin || canAccessSettings(effectiveUser.role)) {
@@ -693,6 +699,7 @@ const HumanCapitalDashboard: React.FC = () => {
               {activeTab === Tab.DASHBOARD && 'Dashboard Geral'}
               {activeTab === Tab.ABSENTEEISM && 'Dashboard de Absenteísmo'}
               {activeTab === Tab.COST_CENTER_STRUCTURE && 'Estrutura dos Centros de Custo'}
+              {activeTab === Tab.CLOCKIN_AUDIT && 'Auditoria de Ponto'}
               {activeTab === Tab.ANALYSIS && 'Análise de Dados'}
               {activeTab === Tab.DATA && 'Histórico de Registros'}
               {activeTab === Tab.PLANNING && 'Planejamento de Horas'}
@@ -780,6 +787,9 @@ const HumanCapitalDashboard: React.FC = () => {
                 periodEnd={comparisonPeriod.periodEnd}
                 selectedMonth={selectedMonthKey}
               />
+            )}
+            {activeTab === Tab.CLOCKIN_AUDIT && effectiveUser.canAuditClockin && (
+              <ClockinAuditView user={effectiveUser} headcountRecords={headcountRecords} />
             )}
             {!shouldBlockTotvsDataTab && activeTab === Tab.ANALYSIS && (
               <AnalysisPanel

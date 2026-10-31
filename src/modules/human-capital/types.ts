@@ -75,6 +75,8 @@ export interface UserProfile {
     costCenter?: string;
     avatar?: string;
     isSuperAdmin?: boolean;
+    /** Liberação individual da Auditoria de Ponto (user_profiles.features.clockinAudit). */
+    canAuditClockin?: boolean;
 }
 
 export interface PlanningRecord {
