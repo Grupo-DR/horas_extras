@@ -25,14 +25,12 @@ async function verifyAdmin(context: functions.https.CallableContext) {
         throw new functions.https.HttpsError("permission-denied", "Perfil de usuário não encontrado.");
     }
 
+    // Mesmo critério de isIAMAdmin() nas regras do Firestore: só super admin e admin do IAM
+    // administram contas. Administrador CH não (decisão de 31/10/2026).
     const isSuperAdmin = profile.isSuperAdmin === true;
     const isIamAdmin = profile.modules?.commercial?.role === 'IAM_ADMIN';
-    const hcRole = profile.modules?.human_capital?.role;
-    // Temporary compatibility for profiles created before the CH_* role standard.
-    const isHcAdmin = hcRole === 'CH_ADMIN' || hcRole === 'HC_ADMIN';
 
-    // Se o usuário não tiver nível suficiente, barre
-    if (!isSuperAdmin && !isIamAdmin && !isHcAdmin) {
+    if (!isSuperAdmin && !isIamAdmin) {
         throw new functions.https.HttpsError("permission-denied", "Acesso negado. Requer permissão de Administrador IAM.");
     }
 

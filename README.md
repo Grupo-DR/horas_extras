@@ -343,6 +343,12 @@ ao engenheiro. A devolução corrigida volta ao gerente.
 Os centros de custo ficam **sem ponto**, no mesmo formato dos lançamentos e do headcount. As
 regras do Firestore comparam o valor exato; o IAM remove pontos e espaços ao salvar.
 
+### Gestão de usuários
+
+Só **super admin** e **admin do IAM** (`modules.commercial.role = 'IAM_ADMIN'`) acessam a gestão de
+usuários e as Cloud Functions de contas (convidar, desativar, excluir, redefinir senha, revogar
+sessões). O mesmo critério vale nas regras do Firestore (`isIAMAdmin`).
+
 ### Liberações individuais (`features`)
 
 Funcionalidades em piloto ou com dados sensíveis são liberadas por pessoa, independentemente
