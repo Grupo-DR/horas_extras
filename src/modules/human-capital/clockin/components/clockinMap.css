@@ -1,0 +1,63 @@
+/*
+ * Ferrovias (OpenRailwayMap): as linhas vêm laranja e se confundem com as rodovias
+ * do mapa base. Girar o matiz 180° leva o laranja para azul; os rótulos de estação
+ * (azuis na origem) ficam alaranjados.
+ */
+.clockin-railways {
+    filter: hue-rotate(180deg) saturate(1.6);
+}
+
+/* Cercas pulsando no mapa da Auditoria de Ponto (camadas SVG do Leaflet). */
+
+/*
+ * O SVG das cercas cobre o mapa inteiro, acima do canvas das batidas: sem isto
+ * ele engoliria o hover/clique dos pontos. Só os contornos interativos recebem eventos.
+ */
+.leaflet-clockinFences-pane > svg {
+    pointer-events: none;
+}
+
+/* O preenchimento da cerca não rouba o hover das batidas que estão dentro dela. */
+.leaflet-pane > svg path.clockin-fence {
+    pointer-events: visibleStroke;
+}
+
+/* Onda que sai do contorno da cerca. */
+.leaflet-pane > svg path.clockin-ripple {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: clockin-ripple 2.4s ease-out infinite;
+    pointer-events: none;
+}
+
+/* Onda do ponto central: aparece mesmo quando o raio é pequeno demais para o zoom. */
+.leaflet-pane > svg path.clockin-center-ripple {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: clockin-center-ripple 2.4s ease-out infinite;
+    pointer-events: none;
+}
+
+/* Cerca com problema pulsa mais rápido. */
+.leaflet-pane > svg path.clockin-ripple--alert,
+.leaflet-pane > svg path.clockin-center-ripple--alert {
+    animation-duration: 1.2s;
+}
+
+@keyframes clockin-ripple {
+    0% { transform: scale(1); opacity: 0.8; }
+    100% { transform: scale(1.6); opacity: 0; }
+}
+
+@keyframes clockin-center-ripple {
+    0% { transform: scale(1); opacity: 0.9; }
+    100% { transform: scale(4); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .leaflet-pane > svg path.clockin-ripple,
+    .leaflet-pane > svg path.clockin-center-ripple {
+        animation: none;
+        opacity: 0;
+    }
+}

@@ -9,15 +9,17 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/user_profiles/$(request.auth.uid)).data;
     }
 
+    // Perfis antigos não têm o campo isSuperAdmin: ler sempre com get(..., false),
+    // pois acessar campo inexistente gera erro e a regra nega o acesso.
     function isSuperAdmin() {
       let profile = getUserProfile();
-      return profile != null && profile.isSuperAdmin == true;
+      return profile != null && profile.get('isSuperAdmin', false) == true;
     }
 
     function isIAMAdmin() {
       let profile = getUserProfile();
       return profile != null && (
-        profile.isSuperAdmin == true ||
+        profile.get('isSuperAdmin', false) == true ||
         (profile.modules != null && profile.modules.commercial != null && profile.modules.commercial.role == 'IAM_ADMIN')
       );
     }
@@ -25,7 +27,7 @@ service cloud.firestore {
     function hasHumanCapitalAccess() {
       let profile = getUserProfile();
       return profile != null && (
-        profile.isSuperAdmin == true ||
+        profile.get('isSuperAdmin', false) == true ||
         (
           profile.modules != null &&
           profile.modules.human_capital != null &&
@@ -36,12 +38,12 @@ service cloud.firestore {
 
     function hcRole() {
       let profile = getUserProfile();
-      return profile.isSuperAdmin == true ? 'CH_ADMIN' : profile.modules.human_capital.role;
+      return profile.get('isSuperAdmin', false) == true ? 'CH_ADMIN' : profile.modules.human_capital.role;
     }
 
     function hcScope() {
       let profile = getUserProfile();
-      return profile.isSuperAdmin == true ? { type: 'ALL' } : profile.modules.human_capital.scope;
+      return profile.get('isSuperAdmin', false) == true ? { 'type': 'ALL' } : profile.modules.human_capital.scope;
     }
 
     function isCHAdmin() {
@@ -78,8 +80,9 @@ service cloud.firestore {
       ];
     }
 
+    // Diretor/Presidente (e super admin, para suporte). Administrador CH não aprova.
     function canApproveCH() {
-      return hasHumanCapitalAccess() && hcRole() in ['CH_ADMIN', 'CH_APPROVER', 'HC_ADMIN', 'HC_APPROVER'];
+      return isSuperAdmin() || (hasHumanCapitalAccess() && hcRole() in ['CH_APPROVER', 'HC_APPROVER']);
     }
 
     function isCHAllScope() {
@@ -122,8 +125,22 @@ service cloud.firestore {
     // pending  = enviado pelo gerente, aguardando o diretor
     // approved = aprovado pelo diretor
     // rejected = devolvido pelo diretor ao engenheiro (com motivo)
+
+    // Gerente (obra ou setor) e Administrador CH: revisam/planejam e enviam ao diretor.
     function isCHManager() {
-      return hasHumanCapitalAccess() && hcRole() in ['CH_MANAGER', 'HC_MANAGER'];
+      return hasHumanCapitalAccess() && hcRole() in ['CH_MANAGER', 'HC_MANAGER', 'CH_ADMIN', 'HC_ADMIN'];
+    }
+
+    // Quem lança horas. O diretor/presidente não lança: só aprova ou devolve.
+    function isCHHoursPlanner() {
+      return hasHumanCapitalAccess() && hcRole() in [
+        'CH_ADMIN',
+        'CH_MANAGER',
+        'CH_COSTCENTER_PLANNER',
+        'HC_ADMIN',
+        'HC_MANAGER',
+        'HC_COSTCENTER_PLANNER'
+      ];
     }
 
     function planningStatus(data) {
@@ -136,11 +153,13 @@ service cloud.firestore {
 
     // Quem pode levar um registro do status `fromStatus` para `toStatus`.
     function canTransitionPlanning(fromStatus, toStatus) {
-      return canApproveCH() ||
-        // Gerente: edita o que ainda não foi enviado e envia ao diretor.
+      return isSuperAdmin() ||
+        // Diretor/Presidente: aprova ou devolve o que o gerente enviou.
+        (canApproveCH() && fromStatus == 'pending' && toStatus in ['approved', 'rejected']) ||
+        // Gerente/Administrador CH: edita o que ainda não foi enviado e envia ao diretor.
         (isCHManager() && fromStatus in ['draft', 'rejected'] && toStatus in ['draft', 'pending']) ||
-        // Engenheiro (e demais planejadores): só salva o que ainda não foi enviado.
-        (fromStatus in ['draft', 'rejected'] && toStatus == 'draft');
+        // Engenheiro: só salva o que ainda não foi enviado.
+        (isCHHoursPlanner() && fromStatus in ['draft', 'rejected'] && toStatus == 'draft');
     }
 
     function validCHPlanning(data) {
@@ -240,13 +259,13 @@ service cloud.firestore {
     }
 
     function ssmaScope() {
-      return isSuperAdmin() ? { type: 'ALL' } : ssmaModule().scope;
+      return isSuperAdmin() ? { 'type': 'ALL' } : ssmaModule().scope;
     }
 
     function hasSSMAAccess() {
       let profile = getUserProfile();
       return profile != null && (
-        profile.isSuperAdmin == true ||
+        profile.get('isSuperAdmin', false) == true ||
         (profile.modules.ssma != null && profile.modules.ssma.enabled == true)
       );
     }
@@ -371,16 +390,12 @@ service cloud.firestore {
         validCHPlanning(request.resource.data) &&
         isCHScopedData(resource.data) &&
         isCHScopedData(request.resource.data) &&
-        (
-          // Diretor/admin: qualquer alteração.
-          canApproveCH() ||
-          // Demais: transição permitida ao perfil; o envio ao diretor não altera horas.
-          (
-            canTransitionPlanning(planningStatus(resource.data), planningStatus(request.resource.data)) &&
-            (planningStatus(request.resource.data) != 'pending' || planningHoursUnchanged())
-          )
-        );
-      allow delete: if isAuthenticated() && canManageCHReferenceData();
+        canTransitionPlanning(planningStatus(resource.data), planningStatus(request.resource.data)) &&
+        // Envio, aprovação e devolução mudam só o status, nunca as horas.
+        (isSuperAdmin() || planningStatus(request.resource.data) == 'draft' || planningHoursUnchanged());
+      // Nenhuma tela apaga lançamentos; exclusão só por super admin (suporte),
+      // para que horas aprovadas não sumam fora do fluxo de aprovação.
+      allow delete: if isAuthenticated() && isSuperAdmin();
     }
 
     match /hc_budgets/{budgetId} {
@@ -438,6 +453,51 @@ service cloud.firestore {
       allow create: if isAuthenticated() && canManageCHReferenceData() && validCHTeamAllocation(request.resource.data);
       allow update: if isAuthenticated() && canManageCHReferenceData() && validCHTeamAllocation(request.resource.data);
       allow delete: if isAuthenticated() && canManageCHReferenceData();
+    }
+
+    // ── Auditoria de Ponto (Carol Clock In) ─────────────────────────────────
+    // Um documento por dia + CC com o array de batidas. Contém CPF e localização:
+    // acesso só com a liberação individual user_profiles.features.clockinAudit
+    // (gravada apenas por administradores do IAM; super admin não tem acesso automático).
+    function canAccessClockinAudit() {
+      let profile = getUserProfile();
+      return profile != null && profile.get('features', {}).get('clockinAudit', false) == true;
+    }
+
+    function validCHClockinDay(data) {
+      return data.keys().hasAll(['date', 'costCenter', 'regional', 'punches', 'importId']) &&
+        validDate(data.date) &&
+        data.costCenter is string &&
+        data.regional is string &&
+        data.punches is list &&
+        data.punches.size() <= 800 &&
+        data.importId is string;
+    }
+
+    function validCHClockinFences(data) {
+      return data.keys().hasAll(['costCenter', 'regional', 'sites']) &&
+        data.costCenter is string &&
+        data.regional is string &&
+        data.sites is list &&
+        data.sites.size() <= 50;
+    }
+
+    match /hc_clockin_days/{dayId} {
+      allow read: if isAuthenticated() && canAccessClockinAudit();
+      allow create, update: if isAuthenticated() && canAccessClockinAudit() && validCHClockinDay(request.resource.data);
+      allow delete: if isAuthenticated() && canAccessClockinAudit();
+    }
+
+    match /hc_clockin_imports/{importId} {
+      allow read: if isAuthenticated() && canAccessClockinAudit();
+      allow create: if isAuthenticated() && canAccessClockinAudit();
+      allow update, delete: if false;
+    }
+
+    match /hc_clockin_fences/{costCenter} {
+      allow read: if isAuthenticated() && canAccessClockinAudit();
+      allow create, update: if isAuthenticated() && canAccessClockinAudit() && validCHClockinFences(request.resource.data);
+      allow delete: if isAuthenticated() && canAccessClockinAudit();
     }
 
     match /hc_audit_logs/{logId} {
@@ -563,7 +623,7 @@ service cloud.firestore {
     function hasBiAreaAccess(area) {
       let profile = getUserProfile();
       return profile != null && (
-        profile.isSuperAdmin == true ||
+        profile.get('isSuperAdmin', false) == true ||
         area in profile.get('modules', {}).get('bi_reports', [])
       );
     }

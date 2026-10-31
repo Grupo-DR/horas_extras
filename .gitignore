@@ -31,3 +31,6 @@ json_firebase
 functions/src/shared/
 
 audits/
+
+# Exportações do Carol Clock In: CPF, contatos e hash biométrico (LGPD)
+modelos-excel/carol_clockin*.xlsx
