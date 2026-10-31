@@ -9,15 +9,17 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/user_profiles/$(request.auth.uid)).data;
     }
 
+    // Perfis antigos não têm o campo isSuperAdmin: ler sempre com get(..., false),
+    // pois acessar campo inexistente gera erro e a regra nega o acesso.
     function isSuperAdmin() {
       let profile = getUserProfile();
-      return profile != null && profile.isSuperAdmin == true;
+      return profile != null && profile.get('isSuperAdmin', false) == true;
     }
 
     function isIAMAdmin() {
       let profile = getUserProfile();
       return profile != null && (
-        profile.isSuperAdmin == true ||
+        profile.get('isSuperAdmin', false) == true ||
         (profile.modules != null && profile.modules.commercial != null && profile.modules.commercial.role == 'IAM_ADMIN')
       );
     }
@@ -25,7 +27,7 @@ service cloud.firestore {
     function hasHumanCapitalAccess() {
       let profile = getUserProfile();
       return profile != null && (
-        profile.isSuperAdmin == true ||
+        profile.get('isSuperAdmin', false) == true ||
         (
           profile.modules != null &&
           profile.modules.human_capital != null &&
@@ -36,12 +38,12 @@ service cloud.firestore {
 
     function hcRole() {
       let profile = getUserProfile();
-      return profile.isSuperAdmin == true ? 'CH_ADMIN' : profile.modules.human_capital.role;
+      return profile.get('isSuperAdmin', false) == true ? 'CH_ADMIN' : profile.modules.human_capital.role;
     }
 
     function hcScope() {
       let profile = getUserProfile();
-      return profile.isSuperAdmin == true ? { type: 'ALL' } : profile.modules.human_capital.scope;
+      return profile.get('isSuperAdmin', false) == true ? { 'type': 'ALL' } : profile.modules.human_capital.scope;
     }
 
     function isCHAdmin() {
@@ -240,13 +242,13 @@ service cloud.firestore {
     }
 
     function ssmaScope() {
-      return isSuperAdmin() ? { type: 'ALL' } : ssmaModule().scope;
+      return isSuperAdmin() ? { 'type': 'ALL' } : ssmaModule().scope;
     }
 
     function hasSSMAAccess() {
       let profile = getUserProfile();
       return profile != null && (
-        profile.isSuperAdmin == true ||
+        profile.get('isSuperAdmin', false) == true ||
         (profile.modules.ssma != null && profile.modules.ssma.enabled == true)
       );
     }
@@ -563,7 +565,7 @@ service cloud.firestore {
     function hasBiAreaAccess(area) {
       let profile = getUserProfile();
       return profile != null && (
-        profile.isSuperAdmin == true ||
+        profile.get('isSuperAdmin', false) == true ||
         area in profile.get('modules', {}).get('bi_reports', [])
       );
     }
