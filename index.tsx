@@ -8,6 +8,7 @@ import { CrmProvider } from './contexts/CrmContext';
 import { PrivateRoute } from './components/PrivateRoute';
 import { Sidebar } from './layout/Sidebar';
 import { Toaster } from 'sonner';
+import { AppVersionBadge } from './components/AppVersionBadge';
 
 // Páginas do Comercial
 import { CommercialView } from './pages/CommercialView';
@@ -84,6 +85,7 @@ root.render(
         <CrmProvider>
           <BrowserRouter>
             <Toaster position="top-right" richColors />
+            <AppVersionBadge />
             <Routes>
               {/* Rota Pública */}
               <Route path="/login" element={<LoginPage />} />
