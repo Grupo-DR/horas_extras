@@ -4,6 +4,12 @@ Todas as mudanças relevantes do DR Nexus, da mais nova para a mais antiga.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, seção "Versionamento".
 
+## [1.1.1] - 2026-10-31
+
+### Alterado
+- Cloud Functions passam a rodar em Node.js 22: o Google desativou o Node.js 20 em
+  30/10/2026 e nenhuma função podia mais ser publicada.
+
 ## [1.1.0] - 2026-10-31
 
 ### Adicionado
