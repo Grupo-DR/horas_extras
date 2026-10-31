@@ -40,15 +40,22 @@ describe('papéis do fluxo', () => {
         expect(caps.canApprove).toBe(false);
     });
 
-    it('diretor aprova e não envia em nome do gerente', () => {
+    it('diretor/presidente só aprova ou devolve: não lança, não envia, não altera horas', () => {
         const caps = getPlanningWorkflowCapabilities('CH_APPROVER');
-        expect(caps.canApprove).toBe(true);
-        expect(caps.canSubmitToDirector).toBe(false);
+        expect(caps).toEqual({ canEditOpen: false, canSubmitToDirector: false, canApprove: true, canOverrideLock: false });
+    });
+
+    it('administrador CH segue o fluxo do gerente e não aprova', () => {
+        const caps = getPlanningWorkflowCapabilities('CH_ADMIN');
+        expect(caps).toEqual({ canEditOpen: true, canSubmitToDirector: true, canApprove: false, canOverrideLock: false });
+        expect(getPlanningWorkflowCapabilities('HC_ADMIN').canApprove).toBe(false);
     });
 
     it('aceita papéis legados HC_* e superadmin', () => {
         expect(getPlanningWorkflowCapabilities('HC_MANAGER').canSubmitToDirector).toBe(true);
-        expect(getPlanningWorkflowCapabilities('CH_AUDITOR_VIEWER', true).canApprove).toBe(true);
+        expect(getPlanningWorkflowCapabilities('CH_AUDITOR_VIEWER', true)).toEqual({
+            canEditOpen: true, canSubmitToDirector: true, canApprove: true, canOverrideLock: true
+        });
         expect(getPlanningWorkflowCapabilities('CH_AUDITOR_VIEWER').canEditOpen).toBe(false);
     });
 });
@@ -56,6 +63,8 @@ describe('papéis do fluxo', () => {
 describe('edição por status', () => {
     const engineer = getPlanningWorkflowCapabilities('CH_COSTCENTER_PLANNER');
     const director = getPlanningWorkflowCapabilities('CH_APPROVER');
+    const admin = getPlanningWorkflowCapabilities('CH_ADMIN');
+    const superAdmin = getPlanningWorkflowCapabilities(undefined, true);
 
     it('engenheiro edita aguardando gerente e devolvido', () => {
         expect(isPlanningStatusEditable('draft', engineer)).toBe(true);
@@ -68,8 +77,16 @@ describe('edição por status', () => {
         expect(isPlanningStatusEditable('approved', engineer)).toBe(false);
     });
 
-    it('diretor pode sobrepor o bloqueio', () => {
-        expect(isPlanningStatusEditable('approved', director)).toBe(true);
+    it('diretor e administrador não editam horas enviadas ou aprovadas', () => {
+        expect(isPlanningStatusEditable('pending', director)).toBe(false);
+        expect(isPlanningStatusEditable('approved', director)).toBe(false);
+        expect(isPlanningStatusEditable('draft', director)).toBe(false);
+        expect(isPlanningStatusEditable('approved', admin)).toBe(false);
+        expect(isPlanningStatusEditable('draft', admin)).toBe(true);
+    });
+
+    it('somente super admin sobrepõe o bloqueio', () => {
+        expect(isPlanningStatusEditable('approved', superAdmin)).toBe(true);
     });
 
     it('devolvido corrigido volta para o gerente; enviado/aprovado mantêm status', () => {

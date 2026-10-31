@@ -10,6 +10,15 @@ import { getPayrollCompetencyMonthKey } from './overtime';
  *   Diretor devolve  ──► rejected ("Devolvido ao engenheiro", com motivo)
  *   Engenheiro/gerente corrige um devolvido ──► draft (volta ao gerente)
  *
+ * Papéis:
+ *   CH_COSTCENTER_PLANNER  engenheiro: planeja os CCs do escopo e salva para o gerente.
+ *   CH_MANAGER             gerente de obra ou de setor administrativo: revisa ou planeja
+ *                          os CCs do escopo e envia ao diretor.
+ *   CH_ADMIN               administração do módulo (RH): mesmo fluxo do gerente; não aprova.
+ *   CH_APPROVER            diretor/presidente: só aprova ou devolve; não altera horas.
+ *   CH_AUDITOR_VIEWER      somente leitura.
+ *   Super admin            suporte técnico: acesso total.
+ *
  * O engenheiro lança aos poucos (1 a 2 semanas por vez); por isso as filas
  * não dependem da competência selecionada na tela.
  */
@@ -58,13 +67,14 @@ export const getPlanningWorkflowCapabilities = (
     role?: string,
     isSuperAdmin?: boolean
 ): PlanningWorkflowCapabilities => {
-    const normalized = isSuperAdmin ? 'CH_ADMIN' : normalizeRole(role);
+    if (isSuperAdmin) {
+        return { canEditOpen: true, canSubmitToDirector: true, canApprove: true, canOverrideLock: true };
+    }
 
-    switch (normalized) {
-        case 'CH_ADMIN':
-            return { canEditOpen: true, canSubmitToDirector: true, canApprove: true, canOverrideLock: true };
+    switch (normalizeRole(role)) {
         case 'CH_APPROVER':
-            return { canEditOpen: true, canSubmitToDirector: false, canApprove: true, canOverrideLock: true };
+            return { canEditOpen: false, canSubmitToDirector: false, canApprove: true, canOverrideLock: false };
+        case 'CH_ADMIN':
         case 'CH_MANAGER':
             return { canEditOpen: true, canSubmitToDirector: true, canApprove: false, canOverrideLock: false };
         case 'CH_COSTCENTER_PLANNER':

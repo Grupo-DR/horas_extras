@@ -717,10 +717,10 @@ const ProfileManager: React.FC = () => {
                                                 className="w-full p-2 border rounded-lg text-sm"
                                             >
                                                 <option value="CH_AUDITOR_VIEWER">Auditor (Visualização Total)</option>
-                                                <option value="CH_COSTCENTER_PLANNER">Planejador de CC</option>
-                                                <option value="CH_MANAGER">Gerente Regional</option>
-                                                <option value="CH_APPROVER">Aprovador CH</option>
-                                                <option value="CH_ADMIN">Administrador CH</option>
+                                                <option value="CH_COSTCENTER_PLANNER">Planejador de CC (engenheiro)</option>
+                                                <option value="CH_MANAGER">Gerente (obra ou setor)</option>
+                                                <option value="CH_APPROVER">Diretor/Presidente (aprova)</option>
+                                                <option value="CH_ADMIN">Administrador CH (não aprova)</option>
                                             </select>
                                         </div>
 
