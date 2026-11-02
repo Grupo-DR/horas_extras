@@ -252,6 +252,18 @@ export const formatEventDates = (start: string, end = start): string => {
 export const hasUpcomingDate = (event: SectorEvent, todayIso: string): boolean =>
     !!event.start && (event.end || event.start) >= todayIso;
 
+/**
+ * Bloco de calendário da agenda: mês e dia da próxima edição; sem data divulgada, o mês
+ * habitual (ou "—") marcado como provisório.
+ */
+export const calendarBadge = (event: SectorEvent, todayIso: string): { month: string; day: string; tentative: boolean } => {
+    if (hasUpcomingDate(event, todayIso)) {
+        const { month, day } = parts(event.start!);
+        return { month: MONTHS[month - 1], day: String(day).padStart(2, '0'), tentative: event.dateSource !== 'oficial' };
+    }
+    return { month: event.usualMonth ? MONTHS[event.usualMonth - 1] : '—', day: '—', tentative: true };
+};
+
 /** Meses até o mês habitual do evento (0 = mês atual); sem mês habitual vai para o fim. */
 const monthsUntil = (usualMonth: number | undefined, todayMonth: number): number =>
     usualMonth ? (usualMonth - todayMonth + 12) % 12 : 12;

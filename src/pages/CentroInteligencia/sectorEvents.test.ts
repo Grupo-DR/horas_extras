@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SECTOR_EVENTS, SectorEvent, formatEventDates, hasUpcomingDate, sortSectorEvents } from './sectorEvents';
+import { SECTOR_EVENTS, SectorEvent, calendarBadge, formatEventDates, hasUpcomingDate, sortSectorEvents } from './sectorEvents';
 
 const ev = (partial: Partial<SectorEvent>): SectorEvent => ({
     id: partial.id || partial.name || 'x',
@@ -40,6 +40,15 @@ describe('agenda do setor', () => {
         expect(sorted.map(e => e.name)).toEqual([
             'Novembro 2026', 'Abril 2027', 'Sem data, dezembro', 'Sem data, agosto', 'Sem mês'
         ]);
+    });
+
+    it('bloco de calendário: data oficial, data da imprensa e sem data', () => {
+        expect(calendarBadge(ev({ start: '2027-04-06', end: '2027-04-09', dateSource: 'oficial' }), today))
+            .toEqual({ month: 'abr', day: '06', tentative: false });
+        expect(calendarBadge(ev({ start: '2026-11-24', dateSource: 'imprensa' }), today))
+            .toEqual({ month: 'nov', day: '24', tentative: true });
+        expect(calendarBadge(ev({ usualMonth: 8 }), today)).toEqual({ month: 'ago', day: '—', tentative: true });
+        expect(calendarBadge(ev({}), today)).toEqual({ month: '—', day: '—', tentative: true });
     });
 
     it('lista cadastrada é consistente', () => {

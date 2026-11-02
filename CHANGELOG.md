@@ -7,7 +7,8 @@ versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, se
 ## [1.4.0] - 2026-11-02
 
 ### Alterado
-- Nova tela inicial: saudação, áreas do portal em cards e barra superior com usuário e sair.
+- Nova tela inicial ocupando a largura toda e cabendo na janela no computador: destaque com a
+  foto da obra e saudação, áreas do portal numeradas e barra superior com usuário e sair.
   O carrossel de banners foi retirado.
 
 ### Adicionado

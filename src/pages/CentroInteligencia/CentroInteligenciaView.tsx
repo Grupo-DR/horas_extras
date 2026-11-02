@@ -5,66 +5,37 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { canManageProfiles } from '../../modules/iam/types';
 import { SectorEventsPanel } from './SectorEventsPanel';
 
+const BRAND_NAVY = '#0b1d4f';
+
+/** Malha de "planta de engenharia" usada no destaque. */
+const BLUEPRINT_GRID: React.CSSProperties = {
+    backgroundImage:
+        'linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),' +
+        'linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)',
+    backgroundSize: '28px 28px'
+};
+
 interface ModuleTile {
     title: string;
     description: string;
     path: string;
     icon: React.ElementType;
-    /** Fundo e cor do ícone. */
-    accent: string;
 }
 
 const MODULES: ModuleTile[] = [
-    {
-        title: 'Financeiro',
-        description: 'Relatórios financeiros para apoiar gestores em decisões estratégicas.',
-        path: '/powerbi-viewer?area=Financeiro',
-        icon: CircleDollarSign,
-        accent: 'bg-blue-50 text-blue-600'
-    },
-    {
-        title: 'Capital Humano',
-        description: 'Gestão de pessoas e horas extras, essencial para a saúde da empresa.',
-        path: '/human-capital',
-        icon: Users,
-        accent: 'bg-emerald-50 text-emerald-600'
-    },
-    {
-        title: 'Gestão de Contratos',
-        description: 'Gestão contratual de obras para garantir saúde financeira e prazos.',
-        path: '/powerbi-viewer?area=Gestão de Contratos',
-        icon: FileText,
-        accent: 'bg-indigo-50 text-indigo-600'
-    },
-    {
-        title: 'Comercial',
-        description: 'Prospecções, orçamentos, inteligência comercial e CRM de clientes.',
-        path: '/commercial',
-        icon: TrendingUp,
-        accent: 'bg-orange-50 text-orange-600'
-    },
-    {
-        title: 'SSMA',
-        description: 'Inspeções de segurança, meio ambiente, alojamentos e frentes de serviço.',
-        path: '/ssma',
-        icon: ShieldCheck,
-        accent: 'bg-teal-50 text-teal-600'
-    },
-    {
-        title: 'Obras',
-        description: 'Acompanhamento e produção nos canteiros e eficiência de projetos.',
-        path: '/construction-selection',
-        icon: Building2,
-        accent: 'bg-amber-50 text-amber-600'
-    }
+    { title: 'Financeiro', description: 'Relatórios financeiros para decisões estratégicas.', path: '/powerbi-viewer?area=Financeiro', icon: CircleDollarSign },
+    { title: 'Capital Humano', description: 'Gestão de pessoas, headcount e horas extras.', path: '/human-capital', icon: Users },
+    { title: 'Gestão de Contratos', description: 'Saúde financeira e prazos dos contratos de obra.', path: '/powerbi-viewer?area=Gestão de Contratos', icon: FileText },
+    { title: 'Comercial', description: 'Prospecções, orçamentos e CRM de clientes.', path: '/commercial', icon: TrendingUp },
+    { title: 'SSMA', description: 'Segurança, meio ambiente, alojamentos e frentes.', path: '/ssma', icon: ShieldCheck },
+    { title: 'Obras', description: 'Produção nos canteiros e eficiência dos projetos.', path: '/construction-selection', icon: Building2 }
 ];
 
 const IAM_MODULE: ModuleTile = {
     title: 'Painel Master (IAM)',
-    description: 'Gestão de usuários, perfis de acesso e permissões dos módulos.',
+    description: 'Usuários, perfis de acesso e permissões.',
     path: '/admin/users',
-    icon: Shield,
-    accent: 'bg-rose-50 text-rose-600'
+    icon: Shield
 };
 
 /** "antonio.silva" → "Antonio"; "Renata Branco" → "Renata". */
@@ -78,23 +49,32 @@ const greeting = (hour: number): string => (hour < 12 ? 'Bom dia' : hour < 18 ? 
 const initials = (name?: string): string =>
     (name || 'US').split(/[\s.]+/).filter(Boolean).map(part => part[0]).slice(0, 2).join('').toUpperCase();
 
-const ModuleCard: React.FC<{ module: ModuleTile; onOpen: (path: string) => void }> = ({ module, onOpen }) => {
+/** Card de área, numerado como prancha técnica; inverte para azul-marinho no hover. */
+const ModuleCard: React.FC<{ module: ModuleTile; index: number; onOpen: (path: string) => void }> = ({ module, index, onOpen }) => {
     const Icon = module.icon;
     return (
         <button
             type="button"
             onClick={() => onOpen(module.path)}
-            className="group relative flex flex-col items-start rounded-3xl border border-slate-200/70 bg-white/80 p-6 text-left shadow-sm backdrop-blur transition duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl hover:shadow-slate-200/60 focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/30"
+            className="group relative flex h-full min-h-[150px] flex-col justify-between overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 text-left transition duration-300 hover:border-[#0b1d4f] hover:bg-[#0b1d4f] focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/30"
         >
-            <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${module.accent} transition duration-300 group-hover:scale-110`}>
-                <Icon className="h-6 w-6" />
-            </span>
-            <span className="mt-5 text-base font-semibold text-slate-900">{module.title}</span>
-            <span className="mt-1.5 text-sm leading-relaxed text-slate-500">{module.description}</span>
-            <ArrowUpRight
-                className="absolute right-5 top-5 h-5 w-5 text-slate-300 transition duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-slate-600"
-                aria-hidden="true"
-            />
+            <div className="flex items-start justify-between">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-[#0b1d4f] transition group-hover:border-white/20 group-hover:bg-white/10 group-hover:text-white">
+                    <Icon className="h-5 w-5" strokeWidth={1.75} />
+                </span>
+                <span className="font-mono text-xs font-semibold text-slate-300 transition group-hover:text-white/50">
+                    {String(index + 1).padStart(2, '0')}
+                </span>
+            </div>
+            <div className="mt-4">
+                <span className="flex items-center gap-1.5 text-[15px] font-semibold text-slate-900 transition group-hover:text-white">
+                    {module.title}
+                    <ArrowUpRight className="h-4 w-4 -translate-x-1 opacity-0 transition group-hover:translate-x-0 group-hover:opacity-100" aria-hidden="true" />
+                </span>
+                <span className="mt-1 line-clamp-2 block text-xs leading-relaxed text-slate-500 transition group-hover:text-blue-100/80">
+                    {module.description}
+                </span>
+            </div>
         </button>
     );
 };
@@ -104,7 +84,7 @@ export const CentroInteligenciaView: React.FC = () => {
     const { user, logout, profile } = useAuth();
 
     const now = new Date();
-    const today = now.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+    const today = now.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     const modules = canManageProfiles(profile) ? [...MODULES, IAM_MODULE] : MODULES;
     const name = firstName(user?.name);
 
@@ -114,72 +94,81 @@ export const CentroInteligenciaView: React.FC = () => {
     };
 
     return (
-        <div
-            className="min-h-full bg-slate-50"
-            style={{
-                backgroundImage:
-                    'radial-gradient(60rem 30rem at 10% -10%, rgba(59,130,246,0.14), transparent 60%),' +
-                    'radial-gradient(50rem 28rem at 95% 0%, rgba(11,29,79,0.10), transparent 60%)'
-            }}
-        >
-            <header className="sticky top-0 z-30 border-b border-slate-200/60 bg-white/70 backdrop-blur-xl">
-                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-                    <div className="flex items-center gap-3">
-                        <img src="/assets/dr-logo.png" alt="Grupo DR" className="h-8 w-auto" />
-                        <span className="h-6 w-px bg-slate-200" aria-hidden="true" />
-                        <span className="text-sm font-semibold tracking-tight text-slate-700">Centro de Inteligência</span>
+        // No desktop a tela cabe na janela (sem rolagem); só a agenda rola por dentro.
+        <div className="flex min-h-screen flex-col bg-[#f3f5f9] lg:h-screen lg:overflow-hidden">
+            <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-5 lg:px-8">
+                <div className="flex items-center gap-3">
+                    <img src="/assets/dr-logo.png" alt="Grupo DR" className="h-8 w-auto" />
+                    <span className="h-6 w-px bg-slate-200" aria-hidden="true" />
+                    <span className="text-sm font-semibold tracking-tight text-slate-700">Centro de Inteligência</span>
+                </div>
+                <div className="flex items-center gap-3">
+                    <div className="hidden text-right sm:block">
+                        <p className="text-sm font-semibold leading-tight text-slate-800">{user?.name || 'Usuário'}</p>
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{user?.role || 'Membro'}</p>
                     </div>
-
-                    <div className="flex items-center gap-3">
-                        <div className="hidden text-right sm:block">
-                            <p className="text-sm font-semibold leading-tight text-slate-800">{user?.name || 'Usuário'}</p>
-                            <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{user?.role || 'Membro'}</p>
-                        </div>
-                        {user?.avatarUrl ? (
-                            <img src={user.avatarUrl} alt="" className="h-9 w-9 rounded-full border border-slate-200 object-cover" />
-                        ) : (
-                            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0b1d4f] text-xs font-bold text-white">
-                                {initials(user?.name)}
-                            </span>
-                        )}
-                        <button
-                            type="button"
-                            onClick={handleLogout}
-                            title="Sair"
-                            aria-label="Sair"
-                            className="rounded-xl p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
-                        >
-                            <LogOut className="h-4 w-4" />
-                        </button>
-                    </div>
+                    {user?.avatarUrl ? (
+                        <img src={user.avatarUrl} alt="" className="h-9 w-9 rounded-full border border-slate-200 object-cover" />
+                    ) : (
+                        <span className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-white" style={{ backgroundColor: BRAND_NAVY }}>
+                            {initials(user?.name)}
+                        </span>
+                    )}
+                    <button
+                        type="button"
+                        onClick={handleLogout}
+                        title="Sair"
+                        aria-label="Sair"
+                        className="rounded-xl p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                    >
+                        <LogOut className="h-4 w-4" />
+                    </button>
                 </div>
             </header>
 
-            <main className="mx-auto max-w-7xl px-6 pb-16 pt-10">
-                <section className="mb-10">
-                    <p className="text-sm font-medium capitalize text-slate-500">{today}</p>
-                    <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-                        {greeting(now.getHours())}{name ? `, ${name}` : ''}
-                    </h1>
-                    <p className="mt-2 max-w-2xl text-slate-500">
-                        Escolha uma área para acessar indicadores, rotinas e relatórios do Grupo DR.
-                    </p>
-                </section>
+            <main className="grid min-h-0 flex-1 gap-5 p-5 lg:grid-cols-12 lg:p-6">
+                {/* Em janelas baixas a coluna rola sozinha em vez de cortar os cards. */}
+                <div className="flex min-h-0 flex-col gap-5 lg:col-span-8 lg:overflow-y-auto xl:col-span-9">
+                    <section
+                        className="relative flex min-h-[176px] shrink-0 overflow-hidden rounded-3xl text-white lg:h-[30%] lg:max-h-[260px]"
+                        style={{ backgroundColor: BRAND_NAVY }}
+                    >
+                        <div className="absolute inset-0" style={BLUEPRINT_GRID} aria-hidden="true" />
+                        <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-blue-500/30 blur-3xl" aria-hidden="true" />
 
-                <div className="grid gap-8 xl:grid-cols-3">
-                    <section className="xl:col-span-2" aria-labelledby="areas">
-                        <h2 id="areas" className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                            Áreas do portal
-                        </h2>
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {modules.map(module => (
-                                <ModuleCard key={module.path} module={module} onOpen={navigate} />
-                            ))}
+                        <div className="relative z-10 flex flex-1 flex-col justify-center px-7 py-6 lg:px-10">
+                            <p className="text-xs font-medium capitalize text-blue-200/80">{today}</p>
+                            <h1 className="mt-1.5 text-3xl font-bold tracking-tight lg:text-4xl">
+                                {greeting(now.getHours())}{name ? `, ${name}` : ''}
+                            </h1>
+                            <p className="mt-2 max-w-md text-sm text-blue-100/80">
+                                Planejamento e tecnologia a serviço da engenharia. Escolha uma área para começar.
+                            </p>
+                        </div>
+
+                        <div className="relative hidden w-[42%] max-w-[560px] md:block">
+                            <img
+                                src="/assets/nova_capa.jpeg"
+                                alt="Obra do Grupo DR vista do alto"
+                                className="absolute inset-0 h-full w-full object-cover object-[center_42%]"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-r from-[#0b1d4f] via-[#0b1d4f]/40 to-transparent" aria-hidden="true" />
                         </div>
                     </section>
 
-                    <SectorEventsPanel />
+                    <section className="flex min-h-0 flex-1 flex-col" aria-labelledby="areas">
+                        <h2 id="areas" className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                            Áreas do portal
+                        </h2>
+                        <div className="grid flex-1 auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                            {modules.map((module, index) => (
+                                <ModuleCard key={module.path} module={module} index={index} onOpen={navigate} />
+                            ))}
+                        </div>
+                    </section>
                 </div>
+
+                <SectorEventsPanel className="max-h-[720px] lg:col-span-4 lg:max-h-none xl:col-span-3" />
             </main>
         </div>
     );
