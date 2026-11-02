@@ -9,6 +9,8 @@ versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, se
 ### Alterado
 - Nova tela de login: capa institucional à esquerda e formulário claro à direita, com o logo
   DR, "19 Anos · Construindo História" e opção de mostrar a senha. No celular aparece só o formulário.
+- Aba do navegador: título "Grupo DR - Centro de Inteligência" e ícone com o logo DR
+  (também na tela inicial do celular).
 
 ### Removido
 - Vídeo de fundo do login antigo (`login-bg.mp4`, 15 MB).
