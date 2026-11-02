@@ -4,6 +4,20 @@ Todas as mudanças relevantes do DR Nexus, da mais nova para a mais antiga.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, seção "Versionamento".
 
+## [1.4.0] - 2026-11-02
+
+### Alterado
+- Nova tela inicial: saudação, áreas do portal em cards e barra superior com usuário e sair.
+  O carrossel de banners foi retirado.
+
+### Adicionado
+- Agenda do setor na tela inicial: 17 eventos (construção, ferrovias, tecnologia, gestão e agro)
+  com data, local, comentário e link oficial, filtro por categoria e datas conferidas em 02/11/2026.
+  A lista fica em `src/pages/CentroInteligencia/sectorEvents.ts`.
+
+### Removido
+- Banners do carrossel (`src/assets/carousel`).
+
 ## [1.3.0] - 2026-11-02
 
 ### Alterado

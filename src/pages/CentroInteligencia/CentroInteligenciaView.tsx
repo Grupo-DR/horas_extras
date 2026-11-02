@@ -1,305 +1,186 @@
-/// <reference types="vite/client" />
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CircleDollarSign, Users, FileText, ChevronLeft, ChevronRight, Building2, TrendingUp, LogOut, Shield, ShieldCheck } from 'lucide-react';
+import { ArrowUpRight, Building2, CircleDollarSign, FileText, LogOut, Shield, ShieldCheck, TrendingUp, Users } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { canManageProfiles } from '../../modules/iam/types';
+import { SectorEventsPanel } from './SectorEventsPanel';
 
-// Carrega dinamicamente todas as imagens da pasta assets/carousel (no momento do build)
-const slideImages = import.meta.glob('../../assets/carousel/*.{png,jpg,jpeg,webp}', { eager: true, query: '?url', import: 'default' });
-const imagePaths = Object.values(slideImages) as string[];
+interface ModuleTile {
+    title: string;
+    description: string;
+    path: string;
+    icon: React.ElementType;
+    /** Fundo e cor do ícone. */
+    accent: string;
+}
 
-type SlideType = {
-  id: number;
-  bgColor: string;
-  bgImage?: string;
-  title: string;
-  description: string;
-  align: string;
-};
-
-const DEFAULT_SLIDES: SlideType[] = [
-  {
-    id: 1,
-    bgColor: 'bg-slate-900',
-    title: 'Centro de Inteligência',
-    description: 'Um Portal com Informações para Construirmos o Progresso com Segurança, Agilidade e Eficiência.',
-    align: 'items-start text-left',
-  },
-  {
-    id: 2,
-    bgColor: 'bg-blue-900',
-    title: 'Dados Atualizados Diariamente',
-    description: 'Tome decisões baseadas em números e garanta a eficiência das obras.',
-    align: 'items-center text-center',
-  },
-  {
-    id: 3,
-    bgColor: 'bg-slate-900',
-    title: 'Visão 360º dos Projetos',
-    description: 'Acompanhe financeiro, suprimentos e engenharia em um só lugar.',
-    align: 'items-end text-right',
-  },
+const MODULES: ModuleTile[] = [
+    {
+        title: 'Financeiro',
+        description: 'Relatórios financeiros para apoiar gestores em decisões estratégicas.',
+        path: '/powerbi-viewer?area=Financeiro',
+        icon: CircleDollarSign,
+        accent: 'bg-blue-50 text-blue-600'
+    },
+    {
+        title: 'Capital Humano',
+        description: 'Gestão de pessoas e horas extras, essencial para a saúde da empresa.',
+        path: '/human-capital',
+        icon: Users,
+        accent: 'bg-emerald-50 text-emerald-600'
+    },
+    {
+        title: 'Gestão de Contratos',
+        description: 'Gestão contratual de obras para garantir saúde financeira e prazos.',
+        path: '/powerbi-viewer?area=Gestão de Contratos',
+        icon: FileText,
+        accent: 'bg-indigo-50 text-indigo-600'
+    },
+    {
+        title: 'Comercial',
+        description: 'Prospecções, orçamentos, inteligência comercial e CRM de clientes.',
+        path: '/commercial',
+        icon: TrendingUp,
+        accent: 'bg-orange-50 text-orange-600'
+    },
+    {
+        title: 'SSMA',
+        description: 'Inspeções de segurança, meio ambiente, alojamentos e frentes de serviço.',
+        path: '/ssma',
+        icon: ShieldCheck,
+        accent: 'bg-teal-50 text-teal-600'
+    },
+    {
+        title: 'Obras',
+        description: 'Acompanhamento e produção nos canteiros e eficiência de projetos.',
+        path: '/construction-selection',
+        icon: Building2,
+        accent: 'bg-amber-50 text-amber-600'
+    }
 ];
 
-// Se tivermos imagens na pasta, criamos slides baseados nelas, aproveitando os textos (como overlay).
-// Se não houver, voltamos para o modo padrão de cores sólidas.
-const SLIDES = imagePaths.length > 0
-  ? imagePaths.map((path, index) => {
-    const defaultSlide = DEFAULT_SLIDES[index % DEFAULT_SLIDES.length];
-    return {
-      ...defaultSlide,
-      id: index + 1,
-      bgImage: path
-    };
-  })
-  : DEFAULT_SLIDES;
+const IAM_MODULE: ModuleTile = {
+    title: 'Painel Master (IAM)',
+    description: 'Gestão de usuários, perfis de acesso e permissões dos módulos.',
+    path: '/admin/users',
+    icon: Shield,
+    accent: 'bg-rose-50 text-rose-600'
+};
+
+/** "antonio.silva" → "Antonio"; "Renata Branco" → "Renata". */
+const firstName = (name?: string): string => {
+    const first = (name || '').trim().split(/[\s.]+/)[0] || '';
+    return first ? first.charAt(0).toUpperCase() + first.slice(1).toLowerCase() : '';
+};
+
+const greeting = (hour: number): string => (hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite');
+
+const initials = (name?: string): string =>
+    (name || 'US').split(/[\s.]+/).filter(Boolean).map(part => part[0]).slice(0, 2).join('').toUpperCase();
+
+const ModuleCard: React.FC<{ module: ModuleTile; onOpen: (path: string) => void }> = ({ module, onOpen }) => {
+    const Icon = module.icon;
+    return (
+        <button
+            type="button"
+            onClick={() => onOpen(module.path)}
+            className="group relative flex flex-col items-start rounded-3xl border border-slate-200/70 bg-white/80 p-6 text-left shadow-sm backdrop-blur transition duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl hover:shadow-slate-200/60 focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/30"
+        >
+            <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${module.accent} transition duration-300 group-hover:scale-110`}>
+                <Icon className="h-6 w-6" />
+            </span>
+            <span className="mt-5 text-base font-semibold text-slate-900">{module.title}</span>
+            <span className="mt-1.5 text-sm leading-relaxed text-slate-500">{module.description}</span>
+            <ArrowUpRight
+                className="absolute right-5 top-5 h-5 w-5 text-slate-300 transition duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-slate-600"
+                aria-hidden="true"
+            />
+        </button>
+    );
+};
 
 export const CentroInteligenciaView: React.FC = () => {
-  const navigate = useNavigate();
-  const { user, logout, profile } = useAuth();
-  const [currentSlide, setCurrentSlide] = useState(0);
+    const navigate = useNavigate();
+    const { user, logout, profile } = useAuth();
 
-  // Auto-play carousel
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev === SLIDES.length - 1 ? 0 : prev + 1));
-    }, 30000);
-    return () => clearInterval(timer);
-  }, []);
+    const now = new Date();
+    const today = now.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+    const modules = canManageProfiles(profile) ? [...MODULES, IAM_MODULE] : MODULES;
+    const name = firstName(user?.name);
 
-  const nextSlide = () => setCurrentSlide((prev) => (prev === SLIDES.length - 1 ? 0 : prev + 1));
-  const prevSlide = () => setCurrentSlide((prev) => (prev === 0 ? SLIDES.length - 1 : prev - 1));
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
+    };
 
-  const handleNavigation = (path: string) => {
-    navigate(path);
-  };
+    return (
+        <div
+            className="min-h-full bg-slate-50"
+            style={{
+                backgroundImage:
+                    'radial-gradient(60rem 30rem at 10% -10%, rgba(59,130,246,0.14), transparent 60%),' +
+                    'radial-gradient(50rem 28rem at 95% 0%, rgba(11,29,79,0.10), transparent 60%)'
+            }}
+        >
+            <header className="sticky top-0 z-30 border-b border-slate-200/60 bg-white/70 backdrop-blur-xl">
+                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+                    <div className="flex items-center gap-3">
+                        <img src="/assets/dr-logo.png" alt="Grupo DR" className="h-8 w-auto" />
+                        <span className="h-6 w-px bg-slate-200" aria-hidden="true" />
+                        <span className="text-sm font-semibold tracking-tight text-slate-700">Centro de Inteligência</span>
+                    </div>
 
-  return (
-    <div className="flex flex-col min-h-full bg-white overflow-x-hidden">
-      {/* User Widget */}
-      <div className="fixed bottom-6 left-6 z-50">
-        <div className="flex items-center p-2 pr-4 rounded-xl bg-white shadow-xl border border-slate-200 hover:border-slate-300 transition-all duration-300 gap-3">
-          <div className="shrink-0 relative">
-            {user?.avatarUrl ? (
-              <img
-                src={user.avatarUrl}
-                alt={user.name}
-                className="w-10 h-10 rounded-full object-cover border border-slate-200 shadow-sm"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold border border-blue-700 shadow-sm">
-                {user?.name ? user.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase() : 'US'}
-              </div>
-            )}
-          </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-sm font-semibold text-slate-700 truncate block">
-              {user?.name || 'Usuário'}
-            </span>
-            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium truncate block">
-              {user?.role || 'Membro'}
-            </span>
-          </div>
-          <div className="ml-2 pl-3 border-l border-slate-100">
-            <button
-              onClick={() => {
-                logout();
-                navigate('/login');
-              }}
-              title="Sair"
-              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
-            >
-              <LogOut size={18} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Carousel Section */}
-      <div className="relative h-[30vh] min-h-[250px] w-full overflow-hidden shadow-2xl">
-        {SLIDES.map((slide, index) => (
-          <div
-            key={slide.id}
-            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
-              } ${slide.bgImage ? 'bg-black' : slide.bgColor}`}
-          >
-            {slide.bgImage ? (
-              <img
-                src={slide.bgImage}
-                className="absolute inset-0 w-full h-full object-cover"
-                alt={`Slide ${index + 1}`}
-              />
-            ) : (
-              <div className="container relative mx-auto h-full px-6 flex flex-col justify-center z-10">
-                <div className={`flex flex-col w-full ${slide.align} text-white space-y-4`}>
-                  <h1 className="text-4xl md:text-5xl font-bold tracking-tight animate-in slide-in-from-bottom-5 duration-700 drop-shadow-md">
-                    {slide.title}
-                  </h1>
-                  <p className="text-lg md:text-xl text-blue-100/90 max-w-2xl font-medium animate-in slide-in-from-bottom-8 duration-700 delay-150 drop-shadow">
-                    {slide.description}
-                  </p>
-                  {index === 0 && (
-                    <button
-                      onClick={() => document.getElementById('areas')?.scrollIntoView({ behavior: 'smooth' })}
-                      className="mt-6 px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-semibold transition-all transform hover:scale-105 shadow-lg animate-in fade-in duration-1000 delay-300"
-                    >
-                      Escolher Área
-                    </button>
-                  )}
+                    <div className="flex items-center gap-3">
+                        <div className="hidden text-right sm:block">
+                            <p className="text-sm font-semibold leading-tight text-slate-800">{user?.name || 'Usuário'}</p>
+                            <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{user?.role || 'Membro'}</p>
+                        </div>
+                        {user?.avatarUrl ? (
+                            <img src={user.avatarUrl} alt="" className="h-9 w-9 rounded-full border border-slate-200 object-cover" />
+                        ) : (
+                            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0b1d4f] text-xs font-bold text-white">
+                                {initials(user?.name)}
+                            </span>
+                        )}
+                        <button
+                            type="button"
+                            onClick={handleLogout}
+                            title="Sair"
+                            aria-label="Sair"
+                            className="rounded-xl p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                        >
+                            <LogOut className="h-4 w-4" />
+                        </button>
+                    </div>
                 </div>
-              </div>
-            )}
-          </div>
-        ))}
+            </header>
 
-        {/* Carousel Controls */}
-        <button
-          onClick={prevSlide}
-          className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/20 hover:bg-black/40 text-white backdrop-blur-sm transition-all"
-        >
-          <ChevronLeft className="w-8 h-8" />
-        </button>
-        <button
-          onClick={nextSlide}
-          className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/20 hover:bg-black/40 text-white backdrop-blur-sm transition-all"
-        >
-          <ChevronRight className="w-8 h-8" />
-        </button>
+            <main className="mx-auto max-w-7xl px-6 pb-16 pt-10">
+                <section className="mb-10">
+                    <p className="text-sm font-medium capitalize text-slate-500">{today}</p>
+                    <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+                        {greeting(now.getHours())}{name ? `, ${name}` : ''}
+                    </h1>
+                    <p className="mt-2 max-w-2xl text-slate-500">
+                        Escolha uma área para acessar indicadores, rotinas e relatórios do Grupo DR.
+                    </p>
+                </section>
 
-        {/* Carousel Indicators */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2">
-          {SLIDES.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentSlide(index)}
-              className={`w-3 h-3 rounded-full transition-all ${index === currentSlide ? 'bg-white scale-125' : 'bg-white/50 hover:bg-white/80'
-                }`}
-            />
-          ))}
+                <div className="grid gap-8 xl:grid-cols-3">
+                    <section className="xl:col-span-2" aria-labelledby="areas">
+                        <h2 id="areas" className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                            Áreas do portal
+                        </h2>
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            {modules.map(module => (
+                                <ModuleCard key={module.path} module={module} onOpen={navigate} />
+                            ))}
+                        </div>
+                    </section>
+
+                    <SectorEventsPanel />
+                </div>
+            </main>
         </div>
-      </div>
-
-      {/* Areas Section */}
-      <div id="areas" className="container mx-auto px-6 py-12 flex-grow">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6 gap-6 max-w-7xl mx-auto">
-
-          {/* Financeiro */}
-          <div
-            onClick={() => handleNavigation('/powerbi-viewer?area=Financeiro')}
-            className="group cursor-pointer flex flex-col items-center text-center space-y-4 p-4 rounded-2xl transition-all duration-300 hover:bg-blue-50/50"
-          >
-            <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center transform transition-transform duration-300 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-blue-200">
-              <CircleDollarSign className="w-10 h-10 text-blue-600" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-slate-800 mb-2">Financeiro</h2>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                Acesso a relatórios financeiros para apoiar gestores em decisões estratégicas.
-              </p>
-            </div>
-          </div>
-
-          {/* Capital Humano */}
-          <div
-            onClick={() => handleNavigation('/human-capital')}
-            className="group cursor-pointer flex flex-col items-center text-center space-y-4 p-4 rounded-2xl transition-all duration-300 hover:bg-green-50/50"
-          >
-            <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center transform transition-transform duration-300 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-green-200">
-              <Users className="w-10 h-10 text-green-600" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-slate-800 mb-2">Capital Humano</h2>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                Acesso à gestão de pessoas, horas extras, essencial para a saúde da empresa.
-              </p>
-            </div>
-          </div>
-
-          {/* Gestão de Contratos */}
-          <div
-            onClick={() => handleNavigation('/powerbi-viewer?area=Gestão de Contratos')}
-            className="group cursor-pointer flex flex-col items-center text-center space-y-4 p-4 rounded-2xl transition-all duration-300 hover:bg-indigo-50/50"
-          >
-            <div className="w-20 h-20 rounded-full bg-indigo-100 flex items-center justify-center transform transition-transform duration-300 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-indigo-200">
-              <FileText className="w-10 h-10 text-indigo-600" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-slate-800 mb-2">Gestão de Contratos</h2>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                Gestão contratual de obras para garantir saúde financeira e cumprimento de prazos.
-              </p>
-            </div>
-          </div>
-
-          {/* Comercial */}
-          <div
-            onClick={() => handleNavigation('/commercial')}
-            className="group cursor-pointer flex flex-col items-center text-center space-y-4 p-4 rounded-2xl transition-all duration-300 hover:bg-orange-50/50"
-          >
-            <div className="w-20 h-20 rounded-full bg-orange-100 flex items-center justify-center transform transition-transform duration-300 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-orange-200">
-              <TrendingUp className="w-10 h-10 text-orange-600" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-slate-800 mb-2">Comercial</h2>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                Gestão de prospecções, orçamentos, inteligência comercial e CRM de clientes.
-              </p>
-            </div>
-          </div>
-
-          {/* SSMA */}
-          <div
-            onClick={() => handleNavigation('/ssma')}
-            className="group cursor-pointer flex flex-col items-center text-center space-y-4 p-4 rounded-2xl transition-all duration-300 hover:bg-teal-50/50"
-          >
-            <div className="w-20 h-20 rounded-full bg-teal-100 flex items-center justify-center transform transition-transform duration-300 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-teal-200">
-              <ShieldCheck className="w-10 h-10 text-teal-600" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-slate-800 mb-2">SSMA</h2>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                Inspeções de segurança, meio ambiente, alojamentos e frentes de serviço.
-              </p>
-            </div>
-          </div>
-
-          {/* Obras */}
-          <div
-            onClick={() => handleNavigation('/construction-selection')}
-            className="group cursor-pointer flex flex-col items-center text-center space-y-4 p-4 rounded-2xl transition-all duration-300 hover:bg-amber-50/50"
-          >
-            <div className="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center transform transition-transform duration-300 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-amber-200">
-              <Building2 className="w-10 h-10 text-amber-600" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-slate-800 mb-2">Obras</h2>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                Acompanhamento, produção nos canteiros de obra e eficiência de projetos.
-              </p>
-            </div>
-          </div>
-
-          {/* Gestão de Acessos (IAM) - Somente Master/Admin */}
-          {canManageProfiles(profile) && (
-            <div
-              onClick={() => handleNavigation('/admin/users')}
-              className="group cursor-pointer flex flex-col items-center text-center space-y-4 p-4 rounded-2xl transition-all duration-300 hover:bg-red-50/50"
-            >
-              <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center transform transition-transform duration-300 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-red-200">
-                <Shield className="w-10 h-10 text-red-600" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-slate-800 mb-2">Painel Master (IAM)</h2>
-                <p className="text-sm text-slate-500 leading-relaxed">
-                  Gestão global de usuários, perfis de acesso e permissões de módulos.
-                </p>
-              </div>
-            </div>
-          )}
-
-        </div>
-      </div>
-    </div>
-  );
+    );
 };
