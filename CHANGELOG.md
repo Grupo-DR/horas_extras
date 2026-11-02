@@ -4,6 +4,16 @@ Todas as mudanças relevantes do DR Nexus, da mais nova para a mais antiga.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, seção "Versionamento".
 
+## [1.3.0] - 2026-11-02
+
+### Alterado
+- Nova tela de login: capa institucional à esquerda e formulário claro à direita, com logos
+  DR e Nexus, opção de mostrar a senha e orientação para encarregados que entram com CPF.
+  No celular aparece só o formulário.
+
+### Removido
+- Vídeo de fundo do login antigo (`login-bg.mp4`, 15 MB).
+
 ## [1.2.1] - 2026-10-31
 
 ### Segurança
