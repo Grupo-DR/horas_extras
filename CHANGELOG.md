@@ -4,6 +4,17 @@ Todas as mudanças relevantes do DR Nexus, da mais nova para a mais antiga.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, seção "Versionamento".
 
+## [1.3.0] - 2026-11-02
+
+### Alterado
+- Nova tela de login: capa institucional à esquerda e formulário claro à direita, com o logo
+  DR, "19 Anos · Construindo História" e opção de mostrar a senha. No celular aparece só o formulário.
+- Aba do navegador: título "Grupo DR - Centro de Inteligência" e ícone com o logo DR
+  (também na tela inicial do celular).
+
+### Removido
+- Vídeo de fundo do login antigo (`login-bg.mp4`, 15 MB).
+
 ## [1.2.1] - 2026-10-31
 
 ### Segurança

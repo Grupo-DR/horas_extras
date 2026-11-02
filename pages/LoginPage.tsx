@@ -1,189 +1,194 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Play, Loader2 } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
 import { getAuth, sendPasswordResetEmail } from 'firebase/auth';
 
+/** Encarregados de obra entram com o CPF; a conta deles usa o domínio interno abaixo. */
+const FOREMAN_EMAIL_DOMAIN = 'encarregado.dr';
+
+/** Converte o que foi digitado no e-mail de login: CPF (11 dígitos, sem @) vira a conta do encarregado. */
+const toLoginEmail = (typed: string): string => {
+    const value = typed.trim();
+    const digits = value.replace(/\D/g, '');
+    return digits.length === 11 && !value.includes('@') ? `${digits}@${FOREMAN_EMAIL_DOMAIN}` : value;
+};
+
+type PendingAction = 'login' | 'reset' | null;
+
+const inputClass =
+    'w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm text-slate-900 placeholder-slate-400 shadow-sm transition ' +
+    'focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/15 disabled:bg-slate-100';
+
+/**
+ * Painel da esquerda: a capa institucional já traz a mensagem e o logo, então fica sem texto por cima.
+ * Largura limitada à da imagem original (739 px) para não ampliá-la e perder nitidez.
+ */
+const COVER_MAX_WIDTH_PX = 739;
+
+const CoverPanel: React.FC = () => (
+    <aside
+        className="relative hidden shrink-0 overflow-hidden bg-[#0b1d4f] lg:block lg:w-2/5"
+        style={{ maxWidth: COVER_MAX_WIDTH_PX }}
+    >
+        <img
+            src="/assets/nova_capa.jpeg"
+            alt="Obra do Grupo DR vista do alto: planejamento e tecnologia a serviço da engenharia"
+            className="absolute inset-0 h-full w-full object-cover object-bottom"
+        />
+    </aside>
+);
 
 export const LoginPage: React.FC = () => {
     const { login } = useAuth();
     const navigate = useNavigate();
 
-    // UI State
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [isLoading, setIsLoading] = useState(false); // Controls the visual transition
+    const [showPassword, setShowPassword] = useState(false);
+    const [pending, setPending] = useState<PendingAction>(null);
+    const isBusy = pending !== null;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-
         if (!email.trim()) {
             toast.error('Por favor, informe seu e-mail.');
             return;
         }
 
         try {
-            setIsLoading(true);
-
-            let loginEmail = email.trim();
-            // Se o usuário digitou apenas números ou formato de CPF (sem @)
-            const numbersOnly = loginEmail.replace(/\D/g, '');
-            if (numbersOnly.length === 11 && !loginEmail.includes('@')) {
-                loginEmail = `${numbersOnly}@encarregado.dr`;
-            }
-
-            // 1. Perform Auth
-            await login(loginEmail, password);
-
-            // 2. Success - Redirect
+            setPending('login');
+            await login(toLoginEmail(email), password);
             toast.success('Bem-vindo ao Portal DR Nexus!');
-
             navigate('/');
-
         } catch (error: any) {
-            // 3. Error Handling - Revert UI
             console.error('Login Error:', error);
-            setIsLoading(false);
-
+            setPending(null);
             toast.error(error.message || 'Erro ao realizar login.');
         }
     };
 
     const handleForgotPassword = async () => {
         if (!email.trim()) {
-            toast.error('Por favor, informe seu e-mail no campo acima para resetar a senha.');
+            toast.error('Informe seu e-mail no campo acima para redefinir a senha.');
             return;
         }
 
         try {
-            setIsLoading(true);
-            const auth = getAuth();
-            await sendPasswordResetEmail(auth, email.trim());
-            setIsLoading(false);
+            setPending('reset');
+            await sendPasswordResetEmail(getAuth(), email.trim());
             toast.success('E-mail de recuperação enviado! Verifique sua caixa de entrada (e spam).');
         } catch (error: any) {
-            setIsLoading(false);
             console.error('Password Reset Error:', error);
-            if (error.code === 'auth/user-not-found') {
-                toast.error('Nenhum usuário encontrado com este e-mail.');
-            } else {
-                toast.error('Erro ao enviar e-mail de recuperação. Verifique o e-mail digitado.');
-            }
+            toast.error(error.code === 'auth/user-not-found'
+                ? 'Nenhum usuário encontrado com este e-mail.'
+                : 'Erro ao enviar e-mail de recuperação. Verifique o e-mail digitado.');
+        } finally {
+            setPending(null);
         }
     };
 
-    const handleVideoLoad = (e: React.SyntheticEvent<HTMLVideoElement>) => {
-        const video = e.currentTarget;
-        const targetDuration = 60; // 10 minutes (600 seconds)
-
-        // Calculate needed playback rate: current_duration / target_duration
-        // Example: 30s video / 600s target = 0.05x speed
-        const rate = video.duration / targetDuration;
-
-        // Safety: Browsers may ignore extremely low rates. 
-        // 0.0625 is often a safe lower bound (1/16x speed).
-        // If the calculation demands lower, we clamp it to the minimum safe value 
-        // and accept that it won't be exactly 10 min, but close enough without breaking.
-        const safeRate = Math.max(rate, 0.625);
-
-        video.playbackRate = safeRate;
-    };
-
     return (
-        <div className="relative w-full h-screen overflow-hidden bg-black font-sans text-white">
+        <div className="flex min-h-screen w-full bg-slate-50 font-sans">
+            <CoverPanel />
 
-            {/* 1. LAYER - BACKGROUND VIDEO (LOOP) */}
-            {/* 1. LAYER - BACKGROUND VIDEO (ONCE) */}
-            <video
-                className="absolute top-0 left-0 w-full h-full object-cover opacity-60 z-0 scale-105"
-                autoPlay
-                muted
-                playsInline
-                src="/login-bg.mp4"
-                onLoadedMetadata={handleVideoLoad}
-            />
-
-            {/* 2. LAYER - LOGIN FORM */}
-            <div className={`relative z-10 w-full h-full flex flex-col items-center justify-center transition-all duration-500 ${isLoading ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
-                }`}>
-
-                {/* Glassmorphism Card */}
-                <div className="w-full max-w-md p-8 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-2xl animate-in fade-in zoom-in duration-500">
-
-                    {/* Header */}
-                    <div className="mb-8 text-center">
-                        <h1 className="text-4xl font-bold tracking-tighter mb-2 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-white">
-                            GRUPO DR
-                        </h1>
-                        <p className="text-sm text-slate-300 tracking-widest uppercase">
-                            Centro de Inteligência
-                        </p>
-                    </div>
-
-                    {/* Form */}
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        <div>
-                            <label htmlFor="email" className="block text-xs font-medium text-slate-300 mb-1 ml-1 uppercase tracking-wide">
-                                E-mail Corporativo ou CPF
-                            </label>
-                            <input
-                                type="text"
-                                id="email"
-                                className="w-full bg-black/30 border border-white/10 rounded-lg py-3 px-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
-                                placeholder="usuario@grupodr.com.br ou 000.000.000-00"
-                                value={email}
-                                onChange={e => setEmail(e.target.value)}
-                                autoFocus
-                            />
-                        </div>
-
-                        <div>
-                            <div className="flex items-center justify-between mb-1 ml-1">
-                                <label htmlFor="password" className="block text-xs font-medium text-slate-300 uppercase tracking-wide">
-                                    Senha
-                                </label>
-                                <button 
-                                    type="button" 
-                                    onClick={handleForgotPassword}
-                                    className="text-xs text-blue-400 hover:text-blue-300 hover:underline transition-all"
-                                >
-                                    Esqueci minha senha
-                                </button>
+            <main className="flex flex-1 flex-col px-6 py-10 sm:px-10">
+                <div className="flex flex-1 items-center justify-center">
+                    <div className="w-full max-w-md">
+                        <div className="mb-10 flex flex-col items-center gap-3">
+                            <div className="flex items-center gap-4">
+                                <img src="/assets/dr-logo.png" alt="Grupo DR" className="h-12 w-auto" />
+                                <span className="h-10 w-px bg-slate-300" aria-hidden="true" />
+                                <p className="text-left text-sm font-semibold uppercase leading-tight tracking-[0.2em] text-[#0b1d4f]">
+                                    19 Anos<br />Construindo História
+                                </p>
                             </div>
-                            <input
-                                type="password"
-                                id="password"
-                                className="w-full bg-black/30 border border-white/10 rounded-lg py-3 px-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all font-mono"
-                                placeholder="••••••••"
-                                value={password}
-                                onChange={e => setPassword(e.target.value)}
-                            />
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-slate-500">
+                                Centro de Inteligência
+                            </p>
                         </div>
 
-                        <button
-                            type="submit"
-                            disabled={isLoading}
-                            className="w-full group relative overflow-hidden bg-white text-black font-bold py-3.5 rounded-lg transition-all hover:scale-[1.02] hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <span className="relative z-10 flex items-center justify-center gap-2">
-                                Entrar <Play className="w-3 h-3 fill-current" />
-                            </span>
-                            <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-blue-200 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                        </button>
-                    </form>
+                        <h1 className="text-2xl font-bold text-slate-900">Bem-vindo(a)</h1>
+                        <p className="mt-1 text-sm text-slate-500">Entre com seu e-mail corporativo.</p>
 
-                    {/* Footer */}
-                    <div className="mt-8 text-center flex flex-col items-center gap-2 opacity-60">
-                        <img src="/assets/dr-logo.png" alt="DR" className="h-6 brightness-0 invert" />
+                        <form onSubmit={handleSubmit} className="mt-8 space-y-5" noValidate>
+                            <div>
+                                <label htmlFor="email" className="mb-1.5 block text-xs font-semibold text-slate-600">
+                                    E-mail corporativo
+                                </label>
+                                <div className="relative">
+                                    <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                                    <input
+                                        id="email"
+                                        type="text"
+                                        inputMode="email"
+                                        autoComplete="username"
+                                        autoFocus
+                                        className={inputClass}
+                                        placeholder="usuario@grupodr.com.br"
+                                        value={email}
+                                        onChange={e => setEmail(e.target.value)}
+                                        disabled={isBusy}
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <div className="mb-1.5 flex items-center justify-between">
+                                    <label htmlFor="password" className="block text-xs font-semibold text-slate-600">
+                                        Senha
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={handleForgotPassword}
+                                        disabled={isBusy}
+                                        className="text-xs font-medium text-blue-700 hover:text-blue-800 hover:underline disabled:opacity-50"
+                                    >
+                                        {pending === 'reset' ? 'Enviando...' : 'Esqueci minha senha'}
+                                    </button>
+                                </div>
+                                <div className="relative">
+                                    <Lock className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                                    <input
+                                        id="password"
+                                        type={showPassword ? 'text' : 'password'}
+                                        autoComplete="current-password"
+                                        className={`${inputClass} pr-12`}
+                                        placeholder="••••••••"
+                                        value={password}
+                                        onChange={e => setPassword(e.target.value)}
+                                        disabled={isBusy}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(visible => !visible)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 hover:text-slate-600"
+                                        aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                                    >
+                                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={isBusy}
+                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#0b1d4f] py-3.5 text-sm font-semibold text-white shadow-lg shadow-[#0b1d4f]/20 transition hover:bg-[#13296b] focus:outline-none focus:ring-4 focus:ring-blue-500/30 disabled:cursor-not-allowed disabled:opacity-70"
+                            >
+                                {pending === 'login'
+                                    ? <><Loader2 className="h-4 w-4 animate-spin" /> Entrando...</>
+                                    : <>Entrar <ArrowRight className="h-4 w-4" /></>}
+                            </button>
+                        </form>
+
                     </div>
-
                 </div>
-            </div>
 
-            {/* Overlay Gradient (Vignette) */}
-            <div className="absolute inset-0 z-1 pointer-events-none bg-radial-gradient from-transparent to-black/80" />
-
+                <p className="mt-10 text-center text-[11px] uppercase tracking-wider text-slate-400">
+                    Grupo DR · Construtora e Serviços
+                </p>
+            </main>
         </div>
     );
 };
