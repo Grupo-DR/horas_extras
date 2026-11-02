@@ -283,7 +283,3 @@ export const sortSectorEvents = (events: SectorEvent[], todayIso: string): Secto
         return byMonth || a.name.localeCompare(b.name, 'pt-BR');
     });
 };
-
-/** Data local de hoje em AAAA-MM-DD. */
-export const toLocalIsoDate = (date: Date): string =>
-    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;

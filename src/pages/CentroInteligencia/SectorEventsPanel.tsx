@@ -8,9 +8,9 @@ import {
     calendarBadge,
     formatEventDates,
     hasUpcomingDate,
-    sortSectorEvents,
-    toLocalIsoDate
+    sortSectorEvents
 } from './sectorEvents';
+import { toLocalIsoDate } from '../../../utils/dateUtils';
 
 const CATEGORY_DOT: Record<EventCategory, string> = {
     construcao: 'bg-amber-500',

@@ -1,11 +1,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowUpRight, Building2, CircleDollarSign, FileText, LogOut, Shield, ShieldCheck, TrendingUp, Users } from 'lucide-react';
+import { ArrowUpRight, Building2, CircleDollarSign, FileText, LineChart, Shield, ShieldCheck, TrendingUp, Users } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { canManageProfiles } from '../../modules/iam/types';
+import { BRAND_NAVY, PortalTopBar } from './PortalTopBar';
 import { SectorEventsPanel } from './SectorEventsPanel';
-
-const BRAND_NAVY = '#0b1d4f';
 
 /** Malha de "planta de engenharia" usada no destaque. */
 const BLUEPRINT_GRID: React.CSSProperties = {
@@ -24,6 +23,7 @@ interface ModuleTile {
 
 const MODULES: ModuleTile[] = [
     { title: 'Financeiro', description: 'Relatórios financeiros para decisões estratégicas.', path: '/powerbi-viewer?area=Financeiro', icon: CircleDollarSign },
+    { title: 'Indicadores de Mercado', description: 'Selic, inflação, INCC, dólar, Focus e PIB da construção.', path: '/indicadores', icon: LineChart },
     { title: 'Capital Humano', description: 'Gestão de pessoas, headcount e horas extras.', path: '/human-capital', icon: Users },
     { title: 'Gestão de Contratos', description: 'Saúde financeira e prazos dos contratos de obra.', path: '/powerbi-viewer?area=Gestão de Contratos', icon: FileText },
     { title: 'Comercial', description: 'Prospecções, orçamentos e CRM de clientes.', path: '/commercial', icon: TrendingUp },
@@ -45,9 +45,6 @@ const firstName = (name?: string): string => {
 };
 
 const greeting = (hour: number): string => (hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite');
-
-const initials = (name?: string): string =>
-    (name || 'US').split(/[\s.]+/).filter(Boolean).map(part => part[0]).slice(0, 2).join('').toUpperCase();
 
 /** Card de área, numerado como prancha técnica; inverte para azul-marinho no hover. */
 const ModuleCard: React.FC<{ module: ModuleTile; index: number; onOpen: (path: string) => void }> = ({ module, index, onOpen }) => {
@@ -81,50 +78,17 @@ const ModuleCard: React.FC<{ module: ModuleTile; index: number; onOpen: (path: s
 
 export const CentroInteligenciaView: React.FC = () => {
     const navigate = useNavigate();
-    const { user, logout, profile } = useAuth();
+    const { user, profile } = useAuth();
 
     const now = new Date();
     const today = now.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     const modules = canManageProfiles(profile) ? [...MODULES, IAM_MODULE] : MODULES;
     const name = firstName(user?.name);
 
-    const handleLogout = () => {
-        logout();
-        navigate('/login');
-    };
-
     return (
         // No desktop a tela cabe na janela (sem rolagem); só a agenda rola por dentro.
         <div className="flex min-h-screen flex-col bg-[#f3f5f9] lg:h-screen lg:overflow-hidden">
-            <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-5 lg:px-8">
-                <div className="flex items-center gap-3">
-                    <img src="/assets/dr-logo.png" alt="Grupo DR" className="h-8 w-auto" />
-                    <span className="h-6 w-px bg-slate-200" aria-hidden="true" />
-                    <span className="text-sm font-semibold tracking-tight text-slate-700">Centro de Inteligência</span>
-                </div>
-                <div className="flex items-center gap-3">
-                    <div className="hidden text-right sm:block">
-                        <p className="text-sm font-semibold leading-tight text-slate-800">{user?.name || 'Usuário'}</p>
-                        <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{user?.role || 'Membro'}</p>
-                    </div>
-                    {user?.avatarUrl ? (
-                        <img src={user.avatarUrl} alt="" className="h-9 w-9 rounded-full border border-slate-200 object-cover" />
-                    ) : (
-                        <span className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-white" style={{ backgroundColor: BRAND_NAVY }}>
-                            {initials(user?.name)}
-                        </span>
-                    )}
-                    <button
-                        type="button"
-                        onClick={handleLogout}
-                        title="Sair"
-                        aria-label="Sair"
-                        className="rounded-xl p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
-                    >
-                        <LogOut className="h-4 w-4" />
-                    </button>
-                </div>
-            </header>
+            <PortalTopBar />
 
             <main className="grid min-h-0 flex-1 gap-5 p-5 lg:grid-cols-12 lg:p-6">
                 {/* Em janelas baixas a coluna rola sozinha em vez de cortar os cards. */}

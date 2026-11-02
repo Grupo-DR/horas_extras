@@ -116,3 +116,7 @@ export const formatBrazilianDate = (date: any): string => {
 
     return `${day}/${month}/${year}`;
 };
+
+/** Data local (fuso do navegador) em AAAA-MM-DD, para comparar datas sem efeito de horário. */
+export const toLocalIsoDate = (date: Date): string =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
