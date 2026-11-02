@@ -101,7 +101,7 @@ export const LoginPage: React.FC = () => {
                                 <img src="/assets/dr-logo.png" alt="Grupo DR" className="h-12 w-auto" />
                                 <span className="h-10 w-px bg-slate-300" aria-hidden="true" />
                                 <p className="text-left text-sm font-semibold uppercase leading-tight tracking-[0.2em] text-[#0b1d4f]">
-                                    19 Anos<br />de História
+                                    19 Anos<br />Construindo História
                                 </p>
                             </div>
                             <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-slate-500">

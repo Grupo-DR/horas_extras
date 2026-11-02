@@ -8,7 +8,7 @@ versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, se
 
 ### Alterado
 - Nova tela de login: capa institucional à esquerda e formulário claro à direita, com o logo
-  DR, "19 Anos de História" e opção de mostrar a senha. No celular aparece só o formulário.
+  DR, "19 Anos · Construindo História" e opção de mostrar a senha. No celular aparece só o formulário.
 
 ### Removido
 - Vídeo de fundo do login antigo (`login-bg.mp4`, 15 MB).
