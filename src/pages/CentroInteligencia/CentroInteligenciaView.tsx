@@ -142,7 +142,7 @@ export const CentroInteligenciaView: React.FC = () => {
                                 {greeting(now.getHours())}{name ? `, ${name}` : ''}
                             </h1>
                             <p className="mt-2 max-w-md text-sm text-blue-100/80">
-                                Planejamento e tecnologia a serviço da engenharia. Escolha uma área para começar.
+                                Escolha uma área para começar.
                             </p>
                         </div>
 
