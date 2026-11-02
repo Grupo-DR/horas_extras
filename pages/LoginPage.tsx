@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ArrowRight, Eye, EyeOff, Info, Loader2, Lock, Mail } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
 import { getAuth, sendPasswordResetEmail } from 'firebase/auth';
 
 /** Encarregados de obra entram com o CPF; a conta deles usa o domínio interno abaixo. */
@@ -21,18 +21,22 @@ const inputClass =
     'w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm text-slate-900 placeholder-slate-400 shadow-sm transition ' +
     'focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/15 disabled:bg-slate-100';
 
-/** Painel da esquerda: a capa institucional já traz a mensagem e o logo, então fica sem texto por cima. */
+/**
+ * Painel da esquerda: a capa institucional já traz a mensagem e o logo, então fica sem texto por cima.
+ * Largura limitada à da imagem original (739 px) para não ampliá-la e perder nitidez.
+ */
+const COVER_MAX_WIDTH_PX = 739;
+
 const CoverPanel: React.FC = () => (
-    <aside className="relative hidden overflow-hidden bg-[#0b1d4f] lg:block lg:w-1/2 xl:w-[55%]">
+    <aside
+        className="relative hidden shrink-0 overflow-hidden bg-[#0b1d4f] lg:block lg:w-2/5"
+        style={{ maxWidth: COVER_MAX_WIDTH_PX }}
+    >
         <img
             src="/assets/nova_capa.jpeg"
             alt="Obra do Grupo DR vista do alto: planejamento e tecnologia a serviço da engenharia"
             className="absolute inset-0 h-full w-full object-cover object-bottom"
         />
-        <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-[#0b1d4f]/80 to-transparent" />
-        <p className="absolute left-10 top-9 text-[11px] font-semibold uppercase tracking-[0.35em] text-white/90">
-            DR Nexus · Centro de Inteligência
-        </p>
     </aside>
 );
 
@@ -49,7 +53,7 @@ export const LoginPage: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!email.trim()) {
-            toast.error('Por favor, informe seu e-mail ou CPF.');
+            toast.error('Por favor, informe seu e-mail.');
             return;
         }
 
@@ -96,7 +100,9 @@ export const LoginPage: React.FC = () => {
                             <div className="flex items-center gap-4">
                                 <img src="/assets/dr-logo.png" alt="Grupo DR" className="h-12 w-auto" />
                                 <span className="h-10 w-px bg-slate-300" aria-hidden="true" />
-                                <img src="/assets/nexus.png" alt="Nexus" className="h-6 w-auto" />
+                                <p className="text-left text-sm font-semibold uppercase leading-tight tracking-[0.2em] text-[#0b1d4f]">
+                                    19 Anos<br />de História
+                                </p>
                             </div>
                             <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-slate-500">
                                 Centro de Inteligência
@@ -104,12 +110,12 @@ export const LoginPage: React.FC = () => {
                         </div>
 
                         <h1 className="text-2xl font-bold text-slate-900">Bem-vindo(a)</h1>
-                        <p className="mt-1 text-sm text-slate-500">Entre com seu e-mail corporativo ou CPF.</p>
+                        <p className="mt-1 text-sm text-slate-500">Entre com seu e-mail corporativo.</p>
 
                         <form onSubmit={handleSubmit} className="mt-8 space-y-5" noValidate>
                             <div>
                                 <label htmlFor="email" className="mb-1.5 block text-xs font-semibold text-slate-600">
-                                    E-mail corporativo ou CPF
+                                    E-mail corporativo
                                 </label>
                                 <div className="relative">
                                     <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
@@ -176,10 +182,6 @@ export const LoginPage: React.FC = () => {
                             </button>
                         </form>
 
-                        <div className="mt-8 flex gap-3 rounded-xl border border-slate-200 bg-white p-4 text-xs leading-relaxed text-slate-500">
-                            <Info className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
-                            <p>Encarregados de obra entram com o CPF (somente números) e a senha recebida no cadastro.</p>
-                        </div>
                     </div>
                 </div>
 

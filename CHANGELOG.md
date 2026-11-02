@@ -7,9 +7,8 @@ versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, se
 ## [1.3.0] - 2026-11-02
 
 ### Alterado
-- Nova tela de login: capa institucional à esquerda e formulário claro à direita, com logos
-  DR e Nexus, opção de mostrar a senha e orientação para encarregados que entram com CPF.
-  No celular aparece só o formulário.
+- Nova tela de login: capa institucional à esquerda e formulário claro à direita, com o logo
+  DR, "19 Anos de História" e opção de mostrar a senha. No celular aparece só o formulário.
 
 ### Removido
 - Vídeo de fundo do login antigo (`login-bg.mp4`, 15 MB).
