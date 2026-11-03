@@ -1,305 +1,161 @@
-/// <reference types="vite/client" />
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CircleDollarSign, Users, FileText, ChevronLeft, ChevronRight, Building2, TrendingUp, LogOut, Shield, ShieldCheck } from 'lucide-react';
+import { ArrowUpRight, Building2, CircleDollarSign, FileText, LineChart, Shield, ShieldCheck, TrendingUp, Users } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { canManageProfiles } from '../../modules/iam/types';
+import { MarketTicker } from './MarketTicker';
+import { BRAND_NAVY, PortalTopBar } from './PortalTopBar';
+import { SectorEventsPanel } from './SectorEventsPanel';
 
-// Carrega dinamicamente todas as imagens da pasta assets/carousel (no momento do build)
-const slideImages = import.meta.glob('../../assets/carousel/*.{png,jpg,jpeg,webp}', { eager: true, query: '?url', import: 'default' });
-const imagePaths = Object.values(slideImages) as string[];
-
-type SlideType = {
-  id: number;
-  bgColor: string;
-  bgImage?: string;
-  title: string;
-  description: string;
-  align: string;
+/** Malha de "planta de engenharia" usada no destaque. */
+const BLUEPRINT_GRID: React.CSSProperties = {
+    backgroundImage:
+        'linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),' +
+        'linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)',
+    backgroundSize: '28px 28px'
 };
 
-const DEFAULT_SLIDES: SlideType[] = [
-  {
-    id: 1,
-    bgColor: 'bg-slate-900',
-    title: 'Centro de Inteligência',
-    description: 'Um Portal com Informações para Construirmos o Progresso com Segurança, Agilidade e Eficiência.',
-    align: 'items-start text-left',
-  },
-  {
-    id: 2,
-    bgColor: 'bg-blue-900',
-    title: 'Dados Atualizados Diariamente',
-    description: 'Tome decisões baseadas em números e garanta a eficiência das obras.',
-    align: 'items-center text-center',
-  },
-  {
-    id: 3,
-    bgColor: 'bg-slate-900',
-    title: 'Visão 360º dos Projetos',
-    description: 'Acompanhe financeiro, suprimentos e engenharia em um só lugar.',
-    align: 'items-end text-right',
-  },
+interface ModuleTile {
+    title: string;
+    description: string;
+    path: string;
+    icon: React.ElementType;
+}
+
+const MODULES: ModuleTile[] = [
+    { title: 'Financeiro', description: 'Relatórios financeiros para decisões estratégicas.', path: '/powerbi-viewer?area=Financeiro', icon: CircleDollarSign },
+    { title: 'Capital Humano', description: 'Gestão de pessoas, headcount e horas extras.', path: '/human-capital', icon: Users },
+    { title: 'Gestão de Contratos', description: 'Saúde financeira e prazos dos contratos de obra.', path: '/powerbi-viewer?area=Gestão de Contratos', icon: FileText },
+    { title: 'Comercial', description: 'Prospecções, orçamentos e CRM de clientes.', path: '/commercial', icon: TrendingUp },
+    { title: 'SSMA', description: 'Segurança, meio ambiente, alojamentos e frentes.', path: '/ssma', icon: ShieldCheck },
+    { title: 'Obras', description: 'Produção nos canteiros e eficiência dos projetos.', path: '/construction-selection', icon: Building2 }
 ];
 
-// Se tivermos imagens na pasta, criamos slides baseados nelas, aproveitando os textos (como overlay).
-// Se não houver, voltamos para o modo padrão de cores sólidas.
-const SLIDES = imagePaths.length > 0
-  ? imagePaths.map((path, index) => {
-    const defaultSlide = DEFAULT_SLIDES[index % DEFAULT_SLIDES.length];
-    return {
-      ...defaultSlide,
-      id: index + 1,
-      bgImage: path
-    };
-  })
-  : DEFAULT_SLIDES;
+const IAM_MODULE: ModuleTile = {
+    title: 'Painel Master (IAM)',
+    description: 'Usuários, perfis de acesso e permissões.',
+    path: '/admin/users',
+    icon: Shield
+};
+
+/** "antonio.silva" → "Antonio"; "Renata Branco" → "Renata". */
+const firstName = (name?: string): string => {
+    const first = (name || '').trim().split(/[\s.]+/)[0] || '';
+    return first ? first.charAt(0).toUpperCase() + first.slice(1).toLowerCase() : '';
+};
+
+const greeting = (hour: number): string => (hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite');
+
+/** Card de área, numerado como prancha técnica; inverte para azul-marinho no hover. */
+const ModuleCard: React.FC<{ module: ModuleTile; index: number; onOpen: (path: string) => void }> = ({ module, index, onOpen }) => {
+    const Icon = module.icon;
+    return (
+        <button
+            type="button"
+            onClick={() => onOpen(module.path)}
+            className="group relative flex h-full min-h-[150px] flex-col justify-between overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 text-left transition duration-300 hover:border-[#0b1d4f] hover:bg-[#0b1d4f] focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/30"
+        >
+            <div className="flex items-start justify-between">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-[#0b1d4f] transition group-hover:border-white/20 group-hover:bg-white/10 group-hover:text-white">
+                    <Icon className="h-5 w-5" strokeWidth={1.75} />
+                </span>
+                <span className="font-mono text-xs font-semibold text-slate-300 transition group-hover:text-white/50">
+                    {String(index + 1).padStart(2, '0')}
+                </span>
+            </div>
+            <div className="mt-4">
+                <span className="flex items-center gap-1.5 text-[15px] font-semibold text-slate-900 transition group-hover:text-white">
+                    {module.title}
+                    <ArrowUpRight className="h-4 w-4 -translate-x-1 opacity-0 transition group-hover:translate-x-0 group-hover:opacity-100" aria-hidden="true" />
+                </span>
+                <span className="mt-1 line-clamp-2 block text-xs leading-relaxed text-slate-500 transition group-hover:text-blue-100/80">
+                    {module.description}
+                </span>
+            </div>
+        </button>
+    );
+};
+
+/** Atalho compacto para a página de Indicadores de Mercado, abaixo da agenda. */
+const IndicatorsShortcut: React.FC<{ onOpen: () => void }> = ({ onOpen }) => (
+    <button
+        type="button"
+        onClick={onOpen}
+        className="group flex shrink-0 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-[#0b1d4f] focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/30"
+    >
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-[#0b1d4f]">
+            <LineChart className="h-4 w-4" strokeWidth={1.75} />
+        </span>
+        <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-slate-900">Indicadores de Mercado</span>
+            <span className="block truncate text-[11px] text-slate-500">Selic, inflação, INCC, dólar, Focus e PIB da construção</span>
+        </span>
+        <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-[#0b1d4f]" aria-hidden="true" />
+    </button>
+);
 
 export const CentroInteligenciaView: React.FC = () => {
-  const navigate = useNavigate();
-  const { user, logout, profile } = useAuth();
-  const [currentSlide, setCurrentSlide] = useState(0);
+    const navigate = useNavigate();
+    const { user, profile } = useAuth();
 
-  // Auto-play carousel
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev === SLIDES.length - 1 ? 0 : prev + 1));
-    }, 30000);
-    return () => clearInterval(timer);
-  }, []);
+    const now = new Date();
+    const today = now.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const modules = canManageProfiles(profile) ? [...MODULES, IAM_MODULE] : MODULES;
+    const name = firstName(user?.name);
 
-  const nextSlide = () => setCurrentSlide((prev) => (prev === SLIDES.length - 1 ? 0 : prev + 1));
-  const prevSlide = () => setCurrentSlide((prev) => (prev === 0 ? SLIDES.length - 1 : prev - 1));
+    return (
+        // No desktop a tela cabe na janela (sem rolagem); só a agenda rola por dentro.
+        <div className="flex min-h-screen flex-col bg-[#f3f5f9] lg:h-screen lg:overflow-hidden">
+            <PortalTopBar />
+            <MarketTicker />
 
-  const handleNavigation = (path: string) => {
-    navigate(path);
-  };
-
-  return (
-    <div className="flex flex-col min-h-full bg-white overflow-x-hidden">
-      {/* User Widget */}
-      <div className="fixed bottom-6 left-6 z-50">
-        <div className="flex items-center p-2 pr-4 rounded-xl bg-white shadow-xl border border-slate-200 hover:border-slate-300 transition-all duration-300 gap-3">
-          <div className="shrink-0 relative">
-            {user?.avatarUrl ? (
-              <img
-                src={user.avatarUrl}
-                alt={user.name}
-                className="w-10 h-10 rounded-full object-cover border border-slate-200 shadow-sm"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold border border-blue-700 shadow-sm">
-                {user?.name ? user.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase() : 'US'}
-              </div>
-            )}
-          </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-sm font-semibold text-slate-700 truncate block">
-              {user?.name || 'Usuário'}
-            </span>
-            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium truncate block">
-              {user?.role || 'Membro'}
-            </span>
-          </div>
-          <div className="ml-2 pl-3 border-l border-slate-100">
-            <button
-              onClick={() => {
-                logout();
-                navigate('/login');
-              }}
-              title="Sair"
-              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
-            >
-              <LogOut size={18} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Carousel Section */}
-      <div className="relative h-[30vh] min-h-[250px] w-full overflow-hidden shadow-2xl">
-        {SLIDES.map((slide, index) => (
-          <div
-            key={slide.id}
-            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
-              } ${slide.bgImage ? 'bg-black' : slide.bgColor}`}
-          >
-            {slide.bgImage ? (
-              <img
-                src={slide.bgImage}
-                className="absolute inset-0 w-full h-full object-cover"
-                alt={`Slide ${index + 1}`}
-              />
-            ) : (
-              <div className="container relative mx-auto h-full px-6 flex flex-col justify-center z-10">
-                <div className={`flex flex-col w-full ${slide.align} text-white space-y-4`}>
-                  <h1 className="text-4xl md:text-5xl font-bold tracking-tight animate-in slide-in-from-bottom-5 duration-700 drop-shadow-md">
-                    {slide.title}
-                  </h1>
-                  <p className="text-lg md:text-xl text-blue-100/90 max-w-2xl font-medium animate-in slide-in-from-bottom-8 duration-700 delay-150 drop-shadow">
-                    {slide.description}
-                  </p>
-                  {index === 0 && (
-                    <button
-                      onClick={() => document.getElementById('areas')?.scrollIntoView({ behavior: 'smooth' })}
-                      className="mt-6 px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-semibold transition-all transform hover:scale-105 shadow-lg animate-in fade-in duration-1000 delay-300"
+            <main className="grid min-h-0 flex-1 gap-5 p-5 lg:grid-cols-12 lg:p-6">
+                {/* Em janelas baixas a coluna rola sozinha em vez de cortar os cards. */}
+                <div className="flex min-h-0 flex-col gap-5 lg:col-span-8 lg:overflow-y-auto xl:col-span-9">
+                    <section
+                        className="relative flex min-h-[176px] shrink-0 overflow-hidden rounded-3xl text-white lg:h-[30%] lg:max-h-[260px]"
+                        style={{ backgroundColor: BRAND_NAVY }}
                     >
-                      Escolher Área
-                    </button>
-                  )}
+                        <div className="absolute inset-0" style={BLUEPRINT_GRID} aria-hidden="true" />
+                        <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-blue-500/30 blur-3xl" aria-hidden="true" />
+
+                        <div className="relative z-10 flex flex-1 flex-col justify-center px-7 py-6 lg:px-10">
+                            <p className="text-xs font-medium capitalize text-blue-200/80">{today}</p>
+                            <h1 className="mt-1.5 text-3xl font-bold tracking-tight lg:text-4xl">
+                                {greeting(now.getHours())}{name ? `, ${name}` : ''}
+                            </h1>
+                            <p className="mt-2 max-w-md text-sm text-blue-100/80">
+                                Escolha uma área para começar.
+                            </p>
+                        </div>
+
+                        <div className="relative hidden w-[42%] max-w-[560px] md:block">
+                            <img
+                                src="/assets/nova_capa.jpeg"
+                                alt="Obra do Grupo DR vista do alto"
+                                className="absolute inset-0 h-full w-full object-cover object-[center_42%]"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-r from-[#0b1d4f] via-[#0b1d4f]/40 to-transparent" aria-hidden="true" />
+                        </div>
+                    </section>
+
+                    <section className="flex min-h-0 flex-1 flex-col" aria-labelledby="areas">
+                        <h2 id="areas" className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                            Áreas do portal
+                        </h2>
+                        <div className="grid flex-1 auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                            {modules.map((module, index) => (
+                                <ModuleCard key={module.path} module={module} index={index} onOpen={navigate} />
+                            ))}
+                        </div>
+                    </section>
                 </div>
-              </div>
-            )}
-          </div>
-        ))}
 
-        {/* Carousel Controls */}
-        <button
-          onClick={prevSlide}
-          className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/20 hover:bg-black/40 text-white backdrop-blur-sm transition-all"
-        >
-          <ChevronLeft className="w-8 h-8" />
-        </button>
-        <button
-          onClick={nextSlide}
-          className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/20 hover:bg-black/40 text-white backdrop-blur-sm transition-all"
-        >
-          <ChevronRight className="w-8 h-8" />
-        </button>
-
-        {/* Carousel Indicators */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2">
-          {SLIDES.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentSlide(index)}
-              className={`w-3 h-3 rounded-full transition-all ${index === currentSlide ? 'bg-white scale-125' : 'bg-white/50 hover:bg-white/80'
-                }`}
-            />
-          ))}
+                <div className="flex max-h-[760px] min-h-0 flex-col gap-4 lg:col-span-4 lg:max-h-none xl:col-span-3">
+                    <SectorEventsPanel className="flex-1" />
+                    <IndicatorsShortcut onOpen={() => navigate('/indicadores')} />
+                </div>
+            </main>
         </div>
-      </div>
-
-      {/* Areas Section */}
-      <div id="areas" className="container mx-auto px-6 py-12 flex-grow">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6 gap-6 max-w-7xl mx-auto">
-
-          {/* Financeiro */}
-          <div
-            onClick={() => handleNavigation('/powerbi-viewer?area=Financeiro')}
-            className="group cursor-pointer flex flex-col items-center text-center space-y-4 p-4 rounded-2xl transition-all duration-300 hover:bg-blue-50/50"
-          >
-            <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center transform transition-transform duration-300 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-blue-200">
-              <CircleDollarSign className="w-10 h-10 text-blue-600" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-slate-800 mb-2">Financeiro</h2>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                Acesso a relatórios financeiros para apoiar gestores em decisões estratégicas.
-              </p>
-            </div>
-          </div>
-
-          {/* Capital Humano */}
-          <div
-            onClick={() => handleNavigation('/human-capital')}
-            className="group cursor-pointer flex flex-col items-center text-center space-y-4 p-4 rounded-2xl transition-all duration-300 hover:bg-green-50/50"
-          >
-            <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center transform transition-transform duration-300 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-green-200">
-              <Users className="w-10 h-10 text-green-600" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-slate-800 mb-2">Capital Humano</h2>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                Acesso à gestão de pessoas, horas extras, essencial para a saúde da empresa.
-              </p>
-            </div>
-          </div>
-
-          {/* Gestão de Contratos */}
-          <div
-            onClick={() => handleNavigation('/powerbi-viewer?area=Gestão de Contratos')}
-            className="group cursor-pointer flex flex-col items-center text-center space-y-4 p-4 rounded-2xl transition-all duration-300 hover:bg-indigo-50/50"
-          >
-            <div className="w-20 h-20 rounded-full bg-indigo-100 flex items-center justify-center transform transition-transform duration-300 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-indigo-200">
-              <FileText className="w-10 h-10 text-indigo-600" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-slate-800 mb-2">Gestão de Contratos</h2>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                Gestão contratual de obras para garantir saúde financeira e cumprimento de prazos.
-              </p>
-            </div>
-          </div>
-
-          {/* Comercial */}
-          <div
-            onClick={() => handleNavigation('/commercial')}
-            className="group cursor-pointer flex flex-col items-center text-center space-y-4 p-4 rounded-2xl transition-all duration-300 hover:bg-orange-50/50"
-          >
-            <div className="w-20 h-20 rounded-full bg-orange-100 flex items-center justify-center transform transition-transform duration-300 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-orange-200">
-              <TrendingUp className="w-10 h-10 text-orange-600" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-slate-800 mb-2">Comercial</h2>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                Gestão de prospecções, orçamentos, inteligência comercial e CRM de clientes.
-              </p>
-            </div>
-          </div>
-
-          {/* SSMA */}
-          <div
-            onClick={() => handleNavigation('/ssma')}
-            className="group cursor-pointer flex flex-col items-center text-center space-y-4 p-4 rounded-2xl transition-all duration-300 hover:bg-teal-50/50"
-          >
-            <div className="w-20 h-20 rounded-full bg-teal-100 flex items-center justify-center transform transition-transform duration-300 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-teal-200">
-              <ShieldCheck className="w-10 h-10 text-teal-600" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-slate-800 mb-2">SSMA</h2>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                Inspeções de segurança, meio ambiente, alojamentos e frentes de serviço.
-              </p>
-            </div>
-          </div>
-
-          {/* Obras */}
-          <div
-            onClick={() => handleNavigation('/construction-selection')}
-            className="group cursor-pointer flex flex-col items-center text-center space-y-4 p-4 rounded-2xl transition-all duration-300 hover:bg-amber-50/50"
-          >
-            <div className="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center transform transition-transform duration-300 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-amber-200">
-              <Building2 className="w-10 h-10 text-amber-600" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-slate-800 mb-2">Obras</h2>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                Acompanhamento, produção nos canteiros de obra e eficiência de projetos.
-              </p>
-            </div>
-          </div>
-
-          {/* Gestão de Acessos (IAM) - Somente Master/Admin */}
-          {canManageProfiles(profile) && (
-            <div
-              onClick={() => handleNavigation('/admin/users')}
-              className="group cursor-pointer flex flex-col items-center text-center space-y-4 p-4 rounded-2xl transition-all duration-300 hover:bg-red-50/50"
-            >
-              <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center transform transition-transform duration-300 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-red-200">
-                <Shield className="w-10 h-10 text-red-600" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-slate-800 mb-2">Painel Master (IAM)</h2>
-                <p className="text-sm text-slate-500 leading-relaxed">
-                  Gestão global de usuários, perfis de acesso e permissões de módulos.
-                </p>
-              </div>
-            </div>
-          )}
-
-        </div>
-      </div>
-    </div>
-  );
+    );
 };

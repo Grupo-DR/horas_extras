@@ -31,6 +31,7 @@ import ProfileManager from './src/modules/iam/components/ProfileManager';
 // Centro de Inteligência
 import { CentroInteligenciaView } from './src/pages/CentroInteligencia/CentroInteligenciaView';
 import { PowerBiView } from './src/pages/CentroInteligencia/PowerBiView';
+import { MarketIndicatorsView } from './src/pages/Indicadores/MarketIndicatorsView';
 import { ConstructionSelectionView } from './src/pages/ConstructionSelectionView';
 import RdoApp from './src/modules/rdo/RdoApp';
 import SSMAApp from './src/modules/ssma/SSMAApp';
@@ -146,6 +147,16 @@ root.render(
                 element={
                   <PrivateRoute>
                     <CentroInteligenciaView />
+                  </PrivateRoute>
+                }
+              />
+
+              {/* INDICADORES DE MERCADO (todos os usuários logados) */}
+              <Route
+                path="/indicadores"
+                element={
+                  <PrivateRoute>
+                    <MarketIndicatorsView />
                   </PrivateRoute>
                 }
               />

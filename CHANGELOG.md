@@ -4,6 +4,25 @@ Todas as mudanças relevantes do DR Nexus, da mais nova para a mais antiga.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, seção "Versionamento".
 
+## [1.4.0] - 2026-11-02
+
+### Alterado
+- Nova tela inicial ocupando a largura toda e cabendo na janela no computador: destaque com a
+  foto da obra e saudação, áreas do portal numeradas e barra superior com usuário e sair.
+  O carrossel de banners foi retirado.
+
+### Adicionado
+- Agenda de Eventos na tela inicial: 17 eventos (construção, ferrovias, tecnologia, gestão e agro)
+  com data, local, comentário e link oficial, filtro por categoria e datas conferidas em 02/11/2026.
+  A lista fica em `src/pages/CentroInteligencia/sectorEvents.ts`.
+- Faixa rolante de indicadores na tela inicial (pausa ao passar o mouse; clique abre a página).
+- Página Indicadores de Mercado (fase 1), aberta a todos os usuários, com atalho abaixo da agenda: INCC-M, INCC-DI, Selic,
+  IPCA, IGP-M, dólar PTAX, PIB da construção e Boletim Focus, direto do Banco Central e do IBGE,
+  com minigráfico, variação, fonte e cache local quando uma fonte sai do ar.
+
+### Removido
+- Banners do carrossel (`src/assets/carousel`).
+
 ## [1.3.0] - 2026-11-02
 
 ### Alterado
