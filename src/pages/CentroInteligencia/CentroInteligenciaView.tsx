@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowUpRight, Building2, CircleDollarSign, FileText, LineChart, Shield, ShieldCheck, TrendingUp, Users } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { canManageProfiles } from '../../modules/iam/types';
+import { MarketTicker } from './MarketTicker';
 import { BRAND_NAVY, PortalTopBar } from './PortalTopBar';
 import { SectorEventsPanel } from './SectorEventsPanel';
 
@@ -23,7 +24,6 @@ interface ModuleTile {
 
 const MODULES: ModuleTile[] = [
     { title: 'Financeiro', description: 'Relatórios financeiros para decisões estratégicas.', path: '/powerbi-viewer?area=Financeiro', icon: CircleDollarSign },
-    { title: 'Indicadores de Mercado', description: 'Selic, inflação, INCC, dólar, Focus e PIB da construção.', path: '/indicadores', icon: LineChart },
     { title: 'Capital Humano', description: 'Gestão de pessoas, headcount e horas extras.', path: '/human-capital', icon: Users },
     { title: 'Gestão de Contratos', description: 'Saúde financeira e prazos dos contratos de obra.', path: '/powerbi-viewer?area=Gestão de Contratos', icon: FileText },
     { title: 'Comercial', description: 'Prospecções, orçamentos e CRM de clientes.', path: '/commercial', icon: TrendingUp },
@@ -76,6 +76,24 @@ const ModuleCard: React.FC<{ module: ModuleTile; index: number; onOpen: (path: s
     );
 };
 
+/** Atalho compacto para a página de Indicadores de Mercado, abaixo da agenda. */
+const IndicatorsShortcut: React.FC<{ onOpen: () => void }> = ({ onOpen }) => (
+    <button
+        type="button"
+        onClick={onOpen}
+        className="group flex shrink-0 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-[#0b1d4f] focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/30"
+    >
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-[#0b1d4f]">
+            <LineChart className="h-4 w-4" strokeWidth={1.75} />
+        </span>
+        <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-slate-900">Indicadores de Mercado</span>
+            <span className="block truncate text-[11px] text-slate-500">Selic, inflação, INCC, dólar, Focus e PIB da construção</span>
+        </span>
+        <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-[#0b1d4f]" aria-hidden="true" />
+    </button>
+);
+
 export const CentroInteligenciaView: React.FC = () => {
     const navigate = useNavigate();
     const { user, profile } = useAuth();
@@ -89,6 +107,7 @@ export const CentroInteligenciaView: React.FC = () => {
         // No desktop a tela cabe na janela (sem rolagem); só a agenda rola por dentro.
         <div className="flex min-h-screen flex-col bg-[#f3f5f9] lg:h-screen lg:overflow-hidden">
             <PortalTopBar />
+            <MarketTicker />
 
             <main className="grid min-h-0 flex-1 gap-5 p-5 lg:grid-cols-12 lg:p-6">
                 {/* Em janelas baixas a coluna rola sozinha em vez de cortar os cards. */}
@@ -132,7 +151,10 @@ export const CentroInteligenciaView: React.FC = () => {
                     </section>
                 </div>
 
-                <SectorEventsPanel className="max-h-[720px] lg:col-span-4 lg:max-h-none xl:col-span-3" />
+                <div className="flex max-h-[760px] min-h-0 flex-col gap-4 lg:col-span-4 lg:max-h-none xl:col-span-3">
+                    <SectorEventsPanel className="flex-1" />
+                    <IndicatorsShortcut onOpen={() => navigate('/indicadores')} />
+                </div>
             </main>
         </div>
     );

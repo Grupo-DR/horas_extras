@@ -5,3 +5,24 @@
     @apply bg-slate-100 text-slate-900 font-sans antialiased;
   }
 }
+
+/* Faixa de indicadores da tela inicial (MarketTicker): desloca 50% (duas cópias) e emenda sem salto. */
+@keyframes market-ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.market-ticker-track {
+  animation: market-ticker-scroll 45s linear infinite;
+}
+
+.market-ticker:hover .market-ticker-track,
+.market-ticker:focus-visible .market-ticker-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .market-ticker-track {
+    animation: none;
+  }
+}

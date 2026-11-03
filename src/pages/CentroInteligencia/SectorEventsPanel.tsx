@@ -72,7 +72,7 @@ const EventRow: React.FC<{ event: SectorEvent; today: string }> = ({ event, toda
     );
 };
 
-/** Agenda de eventos do setor (dados em sectorEvents.ts). Rola por dentro para caber na tela. */
+/** Agenda de Eventos do setor (dados em sectorEvents.ts). Rola por dentro para caber na tela. */
 export const SectorEventsPanel: React.FC<{ className?: string }> = ({ className = '' }) => {
     const [category, setCategory] = useState<EventCategory | 'all'>('all');
     const today = toLocalIsoDate(new Date());
@@ -88,10 +88,10 @@ export const SectorEventsPanel: React.FC<{ className?: string }> = ({ className 
         `shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold transition ${active ? 'bg-[#0b1d4f] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`;
 
     return (
-        <section className={`flex min-h-0 flex-col rounded-3xl border border-slate-200 bg-white ${className}`} aria-labelledby="agenda-setor">
+        <section className={`flex min-h-0 flex-col rounded-3xl border border-slate-200 bg-white ${className}`} aria-labelledby="agenda-eventos">
             <header className="border-b border-slate-100 px-5 pb-3 pt-5">
                 <div className="flex items-baseline justify-between">
-                    <h2 id="agenda-setor" className="text-base font-bold text-slate-900">Agenda do setor</h2>
+                    <h2 id="agenda-eventos" className="text-base font-bold text-slate-900">Agenda de Eventos</h2>
                     <span className="text-[11px] font-medium text-slate-400">{upcomingCount} com data divulgada</span>
                 </div>
                 <p className="mt-0.5 text-xs text-slate-500">Eventos para a equipe participar ao longo do ano.</p>
