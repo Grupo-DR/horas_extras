@@ -13,7 +13,8 @@ versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, se
 
 ### Segurança
 - As coleções de Obras e RDO passam a exigir login e o módulo liberado no perfil (antes de 12/10
-  ficavam abertas na internet, sem login).
+  ficavam abertas na internet, sem login). Visualizador só lê; Gerente e Administrador gravam,
+  como descrito no IAM.
 - Publicada a regra que só deixa super admin alterar liberações individuais (`features`).
 
 ## [1.4.0] - 2026-11-02
