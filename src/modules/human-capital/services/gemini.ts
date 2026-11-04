@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { generateWithAi } from "@/services/aiGateway";
 import { OvertimeRecord } from "../types";
 
 const SYSTEM_INSTRUCTION = `
@@ -23,20 +23,6 @@ Seja conciso (ideal: até ~700–900 palavras), mas completo nos itens obrigató
 `;
 
 export const analyzeOvertimeData = async (data: OvertimeRecord[]): Promise<string> => {
-    // Check for API key in multiple possible environment variables
-    if (!process.env.API_KEY && !process.env.VITE_GEMINI_API_KEY && !process.env.REACT_APP_GEMINI_API_KEY) {
-        // Fallback for typesafety
-    }
-
-    // Retrieve API Key from environment
-    const apiKey = process.env.API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.REACT_APP_GEMINI_API_KEY || '';
-
-    if (!apiKey) {
-        return "Erro: Chave de API não encontrada. Por favor, verifique a configuração (API_KEY, VITE_GEMINI_API_KEY).";
-    }
-
-    const ai = new GoogleGenAI({ apiKey });
-
     // Calculate a quick summary to guide the model
     const totalCost = data.reduce((acc, curr) => acc + curr.VALOR, 0);
     const totalHours = data.reduce((acc, curr) => acc + curr.HORAS, 0);
@@ -115,18 +101,16 @@ Liste o que faltou no dataset para uma análise mais robusta (ex.: jornada contr
     `;
 
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
+        const response = await generateWithAi({
+            feature: 'human_capital',
             contents: prompt,
-            config: {
-                systemInstruction: SYSTEM_INSTRUCTION,
-                temperature: 0.2, // Reduced temperature for more structured/analytical output as requested
-            },
+            systemInstruction: SYSTEM_INSTRUCTION,
+            temperature: 0.2, // Reduced temperature for more structured/analytical output as requested
         });
 
         return response.text || "Nenhum insight gerado.";
     } catch (error) {
         console.error("Falha na análise do Gemini:", error);
-        return "Não foi possível gerar insights no momento. Verifique sua chave de API e conexão.";
+        return `Não foi possível gerar insights no momento. ${error instanceof Error ? error.message : ''}`.trim();
     }
 };

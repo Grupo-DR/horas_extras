@@ -4,6 +4,18 @@ Todas as mudanças relevantes do DR Nexus, da mais nova para a mais antiga.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, seção "Versionamento".
 
+## [1.4.2] - 2026-11-04
+
+### Segurança
+- A chave do Gemini saiu do código publicado. Antes ela ia junto no JavaScript do site e qualquer
+  pessoa podia copiá-la. Agora a IA do RDO Online (leitura de RDOs, composições e análises) e do
+  Capital Humano (análise de horas extras) passa pela Cloud Function `aiGenerateContent`, que guarda
+  a chave no Secret Manager e só atende quem tem o módulo liberado no perfil.
+
+### Alterado
+- Arquivos acima de 7 MB enviados à IA são recusados com aviso, em vez de falhar sem explicação.
+- O upload de RDOs mostra o motivo real da falha (permissão, tamanho, limite de uso da IA).
+
 ## [1.4.1] - 2026-11-04
 
 ### Corrigido

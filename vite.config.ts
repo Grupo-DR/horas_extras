@@ -1,6 +1,6 @@
 import path from 'path';
 import { execSync } from 'child_process';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import packageJson from './package.json';
 
@@ -21,8 +21,7 @@ const resolveEnvironment = (): 'production' | 'preview' | 'development' => {
   return vercelEnv === 'production' || vercelEnv === 'preview' ? vercelEnv : 'development';
 };
 
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, '.', '');
+export default defineConfig(() => {
   return {
     server: {
       port: 3000,
@@ -35,8 +34,7 @@ export default defineConfig(({ mode }) => {
       __APP_COMMIT__: JSON.stringify(resolveCommit()),
       __APP_BUILT_AT__: JSON.stringify(new Date().toISOString()),
       __APP_ENV__: JSON.stringify(resolveEnvironment()),
-      'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY),
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY)
+      // A chave do Gemini não entra mais no build: fica na Cloud Function aiGenerateContent.
     },
     build: {
       rollupOptions: {

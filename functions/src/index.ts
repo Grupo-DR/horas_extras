@@ -548,3 +548,4 @@ export const auditSSMAEvidenceWrite = functions.firestore
 
 // Capital Humano: consulta TOTVS pelo servidor (senha no Secret Manager).
 export { hcFetchOvertime, hcFetchEmployees } from "./hcTotvs";
+export { aiGenerateContent } from "./aiGateway";

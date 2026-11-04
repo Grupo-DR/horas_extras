@@ -1,20 +1,9 @@
-import { GoogleGenAI, Schema, Type } from "@google/genai";
+import { Schema, Type } from "@google/genai";
 import { RDOData } from "../types";
 import { generateUUID } from "../utils";
+import { AI_MAX_FILE_BYTES, generateWithAi } from "@/services/aiGateway";
 
 export const extractRDOData = async (base64Image: string, mimeType: string): Promise<RDOData> => {
-  // Try to get API Key from all possible Vite/Define sources
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (process as any).env?.GEMINI_API_KEY || (process as any).env?.API_KEY;
-  
-  console.log("Gemini API Key loaded:", apiKey ? "YES (stars with " + apiKey.substring(0, 4) + ")" : "NO");
-
-  if (!apiKey || apiKey === 'undefined' || apiKey === 'null') {
-    throw new Error("API Key do Gemini não encontrada ou inválida. Verifique o seu arquivo .env e certifique-se de REINICIAR o terminal (npm run dev).");
-  }
-
-  // Algumas versões da biblioteca no navegador exigem o formato de objeto para detectar a chave corretamente
-  const ai = new GoogleGenAI({ apiKey });
-
   const schema: Schema = {
     type: Type.OBJECT,
     properties: {
@@ -78,27 +67,16 @@ export const extractRDOData = async (base64Image: string, mimeType: string): Pro
     required: ["reportNumber", "date", "workforce", "equipment", "activities"],
   };
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+  const response = await generateWithAi({
+    feature: "construction_rdo",
     contents: [
+      { inlineData: { mimeType, data: base64Image } },
       {
-        parts: [
-          {
-            inlineData: {
-              mimeType: mimeType,
-              data: base64Image,
-            },
-          },
-          {
-            text: "Analyze this Construction Daily Report (RDO). Extract all data fields accurately. IMPORTANT: For activities, separate the 'code' (e.g. 3001234) from the 'description'. If the document shows '3001234 - Excavation', put '3001234' in code and 'Excavation' in description. Extract the 'quantity' executed.",
-          },
-        ],
+        text: "Analyze this Construction Daily Report (RDO). Extract all data fields accurately. IMPORTANT: For activities, separate the 'code' (e.g. 3001234) from the 'description'. If the document shows '3001234 - Excavation', put '3001234' in code and 'Excavation' in description. Extract the 'quantity' executed.",
       },
     ],
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: schema,
-    },
+    responseMimeType: "application/json",
+    responseSchema: schema,
   });
 
   const text = response.text;
@@ -111,13 +89,16 @@ export const extractRDOData = async (base64Image: string, mimeType: string): Pro
     ...parsedData,
     id: generateUUID(),
     processedAt: new Date().toISOString(),
-    tokenUsage: response.usageMetadata?.totalTokenCount || 0
+    tokenUsage: response.totalTokenCount || 0
   };
 
   return rdoData;
 };
 
 export const fileToBase64 = (file: File): Promise<string> => {
+  if (file.size > AI_MAX_FILE_BYTES) {
+    return Promise.reject(new Error(`O arquivo "${file.name}" passa de 7 MB. Reduza o tamanho e envie de novo.`));
+  }
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);

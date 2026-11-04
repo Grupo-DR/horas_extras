@@ -1,20 +1,10 @@
-import { GoogleGenAI, Schema, Type } from "@google/genai";
 import { CompactSummary } from "../analytics/types/analyticsTypes";
-
-const getAIClient = () => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (process as any).env?.GEMINI_API_KEY || (process as any).env?.API_KEY;
-  if (!apiKey || apiKey === 'undefined' || apiKey === 'null') {
-    throw new Error("API Key do Gemini não encontrada ou inválida. Verifique o seu arquivo .env.");
-  }
-  return new GoogleGenAI({ apiKey });
-};
+import { generateWithAi } from "@/services/aiGateway";
 
 /**
  * Solicita ao Gemini a geração de uma Análise Executiva baseada nos dados enviados.
  */
 export const generateExecutiveAnalysis = async (summary: CompactSummary): Promise<string> => {
-  const ai = getAIClient();
-
   const prompt = `
 Você é um engenheiro de software sênior especialista em análise de custos e inteligência contratual de obras civis.
 Seu objetivo é gerar um RELATÓRIO DE ANÁLISE EXECUTIVA para a diretoria, baseado ÚNICA E EXCLUSIVAMENTE nos dados em JSON abaixo.
@@ -36,17 +26,10 @@ ${JSON.stringify(summary, null, 2)}
 `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: prompt }]
-        }
-      ],
-      config: {
-        temperature: 0.1, // Baixa criatividade para garantir precisão
-      }
+    const response = await generateWithAi({
+      feature: "construction_rdo",
+      contents: prompt,
+      temperature: 0.1, // Baixa criatividade para garantir precisão
     });
 
     if (!response.text) {
@@ -64,8 +47,6 @@ ${JSON.stringify(summary, null, 2)}
  * Solicita ao Gemini a geração de um Dossiê Preliminar de Pleito.
  */
 export const generateClaimNarrative = async (summary: CompactSummary): Promise<string> => {
-  const ai = getAIClient();
-
   const prompt = `
 Você é um especialista em pleitos (claims) de contratos de engenharia.
 Seu objetivo é gerar um DOSSIÊ PRELIMINAR DE PLEITO, focado exclusivamente nas ocorrências e improdutividades registradas na obra.
@@ -86,17 +67,10 @@ ${JSON.stringify(summary, null, 2)}
 `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: prompt }]
-        }
-      ],
-      config: {
-        temperature: 0.2, // Tom ligeiramente flexível para estruturação de argumento, mas sem alucinar
-      }
+    const response = await generateWithAi({
+      feature: "construction_rdo",
+      contents: prompt,
+      temperature: 0.2, // Tom ligeiramente flexível para estruturação de argumento, mas sem alucinar
     });
 
     if (!response.text) {

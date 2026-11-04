@@ -84,7 +84,8 @@ export const ProjectsPage: React.FC = () => {
       }
     } catch (err) {
       console.error(err);
-      setError("Falha ao processar um ou mais RDOs. Verifique se as imagens estão nítidas.");
+      const detail = err instanceof Error ? err.message : '';
+      setError(`Falha ao processar um ou mais RDOs. ${detail || 'Verifique se as imagens estão nítidas.'}`);
     } finally {
       setLoading(false);
     }

@@ -239,7 +239,7 @@ Portal-commercial/
 - **Node.js** 18+ (recomendado 20 LTS)
 - **npm** 9+
 - Acesso ao projeto Firebase `kanbancomercial-af561`
-- Chave de API do **Google Gemini** (para features de IA)
+- Para a IA: chave do **Google Gemini** cadastrada no Secret Manager (`GEMINI_API_KEY`), não no `.env.local`
 - Conta com acesso ao repositório GitHub **Grupo-DR/horas_extras**
 
 ### 1. Clonar o repositório
@@ -260,7 +260,8 @@ npm install
 
 
 > ⚠️ **ATENÇÃO**: Nunca commitar o arquivo `.env.local` no repositório. Ele já está no `.gitignore`.  
-> A chave do Firebase neste README é pública (usada no cliente web) mas a chave do Gemini deve ser mantida em segredo.
+> A chave do Firebase é pública (usada no cliente web). A chave do Gemini **não** vai no `.env.local`:
+> fica no Secret Manager e só a Cloud Function `aiGenerateContent` a usa (veja "Variáveis de Ambiente").
 
 ---
 
@@ -573,7 +574,6 @@ firebase deploy --only firestore:rules
 
 | Variável | Descrição | Onde obter |
 |----------|-----------|-----------|
-| `VITE_GEMINI_API_KEY` | Chave da API Google Gemini | [Google AI Studio](https://aistudio.google.com/) |
 | `VITE_FIREBASE_API_KEY` | Chave da API do Firebase | Console Firebase → Configurações do projeto |
 | `VITE_FIREBASE_AUTH_DOMAIN` | Domínio de autenticação Firebase | Console Firebase |
 | `VITE_FIREBASE_PROJECT_ID` | ID do projeto Firebase | `kanbancomercial-af561` |
@@ -581,6 +581,16 @@ firebase deploy --only firestore:rules
 | `VITE_FIREBASE_MESSAGING_SENDER_ID` | ID do remetente FCM | Console Firebase |
 | `VITE_FIREBASE_APP_ID` | ID do app Firebase | Console Firebase |
 | `VITE_FIREBASE_MEASUREMENT_ID` | ID do Analytics | Console Firebase |
+
+Segredos do servidor (Secret Manager, usados só pelas Cloud Functions; nunca no `.env.local`):
+
+| Segredo | Usado por | Como cadastrar |
+|---------|-----------|----------------|
+| `GEMINI_API_KEY` | `aiGenerateContent` (IA do RDO Online e do Capital Humano) | `firebase functions:secrets:set GEMINI_API_KEY` |
+| `TOTVS_API_PASSWORD` | `hcFetchOvertime`, `hcFetchEmployees` | `firebase functions:secrets:set TOTVS_API_PASSWORD` |
+
+Qualquer variável `VITE_*` vai para o código publicado e fica visível no navegador: não use esse
+prefixo para segredos.
 
 ---
 
@@ -673,7 +683,10 @@ Em caso de dúvidas sobre a arquitetura ou decisões técnicas, consulte o hist�
 
 1. **Firebase**: O projeto usa o plano **Blaze** (pay-as-you-go) do Firebase. Monitore o uso para evitar custos inesperados.
 
-2. **Gemini API**: A chave do Gemini tem cota diária. Se as features de IA pararem de funcionar, verifique os limites no Google AI Studio.
+2. **Gemini API**: o navegador nunca chama o Gemini. Todas as funções de IA (RDO Online e Capital Humano)
+   passam pela Cloud Function `aiGenerateContent` (`functions/src/aiGateway.ts`), que confere o módulo do
+   usuário e usa a chave guardada no Secret Manager (`firebase functions:secrets:set GEMINI_API_KEY`).
+   A chave tem cota diária; se a IA parar, veja os logs da função e os limites no Google AI Studio.
 
 3. **Módulo HC**: O módulo de Capital Humano em `src/modules/human-capital/` é o mais complexo e o que mais recebeu desenvolvimento recente. Preste atenção especial a:
    - `Planning.tsx` (119KB) — lógica de planejamento complexa
@@ -683,7 +696,7 @@ Em caso de dúvidas sobre a arquitetura ou decisões técnicas, consulte o hist�
 
 5. **OneDrive**: O projeto estava sendo desenvolvido em uma pasta do OneDrive sincronizada. Ao clonar do GitHub, os arquivos de `node_modules` e `.env.local` **não estão** no repositório e precisam ser recriados.
 
-6. **`.env.local`**: O arquivo de variáveis de ambiente não está no repositório. Você precisará das credenciais Firebase (disponíveis no Console Firebase) e de uma nova chave Gemini.
+6. **`.env.local`**: O arquivo de variáveis de ambiente não está no repositório. Você precisará das credenciais Firebase (disponíveis no Console Firebase) (a chave Gemini fica no Secret Manager, não no `.env.local`).
 
 ---
 

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.hcFetchEmployees = exports.hcFetchOvertime = exports.auditSSMAEvidenceWrite = exports.auditSSMAMonthlyTargetWrite = exports.auditSSMAInspectionEventUpdate = exports.auditSSMAInspectionEventCreate = exports.adminBackfillUserDirectory = exports.syncUserDirectory = exports.adminBackfillUserProfiles = exports.adminRevokeSessions = exports.adminGeneratePasswordResetLink = exports.adminDeleteUser = exports.adminEnableUser = exports.adminDisableUser = exports.adminCreateUserInvite = exports.ssmaCreateForemanAccount = void 0;
+exports.aiGenerateContent = exports.hcFetchEmployees = exports.hcFetchOvertime = exports.auditSSMAEvidenceWrite = exports.auditSSMAMonthlyTargetWrite = exports.auditSSMAInspectionEventUpdate = exports.auditSSMAInspectionEventCreate = exports.adminBackfillUserDirectory = exports.syncUserDirectory = exports.adminBackfillUserProfiles = exports.adminRevokeSessions = exports.adminGeneratePasswordResetLink = exports.adminDeleteUser = exports.adminEnableUser = exports.adminDisableUser = exports.adminCreateUserInvite = exports.ssmaCreateForemanAccount = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 admin.initializeApp();
@@ -474,4 +474,6 @@ exports.auditSSMAEvidenceWrite = functions.firestore
 var hcTotvs_1 = require("./hcTotvs");
 Object.defineProperty(exports, "hcFetchOvertime", { enumerable: true, get: function () { return hcTotvs_1.hcFetchOvertime; } });
 Object.defineProperty(exports, "hcFetchEmployees", { enumerable: true, get: function () { return hcTotvs_1.hcFetchEmployees; } });
+var aiGateway_1 = require("./aiGateway");
+Object.defineProperty(exports, "aiGenerateContent", { enumerable: true, get: function () { return aiGateway_1.aiGenerateContent; } });
 //# sourceMappingURL=index.js.map

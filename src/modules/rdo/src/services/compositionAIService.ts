@@ -1,4 +1,5 @@
-import { GoogleGenAI, Schema, Type } from "@google/genai";
+import { Schema, Type } from "@google/genai";
+import { AI_MAX_FILE_BYTES, generateWithAi } from "@/services/aiGateway";
 import { 
   CompositionAIExtractionResult, 
   AICompositionItem, 
@@ -22,14 +23,6 @@ export const fileToBase64 = (file: File): Promise<string> => {
     };
     reader.onerror = (error) => reject(error);
   });
-};
-
-const getAIClient = () => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (process as any).env?.GEMINI_API_KEY || (process as any).env?.API_KEY;
-  if (!apiKey || apiKey === 'undefined' || apiKey === 'null') {
-    throw new Error("API Key do Gemini não encontrada ou inválida. Verifique o seu arquivo .env.");
-  }
-  return new GoogleGenAI({ apiKey });
 };
 
 // --- Schema Definitions ---
@@ -128,25 +121,21 @@ export const extractCompositionsFromPDF = async (
   file: File,
   projectId: string
 ): Promise<CompositionAIExtractionResult> => {
-  const ai = getAIClient();
+  if (file.size > AI_MAX_FILE_BYTES) {
+    throw new Error(`O PDF "${file.name}" passa de 7 MB. Divida o arquivo e envie as partes.`);
+  }
   const base64Data = await fileToBase64(file);
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+    const response = await generateWithAi({
+      feature: "construction_rdo",
       contents: [
-        {
-          parts: [
-            { inlineData: { mimeType: "application/pdf", data: base64Data } },
-            { text: SYSTEM_PROMPT }
-          ]
-        }
+        { inlineData: { mimeType: "application/pdf", data: base64Data } },
+        { text: SYSTEM_PROMPT }
       ],
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: compositionSchema,
-        temperature: 0.1,
-      }
+      responseMimeType: "application/json",
+      responseSchema: compositionSchema,
+      temperature: 0.1,
     });
 
     const text = response.text;
