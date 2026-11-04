@@ -4,6 +4,18 @@ Todas as mudanças relevantes do DR Nexus, da mais nova para a mais antiga.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, seção "Versionamento".
 
+## [1.4.1] - 2026-11-04
+
+### Corrigido
+- Obras e RDO Online voltam a exibir os dados (555 RDOs, 3.034 registros de produção, equipes,
+  projetos e equipamentos). Desde 12/10/2026 as regras do Firestore não tinham regra para essas
+  coleções e bloqueavam todo acesso; os dados nunca foram apagados.
+
+### Segurança
+- As coleções de Obras e RDO passam a exigir login e o módulo liberado no perfil (antes de 12/10
+  ficavam abertas na internet, sem login).
+- Publicada a regra que só deixa super admin alterar liberações individuais (`features`).
+
 ## [1.4.0] - 2026-11-02
 
 ### Alterado

@@ -684,6 +684,41 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ── Obras (painel VLI) e RDO Online ─────────────────────────────────────────
+    // Acesso para quem tem o módulo liberado no perfil (ou super admin). As telas ainda
+    // não diferenciam visualizador de editor, por isso leitura e gravação seguem juntas.
+    // Até 12/10/2026 essas coleções ficavam abertas sem login; depois, bloqueadas por
+    // ausência de regra (os dados nunca foram apagados).
+    function hasEnabledModule(name) {
+      let profile = getUserProfile();
+      return profile != null && (
+        profile.get('isSuperAdmin', false) == true ||
+        profile.get('modules', {}).get(name, {}).get('enabled', false) == true
+      );
+    }
+
+    function canUseConstruction() {
+      return isAuthenticated() && hasEnabledModule('construction_vli');
+    }
+
+    function canUseRdo() {
+      return isAuthenticated() && hasEnabledModule('construction_rdo');
+    }
+
+    match /construction_cycles/{id} { allow read, write: if canUseConstruction(); }
+    match /construction_records/{id} { allow read, write: if canUseConstruction(); }
+    match /construction_planning/{id} { allow read, write: if canUseConstruction(); }
+    match /construction_uploads/{id} { allow read, write: if canUseConstruction(); }
+    match /construction_equipments/{id} { allow read, write: if canUseConstruction(); }
+
+    match /construction_projects/{id} { allow read, write: if canUseRdo(); }
+    match /construction_teams/{id} { allow read, write: if canUseRdo(); }
+    match /construction_rdos/{id} { allow read, write: if canUseRdo(); }
+    match /construction_histograms/{id} { allow read, write: if canUseRdo(); }
+    match /construction_dimensions/{id} { allow read, write: if canUseRdo(); }
+    match /construction_compositions/{id} { allow read, write: if canUseRdo(); }
+    match /construction_contracts/{id} { allow read, write: if canUseRdo(); }
+
     match /{document=**} {
       allow read, write: if false;
     }
