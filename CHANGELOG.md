@@ -4,6 +4,29 @@ Todas as mudanças relevantes do DR Nexus, da mais nova para a mais antiga.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, seção "Versionamento".
 
+## [1.4.3] - 2026-11-04
+
+### Corrigido
+- RDO Online: o planejamento diário das equipes passa a ser gravado no banco. Antes ficava só no
+  navegador de quem digitou: cada computador via um planejamento diferente e limpar o navegador
+  apagava tudo.
+- RDO Online: falhas ao salvar contratos, dimensões, composições, histogramas e edições de RDO
+  aparecem na tela. Antes a tela mostrava "Salvo" e o dado ficava só no navegador (aconteceu com
+  todo Visualizador e com todos os usuários entre 12/10 e 04/11/2026).
+- RDO Online: as telas só mostram "Salvo" depois de o banco confirmar; em caso de erro, a edição
+  continua na tela para tentar de novo.
+- RDO Online: item excluído do histograma não volta mais ao recarregar a página.
+- RDO Online: no envio de vários RDOs, os que já foram processados antes de uma falha aparecem na
+  lista na hora, sem precisar recarregar.
+
+### Adicionado
+- RDO Online: ao abrir o módulo, dados que ficaram só no navegador são comparados com o banco.
+  Se houver algo que o banco não tem, aparece um aviso para enviar (Gerente e Administrador),
+  baixar em arquivo ou descartar. Cópias iguais às do banco são apagadas do navegador.
+
+### Alterado
+- RDO Online: os dados de contrato de todas as obras são carregados numa única consulta.
+
 ## [1.4.2] - 2026-11-04
 
 ### Segurança

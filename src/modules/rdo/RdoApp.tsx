@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import './index.css';
 import {
   Building2, FileText, LayoutDashboard, ClipboardList, Menu, X, BarChart2, Home, LogOut
@@ -15,6 +16,7 @@ import { ProjectsPage } from './src/modules/projects/pages/ProjectsPage';
 import { ContractIntelligencePage } from './src/modules/contract-intelligence/pages/ContractIntelligencePage';
 import { PlanningPage } from './src/modules/planning/pages/PlanningPage';
 import { ProjectModal } from './src/modules/projects/components/ProjectModal';
+import { LocalDataRecoveryBanner } from './components/LocalDataRecoveryBanner';
 import logoImg from './vector/logo.png';
 
 function App() {
@@ -36,6 +38,7 @@ function App() {
   const { loadTeams } = useTeamActions();
   const { loadRdos } = useRdoActions();
   const { loadPlanningData } = usePlanningActions();
+  const [dataReady, setDataReady] = useState(false);
 
   useEffect(() => {
     const initData = async () => {
@@ -45,9 +48,12 @@ function App() {
         await loadTeams();
         await loadRdos();
         await loadPlanningData(loadedProjects);
+        setDataReady(true);
       } catch (e) {
         console.error("Error loading initial data", e);
+        const detail = e instanceof Error ? e.message : '';
         setError("Erro ao carregar dados. Verifique a conexão com o banco.");
+        toast.error(`Erro ao carregar o RDO Online. ${detail}`.trim());
       } finally {
         setLoading(false);
       }
@@ -196,6 +202,7 @@ function App() {
           </button>
         </div>
         <main className="flex-1 overflow-y-auto p-4 sm:p-10 relative z-10 custom-scrollbar">
+          <LocalDataRecoveryBanner ready={dataReady} />
           {activeMenu === 'DASHBOARD' && <DashboardPage />}
           {activeMenu === 'PROJECTS' && <ProjectsPage />}
           {activeMenu === 'CONTRACT_INTELLIGENCE' && <ContractIntelligencePage />}

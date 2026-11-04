@@ -756,6 +756,11 @@ service cloud.firestore {
       allow read: if canReadModule('construction_rdo');
       allow write: if canWriteModule('construction_rdo');
     }
+    // Planejamento diário por equipe (até a 1.4.2 ficava só no navegador).
+    match /construction_daily_plans/{id} {
+      allow read: if canReadModule('construction_rdo');
+      allow write: if canWriteModule('construction_rdo');
+    }
 
     match /{document=**} {
       allow read, write: if false;

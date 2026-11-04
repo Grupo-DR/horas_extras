@@ -45,6 +45,7 @@ import {
 // ---------------------------------------------------------------------------
 
 import { COLLECTIONS } from "../src/constants/firestoreCollections";
+import { withFirestoreError } from "./firestoreErrors";
 
 // ===========================================================================
 // Project Operations
@@ -152,104 +153,76 @@ export const deleteRdo = async (id: string): Promise<void> => {
 // ===========================================================================
 // Histogram Operations
 // ===========================================================================
+//
+// Até a versão 1.4.2 histogramas, dimensões e composições também eram gravados
+// no localStorage, e falhas do Firestore eram ignoradas: o usuário via "Salvo!"
+// com o dado só no próprio navegador. Agora o Firestore é a única fonte e
+// qualquer falha chega à tela. Cópias antigas do navegador são recuperadas por
+// services/localRecoveryService.ts.
 
-/**
- * Retorna os itens do histograma de um projeto.
- * Mantém fallback para localStorage caso o Firestore falhe (comportamento
- * idêntico ao dbService.ts original).
- *
- * Equivalente DynamoDB: QueryCommand com KeyConditionExpression projectId
- */
-export const getHistograms = async (projectId: string): Promise<HistogramItem[]> => {
-  try {
+const BATCH_LIMIT = 500;
+
+type BatchOp = (batch: ReturnType<typeof writeBatch>) => void;
+
+/** Aplica operações em lotes de até 500 (limite do writeBatch). */
+const commitInBatches = async (ops: BatchOp[]): Promise<void> => {
+  for (let i = 0; i < ops.length; i += BATCH_LIMIT) {
+    const batch = writeBatch(db);
+    ops.slice(i, i + BATCH_LIMIT).forEach((op) => op(batch));
+    await batch.commit();
+  }
+};
+
+/** Retorna os itens do histograma de um projeto. */
+export const getHistograms = async (projectId: string): Promise<HistogramItem[]> =>
+  withFirestoreError("carregar o histograma", async () => {
     const q = query(
       collection(db, COLLECTIONS.HISTOGRAMS),
       where("projectId", "==", projectId)
     );
     const snapshot = await getDocs(q);
     return snapshot.docs.map((d) => d.data() as HistogramItem);
-  } catch (e) {
-    console.warn("Firestore Histogram query failed, falling back to localStorage", e);
-    const local = localStorage.getItem(`histograms_${projectId}`);
-    return local ? JSON.parse(local) : [];
-  }
-};
+  });
 
 /**
- * Persiste os itens do histograma de um projeto.
- * Usa escritas em lote (writeBatch) para atomicidade — mais eficiente que
- * o loop sequential de PutCommand do dbService original.
- * Mantém o mesmo comportamento de dual-write com localStorage como cache.
- *
- * Equivalente DynamoDB: PutCommand em loop → Obras_Histograms
- *
- * Limitação Firestore: writeBatch suporta até 500 operações por lote.
- * Para projetos com mais de 500 itens de histograma, os lotes são divididos
- * automaticamente.
+ * Substitui o histograma de um projeto pelos itens informados.
+ * Itens que existiam no banco e não estão mais na lista são apagados
+ * (antes, item excluído na tela voltava ao recarregar).
  */
 export const saveHistograms = async (
   projectId: string,
   items: HistogramItem[]
-): Promise<void> => {
-  try {
-    // Divide em lotes de 500 (limite do Firestore writeBatch)
-    const BATCH_LIMIT = 500;
-    for (let i = 0; i < items.length; i += BATCH_LIMIT) {
-      const chunk = items.slice(i, i + BATCH_LIMIT);
-      const batch = writeBatch(db);
-      for (const item of chunk) {
-        const ref = doc(db, COLLECTIONS.HISTOGRAMS, item.id);
-        batch.set(ref, item);
-      }
-      await batch.commit();
-    }
-  } catch (e) {
-    console.warn("Firestore Histogram save failed, falling back to localStorage", e);
-  } finally {
-    // Dual-write: mantém cache local (comportamento idêntico ao dbService)
-    localStorage.setItem(`histograms_${projectId}`, JSON.stringify(items));
-  }
-};
+): Promise<void> =>
+  withFirestoreError("salvar o histograma", async () => {
+    const existing = await getDocs(
+      query(collection(db, COLLECTIONS.HISTOGRAMS), where("projectId", "==", projectId))
+    );
+    const keep = new Set(items.map((item) => item.id));
+    const ops: BatchOp[] = [
+      ...items.map((item): BatchOp => (batch) =>
+        batch.set(doc(db, COLLECTIONS.HISTOGRAMS, item.id), { ...item, projectId })
+      ),
+      ...existing.docs
+        .filter((d) => !keep.has(d.id))
+        .map((d): BatchOp => (batch) => batch.delete(d.ref)),
+    ];
+    await commitInBatches(ops);
+  });
 
-/**
- * Remove todos os itens do histograma de um projeto.
- * Busca os documentos pelo campo `projectId` e os deleta em lote.
- * Mantém limpeza do localStorage (comportamento idêntico ao dbService).
- *
- * Equivalente DynamoDB: DeleteCommand em loop → Obras_Histograms
- */
-export const deleteHistograms = async (projectId: string): Promise<void> => {
-  try {
-    const items = await getHistograms(projectId);
-    if (items.length > 0) {
-      const BATCH_LIMIT = 500;
-      for (let i = 0; i < items.length; i += BATCH_LIMIT) {
-        const chunk = items.slice(i, i + BATCH_LIMIT);
-        const batch = writeBatch(db);
-        for (const item of chunk) {
-          batch.delete(doc(db, COLLECTIONS.HISTOGRAMS, item.id));
-        }
-        await batch.commit();
-      }
-    }
-  } catch (e) {
-    console.warn("Firestore Histogram delete failed", e);
-  } finally {
-    localStorage.removeItem(`histograms_${projectId}`);
-  }
-};
+/** Remove todos os itens do histograma de um projeto. */
+export const deleteHistograms = async (projectId: string): Promise<void> =>
+  withFirestoreError("excluir o histograma", async () => {
+    const existing = await getDocs(
+      query(collection(db, COLLECTIONS.HISTOGRAMS), where("projectId", "==", projectId))
+    );
+    await commitInBatches(existing.docs.map((d): BatchOp => (batch) => batch.delete(d.ref)));
+  });
 
 // ===========================================================================
 // Dimensions Operations (Contract Intelligence)
 // ===========================================================================
 
-/**
- * Persiste as dimensões de uma obra no Firestore (coleção `construction_dimensions`).
- * Estratégia: setDoc com Document ID = projectId (substitui o registro anterior).
- * Sempre persiste no localStorage como cache local antes de gravar no Firestore.
- *
- * Equivalente DynamoDB: PutCommand → Obras_Dimensions Key: { projectId }
- */
+/** Persiste as dimensões de uma obra (Document ID = projectId, substitui o anterior). */
 export const saveDimensions = async (
   projectId: string,
   result: DimensionImportResult
@@ -262,119 +235,58 @@ export const saveDimensions = async (
     metadata:  result.metadata,
     updatedAt: new Date().toISOString(),
   };
-
-  // Sempre persiste no localStorage como cache local
-  localStorage.setItem(`dimensions_${projectId}`, JSON.stringify(record));
-
-  try {
-    await setDoc(doc(db, COLLECTIONS.DIMENSIONS, projectId), record);
-  } catch (e) {
-    console.warn(
-      `Firestore Dimensions save failed for project ${projectId} — dados salvos em localStorage.`,
-      e
-    );
-  }
+  await saveDimensionRecord(record);
 };
 
-/**
- * Recupera as dimensões de uma obra.
- * Tenta Firestore primeiro; usa localStorage como fallback.
- *
- * Equivalente DynamoDB: GetCommand → Obras_Dimensions Key: { projectId }
- */
+/** Grava um registro de dimensões já montado (usado também na recuperação de cópias locais). */
+export const saveDimensionRecord = async (record: DimensionStoredRecord): Promise<void> =>
+  withFirestoreError("salvar as dimensões", () =>
+    setDoc(doc(db, COLLECTIONS.DIMENSIONS, record.projectId), record)
+  );
+
+/** Recupera as dimensões de uma obra. */
 export const getDimensions = async (
   projectId: string
-): Promise<DimensionStoredRecord | null> => {
-  try {
+): Promise<DimensionStoredRecord | null> =>
+  withFirestoreError("carregar as dimensões", async () => {
     const snap = await getDoc(doc(db, COLLECTIONS.DIMENSIONS, projectId));
-    if (snap.exists()) return snap.data() as DimensionStoredRecord;
-  } catch (e) {
-    console.warn(
-      `Firestore Dimensions get failed for project ${projectId} — tentando localStorage.`,
-      e
-    );
-  }
+    return snap.exists() ? (snap.data() as DimensionStoredRecord) : null;
+  });
 
-  // Fallback: localStorage
-  const local = localStorage.getItem(`dimensions_${projectId}`);
-  return local ? (JSON.parse(local) as DimensionStoredRecord) : null;
-};
-
-/**
- * Remove as dimensões de uma obra do Firestore e do localStorage.
- *
- * Equivalente DynamoDB: DeleteCommand → Obras_Dimensions Key: { projectId }
- */
-export const deleteDimensions = async (projectId: string): Promise<void> => {
-  localStorage.removeItem(`dimensions_${projectId}`);
-  try {
-    await deleteDoc(doc(db, COLLECTIONS.DIMENSIONS, projectId));
-  } catch (e) {
-    console.warn(`Firestore Dimensions delete failed for project ${projectId}.`, e);
-  }
-};
+/** Remove as dimensões de uma obra. */
+export const deleteDimensions = async (projectId: string): Promise<void> =>
+  withFirestoreError("excluir as dimensões", () =>
+    deleteDoc(doc(db, COLLECTIONS.DIMENSIONS, projectId))
+  );
 
 // ===========================================================================
 // Compositions Operations (Sprint 3 Revisada)
 // ===========================================================================
 
-/**
- * Persiste as composições de IA de uma obra no Firestore (coleção `construction_compositions`).
- * Document ID = projectId. Dual-write com localStorage.
- *
- * Equivalente DynamoDB: PutCommand → Obras_Compositions Key: { projectId }
- */
+/** Persiste as composições de IA de uma obra (Document ID = projectId). */
 export const saveCompositions = async (
   projectId: string,
   result: CompositionAIExtractionResult
-): Promise<void> => {
-  try {
-    await setDoc(doc(db, COLLECTIONS.COMPOSITIONS, projectId), {
+): Promise<void> =>
+  withFirestoreError("salvar as composições", () =>
+    setDoc(doc(db, COLLECTIONS.COMPOSITIONS, projectId), {
       projectId,
       ...result,
       updatedAt: new Date().toISOString(),
-    });
-  } catch (e) {
-    console.warn("Firestore Compositions save failed, falling back to localStorage", e);
-  } finally {
-    localStorage.setItem(`compositions_${projectId}`, JSON.stringify(result));
-  }
-};
+    })
+  );
 
-/**
- * Recupera as composições de IA de uma obra.
- * Tenta Firestore primeiro; usa localStorage como fallback.
- *
- * Equivalente DynamoDB: GetCommand → Obras_Compositions Key: { projectId }
- */
+/** Recupera as composições de IA de uma obra. */
 export const getCompositions = async (
   projectId: string
-): Promise<CompositionAIExtractionResult | null> => {
-  try {
+): Promise<CompositionAIExtractionResult | null> =>
+  withFirestoreError("carregar as composições", async () => {
     const snap = await getDoc(doc(db, COLLECTIONS.COMPOSITIONS, projectId));
-    if (snap.exists()) return snap.data() as CompositionAIExtractionResult;
-  } catch (e) {
-    console.warn(
-      `Firestore Compositions get failed for project ${projectId} — tentando localStorage.`,
-      e
-    );
-  }
+    return snap.exists() ? (snap.data() as CompositionAIExtractionResult) : null;
+  });
 
-  // Fallback: localStorage
-  const local = localStorage.getItem(`compositions_${projectId}`);
-  return local ? (JSON.parse(local) as CompositionAIExtractionResult) : null;
-};
-
-/**
- * Remove as composições de IA de uma obra do Firestore e do localStorage.
- *
- * Equivalente DynamoDB: DeleteCommand → Obras_Compositions Key: { projectId }
- */
-export const deleteCompositions = async (projectId: string): Promise<void> => {
-  localStorage.removeItem(`compositions_${projectId}`);
-  try {
-    await deleteDoc(doc(db, COLLECTIONS.COMPOSITIONS, projectId));
-  } catch (e) {
-    console.warn(`Firestore Compositions delete failed for project ${projectId}.`, e);
-  }
-};
+/** Remove as composições de IA de uma obra. */
+export const deleteCompositions = async (projectId: string): Promise<void> =>
+  withFirestoreError("excluir as composições", () =>
+    deleteDoc(doc(db, COLLECTIONS.COMPOSITIONS, projectId))
+  );

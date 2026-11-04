@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { toast } from 'sonner';
 import {
   DollarSign, Calendar, Plus, Trash2, Save, CheckCircle2,
   AlertCircle, FileText, TrendingUp, Clock, ChevronDown, ChevronUp,
@@ -212,7 +213,7 @@ const AddendumModal: React.FC<AddendumModalProps> = ({ onConfirm, onClose }) => 
 interface ContractDataTabProps {
   project: Project | null;
   contractData: ContractData | null;
-  onSave: (data: ContractData) => void;
+  onSave: (data: ContractData) => Promise<void>;
 }
 
 export const ContractDataTab: React.FC<ContractDataTabProps> = ({
@@ -229,6 +230,7 @@ export const ContractDataTab: React.FC<ContractDataTabProps> = ({
   const [showAddendumModal, setShowAddendumModal] = useState(false);
   const [saved, setSaved] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // ── Load data when project or contractData changes ────────────────────────
   useEffect(() => {
@@ -417,7 +419,7 @@ export const ContractDataTab: React.FC<ContractDataTabProps> = ({
     markDirty();
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!projectId) return;
     const data: ContractData = {
       projectId,
@@ -428,10 +430,17 @@ export const ContractDataTab: React.FC<ContractDataTabProps> = ({
       addenda,
       updatedAt: new Date().toISOString(),
     };
-    onSave(data);
-    setIsDirty(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setSaving(true);
+    try {
+      await onSave(data);
+      setIsDirty(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível salvar os dados do contrato.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   // ── Addendum type label ───────────────────────────────────────────────────
@@ -478,7 +487,7 @@ export const ContractDataTab: React.FC<ContractDataTabProps> = ({
         </div>
         <button
           onClick={handleSave}
-          disabled={!isDirty}
+          disabled={!isDirty || saving}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
             isDirty
               ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-lg shadow-blue-600/20'
@@ -486,7 +495,7 @@ export const ContractDataTab: React.FC<ContractDataTabProps> = ({
           }`}
         >
           <Save className="w-4 h-4" />
-          Salvar Dados do Contrato
+          {saving ? 'Salvando...' : 'Salvar Dados do Contrato'}
         </button>
       </div>
 

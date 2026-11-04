@@ -74,7 +74,8 @@ export const useRdoStore = create<RdoState>((set, get) => ({
         set({ uploadProgress: { current: 0, total: 0 } });
         return newRdos;
       } catch (err) {
-        set({ uploadProgress: { current: 0, total: 0 } });
+        // Os arquivos anteriores ao erro já foram gravados: mostra-os na lista.
+        set({ rdos: [...newRdos, ...get().rdos], uploadProgress: { current: 0, total: 0 } });
         throw err;
       }
     },

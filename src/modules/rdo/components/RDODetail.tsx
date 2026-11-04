@@ -4,6 +4,7 @@ import {
   Activity, Calendar, DollarSign, CheckCircle2, Clock,
   CloudRain, AlertTriangle, MessageSquare, Edit, Save
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { RDOData, Project, Team } from '../types';
 import { formatMoney, getServiceByCode } from '../utils';
 import { RDOEditForm } from './RDOEditForm';
@@ -15,7 +16,7 @@ interface RDODetailProps {
   onClose: () => void;
   onExportCSV: (rdo: RDOData) => void;
   onDeleteRDO: (id: string, e: React.MouseEvent) => void;
-  onSaveUpdatedRdo: (updatedRdo: RDOData) => void;
+  onSaveUpdatedRdo: (updatedRdo: RDOData) => Promise<void>;
 }
 
 export const RDODetail: React.FC<RDODetailProps> = ({ 
@@ -38,9 +39,15 @@ export const RDODetail: React.FC<RDODetailProps> = ({
         project={selectedProject}
         team={selectedTeam}
         onCancel={() => setIsEditing(false)}
-        onSave={(updated) => {
-          onSaveUpdatedRdo(updated);
-          setIsEditing(false);
+        onSave={async (updated) => {
+          try {
+            await onSaveUpdatedRdo(updated);
+            setIsEditing(false);
+            toast.success('RDO salvo.');
+          } catch (err) {
+            // Continua no formulário para não perder a edição.
+            toast.error(err instanceof Error ? err.message : 'Não foi possível salvar o RDO.');
+          }
         }}
       />
     );

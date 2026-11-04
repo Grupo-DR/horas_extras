@@ -3,6 +3,7 @@ import {
   ChevronLeft, ChevronRight, Save, CheckCircle2,
   Building2, AlertCircle, Calendar, Users, FileText, ClipboardList, Activity
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Project, Team, DailyPlan, ContractData } from '../types';
 import { makePlanId } from '../services/dailyPlanService';
 import { ContractDataTab } from './ContractDataTab';
@@ -14,9 +15,9 @@ interface PlanningTabProps {
   projects: Project[];
   teams: Team[];
   dailyPlans: DailyPlan[];
-  onSave: (plans: DailyPlan[]) => void;
+  onSave: (plans: DailyPlan[]) => Promise<void>;
   contractDataMap: Record<string, ContractData>;
-  onSaveContractData: (data: ContractData) => void;
+  onSaveContractData: (data: ContractData) => Promise<void>;
   onUpdateTeam?: (team: Team) => void;
 }
 
@@ -83,6 +84,7 @@ export const PlanningTab: React.FC<PlanningTabProps> = ({
   // ── Unsaved local edits: Map<"<teamId>_<date>", number> ───────────────────
   const [edits, setEdits] = useState<Map<string, number>>(new Map());
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // ── Derived data ──────────────────────────────────────────────────────────
   const projectTeams = useMemo(
@@ -155,7 +157,8 @@ export const PlanningTab: React.FC<PlanningTabProps> = ({
       return { ...entry, teamAllocations: newAllocations };
     });
 
-    onSaveContractData({ ...cData, monthlyEntries: updatedEntries });
+    onSaveContractData({ ...cData, monthlyEntries: updatedEntries })
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'Não foi possível salvar a distribuição.'));
   };
 
   // ── Cell edit ─────────────────────────────────────────────────────────────
@@ -176,7 +179,7 @@ export const PlanningTab: React.FC<PlanningTabProps> = ({
   };
 
   // ── Save ──────────────────────────────────────────────────────────────────
-  const handleSave = () => {
+  const handleSave = async () => {
     // Start from current persisted plans
     const updated = [...dailyPlans];
 
@@ -204,10 +207,18 @@ export const PlanningTab: React.FC<PlanningTabProps> = ({
       }
     });
 
-    onSave(updated);
-    setEdits(new Map());
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setSaving(true);
+    try {
+      await onSave(updated);
+      setEdits(new Map());
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      // Mantém as edições na tela para o usuário tentar de novo.
+      toast.error(err instanceof Error ? err.message : 'Não foi possível salvar o planejamento.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   // ── Totals ────────────────────────────────────────────────────────────────
@@ -343,7 +354,7 @@ export const PlanningTab: React.FC<PlanningTabProps> = ({
             )}
             <button
               onClick={handleSave}
-              disabled={!hasUnsaved}
+              disabled={!hasUnsaved || saving}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
                 hasUnsaved
                   ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-lg shadow-blue-600/20 hover:shadow-blue-500/30'
@@ -351,7 +362,7 @@ export const PlanningTab: React.FC<PlanningTabProps> = ({
               }`}
             >
               <Save className="w-4 h-4" />
-              Salvar
+              {saving ? 'Salvando...' : 'Salvar'}
             </button>
           </div>
 

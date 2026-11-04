@@ -1,44 +1,37 @@
 import { collection, doc, getDocs, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import { withFirestoreError } from '../../services/firestoreErrors';
 import { COLLECTIONS } from '../constants/firestoreCollections';
 import { ContractData } from '../../types';
 import { ContractRepository } from './ContractRepository';
 
-const STORAGE_PREFIX = 'contract_data_';
-
+/**
+ * Dados de contrato de cada obra (Document ID = projectId).
+ * Até a versão 1.4.2 havia uma cópia no localStorage e falhas de gravação eram ignoradas;
+ * agora o Firestore é a única fonte. Cópias antigas: services/localRecoveryService.ts.
+ */
 export class FirestoreContractRepository implements ContractRepository {
   async getAll(): Promise<ContractData[]> {
-    const snapshot = await getDocs(collection(db, COLLECTIONS.CONTRACTS));
-    return snapshot.docs.map((d) => d.data() as ContractData);
+    return withFirestoreError('carregar os dados de contrato', async () => {
+      const snapshot = await getDocs(collection(db, COLLECTIONS.CONTRACTS));
+      return snapshot.docs.map((d) => ({ ...d.data(), projectId: d.data().projectId ?? d.id }) as ContractData);
+    });
   }
 
   async getById(projectId: string): Promise<ContractData | null> {
-    try {
+    return withFirestoreError('carregar os dados de contrato', async () => {
       const snap = await getDoc(doc(db, COLLECTIONS.CONTRACTS, projectId));
-      if (snap.exists()) {
-        const data = snap.data() as ContractData;
-        localStorage.setItem(`${STORAGE_PREFIX}${projectId}`, JSON.stringify(data));
-        return data;
-      }
-    } catch (e) {
-      console.warn(`Firestore Contract get failed for project ${projectId} — tentando cache local.`, e);
-    }
-
-    const raw = localStorage.getItem(`${STORAGE_PREFIX}${projectId}`);
-    return raw ? (JSON.parse(raw) as ContractData) : null;
+      return snap.exists() ? (snap.data() as ContractData) : null;
+    });
   }
 
   async save(contract: ContractData): Promise<void> {
-    localStorage.setItem(
-      `${STORAGE_PREFIX}${contract.projectId}`,
-      JSON.stringify({ ...contract, updatedAt: new Date().toISOString() })
+    await withFirestoreError('salvar os dados de contrato', () =>
+      setDoc(doc(db, COLLECTIONS.CONTRACTS, contract.projectId), {
+        ...contract,
+        updatedAt: new Date().toISOString(),
+      })
     );
-
-    try {
-      await setDoc(doc(db, COLLECTIONS.CONTRACTS, contract.projectId), contract);
-    } catch (e) {
-      console.warn(`Firestore Contract save failed for project ${contract.projectId}`, e);
-    }
   }
 
   async update(contract: ContractData): Promise<void> {
@@ -46,11 +39,8 @@ export class FirestoreContractRepository implements ContractRepository {
   }
 
   async delete(projectId: string): Promise<void> {
-    localStorage.removeItem(`${STORAGE_PREFIX}${projectId}`);
-    try {
-      await deleteDoc(doc(db, COLLECTIONS.CONTRACTS, projectId));
-    } catch (e) {
-      console.warn(`Firestore Contract delete failed for project ${projectId}`, e);
-    }
+    await withFirestoreError('excluir os dados de contrato', () =>
+      deleteDoc(doc(db, COLLECTIONS.CONTRACTS, projectId))
+    );
   }
 }

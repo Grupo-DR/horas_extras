@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { toast } from 'sonner';
 import { 
   FileSpreadsheet, 
   AlertCircle, 
@@ -93,8 +94,9 @@ export const HistogramAnalysis: React.FC<HistogramAnalysisProps> = ({
         } else {
           setActiveTab('CONFIG'); // Auto switch to config if empty
         }
-        setLoading(false);
-      });
+      }).catch(err => {
+        toast.error(err instanceof Error ? err.message : 'Não foi possível carregar o histograma.');
+      }).finally(() => setLoading(false));
     } else {
       setHistograms([]);
     }
@@ -223,6 +225,7 @@ export const HistogramAnalysis: React.FC<HistogramAnalysisProps> = ({
       setTimeout(() => setSaveStatus('IDLE'), 3000);
     } catch (e) {
       setSaveStatus('ERROR');
+      toast.error(e instanceof Error ? e.message : 'Não foi possível salvar o histograma.');
     }
   };
 
