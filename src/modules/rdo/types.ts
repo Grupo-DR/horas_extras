@@ -65,6 +65,8 @@ export interface Project {
   status?: 'ACTIVE' | 'COMPLETED' | 'ON_HOLD';
   contractValue?: number;
   regional?: string;
+  /** Modelo de RDO que a obra usa (define como a IA lê o documento). Ausente = padrão. */
+  rdoModel?: RdoModelId;
   createdAt: string;
   address?: string;
   services: ServiceItem[];
@@ -150,6 +152,72 @@ export interface RDOData {
   contractNumber?: string;
   processedAt?: string;
   synced?: boolean;
+  tokenUsage?: number;
+  /** Modelo usado na leitura do documento. */
+  rdoModel?: RdoModelId;
+  /** Dados completos do RDO Vale (Projeto Novas Ferrovias), além do resumo acima. */
+  vale?: ValeRdoDetail;
+}
+
+// --- Modelos de RDO ---
+
+export type RdoModelId = 'PADRAO' | 'VALE_NOVAS_FERROVIAS';
+
+export interface ValeShiftCount {
+  contratado: number;
+  manhaOperacao: number;
+  manhaFiscalizado: number;
+  tardeOperacao: number;
+  tardeFiscalizado: number;
+  noiteOperacao: number;
+  noiteFiscalizado: number;
+}
+
+export interface ValeResourceRow extends ValeShiftCount {
+  nome: string;
+  frenteObra: string;
+  classificacao: 'DIRETO' | 'INDIRETO' | string;
+}
+
+export interface ValeActivity {
+  frenteObra: string;
+  area: string;
+  subArea: string;
+  descricao: string;
+  servico: string;
+  lado: string;
+  kmInicial: string;
+  kmFinal: string;
+  quantidade: number | null;
+  unidade: string;
+  codigoServico?: string;
+  confiancaCodigo: 'ALTA' | 'MEDIA' | 'BAIXA' | string;
+  /** Código ausente, fora da PQ ou de baixa confiança: conferir antes de medir. */
+  revisar: boolean;
+}
+
+export interface ValeRdoDetail {
+  numeroPedido: string;
+  status: string;
+  condicaoArea: 'OPERAVEL' | 'PARCIAL' | 'INOPERAVEL' | string;
+  horasTrabalhadas: { segundaAQuinta: string; sexta: string; sabado: string; domingo: string };
+  /** Horas da jornada usadas para mão de obra e equipamentos (jornada do dia menos 1 h de intervalo). */
+  horasDia: number;
+  clima: { manha: string; tarde: string; noite: string };
+  pluviometria: { manha: number; tarde: number; noite: number };
+  prazos: {
+    contratualDias: number | null;
+    decorridoDias: number | null;
+    faltanteDias: number | null;
+    prorrogadoDias: number | null;
+    inicioPrevisto: string;
+    terminoPrevisto: string;
+  };
+  atividades: ValeActivity[];
+  maoDeObra: ValeResourceRow[];
+  equipamentos: ValeResourceRow[];
+  comentarios: { data: string; area: string; usuario: string; comentario: string }[];
+  assinaturas: { area: string; usuario: string; data: string }[];
 }
 
 // --- Histogram Analysis Types ---

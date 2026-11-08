@@ -4,6 +4,24 @@ Todas as mudanças relevantes do DR Nexus, da mais nova para a mais antiga.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, seção "Versionamento".
 
+## [1.5.0] - 2026-11-08
+
+### Adicionado
+- RDO Online: modelo de RDO **Vale — Projeto Novas Ferrovias**, escolhido por obra no cadastro
+  (Minhas Obras > editar obra > Modelo de RDO). A IA lê o RDO da Vale com atividades por lado e km,
+  quantidade do "total", mão de obra e equipamentos por turno (em operação e fiscalizado),
+  condição da área, clima, prazos, comentários e assinaturas.
+- As atividades do RDO Vale, que não trazem código, são ligadas ao item da PQ da obra pela IA.
+  Só códigos que existem na PQ são aceitos; os incertos ficam com status "Revisar".
+- Importação da Planilha de Quantidades e Preços (PQ) da Vale na aba Serviços da obra, usando o
+  CÓD. ATIVIDADE como código (o número do ITEM se repete na PQ).
+- Na edição do RDO, o código da atividade é escolhido numa lista com os itens da tabela da obra.
+
+### Alterado
+- O envio de RDOs não grava de novo um RDO que a turma já tem com a mesma data e número; o
+  sistema lista os arquivos ignorados.
+- Quando a IA está sobrecarregada, o servidor tenta de novo automaticamente antes de avisar o usuário.
+
 ## [1.4.3] - 2026-11-04
 
 ### Corrigido

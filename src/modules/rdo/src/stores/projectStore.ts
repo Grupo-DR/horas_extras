@@ -1,8 +1,9 @@
 import { create } from 'zustand';
-import { Project, ServiceItem } from '../../types';
+import { Project, RdoModelId, ServiceItem } from '../../types';
 import { FirestoreProjectRepository } from '../repositories/FirestoreProjectRepository';
 import { generateUUID, parseExcelDate } from '../../utils';
 import { read, utils } from 'xlsx';
+import { isValePQ, parseValePQ } from '../../services/valePQParser';
 
 const projectRepo = new FirestoreProjectRepository();
 
@@ -13,7 +14,7 @@ interface ProjectState {
     setProjects: (projects: Project[]) => void;
     setSelectedProject: (project: Project | null) => void;
     loadProjects: () => Promise<Project[]>;
-    saveProject: (name: string, regional: string, isEditMode: boolean, editingItemId: string | null) => Promise<void>;
+    saveProject: (name: string, regional: string, isEditMode: boolean, editingItemId: string | null, rdoModel?: RdoModelId) => Promise<void>;
     deleteProject: (id: string) => Promise<void>;
     handleServicesUpload: (file: File) => Promise<void>;
   };
@@ -30,7 +31,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       set({ projects: projectsList });
       return projectsList;
     },
-    saveProject: async (name, regional, isEditMode, editingItemId) => {
+    saveProject: async (name, regional, isEditMode, editingItemId, rdoModel = 'PADRAO') => {
       const { projects } = get();
       if (!name.trim()) return;
 
@@ -39,7 +40,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           p.id === editingItemId ? {
             ...p,
             name,
-            regional
+            regional,
+            rdoModel
           } : p
         );
         const projectToUpdate = updatedProjects.find(p => p.id === editingItemId);
@@ -55,6 +57,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           id: generateUUID(),
           name,
           regional,
+          rdoModel,
           createdAt: new Date().toISOString(),
           services: []
         };
@@ -79,9 +82,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = utils.sheet_to_json(worksheet, { header: 1 });
 
-      const newServices: ServiceItem[] = [];
+      // PQ da Vale tem layout próprio; as demais seguem o modelo padrão (código, escopo, unidade, valor, início, fim).
+      const newServices: ServiceItem[] = isValePQ(workbook) ? parseValePQ(workbook) : [];
 
-      jsonData.forEach((row: any) => {
+      if (!isValePQ(workbook)) jsonData.forEach((row: any) => {
         if (row.length >= 4) {
           const code = String(row[0]);
           if (code && !['código', 'code', 'item', 'cód. item'].includes(code.toLowerCase())) {

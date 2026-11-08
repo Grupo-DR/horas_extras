@@ -2,6 +2,8 @@ import React from 'react';
 import { useUiState, useUiActions } from '../../../stores/uiStore';
 import { useProjectActions, useSelectedProject } from '../../../stores/projectStore';
 import { useTeamActions } from '../../../stores/teamStore';
+import { RdoModelId } from '../../../../types';
+import { RDO_MODEL_OPTIONS } from '../../../../services/rdoModels';
 
 export const ProjectModal: React.FC = () => {
   const {
@@ -10,12 +12,14 @@ export const ProjectModal: React.FC = () => {
     currentView,
     newItemName,
     newItemRegional,
+    newItemRdoModel,
     editingItemId
   } = useUiState();
 
   const {
     setNewItemName,
     setNewItemRegional,
+    setNewItemRdoModel,
     setIsModalOpen
   } = useUiActions();
 
@@ -28,7 +32,7 @@ export const ProjectModal: React.FC = () => {
   const handleSave = async () => {
     try {
       if (currentView === 'PROJECT_LIST') {
-        await saveProject(newItemName, newItemRegional, isEditMode, editingItemId);
+        await saveProject(newItemName, newItemRegional, isEditMode, editingItemId, newItemRdoModel);
       } else {
         await saveTeam(newItemName, selectedProject?.id, isEditMode, editingItemId);
       }
@@ -64,6 +68,23 @@ export const ProjectModal: React.FC = () => {
                 onChange={(e) => setNewItemRegional(e.target.value)} 
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-slate-800" 
               />
+            </div>
+          )}
+          {currentView === 'PROJECT_LIST' && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Modelo de RDO</label>
+              <select
+                value={newItemRdoModel}
+                onChange={(e) => setNewItemRdoModel(e.target.value as RdoModelId)}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-slate-800 bg-white"
+              >
+                {RDO_MODEL_OPTIONS.map((m) => (
+                  <option key={m.id} value={m.id}>{m.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500 mt-1">
+                {RDO_MODEL_OPTIONS.find((m) => m.id === newItemRdoModel)?.hint}
+              </p>
             </div>
           )}
         </div>

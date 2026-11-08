@@ -21,6 +21,9 @@ const GEMINI_API_KEY = (0, params_1.defineSecret)("GEMINI_API_KEY");
 const GEMINI_MODEL = "gemini-3-flash-preview";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 const GEMINI_TIMEOUT_MS = 280000;
+const GEMINI_ATTEMPTS = 4;
+const RETRY_STATUS = [429, 500, 503];
+const RETRY_BASE_MS = 5000;
 /** Módulos que podem usar a IA (chave do perfil em user_profiles.modules). */
 const AI_FEATURES = ["construction_rdo", "human_capital"];
 /** Limite do pedido: o callable aceita até 10 MB e os PDFs vão em base64 (+33%). */
@@ -82,15 +85,22 @@ exports.aiGenerateContent = (0, https_1.onCall)({
     const timer = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
     let response;
     try {
-        response = await fetch(GEMINI_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "x-goog-api-key": GEMINI_API_KEY.value(),
-            },
-            body: JSON.stringify(body),
-            signal: controller.signal,
-        });
+        // O modelo devolve 503/429 em picos de uso: tenta de novo com espera crescente.
+        for (let attempt = 1; attempt <= GEMINI_ATTEMPTS; attempt++) {
+            response = await fetch(GEMINI_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": GEMINI_API_KEY.value(),
+                },
+                body: JSON.stringify(body),
+                signal: controller.signal,
+            });
+            if (!RETRY_STATUS.includes(response.status) || attempt === GEMINI_ATTEMPTS)
+                break;
+            logger.warn("aiGenerateContent: Gemini ocupado, nova tentativa", { feature: req.feature, status: response.status, attempt });
+            await new Promise(resolve => setTimeout(resolve, RETRY_BASE_MS * attempt));
+        }
     }
     catch (error) {
         logger.error("aiGenerateContent: falha de rede", { feature: req.feature, error: String(error) });
@@ -102,8 +112,8 @@ exports.aiGenerateContent = (0, https_1.onCall)({
     if (!response.ok) {
         const detail = (await response.text()).slice(0, 500);
         logger.error("aiGenerateContent: Gemini recusou", { feature: req.feature, status: response.status, detail });
-        if (response.status === 429) {
-            throw new https_1.HttpsError("resource-exhausted", "Limite de uso da IA atingido. Tente em alguns minutos.");
+        if (response.status === 429 || response.status === 503) {
+            throw new https_1.HttpsError("resource-exhausted", "A IA está sobrecarregada no momento. Tente em alguns minutos.");
         }
         if (response.status === 400) {
             throw new https_1.HttpsError("invalid-argument", "A IA não aceitou o arquivo ou o pedido.");

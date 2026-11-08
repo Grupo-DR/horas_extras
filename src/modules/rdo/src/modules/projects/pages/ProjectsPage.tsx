@@ -75,10 +75,18 @@ export const ProjectsPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const newRdos = await handleFileUpload(files, selectedTeam.id);
-      if (newRdos && newRdos.length === 1) {
+      const result = await handleFileUpload(files, selectedTeam.id, selectedProject);
+      const newRdos = result?.saved ?? [];
+      if (result?.skipped.length) {
+        alert(`Já existiam e não foram gravados de novo:\n${result.skipped.join('\n')}`);
+      }
+      const toReview = newRdos.reduce((n, r) => n + (r.vale?.atividades.filter(a => a.revisar).length ?? 0), 0);
+      if (toReview > 0) {
+        alert(`${toReview} atividade(s) ficaram com código de serviço ou quantidade a conferir. Abra o RDO e use "Editar" para corrigir.`);
+      }
+      if (newRdos.length === 1) {
         setCurrentRDO(newRdos[0]);
-      } else if (newRdos && newRdos.length > 1) {
+      } else if (newRdos.length > 1) {
         alert(`${newRdos.length} relatórios processados com sucesso!`);
         setCurrentView('RDO_LIST');
       }

@@ -1,7 +1,18 @@
 import { create } from 'zustand';
-import { RDOData } from '../../types';
+import { Project, RDOData } from '../../types';
 import { FirestoreRDORepository } from '../repositories/FirestoreRDORepository';
-import { extractRDOData, fileToBase64 } from '../../services/geminiService';
+import { fileToBase64 } from '../../services/geminiService';
+import { extractRDOForProject } from '../../services/rdoModels';
+
+export interface UploadResult {
+  saved: RDOData[];
+  /** Arquivos não gravados porque a turma já tem RDO com a mesma data e número. */
+  skipped: string[];
+}
+
+/** Chave de duplicidade: mesma turma, data e número de RDO. */
+export const rdoDuplicateKey = (rdo: Pick<RDOData, 'teamId' | 'date' | 'reportNumber'>): string =>
+  [rdo.teamId, (rdo.date ?? '').trim(), (rdo.reportNumber ?? '').trim().replace(/^0+/, '')].join('|');
 
 const rdoRepo = new FirestoreRDORepository();
 
@@ -16,7 +27,7 @@ interface RdoState {
     loadRdos: () => Promise<RDOData[]>;
     saveRdo: (rdo: RDOData) => Promise<void>;
     deleteRdo: (id: string) => Promise<void>;
-    handleFileUpload: (files: FileList | null, selectedTeamId: string | undefined) => Promise<RDOData[] | undefined>;
+    handleFileUpload: (files: FileList | null, selectedTeamId: string | undefined, project?: Project | null) => Promise<UploadResult | undefined>;
     exportToCSV: (data: RDOData, projectName: string, teamName: string) => void;
   };
 }
@@ -49,12 +60,14 @@ export const useRdoStore = create<RdoState>((set, get) => ({
         set({ currentRDO: null });
       }
     },
-    handleFileUpload: async (files, selectedTeamId) => {
+    handleFileUpload: async (files, selectedTeamId, project) => {
       if (!files || files.length === 0 || !selectedTeamId) return;
 
       set({ uploadProgress: { current: 0, total: files.length } });
 
       const newRdos: RDOData[] = [];
+      const skipped: string[] = [];
+      const existing = new Set(get().rdos.map(rdoDuplicateKey));
 
       try {
         for (let i = 0; i < files.length; i++) {
@@ -62,17 +75,24 @@ export const useRdoStore = create<RdoState>((set, get) => ({
           const file = files[i];
 
           const base64 = await fileToBase64(file);
-          const data = await extractRDOData(base64, file.type);
+          const data = await extractRDOForProject(base64, file.type, project);
 
           data.teamId = selectedTeamId;
+          if (project?.id) data.projectId = project.id;
+          const key = rdoDuplicateKey(data);
+          if (data.reportNumber && existing.has(key)) {
+            skipped.push(`${file.name} (RDO nº ${data.reportNumber} de ${data.date})`);
+            continue;
+          }
           await rdoRepo.save(data);
+          existing.add(key);
           newRdos.push(data);
         }
 
         const updatedRdos = [...newRdos, ...get().rdos];
         set({ rdos: updatedRdos });
         set({ uploadProgress: { current: 0, total: 0 } });
-        return newRdos;
+        return { saved: newRdos, skipped };
       } catch (err) {
         // Os arquivos anteriores ao erro já foram gravados: mostra-os na lista.
         set({ rdos: [...newRdos, ...get().rdos], uploadProgress: { current: 0, total: 0 } });

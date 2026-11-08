@@ -41,7 +41,7 @@ export const aiErrorMessage = (error: unknown): string => {
         case 'functions/permission-denied':
             return 'Seu perfil não tem acesso à IA deste módulo.';
         case 'functions/resource-exhausted':
-            return 'Limite de uso da IA atingido. Tente em alguns minutos.';
+            return 'A IA está sobrecarregada ou no limite de uso. Tente em alguns minutos.';
         case 'functions/deadline-exceeded':
             return 'A IA demorou demais para responder. Tente com um arquivo menor.';
         case 'functions/not-found':

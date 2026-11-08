@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
-import { Project, Team } from '../../types';
+import { Project, RdoModelId, Team } from '../../types';
 
 export type MainMenu = 'DASHBOARD' | 'PROJECTS' | 'CONTRACT_INTELLIGENCE' | 'PLANNING';
 export type ViewState = 'PROJECT_LIST' | 'TEAMS_LIST' | 'RDO_LIST' | 'UPLOAD_ANALYSIS';
@@ -20,6 +20,7 @@ interface UiState {
   editingItemId: string | null;
   newItemName: string;
   newItemRegional: string;
+  newItemRdoModel: RdoModelId;
 
   // Filter states
   filterMes: string;
@@ -43,6 +44,7 @@ interface UiState {
     setEditingItemId: (id: string | null) => void;
     setNewItemName: (name: string) => void;
     setNewItemRegional: (regional: string) => void;
+    setNewItemRdoModel: (model: RdoModelId) => void;
     openCreateModal: () => void;
     openEditModal: (item: Project | Team, type: 'PROJECT' | 'TEAM') => void;
 
@@ -70,6 +72,7 @@ export const useUiStore = create<UiState>((set) => ({
   editingItemId: null,
   newItemName: '',
   newItemRegional: '',
+  newItemRdoModel: 'PADRAO',
 
   filterMes: 'all',
   filterStartDate: '',
@@ -91,11 +94,13 @@ export const useUiStore = create<UiState>((set) => ({
     setEditingItemId: (editingItemId) => set({ editingItemId }),
     setNewItemName: (newItemName) => set({ newItemName }),
     setNewItemRegional: (newItemRegional) => set({ newItemRegional }),
+    setNewItemRdoModel: (newItemRdoModel) => set({ newItemRdoModel }),
 
     openCreateModal: () => set({
       isEditMode: false,
       newItemName: '',
       newItemRegional: '',
+      newItemRdoModel: 'PADRAO',
       isModalOpen: true
     }),
 
@@ -104,6 +109,7 @@ export const useUiStore = create<UiState>((set) => ({
       editingItemId: item.id,
       newItemName: item.name,
       newItemRegional: type === 'PROJECT' ? (item as Project).regional || '' : '',
+      newItemRdoModel: type === 'PROJECT' ? (item as Project).rdoModel || 'PADRAO' : 'PADRAO',
       isModalOpen: true
     }),
 
@@ -136,7 +142,8 @@ export const useUiState = () => useUiStore(useShallow((state) => ({
   isEditMode: state.isEditMode,
   editingItemId: state.editingItemId,
   newItemName: state.newItemName,
-  newItemRegional: state.newItemRegional
+  newItemRegional: state.newItemRegional,
+  newItemRdoModel: state.newItemRdoModel
 })));
 
 export const useUiFilters = () => useUiStore(useShallow((state) => ({

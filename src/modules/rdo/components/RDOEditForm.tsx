@@ -399,13 +399,43 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
                   return (
                     <tr key={idx} className="hover:bg-white/[0.02] transition-colors group">
                       <td className="px-8 py-3">
-                        <input 
-                          type="text" 
-                          value={act.code || ''} 
-                          onChange={e => updateActivity(idx, 'code', e.target.value)}
-                          className="w-full bg-transparent border-none text-blue-400 focus:ring-0 outline-none p-0 font-mono text-xs placeholder:text-slate-700"
-                          placeholder="Código"
-                        />
+                        {project.services?.length ? (
+                          // Obra com tabela de serviços: escolher o item da lista evita código digitado errado.
+                          <select
+                            value={act.code || ''}
+                            onChange={e => {
+                              const code = e.target.value;
+                              setFormData(prev => ({
+                                ...prev,
+                                activities: prev.activities.map((a, i) => i !== idx ? a : {
+                                  ...a,
+                                  code,
+                                  status: code && a.status === 'Revisar' ? 'Concluído' : a.status,
+                                }),
+                              }));
+                            }}
+                            title={serviceItem?.scope}
+                            className="w-full bg-transparent border-none text-blue-400 focus:ring-0 outline-none p-0 font-mono text-xs cursor-pointer"
+                          >
+                            <option value="" className="bg-slate-900">— sem código —</option>
+                            {act.code && !serviceItem && (
+                              <option value={act.code} className="bg-slate-900">{act.code} (fora da tabela)</option>
+                            )}
+                            {project.services.map(s => (
+                              <option key={`${s.code}_${s.startDate ?? ''}`} value={s.code} className="bg-slate-900">
+                                {s.code} · {s.scope} ({s.unit})
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input 
+                            type="text" 
+                            value={act.code || ''} 
+                            onChange={e => updateActivity(idx, 'code', e.target.value)}
+                            className="w-full bg-transparent border-none text-blue-400 focus:ring-0 outline-none p-0 font-mono text-xs placeholder:text-slate-700"
+                            placeholder="Código"
+                          />
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <input 
@@ -436,6 +466,7 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
                           <option value="Concluído" className="bg-slate-900">Concluído</option>
                           <option value="Em andamento" className="bg-slate-900">Em andamento</option>
                           <option value="Paralisado" className="bg-slate-900">Paralisado</option>
+                          <option value="Revisar" className="bg-slate-900">Revisar</option>
                         </select>
                       </td>
                       <td className="px-8 py-3 text-right">

@@ -34,3 +34,7 @@ audits/
 
 # Exportações do Carol Clock In: CPF, contatos e hash biométrico (LGPD)
 modelos-excel/carol_clockin*.xlsx
+
+# Documentos de cliente (PQ Vale = RESTRITO) e planilhas com dados pessoais: nunca no repositório
+modelos-excel/model_vale/
+modelos-excel/Analise Localiza*
