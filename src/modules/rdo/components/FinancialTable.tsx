@@ -86,9 +86,9 @@ const isoToShort = (iso: string): string => {
 // ─── Cell classes ─────────────────────────────────────────────────────────────
 
 const diffClass = (val: number) => {
-  if (val > 0) return 'text-emerald-400';
-  if (val < 0) return 'text-red-400';
-  return 'text-slate-300';
+  if (val > 0) return 'text-emerald-600';
+  if (val < 0) return 'text-red-600';
+  return 'text-slate-700';
 };
 
 const diffBg = (val: number) => {
@@ -98,9 +98,9 @@ const diffBg = (val: number) => {
 };
 
 const pctBadge = (val: number) => {
-  if (val >= 5)  return 'bg-emerald-600/80 text-white font-bold';
-  if (val < 0)   return 'bg-red-600/80 text-white font-bold';
-  return 'text-slate-300';
+  if (val >= 5)  return 'bg-emerald-600/80 text-slate-900 font-bold';
+  if (val < 0)   return 'bg-red-600/80 text-slate-900 font-bold';
+  return 'text-slate-700';
 };
 
 // ─── Row level styles ─────────────────────────────────────────────────────────
@@ -108,10 +108,10 @@ const pctBadge = (val: number) => {
 type RowLevel = 'root' | 'regional' | 'project' | 'team';
 
 const levelStyle: Record<RowLevel, string> = {
-  root:     'bg-slate-800/90 border-l-4 border-l-blue-500 font-bold text-white',
-  regional: 'bg-slate-800/60 border-l-4 border-l-cyan-400 font-semibold text-white',
-  project:  'bg-slate-900/60 border-l-4 border-l-indigo-400/60 font-medium text-slate-200',
-  team:     'bg-slate-900/20 border-l-4 border-l-slate-600 font-normal text-slate-300',
+  root:     'bg-slate-50 border-l-4 border-l-blue-500 font-bold text-slate-900',
+  regional: 'bg-slate-50 border-l-4 border-l-cyan-400 font-semibold text-slate-900',
+  project:  'bg-white border-l-4 border-l-indigo-400/60 font-medium text-slate-800',
+  team:     'bg-white border-l-4 border-l-slate-600 font-normal text-slate-700',
 };
 
 const levelIndent: Record<RowLevel, string> = {
@@ -167,7 +167,7 @@ const TableRow: React.FC<RowData> = ({
 
   return (
     <tr
-      className={`border-b border-white/5 transition-all duration-150 ${levelStyle[level]} ${onToggle ? 'cursor-pointer hover:brightness-110' : ''}`}
+      className={`border-b border-slate-200 transition-all duration-150 ${levelStyle[level]} ${onToggle ? 'cursor-pointer hover:brightness-110' : ''}`}
       onClick={onToggle}
     >
       {/* ── Identificador ── */}
@@ -175,45 +175,45 @@ const TableRow: React.FC<RowData> = ({
         <span className="flex items-center gap-1.5">
           {hasChildren && (
             isExpanded
-              ? <ChevronDown className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
-              : <ChevronRight className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
+              ? <ChevronDown className="w-3.5 h-3.5 flex-shrink-0 text-slate-500" />
+              : <ChevronRight className="w-3.5 h-3.5 flex-shrink-0 text-slate-500" />
           )}
           {name}
         </span>
       </td>
 
       {/* ── Grupo 1: Mês Vigente ── */}
-      <td className="py-2.5 px-3 text-xs text-right font-mono text-slate-300 whitespace-nowrap">
+      <td className="py-2.5 px-3 text-xs text-right font-mono text-slate-700 whitespace-nowrap">
         {fmt(budget)}
       </td>
-      <td className="py-2.5 px-3 text-xs text-right font-mono text-slate-300 whitespace-nowrap">
+      <td className="py-2.5 px-3 text-xs text-right font-mono text-slate-700 whitespace-nowrap">
         {fmt(forecast)}
       </td>
-      <td className={`py-2.5 px-3 text-xs text-right font-mono whitespace-nowrap border-r border-white/5 ${plannedMonth > 0 ? 'text-amber-300' : 'text-slate-300'}`}>
+      <td className={`py-2.5 px-3 text-xs text-right font-mono whitespace-nowrap border-r border-slate-200 ${plannedMonth > 0 ? 'text-amber-700' : 'text-slate-700'}`}>
         {fmt(plannedMonth)}
       </td>
 
       {/* ── Grupo 2: Período programado (De → Até) ── */}
-      <td className="py-2.5 px-3 text-xs text-right font-mono text-slate-300 whitespace-nowrap bg-blue-950/20">
+      <td className="py-2.5 px-3 text-xs text-right font-mono text-slate-700 whitespace-nowrap bg-blue-950/20">
         {fmt(plannedPeriod)}
       </td>
-      <td className="py-2.5 px-3 text-xs text-right font-mono text-slate-200 whitespace-nowrap bg-blue-950/20">
+      <td className="py-2.5 px-3 text-xs text-right font-mono text-slate-800 whitespace-nowrap bg-blue-950/20">
         {fmt(realized)}
       </td>
       <td className={`py-2.5 px-3 text-xs text-right font-mono whitespace-nowrap bg-blue-950/20 ${diffClass(diffPeriod)} ${diffBg(diffPeriod)}`}>
         {fmt(diffPeriod)}
       </td>
-      <td className={`py-2.5 px-3 text-xs text-right whitespace-nowrap bg-blue-950/20 border-r border-white/5 rounded-sm ${pctBadge(pctPeriod)}`}>
+      <td className={`py-2.5 px-3 text-xs text-right whitespace-nowrap bg-blue-950/20 border-r border-slate-200 rounded-sm ${pctBadge(pctPeriod)}`}>
         {fmtPct(pctPeriod)}
       </td>
 
       {/* ── Grupo 3: Projeção do mês ── */}
       {/* Col 1: Projeções restantes do engenheiro */}
-      <td className="py-2.5 px-3 text-xs text-right font-mono text-slate-300 whitespace-nowrap">
+      <td className="py-2.5 px-3 text-xs text-right font-mono text-slate-700 whitespace-nowrap">
         {fmt(projected)}
       </td>
       {/* Col 2: Realizado + Projetado */}
-      <td className="py-2.5 px-3 text-xs text-right font-mono text-slate-200 whitespace-nowrap">
+      <td className="py-2.5 px-3 text-xs text-right font-mono text-slate-800 whitespace-nowrap">
         {fmt(realizadoMaisProjetado)}
       </td>
       {/* Col 3: Diferença vs Planejado Mês */}
@@ -455,7 +455,7 @@ export const FinancialTable: React.FC<FinancialTableProps> = ({
 
   if (!root || root.regionals.length === 0) {
     return (
-      <div className="glass-panel p-12 rounded-3xl border border-white/5 mt-8 text-center bg-white/[0.02] border-dashed">
+      <div className="glass-panel p-12 rounded-3xl border border-slate-200 mt-8 text-center bg-slate-50 border-dashed">
         <p className="text-slate-500 font-medium">
           Nenhum dado financeiro encontrado para os parâmetros selecionados.
         </p>
@@ -465,53 +465,53 @@ export const FinancialTable: React.FC<FinancialTableProps> = ({
 
   return (
     <div className="mt-8 w-full">
-      <div className="glass-panel rounded-3xl border border-white/5 overflow-hidden shadow-2xl shadow-black/30">
+      <div className="glass-panel rounded-3xl border border-slate-200 overflow-hidden shadow-2xl shadow-slate-200/60">
 
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full border-collapse text-left" style={{ minWidth: 1180 }}>
             <thead>
               {/* ── Linha de grupos ── */}
-              <tr className="border-b border-white/10">
+              <tr className="border-b border-slate-200">
 
                 {/* Coluna CC — sem grupo */}
-                <th rowSpan={2} className="py-3 pl-3 pr-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-900/80 whitespace-nowrap border-r border-white/5">
+                <th rowSpan={2} className="py-3 pl-3 pr-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-white whitespace-nowrap border-r border-slate-200">
                   CC
                 </th>
 
                 {/* Grupo 1 – Mês vigente (3 colunas) */}
-                <th colSpan={3} className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-300 bg-slate-800/70 text-center whitespace-nowrap border-r border-white/10">
+                <th colSpan={3} className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-700 bg-slate-50 text-center whitespace-nowrap border-r border-slate-200">
                   Mês vigente
                 </th>
 
                 {/* Grupo 2 – Período programado (4 colunas) */}
-                <th colSpan={4} className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-white bg-blue-600/70 text-center whitespace-nowrap border-r border-white/10">
+                <th colSpan={4} className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-900 bg-blue-600/70 text-center whitespace-nowrap border-r border-slate-200">
                   {periodGroupLabel}
                 </th>
 
                 {/* Grupo 3 – Projeção do mês (4 colunas) */}
-                <th colSpan={4} className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-300 bg-slate-700/60 text-center whitespace-nowrap">
+                <th colSpan={4} className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-700 bg-slate-100 text-center whitespace-nowrap">
                   {projGroupLabel}
                 </th>
               </tr>
 
               {/* ── Sub-cabeçalhos ── */}
-              <tr className="border-b border-white/10">
+              <tr className="border-b border-slate-200">
                 {/* Grupo 1 */}
-                <th className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-800/50 text-right whitespace-nowrap">Budget</th>
-                <th className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-800/50 text-right whitespace-nowrap">Forecast</th>
-                <th className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-amber-400/80 bg-slate-800/50 text-right whitespace-nowrap border-r border-white/10">Planejado mês</th>
+                <th className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-slate-50 text-right whitespace-nowrap">Budget</th>
+                <th className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-slate-50 text-right whitespace-nowrap">Forecast</th>
+                <th className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-amber-600/80 bg-slate-50 text-right whitespace-nowrap border-r border-slate-200">Planejado mês</th>
 
                 {/* Grupo 2 */}
-                <th className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-blue-300 bg-blue-900/30 text-right whitespace-nowrap">{plannedPeriodLabel}</th>
-                <th className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-blue-300 bg-blue-900/30 text-right whitespace-nowrap">Realizado</th>
-                <th className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-blue-300 bg-blue-900/30 text-right whitespace-nowrap">Diferença</th>
-                <th className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-blue-300 bg-blue-900/30 text-right whitespace-nowrap border-r border-white/10">%</th>
+                <th className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-blue-700 bg-blue-900/30 text-right whitespace-nowrap">{plannedPeriodLabel}</th>
+                <th className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-blue-700 bg-blue-900/30 text-right whitespace-nowrap">Realizado</th>
+                <th className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-blue-700 bg-blue-900/30 text-right whitespace-nowrap">Diferença</th>
+                <th className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-blue-700 bg-blue-900/30 text-right whitespace-nowrap border-r border-slate-200">%</th>
 
                 {/* Grupo 3 */}
-                <th className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-900/50 text-right whitespace-nowrap">{projColLabel}</th>
-                <th className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-900/50 text-right whitespace-nowrap">Realizado + Projetado</th>
-                <th className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-900/50 text-right whitespace-nowrap">Dif. vs Mês</th>
-                <th className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-900/50 text-right whitespace-nowrap">%</th>
+                <th className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-white text-right whitespace-nowrap">{projColLabel}</th>
+                <th className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-white text-right whitespace-nowrap">Realizado + Projetado</th>
+                <th className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-white text-right whitespace-nowrap">Dif. vs Mês</th>
+                <th className="py-2 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-white text-right whitespace-nowrap">%</th>
               </tr>
             </thead>
 
@@ -578,7 +578,7 @@ export const FinancialTable: React.FC<FinancialTableProps> = ({
         </div>
 
         {/* ── Legenda ── */}
-        <div className="px-6 py-3 border-t border-white/5 bg-slate-900/40 flex flex-wrap gap-6 items-center text-[10px] text-slate-500 uppercase tracking-widest">
+        <div className="px-6 py-3 border-t border-slate-200 bg-white flex flex-wrap gap-6 items-center text-[10px] text-slate-500 uppercase tracking-widest">
           <span className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-sm bg-emerald-600/80 inline-block" />
             Acima do planejado
@@ -591,7 +591,7 @@ export const FinancialTable: React.FC<FinancialTableProps> = ({
             <span className="w-3 h-3 rounded-sm bg-amber-400/60 inline-block" />
             Planejado mês em andamento
           </span>
-          <span className="ml-auto normal-case text-slate-600 text-[10px]">
+          <span className="ml-auto normal-case text-slate-500 text-[10px]">
             Clique nas linhas para expandir / colapsar
           </span>
         </div>

@@ -37,7 +37,7 @@ function SectionCard({ title, children }: { title: string; children: React.React
   const [open, setOpen] = useState(true);
   return (
     <div style={{
-      background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+      background: '#f8fafc', border: '1px solid #e2e8f0',
       borderRadius: 12, overflow: 'hidden', marginBottom: 16,
     }}>
       <button
@@ -45,7 +45,7 @@ function SectionCard({ title, children }: { title: string; children: React.React
         style={{
           width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           padding: '12px 16px', background: 'transparent', border: 'none', cursor: 'pointer',
-          color: '#e2e8f0', fontSize: 14, fontWeight: 600,
+          color: '#1e293b', fontSize: 14, fontWeight: 600,
         }}
       >
         {title}
@@ -173,7 +173,7 @@ export function CompositionsUpload({ selectedProject, onCompositionsSaved }: Com
   } : null;
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif", color: '#e2e8f0', maxWidth: 1000, margin: '0 auto' }}>
+    <div style={{ fontFamily: "'Inter', sans-serif", color: '#1e293b', maxWidth: 1000, margin: '0 auto' }}>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         <button onClick={handleLoad} disabled={isLoading} style={btnStyle('#334155')}>
@@ -193,7 +193,7 @@ export function CompositionsUpload({ selectedProject, onCompositionsSaved }: Com
           border: `2px dashed ${isDragging ? '#8b5cf6' : '#334155'}`,
           borderRadius: 16, padding: '36px 24px', textAlign: 'center',
           cursor: isProcessing ? 'default' : 'pointer', marginBottom: 24, transition: 'all 0.2s',
-          background: isDragging ? 'rgba(139,92,246,0.06)' : 'rgba(255,255,255,0.02)',
+          background: isDragging ? 'rgba(139,92,246,0.06)' : '#ffffff',
         }}
       >
         <input
@@ -208,7 +208,7 @@ export function CompositionsUpload({ selectedProject, onCompositionsSaved }: Com
         ) : (
           <FileText size={40} color={isDragging ? '#8b5cf6' : '#475569'} style={{ margin: '0 auto 12px' }} />
         )}
-        <p style={{ color: '#94a3b8', margin: 0, fontSize: 15, fontWeight: isProcessing ? 600 : 400 }}>
+        <p style={{ color: '#64748b', margin: 0, fontSize: 15, fontWeight: isProcessing ? 600 : 400 }}>
           {isProcessing
             ? <><Loader2 size={16} className="inline animate-spin mr-2" /> IA extraindo dados do PDF... (pode levar 30-60s)</>
             : 'Arraste o PDF de Composições aqui ou clique para extrair via IA'}
@@ -219,9 +219,9 @@ export function CompositionsUpload({ selectedProject, onCompositionsSaved }: Com
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px',
           borderRadius: 8, marginBottom: 16, fontSize: 14,
-          background: saveStatus === 'success' ? '#052e16' : '#450a0a',
+          background: saveStatus === 'success' ? '#dcfce7' : '#450a0a',
           border: `1px solid ${saveStatus === 'success' ? '#166534' : '#7f1d1d'}`,
-          color: saveStatus === 'success' ? '#4ade80' : '#f87171',
+          color: saveStatus === 'success' ? '#16a34a' : '#f87171',
         }}>
           {saveStatus === 'success' ? <CheckCircle size={16} /> : <XCircle size={16} />}
           {saveMessage}
@@ -232,17 +232,17 @@ export function CompositionsUpload({ selectedProject, onCompositionsSaved }: Com
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginBottom: 20 }}>
             <KpiBox label="Composições Extraídas" value={kpis.total} color="#8b5cf6" />
-            <KpiBox label="Serviços Produtivos" value={kpis.produtivas} color="#4ade80" />
-            <KpiBox label="Improdutividades" value={kpis.improdutivas} color="#f87171" />
-            <KpiBox label="Tags BLACKOUT" value={kpis.blackout} color="#facc15" />
-            <KpiBox label="Sem Preço" value={kpis.semPreco} color="#fb923c" />
-            <KpiBox label="Sem Prod. Equipe" value={kpis.semProducao} color="#94a3b8" />
+            <KpiBox label="Serviços Produtivos" value={kpis.produtivas} color="#16a34a" />
+            <KpiBox label="Improdutividades" value={kpis.improdutivas} color="#dc2626" />
+            <KpiBox label="Tags BLACKOUT" value={kpis.blackout} color="#a16207" />
+            <KpiBox label="Sem Preço" value={kpis.semPreco} color="#c2410c" />
+            <KpiBox label="Sem Prod. Equipe" value={kpis.semProducao} color="#64748b" />
           </div>
 
           {(result.errors.length > 0 || result.warnings.length > 0) && (
             <SectionCard title={`⚠️ Ocorrências Analíticas (${result.errors.length + result.warnings.length})`}>
-              {result.errors.map((e, i) => <div key={'e'+i} className="text-red-400 text-sm mb-1">• {e}</div>)}
-              {result.warnings.map((w, i) => <div key={'w'+i} className="text-amber-400 text-sm mb-1">• {w}</div>)}
+              {result.errors.map((e, i) => <div key={'e'+i} className="text-red-600 text-sm mb-1">• {e}</div>)}
+              {result.warnings.map((w, i) => <div key={'w'+i} className="text-amber-600 text-sm mb-1">• {w}</div>)}
             </SectionCard>
           )}
 
@@ -250,7 +250,7 @@ export function CompositionsUpload({ selectedProject, onCompositionsSaved }: Com
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#64748b' }}>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>
                     <th style={{ padding: '8px', textAlign: 'left' }}>Código</th>
                     <th style={{ padding: '8px', textAlign: 'left' }}>Serviço Tratado</th>
                     <th style={{ padding: '8px', textAlign: 'left' }}>Unid</th>
@@ -264,7 +264,7 @@ export function CompositionsUpload({ selectedProject, onCompositionsSaved }: Com
                 <tbody>
                   {result.compositions.map((comp) => (
                     <tr key={comp.id} style={{
-                      borderBottom: '1px solid rgba(255,255,255,0.05)',
+                      borderBottom: '1px solid #e2e8f0',
                       background: comp.isPreferredForCalculation ? 'transparent' : 'rgba(255,0,0,0.05)',
                       opacity: comp.isPreferredForCalculation ? 1 : 0.6
                     }}>
@@ -275,10 +275,10 @@ export function CompositionsUpload({ selectedProject, onCompositionsSaved }: Com
                       </td>
                       <td style={{ padding: '8px' }}>{comp.unidade}</td>
                       <td style={{ padding: '8px', textAlign: 'right' }}>{comp.producaoEquipe || '-'}</td>
-                      <td style={{ padding: '8px', textAlign: 'right', color: '#94a3b8' }}>
+                      <td style={{ padding: '8px', textAlign: 'right', color: '#64748b' }}>
                         {comp.custoUnitarioTotal ? comp.custoUnitarioTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
                       </td>
-                      <td style={{ padding: '8px', textAlign: 'right', fontWeight: 600, color: '#4ade80' }}>
+                      <td style={{ padding: '8px', textAlign: 'right', fontWeight: 600, color: '#16a34a' }}>
                         {comp.precoUnitarioTotal ? comp.precoUnitarioTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'ERRO'}
                       </td>
                       <td style={{ padding: '8px', textAlign: 'center' }}>
@@ -286,9 +286,9 @@ export function CompositionsUpload({ selectedProject, onCompositionsSaved }: Com
                       </td>
                       <td style={{ padding: '8px', textAlign: 'center' }}>
                         {comp.isPreferredForCalculation ? (
-                          <CheckCircle size={14} color="#4ade80" />
+                          <CheckCircle size={14} color="#16a34a" />
                         ) : (
-                          <span title="Ignorada na medição por duplicidade"><AlertTriangle size={14} color="#f87171" /></span>
+                          <span title="Ignorada na medição por duplicidade"><AlertTriangle size={14} color="#dc2626" /></span>
                         )}
                       </td>
                     </tr>
@@ -316,7 +316,7 @@ export function CompositionsUpload({ selectedProject, onCompositionsSaved }: Com
 
 function KpiBox({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '12px 16px', textAlign: 'center' }}>
+    <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '12px 16px', textAlign: 'center' }}>
       <div style={{ fontSize: 24, fontWeight: 700, color }}>{value}</div>
       <div style={{ fontSize: 11, color: '#64748b', marginTop: 2, fontWeight: 600 }}>{label}</div>
     </div>
@@ -327,7 +327,7 @@ function btnStyle(bg: string): React.CSSProperties {
   return {
     display: 'inline-flex', alignItems: 'center', gap: 6,
     padding: '8px 16px', borderRadius: 8, border: 'none',
-    background: bg, color: '#f1f5f9', cursor: 'pointer',
+    background: bg, color: '#0f172a', cursor: 'pointer',
     fontSize: 13, fontWeight: 600, transition: 'opacity 0.15s',
   };
 }

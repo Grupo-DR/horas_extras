@@ -4,6 +4,19 @@ Todas as mudanças relevantes do DR Nexus, da mais nova para a mais antiga.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, seção "Versionamento".
 
+## [1.5.1] - 2026-11-17
+
+### Alterado
+- RDO Online com a mesma aparência da tela inicial do portal: fundo claro, cartões brancos com
+  borda fina e azul-marinho da marca nos destaques. Saiu o tema escuro.
+- A barra lateral do RDO Online deu lugar à barra superior do portal (logo, usuário, sair) com as
+  seções do módulo em abas: Painel Geral, Minhas Obras, Inteligência Contratual e Planejamento.
+- Tabelas, gráficos e etiquetas da Inteligência Contratual com cores ajustadas para fundo claro.
+
+### Corrigido
+- Os estilos do RDO Online (cartões, barra de rolagem) não afetam mais as outras telas depois que
+  o módulo é aberto.
+
 ## [1.5.0] - 2026-11-08
 
 ### Adicionado

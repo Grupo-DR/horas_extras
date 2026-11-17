@@ -29,7 +29,7 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
     <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 mb-8 overflow-x-auto whitespace-nowrap py-2 px-1 relative z-20">
       <button 
         onClick={onNavigateToProjects}
-        className={`hover:text-blue-400 flex items-center gap-2 transition-all group ${currentView === 'PROJECT_LIST' ? 'text-blue-400' : ''}`}
+        className={`hover:text-blue-600 flex items-center gap-2 transition-all group ${currentView === 'PROJECT_LIST' ? 'text-blue-600' : ''}`}
       >
         <Building2 className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
         OBRAS
@@ -37,10 +37,10 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
       
       {selectedProject && (
         <>
-          <ChevronRight className="w-3 h-3 text-slate-700" />
+          <ChevronRight className="w-3 h-3 text-slate-400" />
           <button 
             onClick={onNavigateToTeams}
-            className={`hover:text-blue-400 transition-all ${currentView === 'TEAMS_LIST' ? 'text-blue-400' : ''}`}
+            className={`hover:text-blue-600 transition-all ${currentView === 'TEAMS_LIST' ? 'text-blue-600' : ''}`}
           >
             {selectedProject.name}
           </button>
@@ -49,10 +49,10 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
 
       {selectedTeam && (
         <>
-          <ChevronRight className="w-3 h-3 text-slate-700" />
+          <ChevronRight className="w-3 h-3 text-slate-400" />
           <button 
              onClick={onNavigateToRDOs}
-             className={`flex items-center gap-2 hover:text-blue-400 transition-all ${currentView === 'RDO_LIST' && !currentRDO ? 'text-blue-400' : ''}`}
+             className={`flex items-center gap-2 hover:text-blue-600 transition-all ${currentView === 'RDO_LIST' && !currentRDO ? 'text-blue-600' : ''}`}
           >
             <Users className="w-3.5 h-3.5" />
             {selectedTeam.name}
@@ -62,8 +62,8 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
 
       {currentRDO && (
         <>
-          <ChevronRight className="w-3 h-3 text-slate-700" />
-          <span className="text-white font-black tracking-tighter">RDO #{currentRDO.reportNumber}</span>
+          <ChevronRight className="w-3 h-3 text-slate-400" />
+          <span className="text-slate-900 font-black tracking-tighter">RDO #{currentRDO.reportNumber}</span>
         </>
       )}
     </div>

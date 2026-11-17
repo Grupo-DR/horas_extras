@@ -38,17 +38,17 @@ export const ProductionAnalysis: React.FC<ProductionAnalysisProps> = ({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex gap-2 p-1 bg-white/5 rounded-2xl w-fit mb-6">
+      <div className="flex gap-2 p-1 bg-slate-50 rounded-2xl w-fit mb-6">
         <button 
           onClick={() => setActiveTab('PRODUCTION')}
-          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'PRODUCTION' ? 'bg-gradient-premium text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'PRODUCTION' ? 'bg-gradient-premium text-white shadow-lg' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}
         >
           <Target className="w-4 h-4" />
           Acompanhamento de Produção
         </button>
         <button 
           onClick={() => setActiveTab('HISTOGRAM')}
-          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'HISTOGRAM' ? 'bg-gradient-premium text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'HISTOGRAM' ? 'bg-gradient-premium text-white shadow-lg' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}
         >
           <BarChart3 className="w-4 h-4" />
           Histograma Real

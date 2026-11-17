@@ -206,9 +206,9 @@ export const ProjectsPage: React.FC = () => {
 
           {currentView === 'UPLOAD_ANALYSIS' && (
             <div className="max-w-2xl mx-auto mt-8 animate-fade-in text-center">
-              <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">Análise Inteligente</h2>
-              <p className="text-slate-400 mb-8 font-medium">
-                Importando novos RDOs para <span className="text-blue-400">{selectedTeam?.name}</span>
+              <h2 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">Análise Inteligente</h2>
+              <p className="text-slate-500 mb-8 font-medium">
+                Importando novos RDOs para <span className="text-blue-600">{selectedTeam?.name}</span>
               </p>
 
               <div className="relative group">
@@ -220,7 +220,7 @@ export const ProjectsPage: React.FC = () => {
                   multiple
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
                 />
-                <div className={`glass-panel border-2 border-dashed rounded-[40px] p-16 transition-all duration-500 ${loading ? 'border-blue-500/50 bg-blue-500/5' : 'border-white/10 hover:border-blue-500/50 hover:bg-white/5 shadow-2xl'}`}>
+                <div className={`glass-panel border-2 border-dashed rounded-2xl p-16 transition-all duration-500 ${loading ? 'border-blue-500/50 bg-blue-500/5' : 'border-slate-200 hover:border-blue-500/50 hover:bg-slate-50 shadow-2xl'}`}>
                   <div className="flex flex-col items-center justify-center gap-6">
                     {loading ? (
                       <>
@@ -231,11 +231,11 @@ export const ProjectsPage: React.FC = () => {
                           </div>
                         </div>
                         <div className="flex flex-col gap-2 items-center">
-                          <div className="text-white font-black text-xl tracking-tight">Extraindo Dados...</div>
-                          <div className="text-blue-400 font-bold text-sm tracking-widest uppercase">{uploadProgress.current} DE {uploadProgress.total} COMPLETOS</div>
-                          <div className="w-64 h-2 bg-white/5 rounded-full mt-4 overflow-hidden border border-white/5 shadow-inner">
+                          <div className="text-slate-900 font-black text-xl tracking-tight">Extraindo Dados...</div>
+                          <div className="text-blue-600 font-bold text-sm tracking-widest uppercase">{uploadProgress.current} DE {uploadProgress.total} COMPLETOS</div>
+                          <div className="w-64 h-2 bg-slate-50 rounded-full mt-4 overflow-hidden border border-slate-200 shadow-inner">
                             <div 
-                              className="h-full bg-gradient-to-r from-blue-600 to-indigo-500 transition-all duration-500 rounded-full shadow-[0_0_15px_rgba(37,99,235,0.5)]" 
+                              className="h-full bg-[#0b1d4f] hover:bg-[#13296b] transition-all duration-500 rounded-full shadow-[0_0_15px_rgba(37,99,235,0.5)]" 
                               style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
                             />
                           </div>
@@ -244,12 +244,12 @@ export const ProjectsPage: React.FC = () => {
                     ) : (
                       <>
                         <div className="p-8 bg-blue-500/10 rounded-full border border-blue-500/20 group-hover:scale-110 group-hover:bg-blue-500/20 transition-all duration-500 shadow-2xl">
-                          <Layers className="w-12 h-12 text-blue-400" />
+                          <Layers className="w-12 h-12 text-blue-600" />
                         </div>
                         <div>
-                          <p className="text-xl font-bold text-white tracking-tight">Arraste seus relatórios aqui</p>
+                          <p className="text-xl font-bold text-slate-900 tracking-tight">Arraste seus relatórios aqui</p>
                           <p className="text-slate-500 font-medium mt-2">Suporta PDF e imagens em alta resolução</p>
-                          <div className="mt-8 px-6 py-2 bg-blue-500/10 text-blue-400 text-[10px] font-black uppercase tracking-[0.3em] rounded-full border border-blue-500/10 inline-block">
+                          <div className="mt-8 px-6 py-2 bg-blue-500/10 text-blue-600 text-[10px] font-black uppercase tracking-[0.3em] rounded-full border border-blue-500/10 inline-block">
                             Processamento Seguro via Gemini AI
                           </div>
                         </div>
@@ -259,7 +259,7 @@ export const ProjectsPage: React.FC = () => {
                 </div>
               </div>
               {error && (
-                <div className="mt-8 p-6 bg-red-500/10 border border-red-500/25 text-red-400 rounded-3xl text-sm font-bold flex items-center gap-4 animate-shake">
+                <div className="mt-8 p-6 bg-red-500/10 border border-red-500/25 text-red-600 rounded-3xl text-sm font-bold flex items-center gap-4 animate-shake">
                   <AlertTriangle className="w-6 h-6 shrink-0" />
                   {error}
                 </div>

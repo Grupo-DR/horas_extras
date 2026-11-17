@@ -1,133 +1,121 @@
+/*
+ * Tema do RDO Online: mesma aparência da tela inicial do portal
+ * (fundo #f3f5f9, cartões brancos com borda fina, azul-marinho da marca).
+ * Tudo fica dentro de .rdo-theme para não vazar para os outros módulos.
+ */
 .rdo-theme {
-  --primary: #3b82f6;
-  --primary-glow: rgba(59, 130, 246, 0.5);
-  --secondary: #8b5cf6;
-  --bg-main: #0f172a;
-  --bg-glass: rgba(30, 41, 59, 0.7);
-  --bg-card: #1e293b;
-  --border-glass: rgba(255, 255, 255, 0.1);
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --accent: #22d3ee;
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger: #ef4444;
+  --primary: #0b1d4f;
+  --primary-glow: rgba(11, 29, 79, 0.12);
+  --secondary: #1e3a8a;
+  --bg-main: #f3f5f9;
+  --bg-card: #ffffff;
+  --border-card: #e2e8f0;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --accent: #2563eb;
+  --success: #059669;
+  --warning: #d97706;
+  --danger: #dc2626;
 }
 
-@layer base {
-  /* Ensure option text is readable against default browser white background */
-  option {
-    color: #0f172a;
-    background-color: #fff;
-  }
+.rdo-theme option {
+  color: #0f172a;
+  background-color: #fff;
 }
 
-/* Glassmorphism Classes */
-.glass-panel {
-  background: var(--bg-glass);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border-glass);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+/* Cartões (nomes mantidos dos componentes existentes) */
+.rdo-theme .glass-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  box-shadow: none;
 }
 
-.glass-card {
-  background: rgba(30, 41, 59, 0.4);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.rdo-theme .glass-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.glass-card:hover {
-  background: rgba(30, 41, 59, 0.6);
-  border-color: rgba(59, 130, 246, 0.3);
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.5);
+.rdo-theme .glass-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 8px 24px -12px rgba(11, 29, 79, 0.25);
 }
 
-/* Premium Gradients */
-.text-gradient {
-  background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+/* Destaques: azul-marinho da marca no lugar dos gradientes */
+.rdo-theme .text-gradient {
+  color: var(--primary);
 }
 
-.bg-gradient-premium {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+.rdo-theme .bg-gradient-premium {
+  background: var(--primary);
 }
 
-.border-gradient {
-  border: 1px solid transparent;
-  background-image: linear-gradient(var(--bg-card), var(--bg-card)), linear-gradient(135deg, var(--primary), var(--secondary));
-  background-origin: border-box;
-  background-clip: padding-box, border-box;
+.rdo-theme .border-gradient {
+  border: 1px solid var(--border-card);
+  background: var(--bg-card);
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
+/* Barra de rolagem discreta */
+.rdo-theme ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-::-webkit-scrollbar-track {
+.rdo-theme ::-webkit-scrollbar-track {
   background: transparent;
 }
 
-::-webkit-scrollbar-thumb {
-  background: #334155;
+.rdo-theme ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
   border-radius: 10px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+.rdo-theme ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
-/* Animations */
-@keyframes float {
+/* Animações */
+@keyframes rdo-float {
   0% { transform: translateY(0px); }
   50% { transform: translateY(-10px); }
   100% { transform: translateY(0px); }
 }
 
-.animate-float {
-  animation: float 6s ease-in-out infinite;
+.rdo-theme .animate-float {
+  animation: rdo-float 6s ease-in-out infinite;
 }
 
-.shimmer {
+.rdo-theme .shimmer {
   position: relative;
   overflow: hidden;
 }
 
-.shimmer::after {
+.rdo-theme .shimmer::after {
   content: '';
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  inset: 0;
   transform: translateX(-100%);
   background-image: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0) 0,
-    rgba(255, 255, 255, 0.05) 20%,
-    rgba(255, 255, 255, 0.1) 60%,
-    rgba(255, 255, 255, 0)
+    rgba(11, 29, 79, 0) 0,
+    rgba(11, 29, 79, 0.03) 20%,
+    rgba(11, 29, 79, 0.06) 60%,
+    rgba(11, 29, 79, 0)
   );
-  animation: shimmer 3s infinite;
+  animation: rdo-shimmer 3s infinite;
 }
 
-@keyframes shimmer {
+@keyframes rdo-shimmer {
   100% { transform: translateX(100%); }
 }
 
-/* Financial Dashboard Specifics */
-.revenue-card {
+/* Painel financeiro */
+.rdo-theme .revenue-card {
   position: relative;
   overflow: hidden;
 }
 
-.revenue-card::before {
+.rdo-theme .revenue-card::before {
   content: '';
   position: absolute;
   width: 150px;

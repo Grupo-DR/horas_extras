@@ -121,16 +121,16 @@ export function DateRangePicker({ startDate, endDate, onChange }: DateRangePicke
         onClick={() => setIsOpen(!isOpen)}
         style={{ 
           display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', 
-          background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', 
-          borderRadius: 8, color: '#fff', cursor: 'pointer', minWidth: 220, justifyContent: 'space-between'
+          background: '#f8fafc', border: '1px solid #e2e8f0', 
+          borderRadius: 8, color: '#0f172a', cursor: 'pointer', minWidth: 220, justifyContent: 'space-between'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <CalendarIcon size={16} color="#94a3b8" />
+          <CalendarIcon size={16} color="#64748b" />
           <span style={{ fontSize: 13, fontWeight: 500 }}>{renderLabel()}</span>
         </div>
         {(startDate || endDate) && (
-          <span onClick={clearSelection} style={{ color: '#94a3b8', fontSize: 16, lineHeight: 1 }}>&times;</span>
+          <span onClick={clearSelection} style={{ color: '#64748b', fontSize: 16, lineHeight: 1 }}>&times;</span>
         )}
       </div>
 
@@ -147,7 +147,7 @@ export function DateRangePicker({ startDate, endDate, onChange }: DateRangePicke
               <ChevronLeft size={20} />
             </button>
             <div style={{ fontWeight: 700, fontSize: 16 }}>
-              <span style={{ color: '#1e293b' }}>{MONTHS[month]}</span> <span style={{ color: '#94a3b8', fontWeight: 400 }}>{year}</span>
+              <span style={{ color: '#1e293b' }}>{MONTHS[month]}</span> <span style={{ color: '#64748b', fontWeight: 400 }}>{year}</span>
             </div>
             <button onClick={handleNextMonth} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}>
               <ChevronRight size={20} />
@@ -157,7 +157,7 @@ export function DateRangePicker({ startDate, endDate, onChange }: DateRangePicke
           {/* Days Header */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 8, textAlign: 'center' }}>
             {DAYS_OF_WEEK.map(d => (
-              <div key={d} style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8' }}>{d}</div>
+              <div key={d} style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>{d}</div>
             ))}
           </div>
 
@@ -180,8 +180,8 @@ export function DateRangePicker({ startDate, endDate, onChange }: DateRangePicke
               let border = 'none';
 
               if (isStart || isEnd) {
-                bg = '#31108F'; // The deep purple from the image
-                color = '#fff';
+                bg = '#ede9fe'; // The deep purple from the image
+                color = '#0f172a';
                 borderRadius = '50%';
                 fontWeight = 600;
               } else if (inRange) {

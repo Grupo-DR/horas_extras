@@ -50,7 +50,7 @@ export const ProjectModal: React.FC = () => {
         </h3>
         <div className="space-y-4 mb-6">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Nome</label>
+            <label className="block text-sm font-medium text-slate-400 mb-1">Nome</label>
             <input 
               autoFocus 
               type="text" 
@@ -61,7 +61,7 @@ export const ProjectModal: React.FC = () => {
           </div>
           {currentView === 'PROJECT_LIST' && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Regional</label>
+              <label className="block text-sm font-medium text-slate-400 mb-1">Regional</label>
               <input 
                 type="text" 
                 value={newItemRegional} 
@@ -72,7 +72,7 @@ export const ProjectModal: React.FC = () => {
           )}
           {currentView === 'PROJECT_LIST' && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Modelo de RDO</label>
+              <label className="block text-sm font-medium text-slate-400 mb-1">Modelo de RDO</label>
               <select
                 value={newItemRdoModel}
                 onChange={(e) => setNewItemRdoModel(e.target.value as RdoModelId)}
@@ -91,7 +91,7 @@ export const ProjectModal: React.FC = () => {
         <div className="flex justify-end gap-3">
           <button 
             onClick={() => setIsModalOpen(false)} 
-            className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+            className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg"
           >
             Cancelar
           </button>

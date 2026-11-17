@@ -90,9 +90,9 @@ const formatNUM = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigi
 
 function KpiCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color: string }) {
   return (
-    <div style={{ flex: '1 1 180px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12, padding: 16 }}>
+    <div style={{ flex: '1 1 180px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 12, padding: 16 }}>
       <div style={{ fontSize: 24, fontWeight: 700, color, lineHeight: 1 }}>{value}</div>
-      <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6, fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: 12, color: '#64748b', marginTop: 6, fontWeight: 600 }}>{label}</div>
       {sub && <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{sub}</div>}
     </div>
   );
@@ -374,10 +374,10 @@ export default function ContractIntelligencePage({
     return (
       <div style={{ fontFamily: "'Inter', sans-serif" }}>
         <div style={{ marginBottom: 32 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#f1f5f9', display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Brain size={32} color="#60a5fa" /> Contract Intelligence
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Brain size={32} color="#2563eb" /> Contract Intelligence
           </h1>
-          <p style={{ color: '#94a3b8', marginTop: 8 }}>
+          <p style={{ color: '#64748b', marginTop: 8 }}>
             Selecione uma obra abaixo para acessar o painel de análises contratuais integradas.
           </p>
         </div>
@@ -388,13 +388,13 @@ export default function ContractIntelligencePage({
               key={p.id} 
               onClick={() => onSelectProject(p)}
               style={{
-                background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
+                background: '#ffffff', border: '1px solid #e2e8f0',
                 borderRadius: 16, padding: 24, cursor: 'pointer', transition: 'all 0.2s'
               }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+              onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+              onMouseLeave={e => e.currentTarget.style.background = '#ffffff'}
             >
-              <h3 style={{ margin: '0 0 12px 0', fontSize: 18, color: '#e2e8f0' }}>{p.name}</h3>
+              <h3 style={{ margin: '0 0 12px 0', fontSize: 18, color: '#1e293b' }}>{p.name}</h3>
               <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: 13 }}>
                 <span>Regional: {p.regional || 'N/A'}</span>
                 <ChevronRight size={16} />
@@ -417,16 +417,16 @@ export default function ContractIntelligencePage({
           <button 
             onClick={() => onSelectProject(null)}
             style={{ 
-              display: 'flex', alignItems: 'center', gap: 6, color: '#94a3b8', fontSize: 13, fontWeight: 600, 
+              display: 'flex', alignItems: 'center', gap: 6, color: '#64748b', fontSize: 13, fontWeight: 600, 
               background: 'transparent', border: 'none', padding: 0, marginBottom: 12, cursor: 'pointer' 
             }}
           >
             <ArrowLeft size={16} /> Voltar para Obras
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#60a5fa', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#2563eb', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
             <Brain size={14} /> Contract Intelligence / {selectedProject.name}
           </div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#f1f5f9', margin: 0 }}>Dashboard Analítico Integrado</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0f172a', margin: 0 }}>Dashboard Analítico Integrado</h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <DateRangePicker 
@@ -437,7 +437,7 @@ export default function ContractIntelligencePage({
           <select
             value={globalTeamFilter}
             onChange={e => setGlobalTeamFilter(e.target.value)}
-            style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff', minWidth: 150 }}
+            style={{ padding: '8px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, color: '#0f172a', minWidth: 150 }}
           >
             <option value="ALL">Todas as Turmas</option>
             {teams.map(t => (
@@ -447,7 +447,7 @@ export default function ContractIntelligencePage({
 
           <button onClick={runEngines} disabled={loadingState === 'loading'} style={{
             display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 8,
-            background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer'
+            background: '#f8fafc', color: '#1e293b', border: '1px solid #e2e8f0', cursor: 'pointer'
           }}>
             <RefreshCw size={16} style={loadingState === 'loading' ? { animation: 'spin 1s linear infinite' } : {}} /> Atualizar Fatos
           </button>
@@ -455,22 +455,22 @@ export default function ContractIntelligencePage({
       </div>
 
       {loadingState === 'error' && (
-        <div style={{ padding: 16, background: '#450a0a', color: '#f87171', borderRadius: 12, marginBottom: 24, border: '1px solid #7f1d1d' }}>
+        <div style={{ padding: 16, background: '#fee2e2', color: '#dc2626', borderRadius: 12, marginBottom: 24, border: '1px solid #fca5a5' }}>
           <strong>Erro Crítico:</strong> {errorMessage}
         </div>
       )}
 
       {/* KPIs Universais */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 32 }}>
-        <KpiCard label="RDOs Analisados" value={projectRdos.length} color="#60a5fa" />
-        <KpiCard label="Valor Contratual Executado" value={formatBRL(KPIs.valorExecutado)} color="#4ade80" />
-        <KpiCard label="Margem Absoluta" value={formatBRL(KPIs.margem)} color={KPIs.margem < 0 ? '#f87171' : '#fbbf24'} />
-        <KpiCard label="Ocorrências" value={occurrenceFacts.length} color="#a78bfa" />
+        <KpiCard label="RDOs Analisados" value={projectRdos.length} color="#2563eb" />
+        <KpiCard label="Valor Contratual Executado" value={formatBRL(KPIs.valorExecutado)} color="#16a34a" />
+        <KpiCard label="Margem Absoluta" value={formatBRL(KPIs.margem)} color={KPIs.margem < 0 ? '#dc2626' : '#b45309'} />
+        <KpiCard label="Ocorrências" value={occurrenceFacts.length} color="#6d28d9" />
         <KpiCard label="Improdutividade (Pleitos)" value={formatBRL(KPIs.valorPleito)} sub={`${formatNUM(KPIs.horasImpactadas)}h perdidas`} color="#f43f5e" />
       </div>
 
       {/* NAVEGAÇÃO EM ABAS */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 24, borderBottom: '1px solid rgba(255,255,255,0.08)', overflowX: 'auto', paddingBottom: 4 }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 24, borderBottom: '1px solid #e2e8f0', overflowX: 'auto', paddingBottom: 4 }}>
         {[
           { id: 'MEDICAO', icon: Calculator, label: 'Serviços Executados' },
           { id: 'RECURSOS', icon: BarChart3, label: 'Recursos (Histograma)' },
@@ -489,7 +489,7 @@ export default function ContractIntelligencePage({
               style={{
                 display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', borderRadius: '8px 8px 0 0',
                 border: 'none', background: isActive ? 'rgba(96,165,250,0.1)' : 'transparent',
-                color: isActive ? '#60a5fa' : '#94a3b8', borderBottom: isActive ? '2px solid #60a5fa' : '2px solid transparent',
+                color: isActive ? '#2563eb' : '#64748b', borderBottom: isActive ? '2px solid #60a5fa' : '2px solid transparent',
                 cursor: 'pointer', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap'
               }}
             >
@@ -520,11 +520,11 @@ export default function ContractIntelligencePage({
           {activeTab === 'RECURSOS' && (
              dimensions ? (
                <div className="flex flex-col gap-4">
-                 <div className="flex gap-2 p-1 bg-slate-900/50 rounded-lg w-fit border border-white/5">
+                 <div className="flex gap-2 p-1 bg-white rounded-lg w-fit border border-slate-200">
                    <button
                      onClick={() => setResourceViewMode('LIST')}
                      className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
-                       resourceViewMode === 'LIST' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+                       resourceViewMode === 'LIST' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-800'
                      }`}
                    >
                      Tabela Linear
@@ -532,7 +532,7 @@ export default function ContractIntelligencePage({
                    <button
                      onClick={() => setResourceViewMode('MATRIX')}
                      className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
-                       resourceViewMode === 'MATRIX' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+                       resourceViewMode === 'MATRIX' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-800'
                      }`}
                    >
                      Matriz de Planejamento (Pivot)
@@ -545,7 +545,7 @@ export default function ContractIntelligencePage({
                  )}
                </div>
              ) : (
-             <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>Importe as dimensões na aba Configuração para visualizar os Recursos.</div>
+             <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>Importe as dimensões na aba Configuração para visualizar os Recursos.</div>
              )
           )}
           
@@ -562,19 +562,19 @@ export default function ContractIntelligencePage({
           { activeTab === 'EXPORTACOES' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 20 }}>
               {[
-                { title: 'Base Analítica (JSON)', icon: Box, desc: 'Exportar os fatos consolidados brutos em formato JSON.', color: '#a78bfa' },
-                { title: 'Tabelas em CSV', icon: FileSpreadsheet, desc: 'Baixar todas as tabelas separadamente em formato CSV.', color: '#4ade80' },
-                { title: 'Integrar Power BI', icon: BarChart3, desc: 'Gerar script de integração nativa do modelo estrela.', color: '#fbbf24' }
+                { title: 'Base Analítica (JSON)', icon: Box, desc: 'Exportar os fatos consolidados brutos em formato JSON.', color: '#6d28d9' },
+                { title: 'Tabelas em CSV', icon: FileSpreadsheet, desc: 'Baixar todas as tabelas separadamente em formato CSV.', color: '#16a34a' },
+                { title: 'Integrar Power BI', icon: BarChart3, desc: 'Gerar script de integração nativa do modelo estrela.', color: '#b45309' }
               ].map(ex => (
                 <div key={ex.title} style={{
-                  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: 24
+                  background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 12, padding: 24
                 }}>
                   <ex.icon size={32} color={ex.color} style={{ marginBottom: 16 }} />
-                  <h3 style={{ margin: '0 0 8px 0', color: '#f1f5f9', fontSize: 16 }}>{ex.title}</h3>
-                  <p style={{ margin: '0 0 24px 0', color: '#94a3b8', fontSize: 13 }}>{ex.desc}</p>
+                  <h3 style={{ margin: '0 0 8px 0', color: '#0f172a', fontSize: 16 }}>{ex.title}</h3>
+                  <p style={{ margin: '0 0 24px 0', color: '#64748b', fontSize: 13 }}>{ex.desc}</p>
                   <button style={{
-                    width: '100%', padding: '10px', borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)',
-                    color: '#fff', cursor: 'pointer', fontWeight: 600
+                    width: '100%', padding: '10px', borderRadius: 8, border: 'none', background: '#f1f5f9',
+                    color: '#0f172a', cursor: 'pointer', fontWeight: 600
                   }}>Baixar</button>
                 </div>
               ))}

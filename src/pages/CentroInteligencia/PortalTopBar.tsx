@@ -8,8 +8,8 @@ export const BRAND_NAVY = '#0b1d4f';
 const initials = (name?: string): string =>
     (name || 'US').split(/[\s.]+/).filter(Boolean).map(part => part[0]).slice(0, 2).join('').toUpperCase();
 
-/** Barra superior do portal: logo (volta ao início), usuário e sair. */
-export const PortalTopBar: React.FC = () => {
+/** Barra superior do portal: logo (volta ao início), nome da área, usuário e sair. */
+export const PortalTopBar: React.FC<{ title?: string }> = ({ title = 'Centro de Inteligência' }) => {
     const navigate = useNavigate();
     const { user, logout } = useAuth();
 
@@ -23,7 +23,7 @@ export const PortalTopBar: React.FC = () => {
             <button type="button" onClick={() => navigate('/')} className="flex items-center gap-3" aria-label="Ir para o início">
                 <img src="/assets/dr-logo.png" alt="Grupo DR" className="h-8 w-auto" />
                 <span className="h-6 w-px bg-slate-200" aria-hidden="true" />
-                <span className="text-sm font-semibold tracking-tight text-slate-700">Centro de Inteligência</span>
+                <span className="text-sm font-semibold tracking-tight text-slate-700">{title}</span>
             </button>
             <div className="flex items-center gap-3">
                 <div className="hidden text-right sm:block">

@@ -16,11 +16,11 @@ interface MeasurementTableProps {
 }
 
 const STATUS_CONFIG: Record<MeasurementStatus, { label: string; color: string; bg: string }> = {
-  ENCONTRADA_COMPOSICAO:   { label: 'Composição Base',    color: '#4ade80', bg: '#052e16' },
-  EQUIVALENCIA_NOME:       { label: 'Equivalência Nome',  color: '#fbbf24', bg: '#422006' },
-  PRECO_SERVICES_FALLBACK: { label: 'Preço Contrato',     color: '#60a5fa', bg: '#1e3a8a' },
-  UNIDADE_DIVERGENTE:      { label: 'Unidade Divergente', color: '#f87171', bg: '#450a0a' },
-  SEM_COMPOSICAO:          { label: 'Sem Composição',     color: '#94a3b8', bg: '#0f172a' },
+  ENCONTRADA_COMPOSICAO:   { label: 'Composição Base',    color: '#16a34a', bg: '#dcfce7' },
+  EQUIVALENCIA_NOME:       { label: 'Equivalência Nome',  color: '#b45309', bg: '#fef3c7' },
+  PRECO_SERVICES_FALLBACK: { label: 'Preço Contrato',     color: '#2563eb', bg: '#dbeafe' },
+  UNIDADE_DIVERGENTE:      { label: 'Unidade Divergente', color: '#dc2626', bg: '#fee2e2' },
+  SEM_COMPOSICAO:          { label: 'Sem Composição',     color: '#64748b', bg: '#f1f5f9' },
 };
 
 const BRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -31,7 +31,7 @@ function KpiCard({ label, value, color }: { label: string; value: string; color:
   return (
     <div style={{
       flex: '1 1 200px', minWidth: 160,
-      background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+      background: '#ffffff', border: '1px solid #e2e8f0',
       borderRadius: 12, padding: '16px', textAlign: 'center',
     }}>
       <div style={{ fontSize: 24, fontWeight: 700, color }}>{value}</div>
@@ -41,7 +41,7 @@ function KpiCard({ label, value, color }: { label: string; value: string; color:
 }
 
 function DeviationCell({ value, isCurrency, isPercent }: { value: number; isCurrency?: boolean; isPercent?: boolean }) {
-  const color = value > 0 ? '#4ade80' : value < 0 ? '#f87171' : '#64748b';
+  const color = value > 0 ? '#16a34a' : value < 0 ? '#f87171' : '#64748b';
   const label = isPercent ? PCT(value) : isCurrency ? BRL(value) : NUM(value);
   return <span style={{ color, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{label}</span>;
 }
@@ -80,32 +80,32 @@ export function MeasurementTable({ facts, projectName, teams = [], onNavigateToR
     sortKey === k ? (sortDir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />) : null;
 
   const thStyle: React.CSSProperties = {
-    padding: '10px 12px', textAlign: 'left', color: '#94a3b8', fontSize: 13,
-    fontWeight: 600, cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.1)',
+    padding: '10px 12px', textAlign: 'left', color: '#64748b', fontSize: 13,
+    fontWeight: 600, cursor: 'pointer', borderBottom: '1px solid #e2e8f0',
     userSelect: 'none', whiteSpace: 'nowrap',
   };
   const tdStyle: React.CSSProperties = {
-    padding: '8px 12px', fontSize: 13, borderBottom: '1px solid rgba(255,255,255,0.05)',
+    padding: '8px 12px', fontSize: 13, borderBottom: '1px solid #e2e8f0',
     verticalAlign: 'middle', whiteSpace: 'nowrap',
   };
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif", color: '#e2e8f0' }}>
+    <div style={{ fontFamily: "'Inter', sans-serif", color: '#1e293b' }}>
       <div style={{ marginBottom: 20 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#f1f5f9', margin: 0 }}>Medição Contratual Diária</h2>
-        {projectName && <p style={{ color: '#94a3b8', margin: '4px 0 0', fontSize: 13 }}>Projeto: <strong>{projectName}</strong></p>}
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', margin: 0 }}>Medição Contratual Diária</h2>
+        {projectName && <p style={{ color: '#64748b', margin: '4px 0 0', fontSize: 13 }}>Projeto: <strong>{projectName}</strong></p>}
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 24 }}>
-        <KpiCard label="Valor Executado" value={BRL(summary.totalExec)} color="#60a5fa" />
-        <KpiCard label="Custo Teórico" value={BRL(summary.totalCost)} color="#fbbf24" />
-        <KpiCard label="Margem Absoluta" value={BRL(summary.margin)} color={summary.margin >= 0 ? '#4ade80' : '#f87171'} />
-        <KpiCard label="Margem %" value={PCT(summary.marginPct)} color={summary.margin >= 0 ? '#4ade80' : '#f87171'} />
+        <KpiCard label="Valor Executado" value={BRL(summary.totalExec)} color="#2563eb" />
+        <KpiCard label="Custo Teórico" value={BRL(summary.totalCost)} color="#b45309" />
+        <KpiCard label="Margem Absoluta" value={BRL(summary.margin)} color={summary.margin >= 0 ? '#16a34a' : '#f87171'} />
+        <KpiCard label="Margem %" value={PCT(summary.marginPct)} color={summary.margin >= 0 ? '#16a34a' : '#f87171'} />
       </div>
 
-      <div style={{ overflowX: 'auto', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)' }}>
+      <div style={{ overflowX: 'auto', borderRadius: 12, border: '1px solid #e2e8f0' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead style={{ background: 'rgba(255,255,255,0.03)' }}>
+          <thead style={{ background: '#ffffff' }}>
             <tr>
               <th style={thStyle} onClick={() => handleSort('date')}>Data <SortIcon k="date" /></th>
               <th style={thStyle} onClick={() => handleSort('activityDescription')}>Atividade <SortIcon k="activityDescription" /></th>
@@ -119,28 +119,28 @@ export function MeasurementTable({ facts, projectName, teams = [], onNavigateToR
             {sorted.map((f, i) => {
               const st = STATUS_CONFIG[f.status];
               return (
-                <tr key={i} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
-                  <td style={{ ...tdStyle, color: '#94a3b8' }}>{f.date}</td>
+                <tr key={i} style={{ background: i % 2 === 0 ? 'transparent' : '#f8fafc' }}>
+                  <td style={{ ...tdStyle, color: '#64748b' }}>{f.date}</td>
                   <td style={{ ...tdStyle, maxWidth: 350, whiteSpace: 'normal' }}>
-                    <div style={{ fontWeight: 600, color: '#e2e8f0', marginBottom: 4, lineHeight: 1.3 }}>
-                      {f.activityCode && <span style={{ color: '#60a5fa', marginRight: 6 }}>{f.activityCode}</span>}
+                    <div style={{ fontWeight: 600, color: '#1e293b', marginBottom: 4, lineHeight: 1.3 }}>
+                      {f.activityCode && <span style={{ color: '#2563eb', marginRight: 6 }}>{f.activityCode}</span>}
                       {f.activityName || 'Serviço não identificado'}
                     </div>
-                    <div style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.3 }}>
+                    <div style={{ color: '#64748b', fontSize: 12, lineHeight: 1.3 }}>
                       <span style={{ opacity: 0.7 }}>Relato RDO:</span> {f.activityDescription}
                     </div>
                   </td>
-                  <td style={{ ...tdStyle, color: '#94a3b8' }}>
+                  <td style={{ ...tdStyle, color: '#64748b' }}>
                     {teams.find(t => t.id === f.teamId)?.name || f.teamId}
                   </td>
-                  <td style={{ ...tdStyle, textAlign: 'right', color: '#e2e8f0', fontVariantNumeric: 'tabular-nums' }}>
+                  <td style={{ ...tdStyle, textAlign: 'right', color: '#1e293b', fontVariantNumeric: 'tabular-nums' }}>
                     {NUM(f.quantity)} <span style={{ fontSize: 11, color: '#64748b' }}>{f.unit}</span>
                   </td>
-                  <td style={{ ...tdStyle, textAlign: 'right', color: '#60a5fa', fontVariantNumeric: 'tabular-nums' }}>{BRL(f.measuredValue)}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right', color: '#2563eb', fontVariantNumeric: 'tabular-nums' }}>{BRL(f.measuredValue)}</td>
                   <td style={{ ...tdStyle, textAlign: 'center' }}>
                     <button 
                       onClick={() => onNavigateToRDO && onNavigateToRDO(f.rdoId, f.teamId)}
-                      style={{ padding: '4px 12px', background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 6, color: '#60a5fa', fontSize: 11, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
+                      style={{ padding: '4px 12px', background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 6, color: '#2563eb', fontSize: 11, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
                     >
                       Ir para RDO
                     </button>

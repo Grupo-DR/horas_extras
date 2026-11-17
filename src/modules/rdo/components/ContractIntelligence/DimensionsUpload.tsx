@@ -50,7 +50,7 @@ function SectionCard({ title, children }: { title: string; children: React.React
   const [open, setOpen] = useState(true);
   return (
     <div style={{
-      background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+      background: '#f8fafc', border: '1px solid #e2e8f0',
       borderRadius: 12, overflow: 'hidden', marginBottom: 16,
     }}>
       <button
@@ -58,7 +58,7 @@ function SectionCard({ title, children }: { title: string; children: React.React
         style={{
           width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           padding: '12px 16px', background: 'transparent', border: 'none', cursor: 'pointer',
-          color: '#e2e8f0', fontSize: 14, fontWeight: 600,
+          color: '#1e293b', fontSize: 14, fontWeight: 600,
         }}
       >
         {title}
@@ -211,15 +211,15 @@ export function DimensionsUpload({ selectedProject, onDimensionsSaved }: Dimensi
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif", color: '#e2e8f0', maxWidth: 860, margin: '0 auto' }}>
+    <div style={{ fontFamily: "'Inter', sans-serif", color: '#1e293b', maxWidth: 860, margin: '0 auto' }}>
 
       {/* Cabeçalho */}
       <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#f1f5f9', margin: 0 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', margin: 0 }}>
           Importar Dimensões
         </h2>
-        <p style={{ color: '#94a3b8', marginTop: 4, fontSize: 14 }}>
-          Projeto: <strong style={{ color: '#60a5fa' }}>{selectedProject.name}</strong>
+        <p style={{ color: '#64748b', marginTop: 4, fontSize: 14 }}>
+          Projeto: <strong style={{ color: '#2563eb' }}>{selectedProject.name}</strong>
         </p>
       </div>
 
@@ -253,7 +253,7 @@ export function DimensionsUpload({ selectedProject, onDimensionsSaved }: Dimensi
           border: `2px dashed ${isDragging ? '#60a5fa' : '#334155'}`,
           borderRadius: 16, padding: '36px 24px', textAlign: 'center',
           cursor: 'pointer', marginBottom: 24, transition: 'all 0.2s',
-          background: isDragging ? 'rgba(96,165,250,0.06)' : 'rgba(255,255,255,0.02)',
+          background: isDragging ? 'rgba(96,165,250,0.06)' : '#ffffff',
         }}
       >
         <input
@@ -264,8 +264,8 @@ export function DimensionsUpload({ selectedProject, onDimensionsSaved }: Dimensi
           onChange={handleFileChange}
           id="input-dimensions-file"
         />
-        <Upload size={40} color={isDragging ? '#60a5fa' : '#475569'} style={{ marginBottom: 12 }} />
-        <p style={{ color: '#94a3b8', margin: 0, fontSize: 15 }}>
+        <Upload size={40} color={isDragging ? '#2563eb' : '#475569'} style={{ marginBottom: 12 }} />
+        <p style={{ color: '#64748b', margin: 0, fontSize: 15 }}>
           {isProcessing
             ? '⏳ Processando planilha...'
             : 'Arraste a planilha de dimensões aqui ou clique para selecionar'}
@@ -280,9 +280,9 @@ export function DimensionsUpload({ selectedProject, onDimensionsSaved }: Dimensi
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px',
           borderRadius: 8, marginBottom: 16, fontSize: 14,
-          background: saveStatus === 'success' ? '#052e16' : '#450a0a',
+          background: saveStatus === 'success' ? '#dcfce7' : '#450a0a',
           border: `1px solid ${saveStatus === 'success' ? '#166534' : '#7f1d1d'}`,
-          color: saveStatus === 'success' ? '#4ade80' : '#f87171',
+          color: saveStatus === 'success' ? '#16a34a' : '#f87171',
         }}>
           {saveStatus === 'success' ? <CheckCircle size={16} /> : <XCircle size={16} />}
           {saveMessage}
@@ -295,14 +295,14 @@ export function DimensionsUpload({ selectedProject, onDimensionsSaved }: Dimensi
           {/* KPIs rápidos */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 20 }}>
             {[
-              { label: 'Itens importados', value: result.successCount, color: '#4ade80' },
-              { label: 'Meses detectados', value: result.months.length, color: '#60a5fa' },
-              { label: 'Feriados',         value: result.holidays.length, color: '#f59e0b' },
-              { label: 'Erros',            value: result.errors.length,   color: '#f87171' },
-              { label: 'Avisos',           value: result.warnings.length, color: '#fb923c' },
+              { label: 'Itens importados', value: result.successCount, color: '#16a34a' },
+              { label: 'Meses detectados', value: result.months.length, color: '#2563eb' },
+              { label: 'Feriados',         value: result.holidays.length, color: '#b45309' },
+              { label: 'Erros',            value: result.errors.length,   color: '#dc2626' },
+              { label: 'Avisos',           value: result.warnings.length, color: '#c2410c' },
             ].map(k => (
               <div key={k.label} style={{
-                background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+                background: '#ffffff', border: '1px solid #e2e8f0',
                 borderRadius: 12, padding: '12px 16px', textAlign: 'center',
               }}>
                 <div style={{ fontSize: 26, fontWeight: 700, color: k.color }}>{k.value}</div>
@@ -333,7 +333,7 @@ export function DimensionsUpload({ selectedProject, onDimensionsSaved }: Dimensi
                     display: 'flex', alignItems: 'center', gap: 6,
                     padding: '4px 12px', borderRadius: 999, fontSize: 13,
                     background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.25)',
-                    color: '#93c5fd',
+                    color: '#1d4ed8',
                   }}>
                     <Calendar size={13} />
                     {m.monthLabel}
@@ -348,7 +348,7 @@ export function DimensionsUpload({ selectedProject, onDimensionsSaved }: Dimensi
             <SectionCard title={`🗓️ Feriados Detectados (${result.holidays.length})`}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {result.holidays.map(h => (
-                  <Badge key={h} color="#f59e0b">{h}</Badge>
+                  <Badge key={h} color="#b45309">{h}</Badge>
                 ))}
               </div>
             </SectionCard>
@@ -391,7 +391,7 @@ export function DimensionsUpload({ selectedProject, onDimensionsSaved }: Dimensi
           {/* Erros */}
           {result.errors.length > 0 && (
             <SectionCard title={`❌ Erros (${result.errors.length})`}>
-              <ul style={{ margin: 0, padding: '0 0 0 20px', color: '#f87171', fontSize: 13 }}>
+              <ul style={{ margin: 0, padding: '0 0 0 20px', color: '#dc2626', fontSize: 13 }}>
                 {result.errors.map((e, i) => <li key={i} style={{ marginBottom: 4 }}>{e}</li>)}
               </ul>
             </SectionCard>
@@ -400,7 +400,7 @@ export function DimensionsUpload({ selectedProject, onDimensionsSaved }: Dimensi
           {/* Warnings */}
           {result.warnings.length > 0 && (
             <SectionCard title={`⚠️ Avisos (${result.warnings.length})`}>
-              <ul style={{ margin: 0, padding: '0 0 0 20px', color: '#fb923c', fontSize: 13 }}>
+              <ul style={{ margin: 0, padding: '0 0 0 20px', color: '#c2410c', fontSize: 13 }}>
                 {result.warnings.map((w, i) => <li key={i} style={{ marginBottom: 4 }}>{w}</li>)}
               </ul>
             </SectionCard>
@@ -412,7 +412,7 @@ export function DimensionsUpload({ selectedProject, onDimensionsSaved }: Dimensi
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                    <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                       {['Item', 'Grupo', 'Item RDO', 'Custo Mensal', 'Meses'].map(h => (
                         <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: '#64748b', fontWeight: 600, whiteSpace: 'nowrap' }}>
                           {h}
@@ -423,26 +423,26 @@ export function DimensionsUpload({ selectedProject, onDimensionsSaved }: Dimensi
                   <tbody>
                     {result.items.slice(0, 10).map((item, i) => (
                       <tr key={i} style={{
-                        borderBottom: '1px solid rgba(255,255,255,0.05)',
-                        background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)',
+                        borderBottom: '1px solid #e2e8f0',
+                        background: i % 2 === 0 ? 'transparent' : '#f8fafc',
                       }}>
-                        <td style={{ padding: '8px 12px', color: '#e2e8f0' }}>
+                        <td style={{ padding: '8px 12px', color: '#1e293b' }}>
                           {item.name}
-                          {item.hasMissingCost && <AlertTriangle size={12} color="#f59e0b" style={{ marginLeft: 4, verticalAlign: 'middle' }} />}
+                          {item.hasMissingCost && <AlertTriangle size={12} color="#b45309" style={{ marginLeft: 4, verticalAlign: 'middle' }} />}
                         </td>
                         <td style={{ padding: '8px 12px' }}>
                           <Badge color={GROUP_COLORS[item.group]}>{item.group}</Badge>
                         </td>
-                        <td style={{ padding: '8px 12px', color: '#94a3b8' }}>
+                        <td style={{ padding: '8px 12px', color: '#64748b' }}>
                           {item.rdoEquivalent ?? '—'}
                         </td>
-                        <td style={{ padding: '8px 12px', color: item.hasMissingCost ? '#f59e0b' : '#4ade80', fontVariantNumeric: 'tabular-nums' }}>
+                        <td style={{ padding: '8px 12px', color: item.hasMissingCost ? '#b45309' : '#4ade80', fontVariantNumeric: 'tabular-nums' }}>
                           {item.hasMissingCost
                             ? 'Sem custo'
                             : item.monthlyUnitCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
                           }
                         </td>
-                        <td style={{ padding: '8px 12px', color: '#94a3b8' }}>
+                        <td style={{ padding: '8px 12px', color: '#64748b' }}>
                           {item.monthlyPlan.length}
                         </td>
                       </tr>
@@ -485,13 +485,13 @@ export function DimensionsUpload({ selectedProject, onDimensionsSaved }: Dimensi
 function MetaField({ label, value }: { label: string; value: string }) {
   return (
     <div style={{
-      background: 'rgba(255,255,255,0.03)', borderRadius: 8,
-      padding: '8px 12px', border: '1px solid rgba(255,255,255,0.06)',
+      background: '#ffffff', borderRadius: 8,
+      padding: '8px 12px', border: '1px solid #e2e8f0',
     }}>
       <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>
         {label}
       </div>
-      <div style={{ fontSize: 14, color: '#e2e8f0', fontWeight: 500 }}>{value}</div>
+      <div style={{ fontSize: 14, color: '#1e293b', fontWeight: 500 }}>{value}</div>
     </div>
   );
 }
@@ -500,7 +500,7 @@ function btnStyle(bg: string): React.CSSProperties {
   return {
     display: 'inline-flex', alignItems: 'center', gap: 6,
     padding: '8px 16px', borderRadius: 8, border: 'none',
-    background: bg, color: '#f1f5f9', cursor: 'pointer',
+    background: bg, color: '#0f172a', cursor: 'pointer',
     fontSize: 13, fontWeight: 600, transition: 'opacity 0.15s',
   };
 }

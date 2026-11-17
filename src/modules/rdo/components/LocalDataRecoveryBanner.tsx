@@ -115,11 +115,11 @@ export const LocalDataRecoveryBanner: React.FC<{ ready: boolean }> = ({ ready })
   };
 
   return (
-    <div className="mb-8 p-6 bg-amber-500/10 border border-amber-500/25 rounded-3xl text-amber-200 text-sm animate-fade-in">
+    <div className="mb-8 p-6 bg-amber-500/10 border border-amber-500/25 rounded-3xl text-amber-800 text-sm animate-fade-in">
       <div className="flex items-start gap-4">
-        <AlertTriangle className="w-6 h-6 shrink-0 text-amber-400" />
+        <AlertTriangle className="w-6 h-6 shrink-0 text-amber-600" />
         <div className="flex-1 space-y-3">
-          <p className="font-bold text-amber-100">Há dados salvos só neste navegador</p>
+          <p className="font-bold text-amber-900">Há dados salvos só neste navegador</p>
           <p>
             {summary}. Uma versão anterior do RDO Online guardava esses dados apenas neste computador;
             os outros usuários não os veem.
@@ -145,7 +145,7 @@ export const LocalDataRecoveryBanner: React.FC<{ ready: boolean }> = ({ ready })
             <button
               onClick={handleDiscard}
               disabled={busy}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-amber-300/80 hover:text-amber-200 disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-amber-700/80 hover:text-amber-800 disabled:opacity-50"
             >
               <Trash2 className="w-4 h-4" /> Descartar
             </button>

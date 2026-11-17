@@ -116,21 +116,21 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
     return sum + (serviceItem && act.quantity ? serviceItem.value * act.quantity : 0);
   }, 0);
 
-  const inputClass = "w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all placeholder:text-slate-500";
-  const labelClass = "block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1";
-  const sectionTitleClass = "text-xl font-bold text-white flex items-center gap-3 mb-6";
+  const inputClass = "w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-blue-500/50 outline-none transition-all placeholder:text-slate-500";
+  const labelClass = "block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1";
+  const sectionTitleClass = "text-xl font-bold text-slate-900 flex items-center gap-3 mb-6";
 
   return (
     <div className="animate-fade-in pb-20">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-3xl font-black text-white tracking-tight">Editar Relatório</h2>
-          <p className="text-slate-400 text-sm mt-1 font-medium">Alterando informações operacionais para <span className="text-blue-400">{team.name}</span></p>
+          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Editar Relatório</h2>
+          <p className="text-slate-500 text-sm mt-1 font-medium">Alterando informações operacionais para <span className="text-blue-600">{team.name}</span></p>
         </div>
         <div className="flex gap-3">
           <button 
             onClick={onCancel} 
-            className="flex items-center gap-2 px-6 py-3 text-sm font-bold text-slate-300 bg-white/5 border border-white/10 hover:bg-white/10 rounded-2xl transition-all shadow-xl"
+            className="flex items-center gap-2 px-6 py-3 text-sm font-bold text-slate-700 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-2xl transition-all shadow-xl"
           >
             <X className="w-4 h-4" /> Cancelar
           </button>
@@ -144,10 +144,10 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
       </div>
 
       {/* Header Form */}
-      <div className="glass-panel p-8 rounded-[32px] border border-white/5 mb-8 shadow-2xl">
+      <div className="glass-panel p-8 rounded-2xl border border-slate-200 mb-8 shadow-2xl">
         <h3 className={sectionTitleClass}>
           <div className="bg-blue-500/10 p-2 rounded-xl">
-            <FileText className="w-5 h-5 text-blue-400" />
+            <FileText className="w-5 h-5 text-blue-600" />
           </div>
           Informações Gerais
         </h3>
@@ -227,11 +227,11 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Workforce Editor */}
-        <div className="glass-panel rounded-[32px] border border-white/5 overflow-hidden flex flex-col shadow-2xl">
-          <div className="px-8 py-6 border-b border-white/5 bg-white/[0.02] flex justify-between items-center">
-            <h3 className="font-bold text-white flex items-center gap-3">
+        <div className="glass-panel rounded-2xl border border-slate-200 overflow-hidden flex flex-col shadow-2xl">
+          <div className="px-8 py-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+            <h3 className="font-bold text-slate-900 flex items-center gap-3">
               <div className="bg-blue-500/10 p-2 rounded-xl">
-                <HardHat className="w-4 h-4 text-blue-400" />
+                <HardHat className="w-4 h-4 text-blue-600" />
               </div>
               Mão de Obra
             </h3>
@@ -244,7 +244,7 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
           </div>
           <div className="overflow-x-auto flex-1">
             <table className="w-full text-sm text-left">
-              <thead className="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-white/[0.01]">
+              <thead className="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-50">
                 <tr>
                   <th className="px-8 py-4">Função</th>
                   <th className="px-4 py-4 w-20 text-center">Qtd</th>
@@ -252,15 +252,15 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
                   <th className="px-8 py-4 w-10"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-slate-100">
                 {formData.workforce.map((w, idx) => (
-                  <tr key={idx} className="hover:bg-white/[0.02] transition-colors group">
+                  <tr key={idx} className="hover:bg-slate-50 transition-colors group">
                     <td className="px-8 py-3">
                       <input 
                         type="text" 
                         value={w.role} 
                         onChange={e => updateWorkforce(idx, 'role', e.target.value)}
-                        className="w-full bg-transparent border-none text-white focus:ring-0 outline-none p-0 placeholder:text-slate-700 font-medium"
+                        className="w-full bg-transparent border-none text-slate-900 focus:ring-0 outline-none p-0 placeholder:text-slate-400 font-medium"
                         placeholder="Ex: Pedreiro"
                       />
                     </td>
@@ -269,7 +269,7 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
                         type="number" 
                         value={w.count} 
                         onChange={e => updateWorkforce(idx, 'count', parseInt(e.target.value) || 0)}
-                        className="w-full bg-transparent border-none text-white focus:ring-0 outline-none p-0 text-center font-mono"
+                        className="w-full bg-transparent border-none text-slate-900 focus:ring-0 outline-none p-0 text-center font-mono"
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -277,13 +277,13 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
                         type="number" 
                         value={w.totalHours} 
                         onChange={e => updateWorkforce(idx, 'totalHours', parseFloat(e.target.value) || 0)}
-                        className="w-full bg-transparent border-none text-white focus:ring-0 outline-none p-0 text-right font-mono"
+                        className="w-full bg-transparent border-none text-slate-900 focus:ring-0 outline-none p-0 text-right font-mono"
                       />
                     </td>
                     <td className="px-8 py-3 text-right">
                       <button 
                         onClick={() => removeWorkforce(idx)}
-                        className="text-slate-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                        className="text-slate-500 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
                       >
                         <Trash2 className="w-4.5 h-4.5" />
                       </button>
@@ -296,11 +296,11 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
         </div>
 
         {/* Equipment Editor */}
-        <div className="glass-panel rounded-[32px] border border-white/5 overflow-hidden flex flex-col shadow-2xl">
-          <div className="px-8 py-6 border-b border-white/5 bg-white/[0.02] flex justify-between items-center">
-            <h3 className="font-bold text-white flex items-center gap-3">
+        <div className="glass-panel rounded-2xl border border-slate-200 overflow-hidden flex flex-col shadow-2xl">
+          <div className="px-8 py-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+            <h3 className="font-bold text-slate-900 flex items-center gap-3">
               <div className="bg-orange-500/10 p-2 rounded-xl">
-                <Truck className="w-4 h-4 text-orange-400" />
+                <Truck className="w-4 h-4 text-orange-600" />
               </div>
               Equipamentos
             </h3>
@@ -313,7 +313,7 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
           </div>
           <div className="overflow-x-auto flex-1">
             <table className="w-full text-sm text-left">
-              <thead className="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-white/[0.01]">
+              <thead className="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-50">
                 <tr>
                   <th className="px-8 py-4">Equipamento</th>
                   <th className="px-4 py-4 w-20 text-center">Qtd</th>
@@ -321,15 +321,15 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
                   <th className="px-8 py-4 w-10"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-slate-100">
                 {formData.equipment.map((e, idx) => (
-                  <tr key={idx} className="hover:bg-white/[0.02] transition-colors group">
+                  <tr key={idx} className="hover:bg-slate-50 transition-colors group">
                     <td className="px-8 py-3">
                       <input 
                         type="text" 
                         value={e.name} 
                         onChange={val => updateEquipment(idx, 'name', val.target.value)}
-                        className="w-full bg-transparent border-none text-white focus:ring-0 outline-none p-0 placeholder:text-slate-700 font-medium"
+                        className="w-full bg-transparent border-none text-slate-900 focus:ring-0 outline-none p-0 placeholder:text-slate-400 font-medium"
                         placeholder="Ex: Escavadeira"
                       />
                     </td>
@@ -338,7 +338,7 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
                         type="number" 
                         value={e.count} 
                         onChange={val => updateEquipment(idx, 'count', parseInt(val.target.value) || 0)}
-                        className="w-full bg-transparent border-none text-white focus:ring-0 outline-none p-0 text-center font-mono"
+                        className="w-full bg-transparent border-none text-slate-900 focus:ring-0 outline-none p-0 text-center font-mono"
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -346,13 +346,13 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
                         type="number" 
                         value={e.hoursOperated} 
                         onChange={val => updateEquipment(idx, 'hoursOperated', parseFloat(val.target.value) || 0)}
-                        className="w-full bg-transparent border-none text-white focus:ring-0 outline-none p-0 text-right font-mono"
+                        className="w-full bg-transparent border-none text-slate-900 focus:ring-0 outline-none p-0 text-right font-mono"
                       />
                     </td>
                     <td className="px-8 py-3 text-right">
                       <button 
                         onClick={() => removeEquipment(idx)}
-                        className="text-slate-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                        className="text-slate-500 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
                       >
                         <Trash2 className="w-4.5 h-4.5" />
                       </button>
@@ -365,11 +365,11 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
         </div>
 
         {/* Activities Editor */}
-        <div className="glass-panel rounded-[32px] border border-white/5 overflow-hidden lg:col-span-2 shadow-2xl">
-          <div className="px-8 py-6 border-b border-white/5 bg-white/[0.02] flex justify-between items-center">
-            <h3 className="font-bold text-white flex items-center gap-3">
+        <div className="glass-panel rounded-2xl border border-slate-200 overflow-hidden lg:col-span-2 shadow-2xl">
+          <div className="px-8 py-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+            <h3 className="font-bold text-slate-900 flex items-center gap-3">
               <div className="bg-emerald-500/10 p-2 rounded-xl">
-                <ClipboardList className="w-4 h-4 text-emerald-400" />
+                <ClipboardList className="w-4 h-4 text-emerald-600" />
               </div>
               Atividades e Serviços
             </h3>
@@ -382,7 +382,7 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-white/[0.01]">
+              <thead className="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-50">
                 <tr>
                   <th className="px-8 py-4 w-40">Código</th>
                   <th className="px-4 py-4">Descrição da Atividade</th>
@@ -392,12 +392,12 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
                   <th className="px-8 py-4 w-10"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-slate-100">
                 {formData.activities.map((act, idx) => {
                   const serviceItem = act.code ? getServiceByCode(project, act.code) : undefined;
                   const itemTotal = serviceItem && act.quantity ? serviceItem.value * act.quantity : 0;
                   return (
-                    <tr key={idx} className="hover:bg-white/[0.02] transition-colors group">
+                    <tr key={idx} className="hover:bg-slate-50 transition-colors group">
                       <td className="px-8 py-3">
                         {project.services?.length ? (
                           // Obra com tabela de serviços: escolher o item da lista evita código digitado errado.
@@ -415,14 +415,14 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
                               }));
                             }}
                             title={serviceItem?.scope}
-                            className="w-full bg-transparent border-none text-blue-400 focus:ring-0 outline-none p-0 font-mono text-xs cursor-pointer"
+                            className="w-full bg-transparent border-none text-blue-600 focus:ring-0 outline-none p-0 font-mono text-xs cursor-pointer"
                           >
-                            <option value="" className="bg-slate-900">— sem código —</option>
+                            <option value="" className="bg-white">— sem código —</option>
                             {act.code && !serviceItem && (
-                              <option value={act.code} className="bg-slate-900">{act.code} (fora da tabela)</option>
+                              <option value={act.code} className="bg-white">{act.code} (fora da tabela)</option>
                             )}
                             {project.services.map(s => (
-                              <option key={`${s.code}_${s.startDate ?? ''}`} value={s.code} className="bg-slate-900">
+                              <option key={`${s.code}_${s.startDate ?? ''}`} value={s.code} className="bg-white">
                                 {s.code} · {s.scope} ({s.unit})
                               </option>
                             ))}
@@ -432,7 +432,7 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
                             type="text" 
                             value={act.code || ''} 
                             onChange={e => updateActivity(idx, 'code', e.target.value)}
-                            className="w-full bg-transparent border-none text-blue-400 focus:ring-0 outline-none p-0 font-mono text-xs placeholder:text-slate-700"
+                            className="w-full bg-transparent border-none text-blue-600 focus:ring-0 outline-none p-0 font-mono text-xs placeholder:text-slate-400"
                             placeholder="Código"
                           />
                         )}
@@ -442,7 +442,7 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
                           type="text" 
                           value={act.description} 
                           onChange={e => updateActivity(idx, 'description', e.target.value)}
-                          className="w-full bg-transparent border-none text-white focus:ring-0 outline-none p-0 font-medium placeholder:text-slate-700"
+                          className="w-full bg-transparent border-none text-slate-900 focus:ring-0 outline-none p-0 font-medium placeholder:text-slate-400"
                           placeholder="Descrição"
                         />
                       </td>
@@ -451,28 +451,28 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
                           type="number" 
                           value={act.quantity || 0} 
                           onChange={e => updateActivity(idx, 'quantity', parseFloat(e.target.value) || 0)}
-                          className="w-full bg-transparent border-none text-white focus:ring-0 outline-none p-0 text-center font-mono"
+                          className="w-full bg-transparent border-none text-slate-900 focus:ring-0 outline-none p-0 text-center font-mono"
                         />
                       </td>
-                      <td className="px-4 py-3 text-right font-mono text-emerald-400 font-bold">
+                      <td className="px-4 py-3 text-right font-mono text-emerald-600 font-bold">
                         {formatMoney(itemTotal)}
                       </td>
                       <td className="px-4 py-3">
                         <select 
                           value={act.status} 
                           onChange={e => updateActivity(idx, 'status', e.target.value)}
-                          className="w-full bg-transparent border-none text-slate-400 focus:ring-0 outline-none p-0 text-[10px] font-black uppercase tracking-widest cursor-pointer"
+                          className="w-full bg-transparent border-none text-slate-500 focus:ring-0 outline-none p-0 text-[10px] font-black uppercase tracking-widest cursor-pointer"
                         >
-                          <option value="Concluído" className="bg-slate-900">Concluído</option>
-                          <option value="Em andamento" className="bg-slate-900">Em andamento</option>
-                          <option value="Paralisado" className="bg-slate-900">Paralisado</option>
-                          <option value="Revisar" className="bg-slate-900">Revisar</option>
+                          <option value="Concluído" className="bg-white">Concluído</option>
+                          <option value="Em andamento" className="bg-white">Em andamento</option>
+                          <option value="Paralisado" className="bg-white">Paralisado</option>
+                          <option value="Revisar" className="bg-white">Revisar</option>
                         </select>
                       </td>
                       <td className="px-8 py-3 text-right">
                         <button 
                           onClick={() => removeActivity(idx)}
-                          className="text-slate-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                          className="text-slate-500 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
                         >
                           <Trash2 className="w-4.5 h-4.5" />
                         </button>
@@ -484,7 +484,7 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
               <tfoot className="bg-emerald-500/5 border-t border-emerald-500/10">
                 <tr>
                   <td colSpan={3} className="px-8 py-6 text-right font-black text-slate-500 uppercase text-[10px] tracking-[0.2em]">Total Financeiro Estimado</td>
-                  <td className="px-4 py-6 text-right font-black text-emerald-400 font-mono text-xl tracking-tighter">{formatMoney(totalFinancial)}</td>
+                  <td className="px-4 py-6 text-right font-black text-emerald-600 font-mono text-xl tracking-tighter">{formatMoney(totalFinancial)}</td>
                   <td colSpan={2}></td>
                 </tr>
               </tfoot>
@@ -493,11 +493,11 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
         </div>
 
         {/* Occurrences Editor */}
-        <div className="glass-panel rounded-[32px] border border-white/5 overflow-hidden lg:col-span-2 shadow-2xl">
-          <div className="px-8 py-6 border-b border-white/5 bg-white/[0.02] flex justify-between items-center">
-            <h3 className="font-bold text-white flex items-center gap-3">
+        <div className="glass-panel rounded-2xl border border-slate-200 overflow-hidden lg:col-span-2 shadow-2xl">
+          <div className="px-8 py-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+            <h3 className="font-bold text-slate-900 flex items-center gap-3">
               <div className="bg-amber-500/10 p-2 rounded-xl">
-                <AlertTriangle className="w-4 h-4 text-amber-400" />
+                <AlertTriangle className="w-4 h-4 text-amber-600" />
               </div>
               Ocorrências
             </h3>
@@ -511,7 +511,7 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
           <div className="p-8">
             <div className="space-y-4">
               {(formData.occurrences || []).map((occ, idx) => (
-                <div key={idx} className="flex gap-6 items-start p-6 bg-white/[0.02] rounded-3xl border border-white/5 group transition-all hover:bg-white/[0.04]">
+                <div key={idx} className="flex gap-6 items-start p-6 bg-slate-50 rounded-3xl border border-slate-200 group transition-all hover:bg-slate-50">
                   <div className="bg-amber-500/10 p-3 rounded-2xl text-amber-500 border border-amber-500/10">
                     <AlertTriangle className="w-5 h-5" />
                   </div>
@@ -548,23 +548,23 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
                   </div>
                   <button 
                     onClick={() => removeOccurrence(idx)}
-                    className="p-2 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                    className="p-2 text-slate-500 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all"
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>
                 </div>
               ))}
               {(!formData.occurrences || formData.occurrences.length === 0) && (
-                <div className="text-center py-12 border-2 border-dashed border-white/5 rounded-[32px] bg-white/[0.01]">
+                <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50">
                    <p className="text-slate-500 font-medium italic">Nenhuma ocorrência registrada no momento.</p>
                 </div>
               )}
             </div>
 
             <div className="mt-10">
-              <h4 className="text-sm font-bold text-white mb-4 flex items-center gap-3">
+              <h4 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-3">
                 <div className="bg-blue-500/10 p-2 rounded-xl">
-                  <MessageSquare className="w-4 h-4 text-blue-400" />
+                  <MessageSquare className="w-4 h-4 text-blue-600" />
                 </div>
                 Comentários Adicionais
               </h4>

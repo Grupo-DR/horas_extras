@@ -36,19 +36,19 @@ interface ResourcesMonthlyTableProps {
 // ---------------------------------------------------------------------------
 
 const STATUS_CONFIG: Record<MonthlyResourceStatus, { label: string; color: string; bg: string }> = {
-  PLANEJADO_E_REALIZADO: { label: 'Plan. e Real.', color: '#4ade80', bg: '#052e16' },
-  PLANEJADO_SEM_REALIZADO: { label: 'Pl. Sem Real.', color: '#60a5fa', bg: '#1e3a8a' },
-  REALIZADO_FORA_DO_PLANEJAMENTO: { label: 'Fora do Plan.', color: '#fb923c', bg: '#431407' },
-  SEM_EQUIVALENCIA: { label: 'Sem Equivalência', color: '#a78bfa', bg: '#2e1065' },
-  SEM_CUSTO_CADASTRADO: { label: 'Sem Custo', color: '#94a3b8', bg: '#0f172a' },
+  PLANEJADO_E_REALIZADO: { label: 'Plan. e Real.', color: '#16a34a', bg: '#dcfce7' },
+  PLANEJADO_SEM_REALIZADO: { label: 'Pl. Sem Real.', color: '#2563eb', bg: '#dbeafe' },
+  REALIZADO_FORA_DO_PLANEJAMENTO: { label: 'Fora do Plan.', color: '#c2410c', bg: '#ffedd5' },
+  SEM_EQUIVALENCIA: { label: 'Sem Equivalência', color: '#6d28d9', bg: '#ede9fe' },
+  SEM_CUSTO_CADASTRADO: { label: 'Sem Custo', color: '#64748b', bg: '#f1f5f9' },
 };
 
 const GROUP_CONFIG: Record<DimensionGroup, { label: string; color: string }> = {
-  MOD: { label: 'MOD — M.O. Direta', color: '#4ade80' },
-  MOI: { label: 'MOI — M.O. Indireta', color: '#60a5fa' },
-  EQUIP: { label: 'EQUIP — Equipamentos', color: '#f59e0b' },
-  MATERIAL: { label: 'Material', color: '#a78bfa' },
-  OTHER: { label: 'Outros', color: '#94a3b8' },
+  MOD: { label: 'MOD — M.O. Direta', color: '#16a34a' },
+  MOI: { label: 'MOI — M.O. Indireta', color: '#2563eb' },
+  EQUIP: { label: 'EQUIP — Equipamentos', color: '#b45309' },
+  MATERIAL: { label: 'Material', color: '#6d28d9' },
+  OTHER: { label: 'Outros', color: '#64748b' },
 };
 
 const ALL_GROUPS: Array<'ALL' | DimensionGroup> = ['ALL', 'MOD', 'MOI', 'EQUIP', 'MATERIAL', 'OTHER'];
@@ -72,7 +72,7 @@ const PCT = (v: number) => `${v >= 0 ? '+' : ''}${NUM(v * 100, 1)}%`;
 function DeviationCell({ value, isCurrency }: { value: number; isCurrency?: boolean }) {
   // Positivo (gasto/quantidade extra) = RUIM (Vermelho)
   // Negativo (economia) = BOM (Verde)
-  const color = value > 0 ? '#f87171' : value < 0 ? '#4ade80' : '#64748b';
+  const color = value > 0 ? '#dc2626' : value < 0 ? '#4ade80' : '#64748b';
   const label = isCurrency ? BRL(value) : NUM(value);
   return <span style={{ color, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{value > 0 ? '+' : ''}{label}</span>;
 }
@@ -94,8 +94,8 @@ function KpiCard({ label, value, color, sub }: { label: string; value: string; c
   return (
     <div style={{
       flex: '1 1 140px', minWidth: 120,
-      background: 'rgba(255,255,255,0.03)',
-      border: '1px solid rgba(255,255,255,0.07)',
+      background: '#ffffff',
+      border: '1px solid #e2e8f0',
       borderRadius: 12, padding: '12px 16px', textAlign: 'center',
     }}>
       <div style={{ fontSize: 16, fontWeight: 700, color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</div>
@@ -249,54 +249,54 @@ export function ResourcesMonthlyTable({ facts, projectName }: ResourcesMonthlyTa
   const thStyle: React.CSSProperties = {
     padding: '8px 12px', textAlign: 'left', color: '#64748b', fontSize: 12,
     fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer',
-    borderBottom: '1px solid rgba(255,255,255,0.1)', userSelect: 'none',
+    borderBottom: '1px solid #e2e8f0', userSelect: 'none',
   };
   const tdStyle: React.CSSProperties = {
-    padding: '7px 12px', fontSize: 13, borderBottom: '1px solid rgba(255,255,255,0.05)',
+    padding: '7px 12px', fontSize: 13, borderBottom: '1px solid #e2e8f0',
     whiteSpace: 'nowrap', verticalAlign: 'middle',
   };
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif", color: '#e2e8f0' }}>
+    <div style={{ fontFamily: "'Inter', sans-serif", color: '#1e293b' }}>
 
       {/* Título */}
       <div style={{ marginBottom: 20 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#f1f5f9', margin: 0 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', margin: 0 }}>
           Análise Mensal de Recursos
         </h2>
         {projectName && (
-          <p style={{ color: '#94a3b8', margin: '4px 0 0', fontSize: 13 }}>
-            Projeto: <strong style={{ color: '#60a5fa' }}>{projectName}</strong>
+          <p style={{ color: '#64748b', margin: '4px 0 0', fontSize: 13 }}>
+            Projeto: <strong style={{ color: '#2563eb' }}>{projectName}</strong>
           </p>
         )}
       </div>
 
       {/* KPI Cards */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
-        <KpiCard label="Total de Registros" value={String(summary.totalFacts)} color="#e2e8f0" />
-        <KpiCard label="Custo Planejado" value={BRL(summary.totalPlannedCost)} color="#60a5fa" />
-        <KpiCard label="Custo Realizado" value={BRL(summary.totalRealizedCost)} color="#4ade80" />
+        <KpiCard label="Total de Registros" value={String(summary.totalFacts)} color="#1e293b" />
+        <KpiCard label="Custo Planejado" value={BRL(summary.totalPlannedCost)} color="#2563eb" />
+        <KpiCard label="Custo Realizado" value={BRL(summary.totalRealizedCost)} color="#16a34a" />
         <KpiCard
           label="Desvio Financeiro"
           value={BRL(summary.financialDeviation)}
           color={summary.financialDeviation > 0 ? '#f87171' : summary.financialDeviation < 0 ? '#4ade80' : '#e2e8f0'}
         />
-        <KpiCard label="HH Planejado" value={NUM(summary.totalPlannedHH)} color="#60a5fa" sub="horas" />
-        <KpiCard label="HH Real" value={NUM(summary.totalRealHH)} color="#4ade80" sub="horas" />
+        <KpiCard label="HH Planejado" value={NUM(summary.totalPlannedHH)} color="#2563eb" sub="horas" />
+        <KpiCard label="HH Real" value={NUM(summary.totalRealHH)} color="#16a34a" sub="horas" />
         <KpiCard
           label="Plan. e Realizado"
           value={String(summary.countByStatus['PLANEJADO_E_REALIZADO'] ?? 0)}
-          color="#4ade80"
+          color="#16a34a"
         />
         <KpiCard
           label="Pl. Sem Realizado"
           value={String(summary.countByStatus['PLANEJADO_SEM_REALIZADO'] ?? 0)}
-          color="#60a5fa"
+          color="#2563eb"
         />
       </div>
 
       {/* Abas por grupo */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 0 }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid #e2e8f0', paddingBottom: 0 }}>
         {(['ALL', 'MOD', 'MOI', 'EQUIP'] as const).map(tab => (
           <button
             key={tab}
@@ -306,7 +306,7 @@ export function ResourcesMonthlyTable({ facts, projectName }: ResourcesMonthlyTa
               padding: '8px 16px', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
               borderRadius: '8px 8px 0 0',
               background: activeTab === tab ? 'rgba(96,165,250,0.15)' : 'transparent',
-              color: activeTab === tab ? '#60a5fa' : '#64748b',
+              color: activeTab === tab ? '#2563eb' : '#64748b',
               borderBottom: activeTab === tab ? '2px solid #60a5fa' : '2px solid transparent',
             }}
           >
@@ -328,8 +328,8 @@ export function ResourcesMonthlyTable({ facts, projectName }: ResourcesMonthlyTa
             onChange={e => setSearch(e.target.value)}
             style={{
               width: '100%', padding: '7px 10px 7px 30px',
-              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 8, color: '#e2e8f0', fontSize: 13, boxSizing: 'border-box',
+              background: '#f8fafc', border: '1px solid #e2e8f0',
+              borderRadius: 8, color: '#1e293b', fontSize: 13, boxSizing: 'border-box',
             }}
           />
         </div>
@@ -367,7 +367,7 @@ export function ResourcesMonthlyTable({ facts, projectName }: ResourcesMonthlyTa
           style={{
             display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px',
             background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.3)',
-            borderRadius: 8, color: '#60a5fa', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+            borderRadius: 8, color: '#2563eb', cursor: 'pointer', fontSize: 13, fontWeight: 600,
           }}
         >
           <Download size={14} /> CSV
@@ -382,14 +382,14 @@ export function ResourcesMonthlyTable({ facts, projectName }: ResourcesMonthlyTa
       {sorted.length === 0 ? (
         <div style={{
           textAlign: 'center', padding: '40px 20px',
-          color: '#475569', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: 12,
+          color: '#475569', border: '1px dashed #e2e8f0', borderRadius: 12,
         }}>
           Nenhum registro encontrado para os filtros selecionados.
         </div>
       ) : (
-        <div style={{ overflowX: 'auto', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ overflowX: 'auto', borderRadius: 12, border: '1px solid #e2e8f0' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead style={{ background: 'rgba(255,255,255,0.03)' }}>
+            <thead style={{ background: '#ffffff' }}>
               <tr>
                 <th style={thStyle} onClick={() => handleSort('monthKey')}>
                   Mês <SortIcon k="monthKey" />
@@ -437,17 +437,17 @@ export function ResourcesMonthlyTable({ facts, projectName }: ResourcesMonthlyTa
                   <tr
                     key={`${f.projectId}-${f.group}-${f.itemStandard}-${f.monthKey}-${i}`}
                     style={{
-                      background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)',
+                      background: i % 2 === 0 ? 'transparent' : '#f8fafc',
                       transition: 'background 0.1s',
                     }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(96,165,250,0.06)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? 'transparent' : '#f8fafc')}
                   >
                     <td style={tdStyle}>{f.monthKey}</td>
                     <td style={tdStyle}>
                       <span style={{ color: grpColor, fontWeight: 600 }}>{f.group}</span>
                     </td>
-                    <td style={{ ...tdStyle, color: '#e2e8f0', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <td style={{ ...tdStyle, color: '#1e293b', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {f.item}
                       {f.observation && (
                         <span title={f.observation} style={{ marginLeft: 4, cursor: 'help', opacity: 0.5 }}>
@@ -455,24 +455,24 @@ export function ResourcesMonthlyTable({ facts, projectName }: ResourcesMonthlyTa
                         </span>
                       )}
                     </td>
-                    <td style={{ ...tdStyle, color: '#94a3b8' }}>{f.itemRdo || '—'}</td>
+                    <td style={{ ...tdStyle, color: '#64748b' }}>{f.itemRdo || '—'}</td>
                     <td style={{ ...tdStyle, textAlign: 'right', color: '#64748b' }}>{f.validBusinessDays}</td>
-                    <td style={{ ...tdStyle, textAlign: 'right', color: '#93c5fd', fontVariantNumeric: 'tabular-nums' }}>
+                    <td style={{ ...tdStyle, textAlign: 'right', color: '#1d4ed8', fontVariantNumeric: 'tabular-nums' }}>
                       {NUM(f.plannedQty)}
                     </td>
-                    <td style={{ ...tdStyle, textAlign: 'right', color: '#6ee7b7', fontVariantNumeric: 'tabular-nums' }}>
+                    <td style={{ ...tdStyle, textAlign: 'right', color: '#047857', fontVariantNumeric: 'tabular-nums' }}>
                       {NUM(f.realizedAverageQty)}
                     </td>
                     <td style={{ ...tdStyle, textAlign: 'right' }}>
                       <DeviationCell value={f.quantityDeviation} />
                     </td>
-                    <td style={{ ...tdStyle, textAlign: 'right', color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>
+                    <td style={{ ...tdStyle, textAlign: 'right', color: '#64748b', fontVariantNumeric: 'tabular-nums' }}>
                       {NUM(f.realHH, 1)}h
                     </td>
-                    <td style={{ ...tdStyle, textAlign: 'right', color: '#93c5fd', fontVariantNumeric: 'tabular-nums' }}>
+                    <td style={{ ...tdStyle, textAlign: 'right', color: '#1d4ed8', fontVariantNumeric: 'tabular-nums' }}>
                       {BRL(f.plannedCost)}
                     </td>
-                    <td style={{ ...tdStyle, textAlign: 'right', color: '#6ee7b7', fontVariantNumeric: 'tabular-nums' }}>
+                    <td style={{ ...tdStyle, textAlign: 'right', color: '#047857', fontVariantNumeric: 'tabular-nums' }}>
                       {BRL(f.realizedCost)}
                     </td>
                     <td style={{ ...tdStyle, textAlign: 'right' }}>
@@ -489,12 +489,12 @@ export function ResourcesMonthlyTable({ facts, projectName }: ResourcesMonthlyTa
               <tr>
                 <td colSpan={4} style={{ ...tdStyle, textAlign: 'right' }}>Total:</td>
                 <td style={{ ...tdStyle, textAlign: 'right', color: '#64748b' }}>—</td>
-                <td style={{ ...tdStyle, textAlign: 'right', color: '#93c5fd', fontVariantNumeric: 'tabular-nums' }}>{NUM(totals.plannedQty)}</td>
-                <td style={{ ...tdStyle, textAlign: 'right', color: '#6ee7b7', fontVariantNumeric: 'tabular-nums' }}>{NUM(totals.realizedAverageQty)}</td>
+                <td style={{ ...tdStyle, textAlign: 'right', color: '#1d4ed8', fontVariantNumeric: 'tabular-nums' }}>{NUM(totals.plannedQty)}</td>
+                <td style={{ ...tdStyle, textAlign: 'right', color: '#047857', fontVariantNumeric: 'tabular-nums' }}>{NUM(totals.realizedAverageQty)}</td>
                 <td style={{ ...tdStyle, textAlign: 'right' }}><DeviationCell value={totals.quantityDeviation} /></td>
-                <td style={{ ...tdStyle, textAlign: 'right', color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>{NUM(totals.realHH, 1)}h</td>
-                <td style={{ ...tdStyle, textAlign: 'right', color: '#93c5fd', fontVariantNumeric: 'tabular-nums' }}>{BRL(totals.plannedCost)}</td>
-                <td style={{ ...tdStyle, textAlign: 'right', color: '#6ee7b7', fontVariantNumeric: 'tabular-nums' }}>{BRL(totals.realizedCost)}</td>
+                <td style={{ ...tdStyle, textAlign: 'right', color: '#64748b', fontVariantNumeric: 'tabular-nums' }}>{NUM(totals.realHH, 1)}h</td>
+                <td style={{ ...tdStyle, textAlign: 'right', color: '#1d4ed8', fontVariantNumeric: 'tabular-nums' }}>{BRL(totals.plannedCost)}</td>
+                <td style={{ ...tdStyle, textAlign: 'right', color: '#047857', fontVariantNumeric: 'tabular-nums' }}>{BRL(totals.realizedCost)}</td>
                 <td style={{ ...tdStyle, textAlign: 'right' }}><DeviationCell value={totals.financialDeviation} isCurrency /></td>
                 <td style={tdStyle}></td>
               </tr>
@@ -508,9 +508,9 @@ export function ResourcesMonthlyTable({ facts, projectName }: ResourcesMonthlyTa
 
 const selectStyle: React.CSSProperties = {
   padding: '7px 10px',
-  background: 'rgba(255,255,255,0.05)',
-  border: '1px solid rgba(255,255,255,0.1)',
-  borderRadius: 8, color: '#e2e8f0', fontSize: 13,
+  background: '#f8fafc',
+  border: '1px solid #e2e8f0',
+  borderRadius: 8, color: '#1e293b', fontSize: 13,
 };
 
 export default ResourcesMonthlyTable;

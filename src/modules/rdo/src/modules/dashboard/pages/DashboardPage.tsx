@@ -40,10 +40,10 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <div className="animate-fade-in space-y-8">
-      <div className="glass-panel relative z-[100] p-6 rounded-3xl border border-white/5 flex flex-col md:flex-row gap-6 items-end md:items-center justify-between shadow-2xl shadow-blue-900/10">
+      <div className="glass-panel relative z-[100] p-6 rounded-3xl border border-slate-200 flex flex-col md:flex-row gap-6 items-end md:items-center justify-between shadow-2xl shadow-blue-900/10">
         <div className="flex flex-col md:flex-row gap-6 w-full">
           <div className="flex flex-col gap-2 w-full md:w-52">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Mês (Medição)</label>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Mês (Medição)</label>
             <select 
               value={filterMes} 
               onChange={e => { setFilterMes(e.target.value); setFilterStartDate(''); setFilterEndDate(''); }}
@@ -54,7 +54,7 @@ export const DashboardPage: React.FC = () => {
             </select>
           </div>
           <div className="flex flex-col gap-2 w-full md:w-auto relative z-50">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Período</label>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Período</label>
             <DateRangePicker 
               startDate={filterStartDate}
               endDate={filterEndDate}
@@ -62,7 +62,7 @@ export const DashboardPage: React.FC = () => {
             />
           </div>
           <div className="flex flex-col gap-2 w-full md:w-52">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Regional</label>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Regional</label>
             <select 
               value={filterRegional} 
               onChange={e => { setFilterRegional(e.target.value); setFilterProject('all'); setFilterTeam('all'); }}
@@ -73,7 +73,7 @@ export const DashboardPage: React.FC = () => {
             </select>
           </div>
           <div className="flex flex-col gap-2 w-full md:w-52">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Obra</label>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Obra</label>
             <select 
               value={filterProject} 
               onChange={e => { setFilterProject(e.target.value); setFilterTeam('all'); }}
@@ -84,7 +84,7 @@ export const DashboardPage: React.FC = () => {
             </select>
           </div>
           <div className="flex flex-col gap-2 w-full md:w-52">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Equipe</label>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Equipe</label>
             <select 
               value={filterTeam} 
               onChange={e => setFilterTeam(e.target.value)}
@@ -102,7 +102,7 @@ export const DashboardPage: React.FC = () => {
         <div className="flex gap-2">
           <button 
             onClick={handleClearFilters}
-            className="p-3 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-xl transition-all duration-300"
+            className="p-3 text-slate-500 hover:text-red-600 hover:bg-red-400/10 rounded-xl transition-all duration-300"
             title="Limpar Filtros"
           >
             <Trash2 className="w-5 h-5" />
@@ -111,10 +111,10 @@ export const DashboardPage: React.FC = () => {
       </div>
 
       <div className="flex flex-col gap-1.5 ml-1">
-        <h2 className="text-3xl font-bold text-white tracking-tight">Visão Geral Financeira</h2>
-        <p className="text-slate-400 text-sm font-medium flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-blue-400" />
-          Compilado referente a <span className="text-blue-400 capitalize">{periodLabel}</span>
+        <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Visão Geral Financeira</h2>
+        <p className="text-slate-500 text-sm font-medium flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-blue-600" />
+          Compilado referente a <span className="text-blue-600 capitalize">{periodLabel}</span>
         </p>
       </div>
 

@@ -20,14 +20,14 @@ interface OccurrencesTableProps {
 }
 
 const ELIGIBILITY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  'Contratante':   { label: 'Contratante',   color: '#60a5fa', bg: '#1e3a8a' },
-  'Contratada':   { label: 'Contratada',   color: '#fbbf24', bg: '#422006' },
-  'Força maior':     { label: 'Força maior',     color: '#f87171', bg: '#450a0a' },
-  'Não Classificado':       { label: 'Não Classificado',       color: '#94a3b8', bg: '#0f172a' },
-  'POTENCIAL_PLEITO':   { label: 'Potencial Pleito',   color: '#60a5fa', bg: '#1e3a8a' },
-  'RISCO_CONTRATADA':   { label: 'Risco Contratada',   color: '#fbbf24', bg: '#422006' },
-  'REQUER_ANALISE':     { label: 'Requer Análise',     color: '#94a3b8', bg: '#0f172a' },
-  'NAO_ELEGIVEL':       { label: 'Não Elegível',       color: '#94a3b8', bg: '#0f172a' },
+  'Contratante':   { label: 'Contratante',   color: '#2563eb', bg: '#dbeafe' },
+  'Contratada':   { label: 'Contratada',   color: '#b45309', bg: '#fef3c7' },
+  'Força maior':     { label: 'Força maior',     color: '#dc2626', bg: '#fee2e2' },
+  'Não Classificado':       { label: 'Não Classificado',       color: '#64748b', bg: '#f1f5f9' },
+  'POTENCIAL_PLEITO':   { label: 'Potencial Pleito',   color: '#2563eb', bg: '#dbeafe' },
+  'RISCO_CONTRATADA':   { label: 'Risco Contratada',   color: '#b45309', bg: '#fef3c7' },
+  'REQUER_ANALISE':     { label: 'Requer Análise',     color: '#64748b', bg: '#f1f5f9' },
+  'NAO_ELEGIVEL':       { label: 'Não Elegível',       color: '#64748b', bg: '#f1f5f9' },
 };
 
 const CATEGORY_CONFIG: Record<OccurrenceCategory, string> = {
@@ -45,7 +45,7 @@ function KpiCard({ label, value, color }: { label: string; value: string | numbe
   return (
     <div style={{
       flex: '1 1 200px', minWidth: 160,
-      background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+      background: '#ffffff', border: '1px solid #e2e8f0',
       borderRadius: 12, padding: '16px', textAlign: 'center',
     }}>
       <div style={{ fontSize: 24, fontWeight: 700, color }}>{value}</div>
@@ -109,12 +109,12 @@ export function OccurrencesTable({ facts, projectName, teams = [], onNavigateToR
     sortKey === k ? (sortDir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />) : null;
 
   const thStyle: React.CSSProperties = {
-    padding: '10px 12px', textAlign: 'left', color: '#94a3b8', fontSize: 13,
-    fontWeight: 600, cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.1)',
+    padding: '10px 12px', textAlign: 'left', color: '#64748b', fontSize: 13,
+    fontWeight: 600, cursor: 'pointer', borderBottom: '1px solid #e2e8f0',
     userSelect: 'none', whiteSpace: 'nowrap',
   };
   const tdStyle: React.CSSProperties = {
-    padding: '8px 12px', fontSize: 13, borderBottom: '1px solid rgba(255,255,255,0.05)',
+    padding: '8px 12px', fontSize: 13, borderBottom: '1px solid #e2e8f0',
     verticalAlign: 'middle'
   };
 
@@ -135,11 +135,11 @@ export function OccurrencesTable({ facts, projectName, teams = [], onNavigateToR
   };
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif", color: '#e2e8f0' }}>
+    <div style={{ fontFamily: "'Inter', sans-serif", color: '#1e293b' }}>
       <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#f1f5f9', margin: 0 }}>Classificação de Ocorrências</h2>
-          {projectName && <p style={{ color: '#94a3b8', margin: '4px 0 0', fontSize: 13 }}>Projeto: <strong>{projectName}</strong></p>}
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', margin: 0 }}>Classificação de Ocorrências</h2>
+          {projectName && <p style={{ color: '#64748b', margin: '4px 0 0', fontSize: 13 }}>Projeto: <strong>{projectName}</strong></p>}
         </div>
         <button 
           onClick={handleExportExcel}
@@ -152,24 +152,24 @@ export function OccurrencesTable({ facts, projectName, teams = [], onNavigateToR
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 24 }}>
-        <KpiCard label="Ocorrências" value={summary.total} color="#60a5fa" />
-        <KpiCard label="Horas Impactadas" value={NUM(summary.totalHours)} color="#fbbf24" />
-        <KpiCard label="Potencial Pleito / Contratante" value={summary.pleitos} color="#f87171" />
-        <KpiCard label="Risco Contratada" value={summary.riscos} color="#f59e0b" />
+        <KpiCard label="Ocorrências" value={summary.total} color="#2563eb" />
+        <KpiCard label="Horas Impactadas" value={NUM(summary.totalHours)} color="#b45309" />
+        <KpiCard label="Potencial Pleito / Contratante" value={summary.pleitos} color="#dc2626" />
+        <KpiCard label="Risco Contratada" value={summary.riscos} color="#b45309" />
       </div>
 
       {chartData.length > 0 && (
-        <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12, padding: '20px', marginBottom: 24, height: 350 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: '#e2e8f0', margin: '0 0 16px 0' }}>Impacto por Categoria de Ocorrência</h3>
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '20px', marginBottom: 24, height: 350 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: '#1e293b', margin: '0 0 16px 0' }}>Impacto por Categoria de Ocorrência</h3>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
               <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
               <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}h`} />
               <Tooltip 
-                cursor={{ fill: 'rgba(255,255,255,0.05)' }} 
-                contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, color: '#f1f5f9' }}
-                itemStyle={{ color: '#60a5fa' }}
+                cursor={{ fill: '#f1f5f9' }} 
+                contentStyle={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 8, color: '#0f172a' }}
+                itemStyle={{ color: '#2563eb' }}
                 formatter={(value: number) => [`${value}h`, 'Impacto']}
               />
               <Bar dataKey="hours" fill="#60a5fa" radius={[4, 4, 0, 0]} barSize={40} />
@@ -182,7 +182,7 @@ export function OccurrencesTable({ facts, projectName, teams = [], onNavigateToR
         <select
           value={eligibilityFilter}
           onChange={e => setEligibilityFilter(e.target.value as any)}
-          style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff' }}
+          style={{ padding: '8px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, color: '#0f172a' }}
         >
           <option value="ALL">Todas as Elegibilidades</option>
           {Object.entries(ELIGIBILITY_CONFIG).map(([k, v]) => (
@@ -191,9 +191,9 @@ export function OccurrencesTable({ facts, projectName, teams = [], onNavigateToR
         </select>
       </div>
 
-      <div style={{ overflowX: 'auto', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)' }}>
+      <div style={{ overflowX: 'auto', borderRadius: 12, border: '1px solid #e2e8f0' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead style={{ background: 'rgba(255,255,255,0.03)' }}>
+          <thead style={{ background: '#ffffff' }}>
             <tr>
               <th style={thStyle} onClick={() => handleSort('date')}>Data <SortIcon k="date" /></th>
               <th style={thStyle} onClick={() => handleSort('description')}>Descrição <SortIcon k="description" /></th>
@@ -208,10 +208,10 @@ export function OccurrencesTable({ facts, projectName, teams = [], onNavigateToR
             {sorted.map((f, i) => {
               const st = ELIGIBILITY_CONFIG[f.eligibility || 'Não Classificado'] || ELIGIBILITY_CONFIG['Não Classificado'];
               return (
-                <tr key={i} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
-                  <td style={{ ...tdStyle, color: '#94a3b8', whiteSpace: 'nowrap' }}>{f.date}</td>
-                  <td style={{ ...tdStyle, color: '#e2e8f0', maxWidth: 200, whiteSpace: 'normal' }}>{f.description}</td>
-                  <td style={{ ...tdStyle, color: '#cbd5e1', maxWidth: 160, whiteSpace: 'normal' }}>
+                <tr key={i} style={{ background: i % 2 === 0 ? 'transparent' : '#f8fafc' }}>
+                  <td style={{ ...tdStyle, color: '#64748b', whiteSpace: 'nowrap' }}>{f.date}</td>
+                  <td style={{ ...tdStyle, color: '#1e293b', maxWidth: 200, whiteSpace: 'normal' }}>{f.description}</td>
+                  <td style={{ ...tdStyle, color: '#334155', maxWidth: 160, whiteSpace: 'normal' }}>
                     <input 
                       type="text" 
                       defaultValue={f.category || ''} 
@@ -228,13 +228,13 @@ export function OccurrencesTable({ facts, projectName, teams = [], onNavigateToR
                       }}
                       style={{
                          width: '100%', padding: '6px 8px', borderRadius: '6px',
-                         background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                         color: '#fff', fontSize: '13px'
+                         background: '#f8fafc', border: '1px solid #e2e8f0',
+                         color: '#0f172a', fontSize: '13px'
                       }}
                     />
                   </td>
-                  <td style={{ ...tdStyle, color: '#94a3b8' }}>{teams.find(t => t.id === f.teamId)?.name || f.teamId}</td>
-                  <td style={{ ...tdStyle, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: f.impactHours > 0 ? '#fbbf24' : '#64748b' }}>
+                  <td style={{ ...tdStyle, color: '#64748b' }}>{teams.find(t => t.id === f.teamId)?.name || f.teamId}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: f.impactHours > 0 ? '#b45309' : '#64748b' }}>
                     {f.status === 'SEM_DURACAO_EXPLICITA' ? '—' : NUM(f.impactHours)}
                   </td>
                   <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
@@ -259,7 +259,7 @@ export function OccurrencesTable({ facts, projectName, teams = [], onNavigateToR
                   <td style={{ ...tdStyle, textAlign: 'center' }}>
                     <button 
                       onClick={() => onNavigateToRDO && onNavigateToRDO(f.rdoId, f.teamId)}
-                      style={{ padding: '4px 12px', background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 6, color: '#60a5fa', fontSize: 11, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
+                      style={{ padding: '4px 12px', background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 6, color: '#2563eb', fontSize: 11, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
                     >
                       Ir para RDO
                     </button>

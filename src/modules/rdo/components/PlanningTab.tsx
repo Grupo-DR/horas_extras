@@ -246,27 +246,27 @@ export const PlanningTab: React.FC<PlanningTabProps> = ({
 
       {/* ── Header ── */}
       <div className="flex flex-col gap-1">
-        <h2 className="text-3xl font-bold text-white tracking-tight">Planejamento</h2>
-        <p className="text-slate-400 text-sm">Dados contratuais e planejamento diário por equipe</p>
+        <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Planejamento</h2>
+        <p className="text-slate-500 text-sm">Dados contratuais e planejamento diário por equipe</p>
       </div>
 
       {/* ── Project Selector (shared) ── */}
-      <div className="glass-panel p-4 rounded-2xl border border-white/5 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-        <Building2 className="w-4 h-4 text-slate-400 flex-shrink-0" />
+      <div className="glass-panel p-4 rounded-2xl border border-slate-200 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+        <Building2 className="w-4 h-4 text-slate-500 flex-shrink-0" />
         <select
           value={selectedProjectId}
           onChange={e => { setSelectedProjectId(e.target.value); setEdits(new Map()); }}
-          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none appearance-none cursor-pointer transition-all"
+          className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:ring-2 focus:ring-blue-500/50 outline-none appearance-none cursor-pointer transition-all"
         >
-          {projects.length === 0 && <option value="" className="bg-slate-900 text-white">Nenhuma obra cadastrada</option>}
+          {projects.length === 0 && <option value="" className="bg-white text-slate-900">Nenhuma obra cadastrada</option>}
           {projects.map(p => (
-            <option key={p.id} value={p.id} className="bg-slate-900 text-white">{p.name}</option>
+            <option key={p.id} value={p.id} className="bg-white text-slate-900">{p.name}</option>
           ))}
         </select>
       </div>
 
       {/* ── Sub-tab navigation ── */}
-      <div className="flex gap-1 p-1 bg-white/[0.03] border border-white/5 rounded-2xl w-fit">
+      <div className="flex gap-1 p-1 bg-slate-50 border border-slate-200 rounded-2xl w-fit">
         {([
           ['CONTRACT_DATA', 'Dados do Contrato', FileText],
           ['DAILY_PLAN',    'Planejamento',       ClipboardList],
@@ -277,8 +277,8 @@ export const PlanningTab: React.FC<PlanningTabProps> = ({
             onClick={() => setSubTab(key)}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
               subTab === key
-                ? 'bg-white/10 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                ? 'bg-slate-100 text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
             }`}
           >
             <Icon className="w-4 h-4" />
@@ -309,23 +309,23 @@ export const PlanningTab: React.FC<PlanningTabProps> = ({
         <div className="space-y-6">
 
         {/* Controls */}
-        <div className="glass-panel p-5 rounded-2xl border border-white/5 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+        <div className="glass-panel p-5 rounded-2xl border border-slate-200 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
 
           {/* Period Navigator */}
-          <div className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-2.5 border border-white/10">
+          <div className="flex items-center gap-3 bg-slate-50 rounded-xl px-4 py-2.5 border border-slate-200">
             <button
               onClick={prevPeriod}
               disabled={!activePeriod || periods.findIndex(p => p.id === activePeriod.id) === 0}
-              className="p-1 text-slate-400 hover:text-white transition-colors rounded-lg hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed"
+              className="p-1 text-slate-500 hover:text-slate-900 transition-colors rounded-lg hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <div className="flex flex-col items-center min-w-[200px]">
-              <span className="text-sm font-semibold text-white capitalize text-center leading-tight">
+              <span className="text-sm font-semibold text-slate-900 capitalize text-center leading-tight">
                 {activePeriod ? activePeriod.name : 'Nenhum Período'}
               </span>
               {activePeriod && activePeriod.startDate && (
-                <span className="text-[10px] text-slate-400 font-medium">
+                <span className="text-[10px] text-slate-500 font-medium">
                   {new Date(activePeriod.startDate + 'T00:00:00').toLocaleDateString('pt-BR').slice(0, 5)} - {new Date(activePeriod.endDate + 'T00:00:00').toLocaleDateString('pt-BR').slice(0, 5)}
                 </span>
               )}
@@ -333,7 +333,7 @@ export const PlanningTab: React.FC<PlanningTabProps> = ({
             <button
               onClick={nextPeriod}
               disabled={!activePeriod || periods.findIndex(p => p.id === activePeriod.id) === periods.length - 1}
-              className="p-1 text-slate-400 hover:text-white transition-colors rounded-lg hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed"
+              className="p-1 text-slate-500 hover:text-slate-900 transition-colors rounded-lg hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -342,12 +342,12 @@ export const PlanningTab: React.FC<PlanningTabProps> = ({
           {/* Save button + status */}
           <div className="flex items-center gap-3 ml-auto">
             {saved && (
-              <span className="flex items-center gap-2 text-emerald-400 text-sm font-medium animate-fade-in">
+              <span className="flex items-center gap-2 text-emerald-600 text-sm font-medium animate-fade-in">
                 <CheckCircle2 className="w-4 h-4" /> Salvo com sucesso
               </span>
             )}
             {hasUnsaved && !saved && (
-              <span className="flex items-center gap-2 text-amber-400 text-xs font-medium">
+              <span className="flex items-center gap-2 text-amber-600 text-xs font-medium">
                 <AlertCircle className="w-3.5 h-3.5" />
                 Alterações não salvas
               </span>
@@ -357,8 +357,8 @@ export const PlanningTab: React.FC<PlanningTabProps> = ({
               disabled={!hasUnsaved || saving}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
                 hasUnsaved
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-lg shadow-blue-600/20 hover:shadow-blue-500/30'
-                  : 'bg-white/5 text-slate-500 cursor-not-allowed'
+                  ? 'bg-[#0b1d4f] hover:bg-[#13296b] text-white shadow-lg shadow-blue-600/20 hover:shadow-blue-500/30'
+                  : 'bg-slate-50 text-slate-500 cursor-not-allowed'
               }`}
             >
               <Save className="w-4 h-4" />
@@ -368,11 +368,11 @@ export const PlanningTab: React.FC<PlanningTabProps> = ({
 
           {/* Summary */}
           {projectTeams.length > 0 && (
-            <div className="flex items-center gap-2 text-xs text-slate-400">
+            <div className="flex items-center gap-2 text-xs text-slate-500">
               <Users className="w-3.5 h-3.5" />
               {projectTeams.length} equipe{projectTeams.length !== 1 ? 's' : ''}
-              <span className="text-slate-600">•</span>
-              <span className="font-mono text-white font-semibold">
+              <span className="text-slate-500">•</span>
+              <span className="font-mono text-slate-900 font-semibold">
                 {grandTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 })}
               </span>
               total no mês
@@ -382,8 +382,8 @@ export const PlanningTab: React.FC<PlanningTabProps> = ({
 
       {/* ── Grid ── */}
       {projectTeams.length === 0 ? (
-        <div className="glass-panel p-12 rounded-3xl border border-white/5 text-center bg-white/[0.02] border-dashed">
-          <Users className="w-12 h-12 text-slate-700 mx-auto mb-4 opacity-30" />
+        <div className="glass-panel p-12 rounded-3xl border border-slate-200 text-center bg-slate-50 border-dashed">
+          <Users className="w-12 h-12 text-slate-400 mx-auto mb-4 opacity-30" />
           <p className="text-slate-500 font-medium">
             {projects.length === 0
               ? 'Cadastre obras e equipes antes de planejar.'
@@ -391,28 +391,28 @@ export const PlanningTab: React.FC<PlanningTabProps> = ({
           </p>
         </div>
       ) : periods.length === 0 ? (
-        <div className="glass-panel p-12 rounded-3xl border border-white/5 text-center bg-white/[0.02] border-dashed">
-          <Calendar className="w-12 h-12 text-slate-700 mx-auto mb-4 opacity-30" />
+        <div className="glass-panel p-12 rounded-3xl border border-slate-200 text-center bg-slate-50 border-dashed">
+          <Calendar className="w-12 h-12 text-slate-400 mx-auto mb-4 opacity-30" />
           <p className="text-slate-500 font-medium">Nenhum Período de Medição cadastrado.</p>
-          <p className="text-slate-600 text-sm mt-2">Vá até a aba "Dados do Contrato" e adicione um período para liberar o grid diário.</p>
+          <p className="text-slate-500 text-sm mt-2">Vá até a aba "Dados do Contrato" e adicione um período para liberar o grid diário.</p>
         </div>
       ) : (
-        <div className="glass-panel rounded-3xl border border-white/5 overflow-hidden shadow-2xl shadow-black/20">
+        <div className="glass-panel rounded-3xl border border-slate-200 overflow-hidden shadow-2xl shadow-slate-200/60">
           <div className="overflow-x-auto custom-scrollbar">
             <table className="border-collapse text-left" style={{ minWidth: 900 }}>
               <thead>
-                <tr className="border-b border-white/10">
+                <tr className="border-b border-slate-200">
                   {/* Equipe col */}
-                  <th className="sticky left-0 z-20 py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-900/95 whitespace-nowrap border-r border-white/5 min-w-[160px]">
+                  <th className="sticky left-0 z-20 py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-white whitespace-nowrap border-r border-slate-200 min-w-[160px]">
                     Equipe
                   </th>
-                  <th className="py-3 px-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-900/95 whitespace-nowrap border-r border-white/5 w-[100px] text-center">
+                  <th className="py-3 px-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-white whitespace-nowrap border-r border-slate-200 w-[100px] text-center">
                     Budget (R$)
                   </th>
-                  <th className="py-3 px-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-900/95 whitespace-nowrap border-r border-white/5 w-[100px] text-center">
+                  <th className="py-3 px-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-white whitespace-nowrap border-r border-slate-200 w-[100px] text-center">
                     Forecast (R$)
                   </th>
-                  <th className="py-3 px-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-900/95 whitespace-nowrap border-r border-white/5 min-w-[80px]">
+                  <th className="py-3 px-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-white whitespace-nowrap border-r border-slate-200 min-w-[80px]">
                     Tipo
                   </th>
                   {/* Day cols */}
@@ -425,25 +425,25 @@ export const PlanningTab: React.FC<PlanningTabProps> = ({
                     return (
                       <th
                         key={isoDate}
-                        className={`py-2 px-1 text-center whitespace-nowrap border-r border-white/5 min-w-[72px] ${
+                        className={`py-2 px-1 text-center whitespace-nowrap border-r border-slate-200 min-w-[72px] ${
                           isToday
-                            ? 'bg-blue-600/20 text-blue-300'
+                            ? 'bg-blue-600/20 text-blue-700'
                             : isWeekend
-                            ? 'bg-slate-800/60 text-slate-500'
-                            : 'bg-slate-900/80 text-slate-400'
+                            ? 'bg-slate-50 text-slate-500'
+                            : 'bg-white text-slate-500'
                         }`}
                       >
                         <div className="text-[10px] font-bold uppercase tracking-widest">
                           {WEEKDAYS[dow]}
                         </div>
-                        <div className={`text-xs font-bold mt-0.5 ${isToday ? 'text-blue-300' : 'text-slate-300'}`}>
+                        <div className={`text-xs font-bold mt-0.5 ${isToday ? 'text-blue-700' : 'text-slate-700'}`}>
                           {pad(dayNum)}/{pad(dt.getMonth() + 1)}
                         </div>
                       </th>
                     );
                   })}
                   {/* Total col */}
-                  <th className="py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-800/80 text-right whitespace-nowrap border-l border-white/10 min-w-[120px]">
+                  <th className="py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-slate-50 text-right whitespace-nowrap border-l border-slate-200 min-w-[120px]">
                     Total
                   </th>
                 </tr>
@@ -465,58 +465,58 @@ export const PlanningTab: React.FC<PlanningTabProps> = ({
                   const dailyBudget = weekdaysCount > 0 ? teamBudget / weekdaysCount : 0;
                   const teamForecast = forecastValue;
                   const dailyForecast = weekdaysCount > 0 ? teamForecast / weekdaysCount : 0;
-                  const bgBase = tIdx % 2 === 0 ? 'bg-slate-900/20' : 'bg-slate-900/40';
+                  const bgBase = tIdx % 2 === 0 ? 'bg-white' : 'bg-white';
 
                   return (
                     <React.Fragment key={team.id}>
                       {/* Budget Row */}
-                      <tr className={`border-b border-white/5 transition-colors ${bgBase}`}>
-                        <td rowSpan={3} className="sticky left-0 z-10 py-2 px-4 text-xs font-semibold text-slate-200 bg-slate-900 border-r border-white/5 whitespace-nowrap align-middle">
+                      <tr className={`border-b border-slate-200 transition-colors ${bgBase}`}>
+                        <td rowSpan={3} className="sticky left-0 z-10 py-2 px-4 text-xs font-semibold text-slate-800 bg-white border-r border-slate-200 whitespace-nowrap align-middle">
                           {team.name}
                         </td>
-                        <td rowSpan={3} className="py-2 px-2 border-r border-white/5 align-middle text-center">
-                          <input type="text" inputMode="numeric" defaultValue={teamBudget !== 0 ? fmtBRL(teamBudget) : ''} onBlur={e => handleUpdateAllocation(team.id, 'budgetValue', parseBRL(e.target.value))} className="w-20 bg-black/20 border border-white/10 rounded px-1 py-1 text-emerald-400 text-xs text-center outline-none focus:border-emerald-500 placeholder:text-slate-600" placeholder="—" />
+                        <td rowSpan={3} className="py-2 px-2 border-r border-slate-200 align-middle text-center">
+                          <input type="text" inputMode="numeric" defaultValue={teamBudget !== 0 ? fmtBRL(teamBudget) : ''} onBlur={e => handleUpdateAllocation(team.id, 'budgetValue', parseBRL(e.target.value))} className="w-20 bg-slate-50 border border-slate-200 rounded px-1 py-1 text-emerald-600 text-xs text-center outline-none focus:border-emerald-500 placeholder:text-slate-500" placeholder="—" />
                         </td>
-                        <td rowSpan={3} className="py-2 px-2 border-r border-white/5 align-middle text-center">
-                          <input type="text" inputMode="numeric" defaultValue={teamForecast !== 0 ? fmtBRL(teamForecast) : ''} onBlur={e => handleUpdateAllocation(team.id, 'forecastValue', parseBRL(e.target.value))} className="w-20 bg-black/20 border border-white/10 rounded px-1 py-1 text-blue-400 text-xs text-center outline-none focus:border-blue-500 placeholder:text-slate-600" placeholder="—" />
+                        <td rowSpan={3} className="py-2 px-2 border-r border-slate-200 align-middle text-center">
+                          <input type="text" inputMode="numeric" defaultValue={teamForecast !== 0 ? fmtBRL(teamForecast) : ''} onBlur={e => handleUpdateAllocation(team.id, 'forecastValue', parseBRL(e.target.value))} className="w-20 bg-slate-50 border border-slate-200 rounded px-1 py-1 text-blue-600 text-xs text-center outline-none focus:border-blue-500 placeholder:text-slate-500" placeholder="—" />
                         </td>
-                        <td className="py-1 px-2 text-[10px] text-slate-500 border-r border-white/5 uppercase tracking-wider font-semibold">
+                        <td className="py-1 px-2 text-[10px] text-slate-500 border-r border-slate-200 uppercase tracking-wider font-semibold">
                           Budget
                         </td>
                         {daysISO.map(isoDate => {
                            const isWeekend = [0, 6].includes(new Date(isoDate + 'T00:00:00').getDay());
                            return (
-                             <td key={isoDate} className="py-1 px-1 border-r border-white/5 text-emerald-400/50 text-[10px] text-right">
+                             <td key={isoDate} className="py-1 px-1 border-r border-slate-200 text-emerald-600/50 text-[10px] text-right">
                                {isWeekend ? '—' : fmtBRL(dailyBudget)}
                              </td>
                            );
                         })}
-                        <td className="py-1 px-4 text-[10px] text-right font-mono font-semibold text-emerald-400/70 border-l border-white/10 whitespace-nowrap bg-slate-800/30">
+                        <td className="py-1 px-4 text-[10px] text-right font-mono font-semibold text-emerald-600/70 border-l border-slate-200 whitespace-nowrap bg-slate-50">
                           {fmtBRL(teamBudget)}
                         </td>
                       </tr>
 
                       {/* Forecast Row */}
-                      <tr className={`border-b border-white/5 transition-colors ${bgBase}`}>
-                        <td className="py-1 px-2 text-[10px] text-slate-500 border-r border-white/5 uppercase tracking-wider font-semibold">
+                      <tr className={`border-b border-slate-200 transition-colors ${bgBase}`}>
+                        <td className="py-1 px-2 text-[10px] text-slate-500 border-r border-slate-200 uppercase tracking-wider font-semibold">
                           Forecast
                         </td>
                         {daysISO.map(isoDate => {
                            const isWeekend = [0, 6].includes(new Date(isoDate + 'T00:00:00').getDay());
                            return (
-                             <td key={isoDate} className="py-1 px-1 border-r border-white/5 text-blue-400/50 text-[10px] text-right">
+                             <td key={isoDate} className="py-1 px-1 border-r border-slate-200 text-blue-600/50 text-[10px] text-right">
                                {isWeekend ? '—' : fmtBRL(dailyForecast)}
                              </td>
                            );
                         })}
-                        <td className="py-1 px-4 text-[10px] text-right font-mono font-semibold text-blue-400/70 border-l border-white/10 whitespace-nowrap bg-slate-800/30">
+                        <td className="py-1 px-4 text-[10px] text-right font-mono font-semibold text-blue-600/70 border-l border-slate-200 whitespace-nowrap bg-slate-50">
                           {fmtBRL(teamForecast)}
                         </td>
                       </tr>
 
                       {/* Planejado Row */}
-                      <tr className={`border-b border-white/5 transition-colors ${bgBase} hover:bg-slate-800/30`}>
-                        <td className="py-1 px-2 text-[10px] text-amber-400/80 border-r border-white/5 uppercase tracking-wider font-semibold">
+                      <tr className={`border-b border-slate-200 transition-colors ${bgBase} hover:bg-slate-50`}>
+                        <td className="py-1 px-2 text-[10px] text-amber-600/80 border-r border-slate-200 uppercase tracking-wider font-semibold">
                           Planejado
                         </td>
                         {daysISO.map(isoDate => {
@@ -530,8 +530,8 @@ export const PlanningTab: React.FC<PlanningTabProps> = ({
                           return (
                             <td
                               key={isoDate}
-                              className={`py-1 px-1 border-r border-white/5 ${
-                                isWeekend ? 'bg-slate-800/30' : ''
+                              className={`py-1 px-1 border-r border-slate-200 ${
+                                isWeekend ? 'bg-slate-50' : ''
                               } ${isDirty ? 'bg-amber-500/5' : ''}`}
                             >
                               <input
@@ -542,18 +542,18 @@ export const PlanningTab: React.FC<PlanningTabProps> = ({
                                 placeholder="—"
                                 onChange={e => handleCellChange(team.id, isoDate, e.target.value)}
                                 className={`w-full text-right text-xs px-1.5 py-1.5 rounded-lg outline-none transition-all bg-transparent
-                                  placeholder:text-slate-700
+                                  placeholder:text-slate-400
                                   focus:bg-blue-600/10 focus:ring-1 focus:ring-blue-500/40
-                                  ${isDirty ? 'text-amber-300 ring-1 ring-amber-400/30' : 'text-slate-300 hover:bg-white/5'}
+                                  ${isDirty ? 'text-amber-700 ring-1 ring-amber-400/30' : 'text-slate-700 hover:bg-slate-50'}
                                 `}
                               />
                             </td>
                           );
                         })}
-                        <td className="py-2 px-4 text-xs text-right font-mono font-semibold text-white border-l border-white/10 whitespace-nowrap bg-slate-800/30">
+                        <td className="py-2 px-4 text-xs text-right font-mono font-semibold text-slate-900 border-l border-slate-200 whitespace-nowrap bg-slate-50">
                           {teamTotal > 0
                             ? teamTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 })
-                            : <span className="text-slate-600">R$ -</span>
+                            : <span className="text-slate-500">R$ -</span>
                           }
                         </td>
                       </tr>
@@ -564,25 +564,25 @@ export const PlanningTab: React.FC<PlanningTabProps> = ({
 
               {/* Totals footer */}
               <tfoot>
-                <tr className="border-t border-white/10 bg-slate-800/60">
-                  <td colSpan={4} className="sticky left-0 z-10 py-2.5 px-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-800/80 border-r border-white/5 whitespace-nowrap text-right">
+                <tr className="border-t border-slate-200 bg-slate-50">
+                  <td colSpan={4} className="sticky left-0 z-10 py-2.5 px-4 text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-slate-50 border-r border-slate-200 whitespace-nowrap text-right">
                     Total diário
                   </td>
                   {dayTotals.map(({ day, total }) => (
-                    <td key={day} className="py-2.5 px-1 text-center border-r border-white/5">
+                    <td key={day} className="py-2.5 px-1 text-center border-r border-slate-200">
                       {total > 0 ? (
-                        <span className="text-[10px] font-mono font-bold text-emerald-400 block">
+                        <span className="text-[10px] font-mono font-bold text-emerald-600 block">
                           {(total / 1000).toFixed(0)}k
                         </span>
                       ) : (
-                        <span className="text-slate-700 text-[10px]">—</span>
+                        <span className="text-slate-400 text-[10px]">—</span>
                       )}
                     </td>
                   ))}
-                  <td className="py-2.5 px-4 text-right text-xs font-mono font-bold text-white border-l border-white/10 whitespace-nowrap bg-slate-800/60">
+                  <td className="py-2.5 px-4 text-right text-xs font-mono font-bold text-slate-900 border-l border-slate-200 whitespace-nowrap bg-slate-50">
                     {grandTotal > 0
                       ? grandTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 })
-                      : <span className="text-slate-600">R$ -</span>
+                      : <span className="text-slate-500">R$ -</span>
                     }
                   </td>
                 </tr>
@@ -591,14 +591,14 @@ export const PlanningTab: React.FC<PlanningTabProps> = ({
           </div>
 
           {/* Footer hint */}
-          <div className="px-6 py-3 border-t border-white/5 bg-slate-900/40 flex items-center justify-between">
-            <span className="text-[10px] text-slate-600 uppercase tracking-widest">
+          <div className="px-6 py-3 border-t border-slate-200 bg-white flex items-center justify-between">
+            <span className="text-[10px] text-slate-500 uppercase tracking-widest">
               Valores em R$ — separe milhares com ponto (ex: 50.000)
             </span>
             {hasUnsaved && (
               <button
                 onClick={handleSave}
-                className="flex items-center gap-2 px-4 py-1.5 bg-blue-600/80 hover:bg-blue-500/80 text-white text-xs font-semibold rounded-lg transition-all"
+                className="flex items-center gap-2 px-4 py-1.5 bg-blue-600/80 hover:bg-blue-500/80 text-slate-900 text-xs font-semibold rounded-lg transition-all"
               >
                 <Save className="w-3.5 h-3.5" />
                 Salvar alterações

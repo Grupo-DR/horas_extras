@@ -98,13 +98,13 @@ const AddendumModal: React.FC<AddendumModalProps> = ({ onConfirm, onClose }) => 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl mx-4">
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 w-full max-w-md shadow-2xl mx-4">
         <div className="flex items-center justify-between mb-5">
-          <h3 className="text-white font-bold text-lg flex items-center gap-2">
-            <FileText className="w-5 h-5 text-blue-400" />
+          <h3 className="text-slate-900 font-bold text-lg flex items-center gap-2">
+            <FileText className="w-5 h-5 text-blue-600" />
             Novo Aditivo Contratual
           </h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-900 transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -112,7 +112,7 @@ const AddendumModal: React.FC<AddendumModalProps> = ({ onConfirm, onClose }) => 
         <div className="space-y-4">
           {/* Tipo */}
           <div>
-            <label className="text-xs text-slate-400 uppercase tracking-widest block mb-2">Tipo de Aditivo</label>
+            <label className="text-xs text-slate-500 uppercase tracking-widest block mb-2">Tipo de Aditivo</label>
             <div className="grid grid-cols-3 gap-2">
               {([['TIME', 'Prazo'], ['VALUE', 'Valor'], ['TIME_AND_VALUE', 'Prazo + Valor']] as [AddendumType, string][]).map(([v, label]) => (
                 <button
@@ -120,8 +120,8 @@ const AddendumModal: React.FC<AddendumModalProps> = ({ onConfirm, onClose }) => 
                   onClick={() => setType(v)}
                   className={`py-2 px-3 rounded-xl text-xs font-semibold transition-all border ${
                     type === v
-                      ? 'bg-blue-600/20 border-blue-500/50 text-blue-300'
-                      : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
+                      ? 'bg-blue-600/20 border-blue-500/50 text-blue-700'
+                      : 'bg-slate-50 border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
                   {label}
@@ -132,27 +132,27 @@ const AddendumModal: React.FC<AddendumModalProps> = ({ onConfirm, onClose }) => 
 
           {/* Descrição */}
           <div>
-            <label className="text-xs text-slate-400 uppercase tracking-widest block mb-2">Descrição</label>
+            <label className="text-xs text-slate-500 uppercase tracking-widest block mb-2">Descrição</label>
             <input
               type="text"
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="Ex: Aditivo de prazo referente ao período chuvoso"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:ring-2 focus:ring-blue-500/50 outline-none"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500/50 outline-none"
             />
           </div>
 
           {/* Dias */}
           {(type === 'TIME' || type === 'TIME_AND_VALUE') && (
             <div>
-              <label className="text-xs text-slate-400 uppercase tracking-widest block mb-2">Dias Adicionados</label>
+              <label className="text-xs text-slate-500 uppercase tracking-widest block mb-2">Dias Adicionados</label>
               <input
                 type="number"
                 min="1"
                 value={addedDays}
                 onChange={e => setAddedDays(e.target.value)}
                 placeholder="Ex: 30"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:ring-2 focus:ring-blue-500/50 outline-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500/50 outline-none"
               />
             </div>
           )}
@@ -160,26 +160,26 @@ const AddendumModal: React.FC<AddendumModalProps> = ({ onConfirm, onClose }) => 
           {/* Valor */}
           {(type === 'VALUE' || type === 'TIME_AND_VALUE') && (
             <div>
-              <label className="text-xs text-slate-400 uppercase tracking-widest block mb-2">Valor Adicional (R$)</label>
+              <label className="text-xs text-slate-500 uppercase tracking-widest block mb-2">Valor Adicional (R$)</label>
               <input
                 type="text"
                 inputMode="numeric"
                 value={addedValue}
                 onChange={e => setAddedValue(e.target.value)}
                 placeholder="Ex: 150.000"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:ring-2 focus:ring-blue-500/50 outline-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500/50 outline-none"
               />
             </div>
           )}
 
           {/* Data de aprovação */}
           <div>
-            <label className="text-xs text-slate-400 uppercase tracking-widest block mb-2">Data de Aprovação</label>
+            <label className="text-xs text-slate-500 uppercase tracking-widest block mb-2">Data de Aprovação</label>
             <input
               type="date"
               value={approvedAt}
               onChange={e => setApprovedAt(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:ring-2 focus:ring-blue-500/50 outline-none"
             />
           </div>
         </div>
@@ -187,7 +187,7 @@ const AddendumModal: React.FC<AddendumModalProps> = ({ onConfirm, onClose }) => 
         <div className="flex gap-3 mt-6">
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 text-sm font-semibold transition-all"
+            className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-50 text-sm font-semibold transition-all"
           >
             Cancelar
           </button>
@@ -196,8 +196,8 @@ const AddendumModal: React.FC<AddendumModalProps> = ({ onConfirm, onClose }) => 
             disabled={!isValid}
             className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
               isValid
-                ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-500 hover:to-blue-400'
-                : 'bg-white/5 text-slate-600 cursor-not-allowed'
+                ? 'bg-[#0b1d4f] hover:bg-[#13296b] text-white hover:from-blue-500 hover:to-blue-400'
+                : 'bg-slate-50 text-slate-500 cursor-not-allowed'
             }`}
           >
             Confirmar Aditivo
@@ -454,15 +454,15 @@ export const ContractDataTab: React.FC<ContractDataTabProps> = ({
   };
 
   const addendumTypeBadgeColor = (type: AddendumType) => {
-    if (type === 'TIME') return 'bg-violet-500/15 text-violet-300 border-violet-500/30';
-    if (type === 'VALUE') return 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
-    return 'bg-amber-500/15 text-amber-300 border-amber-500/30';
+    if (type === 'TIME') return 'bg-violet-500/15 text-violet-700 border-violet-500/30';
+    if (type === 'VALUE') return 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30';
+    return 'bg-amber-500/15 text-amber-700 border-amber-500/30';
   };
 
   if (!project) {
     return (
-      <div className="glass-panel p-12 rounded-3xl border border-white/5 text-center bg-white/[0.02] border-dashed">
-        <Info className="w-12 h-12 text-slate-700 mx-auto mb-4 opacity-30" />
+      <div className="glass-panel p-12 rounded-3xl border border-slate-200 text-center bg-slate-50 border-dashed">
+        <Info className="w-12 h-12 text-slate-400 mx-auto mb-4 opacity-30" />
         <p className="text-slate-500 font-medium">Selecione uma obra para ver os dados do contrato.</p>
       </div>
     );
@@ -475,12 +475,12 @@ export const ContractDataTab: React.FC<ContractDataTabProps> = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {saved && (
-            <span className="flex items-center gap-2 text-emerald-400 text-sm font-medium animate-fade-in">
+            <span className="flex items-center gap-2 text-emerald-600 text-sm font-medium animate-fade-in">
               <CheckCircle2 className="w-4 h-4" /> Salvo com sucesso
             </span>
           )}
           {isDirty && !saved && (
-            <span className="flex items-center gap-2 text-amber-400 text-xs font-medium">
+            <span className="flex items-center gap-2 text-amber-600 text-xs font-medium">
               <AlertCircle className="w-3.5 h-3.5" /> Alterações não salvas
             </span>
           )}
@@ -490,8 +490,8 @@ export const ContractDataTab: React.FC<ContractDataTabProps> = ({
           disabled={!isDirty || saving}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
             isDirty
-              ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-lg shadow-blue-600/20'
-              : 'bg-white/5 text-slate-500 cursor-not-allowed'
+              ? 'bg-[#0b1d4f] hover:bg-[#13296b] text-white shadow-lg shadow-blue-600/20'
+              : 'bg-slate-50 text-slate-500 cursor-not-allowed'
           }`}
         >
           <Save className="w-4 h-4" />
@@ -500,16 +500,16 @@ export const ContractDataTab: React.FC<ContractDataTabProps> = ({
       </div>
 
       {/* ── Section A: Informações Gerais ── */}
-      <div className="glass-panel rounded-2xl border border-white/5 p-6 space-y-5">
-        <h3 className="text-white font-bold text-base flex items-center gap-2">
-          <DollarSign className="w-5 h-5 text-emerald-400" />
+      <div className="glass-panel rounded-2xl border border-slate-200 p-6 space-y-5">
+        <h3 className="text-slate-900 font-bold text-base flex items-center gap-2">
+          <DollarSign className="w-5 h-5 text-emerald-600" />
           Informações Gerais do Contrato
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Valor contratual original */}
           <div>
-            <label className="text-xs text-slate-400 uppercase tracking-widest block mb-2">
+            <label className="text-xs text-slate-500 uppercase tracking-widest block mb-2">
               Valor Original do Contrato (R$)
             </label>
             <input
@@ -518,33 +518,33 @@ export const ContractDataTab: React.FC<ContractDataTabProps> = ({
               value={contractValue}
               onChange={e => { setContractValue(e.target.value); markDirty(); }}
               placeholder="Ex: 2.500.000"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:ring-2 focus:ring-blue-500/50 outline-none"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500/50 outline-none"
             />
           </div>
 
           {/* Data início */}
           <div>
-            <label className="text-xs text-slate-400 uppercase tracking-widest block mb-2">
+            <label className="text-xs text-slate-500 uppercase tracking-widest block mb-2">
               Data de Início
             </label>
             <input
               type="date"
               value={startDate}
               onChange={e => { setStartDate(e.target.value); markDirty(); }}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:ring-2 focus:ring-blue-500/50 outline-none"
             />
           </div>
 
           {/* Data término original */}
           <div>
-            <label className="text-xs text-slate-400 uppercase tracking-widest block mb-2">
+            <label className="text-xs text-slate-500 uppercase tracking-widest block mb-2">
               Término Original
             </label>
             <input
               type="date"
               value={endDate}
               onChange={e => { setEndDate(e.target.value); markDirty(); }}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:ring-2 focus:ring-blue-500/50 outline-none"
             />
           </div>
         </div>
@@ -552,23 +552,23 @@ export const ContractDataTab: React.FC<ContractDataTabProps> = ({
         {/* KPI cards */}
         {startDate && endDate && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-            <div className="bg-white/[0.03] border border-white/5 rounded-xl p-4">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
               <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">Prazo Original</p>
-              <p className="text-xl font-bold text-white">{originalDuration} <span className="text-sm text-slate-400 font-normal">dias</span></p>
+              <p className="text-xl font-bold text-slate-900">{originalDuration} <span className="text-sm text-slate-500 font-normal">dias</span></p>
             </div>
-            <div className="bg-white/[0.03] border border-white/5 rounded-xl p-4">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
               <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">Prazo Total (c/ aditivos)</p>
-              <p className={`text-xl font-bold ${totalAddedDays > 0 ? 'text-amber-300' : 'text-white'}`}>
-                {adjustedDuration} <span className="text-sm text-slate-400 font-normal">dias</span>
+              <p className={`text-xl font-bold ${totalAddedDays > 0 ? 'text-amber-700' : 'text-slate-900'}`}>
+                {adjustedDuration} <span className="text-sm text-slate-500 font-normal">dias</span>
               </p>
             </div>
-            <div className="bg-white/[0.03] border border-white/5 rounded-xl p-4">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
               <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">Valor Original</p>
-              <p className="text-xl font-bold text-white">{fmtBRL(parseBRL(contractValue))}</p>
+              <p className="text-xl font-bold text-slate-900">{fmtBRL(parseBRL(contractValue))}</p>
             </div>
-            <div className="bg-white/[0.03] border border-white/5 rounded-xl p-4">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
               <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">Valor Total (c/ aditivos)</p>
-              <p className={`text-xl font-bold ${totalAddedValue > 0 ? 'text-emerald-300' : 'text-white'}`}>
+              <p className={`text-xl font-bold ${totalAddedValue > 0 ? 'text-emerald-700' : 'text-slate-900'}`}>
                 {fmtBRL(totalContractValue)}
               </p>
             </div>
@@ -577,7 +577,7 @@ export const ContractDataTab: React.FC<ContractDataTabProps> = ({
 
         {/* Adjusted end date hint */}
         {totalAddedDays > 0 && adjustedEndDate && (
-          <div className="flex items-center gap-2 text-xs text-amber-400 bg-amber-400/5 border border-amber-400/20 rounded-xl px-4 py-2.5">
+          <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-400/5 border border-amber-400/20 rounded-xl px-4 py-2.5">
             <Clock className="w-4 h-4 flex-shrink-0" />
             <span>Término previsto (com aditivos de prazo): <strong>{new Date(adjustedEndDate + 'T00:00:00').toLocaleDateString('pt-BR')}</strong> — {totalAddedDays} dias adicionados</span>
           </div>
@@ -585,23 +585,23 @@ export const ContractDataTab: React.FC<ContractDataTabProps> = ({
       </div>
 
       {/* ── Section B: Budget & Forecast Mensal ── */}
-      <div className="glass-panel rounded-2xl border border-white/5 overflow-hidden">
-        <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
-          <h3 className="text-white font-bold text-base flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-blue-400" />
+      <div className="glass-panel rounded-2xl border border-slate-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+          <h3 className="text-slate-900 font-bold text-base flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-blue-600" />
             Budget & Forecast por Período
           </h3>
           <div className="flex items-center gap-2">
             <button
               onClick={handleAddNextPeriod}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-semibold border border-white/10 transition-all hover:border-white/20"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold border border-slate-200 transition-all hover:border-slate-300"
             >
               <Plus className="w-4 h-4" />
               Adicionar Próximo Mês
             </button>
             <button
               onClick={handleGeneratePeriods}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 text-sm font-semibold border border-blue-500/30 transition-all hover:border-blue-400/50"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-700 text-sm font-semibold border border-blue-500/30 transition-all hover:border-blue-400/50"
             >
               <Calendar className="w-4 h-4" />
               Gerar Meses do Contrato
@@ -613,29 +613,29 @@ export const ContractDataTab: React.FC<ContractDataTabProps> = ({
           <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-white/5">
-                  <th className="sticky left-0 z-10 py-3 px-5 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-900/95 whitespace-nowrap border-r border-white/5 min-w-[180px]">
+                <tr className="border-b border-slate-200">
+                  <th className="sticky left-0 z-10 py-3 px-5 text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-white whitespace-nowrap border-r border-slate-200 min-w-[180px]">
                     Período de Medição
                   </th>
-                  <th className="py-3 px-5 text-[10px] font-bold uppercase tracking-widest text-blue-400 bg-slate-900/80 whitespace-nowrap min-w-[160px]">
+                  <th className="py-3 px-5 text-[10px] font-bold uppercase tracking-widest text-blue-600 bg-white whitespace-nowrap min-w-[160px]">
                     Budget (R$)
                   </th>
-                  <th className="py-3 px-5 text-[10px] font-bold uppercase tracking-widest text-emerald-400 bg-slate-900/80 whitespace-nowrap min-w-[160px]">
+                  <th className="py-3 px-5 text-[10px] font-bold uppercase tracking-widest text-emerald-600 bg-white whitespace-nowrap min-w-[160px]">
                     Forecast (R$)
                   </th>
-                  <th className="py-3 px-5 text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-slate-900/80 whitespace-nowrap min-w-[160px]">
+                  <th className="py-3 px-5 text-[10px] font-bold uppercase tracking-widest text-amber-600 bg-white whitespace-nowrap min-w-[160px]">
                     Medição (R$)
                   </th>
-                  <th className="py-3 px-5 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-800/80 whitespace-nowrap min-w-[120px]">
+                  <th className="py-3 px-5 text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-slate-50 whitespace-nowrap min-w-[120px]">
                     Budget Acum.
                   </th>
-                  <th className="py-3 px-5 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-800/80 whitespace-nowrap min-w-[120px]">
+                  <th className="py-3 px-5 text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-slate-50 whitespace-nowrap min-w-[120px]">
                     Forecast Acum.
                   </th>
-                  <th className="py-3 px-5 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-800/80 whitespace-nowrap min-w-[120px]">
+                  <th className="py-3 px-5 text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-slate-50 whitespace-nowrap min-w-[120px]">
                     Medição Acum.
                   </th>
-                  <th className="py-3 px-5 text-[10px] bg-slate-800/80 w-10"></th>
+                  <th className="py-3 px-5 text-[10px] bg-slate-50 w-10"></th>
                 </tr>
               </thead>
               <tbody>
@@ -650,26 +650,26 @@ export const ContractDataTab: React.FC<ContractDataTabProps> = ({
                     return (
                       <tr
                         key={entry.id}
-                        className={`border-b border-white/5 hover:bg-white/[0.02] transition-colors ${
-                          idx % 2 === 0 ? 'bg-slate-900/10' : 'bg-slate-900/30'
+                        className={`border-b border-slate-200 hover:bg-slate-50 transition-colors ${
+                          idx % 2 === 0 ? 'bg-white' : 'bg-white'
                         }`}
                       >
-                        <td className="sticky left-0 z-10 py-2.5 px-5 text-sm font-medium text-slate-200 bg-inherit border-r border-white/5 whitespace-nowrap">
+                        <td className="sticky left-0 z-10 py-2.5 px-5 text-sm font-medium text-slate-800 bg-inherit border-r border-slate-200 whitespace-nowrap">
                           <div className="flex flex-col gap-1">
-                            <span className="capitalize font-bold text-white">{entry.name}</span>
+                            <span className="capitalize font-bold text-slate-900">{entry.name}</span>
                             <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-normal">
                                <input 
                                  type="date" 
                                  defaultValue={entry.startDate} 
                                  onBlur={e => handleCellChange(entry.id, 'startDate', e.target.value)}
-                                 className="bg-slate-950/50 border border-white/10 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all cursor-text text-slate-400 w-24"
+                                 className="bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all cursor-text text-slate-500 w-24"
                                />
                                <span>até</span>
                                <input 
                                  type="date" 
                                  defaultValue={entry.endDate} 
                                  onBlur={e => handleCellChange(entry.id, 'endDate', e.target.value)}
-                                 className="bg-slate-950/50 border border-white/10 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all cursor-text text-slate-400 w-24"
+                                 className="bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all cursor-text text-slate-500 w-24"
                                />
                             </div>
                           </div>
@@ -682,7 +682,7 @@ export const ContractDataTab: React.FC<ContractDataTabProps> = ({
                             defaultValue={entry.budget !== 0 ? fmtBRLInput(entry.budget) : ''}
                             placeholder="—"
                             onBlur={e => handleCellChange(entry.id, 'budget', e.target.value)}
-                            className="w-full bg-transparent text-sm text-slate-300 placeholder:text-slate-700 focus:bg-blue-600/10 focus:ring-1 focus:ring-blue-500/40 rounded-lg px-2 py-1.5 outline-none text-right transition-all hover:bg-white/5"
+                            className="w-full bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:bg-blue-600/10 focus:ring-1 focus:ring-blue-500/40 rounded-lg px-2 py-1.5 outline-none text-right transition-all hover:bg-slate-50"
                           />
                         </td>
                         <td className="py-1.5 px-5">
@@ -693,7 +693,7 @@ export const ContractDataTab: React.FC<ContractDataTabProps> = ({
                             defaultValue={entry.forecast !== 0 ? fmtBRLInput(entry.forecast) : ''}
                             placeholder="—"
                             onBlur={e => handleCellChange(entry.id, 'forecast', e.target.value)}
-                            className="w-full bg-transparent text-sm text-slate-300 placeholder:text-slate-700 focus:bg-emerald-600/10 focus:ring-1 focus:ring-emerald-500/40 rounded-lg px-2 py-1.5 outline-none text-right transition-all hover:bg-white/5"
+                            className="w-full bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:bg-emerald-600/10 focus:ring-1 focus:ring-emerald-500/40 rounded-lg px-2 py-1.5 outline-none text-right transition-all hover:bg-slate-50"
                           />
                         </td>
                         <td className="py-1.5 px-5">
@@ -704,22 +704,22 @@ export const ContractDataTab: React.FC<ContractDataTabProps> = ({
                             defaultValue={entry.measured !== 0 ? fmtBRLInput(entry.measured) : ''}
                             placeholder="—"
                             onBlur={e => handleCellChange(entry.id, 'measured', e.target.value)}
-                            className="w-full bg-transparent text-sm text-slate-300 placeholder:text-slate-700 focus:bg-amber-600/10 focus:ring-1 focus:ring-amber-500/40 rounded-lg px-2 py-1.5 outline-none text-right transition-all hover:bg-white/5"
+                            className="w-full bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:bg-amber-600/10 focus:ring-1 focus:ring-amber-500/40 rounded-lg px-2 py-1.5 outline-none text-right transition-all hover:bg-slate-50"
                           />
                         </td>
-                        <td className="py-2.5 px-5 text-right text-xs font-mono text-slate-400 bg-slate-800/20 whitespace-nowrap">
-                          {cumBudget > 0 ? fmtBRL(cumBudget) : <span className="text-slate-700">—</span>}
+                        <td className="py-2.5 px-5 text-right text-xs font-mono text-slate-500 bg-slate-50 whitespace-nowrap">
+                          {cumBudget > 0 ? fmtBRL(cumBudget) : <span className="text-slate-400">—</span>}
                         </td>
-                        <td className="py-2.5 px-5 text-right text-xs font-mono text-slate-400 bg-slate-800/20 whitespace-nowrap">
-                          {cumForecast > 0 ? fmtBRL(cumForecast) : <span className="text-slate-700">—</span>}
+                        <td className="py-2.5 px-5 text-right text-xs font-mono text-slate-500 bg-slate-50 whitespace-nowrap">
+                          {cumForecast > 0 ? fmtBRL(cumForecast) : <span className="text-slate-400">—</span>}
                         </td>
-                        <td className="py-2.5 px-5 text-right text-xs font-mono text-slate-400 bg-slate-800/20 whitespace-nowrap">
-                          {cumMeasured > 0 ? fmtBRL(cumMeasured) : <span className="text-slate-700">—</span>}
+                        <td className="py-2.5 px-5 text-right text-xs font-mono text-slate-500 bg-slate-50 whitespace-nowrap">
+                          {cumMeasured > 0 ? fmtBRL(cumMeasured) : <span className="text-slate-400">—</span>}
                         </td>
-                        <td className="py-2.5 px-3 bg-slate-800/20 text-center">
+                        <td className="py-2.5 px-3 bg-slate-50 text-center">
                           <button
                             onClick={() => handleDeletePeriod(entry.id)}
-                            className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-400/10 transition-all"
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-400/10 transition-all"
                             title="Remover período"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -731,63 +731,63 @@ export const ContractDataTab: React.FC<ContractDataTabProps> = ({
                 })()}
               </tbody>
               <tfoot>
-                <tr className="border-t border-white/10 bg-slate-800/60">
-                  <td className="sticky left-0 z-10 py-3 px-5 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-800/80 border-r border-white/5 whitespace-nowrap">
+                <tr className="border-t border-slate-200 bg-slate-50">
+                  <td className="sticky left-0 z-10 py-3 px-5 text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-slate-50 border-r border-slate-200 whitespace-nowrap">
                     Total
                   </td>
-                  <td className="py-3 px-5 text-right text-sm font-bold font-mono text-blue-300 whitespace-nowrap">
-                    {totalBudget > 0 ? fmtBRL(totalBudget) : <span className="text-slate-600">R$ —</span>}
+                  <td className="py-3 px-5 text-right text-sm font-bold font-mono text-blue-700 whitespace-nowrap">
+                    {totalBudget > 0 ? fmtBRL(totalBudget) : <span className="text-slate-500">R$ —</span>}
                   </td>
-                  <td className="py-3 px-5 text-right text-sm font-bold font-mono text-emerald-300 whitespace-nowrap">
-                    {totalForecast > 0 ? fmtBRL(totalForecast) : <span className="text-slate-600">R$ —</span>}
+                  <td className="py-3 px-5 text-right text-sm font-bold font-mono text-emerald-700 whitespace-nowrap">
+                    {totalForecast > 0 ? fmtBRL(totalForecast) : <span className="text-slate-500">R$ —</span>}
                   </td>
-                  <td className="py-3 px-5 text-right text-sm font-bold font-mono text-amber-300 whitespace-nowrap">
-                    {totalMeasured > 0 ? fmtBRL(totalMeasured) : <span className="text-slate-600">R$ —</span>}
+                  <td className="py-3 px-5 text-right text-sm font-bold font-mono text-amber-700 whitespace-nowrap">
+                    {totalMeasured > 0 ? fmtBRL(totalMeasured) : <span className="text-slate-500">R$ —</span>}
                   </td>
-                  <td colSpan={4} className="py-3 px-5 bg-slate-800/40" />
+                  <td colSpan={4} className="py-3 px-5 bg-slate-50" />
                 </tr>
               </tfoot>
             </table>
           </div>
         ) : (
           <div className="p-8 text-center">
-            <Calendar className="w-8 h-8 text-slate-700 mx-auto mb-3 opacity-40" />
+            <Calendar className="w-8 h-8 text-slate-400 mx-auto mb-3 opacity-40" />
             <p className="text-slate-500 text-sm">Nenhum período de medição cadastrado. Clique no botão acima para adicionar.</p>
           </div>
         )}
       </div>
 
       {/* ── Section C: Aditivos Contratuais ── */}
-      <div className="glass-panel rounded-2xl border border-white/5 overflow-hidden">
-        <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
-          <h3 className="text-white font-bold text-base flex items-center gap-2">
-            <FileText className="w-5 h-5 text-violet-400" />
+      <div className="glass-panel rounded-2xl border border-slate-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+          <h3 className="text-slate-900 font-bold text-base flex items-center gap-2">
+            <FileText className="w-5 h-5 text-violet-600" />
             Aditivos Contratuais
             {addenda.length > 0 && (
-              <span className="text-xs bg-violet-500/15 text-violet-300 border border-violet-500/30 rounded-full px-2 py-0.5">
+              <span className="text-xs bg-violet-500/15 text-violet-700 border border-violet-500/30 rounded-full px-2 py-0.5">
                 {addenda.length}
               </span>
             )}
           </h3>
           <button
             onClick={() => setShowAddendumModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 text-sm font-semibold border border-violet-500/30 transition-all hover:border-violet-400/50"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600/20 hover:bg-violet-600/30 text-violet-700 text-sm font-semibold border border-violet-500/30 transition-all hover:border-violet-400/50"
           >
             <Plus className="w-4 h-4" />
             Adicionar Aditivo
           </button>
         </div>
 
-        <div className="divide-y divide-white/5">
+        <div className="divide-y divide-slate-100">
           {addenda.length === 0 ? (
             <div className="p-8 text-center">
-              <FileText className="w-8 h-8 text-slate-700 mx-auto mb-3 opacity-40" />
+              <FileText className="w-8 h-8 text-slate-400 mx-auto mb-3 opacity-40" />
               <p className="text-slate-500 text-sm">Nenhum aditivo registrado.</p>
             </div>
           ) : (
             addenda.map((a, idx) => (
-              <div key={a.id} className="flex items-start gap-4 px-6 py-4 hover:bg-white/[0.02] transition-colors">
-                <div className="flex-shrink-0 w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-xs font-bold text-slate-400">
+              <div key={a.id} className="flex items-start gap-4 px-6 py-4 hover:bg-slate-50 transition-colors">
+                <div className="flex-shrink-0 w-7 h-7 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-500">
                   {idx + 1}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -795,7 +795,7 @@ export const ContractDataTab: React.FC<ContractDataTabProps> = ({
                     <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${addendumTypeBadgeColor(a.type)}`}>
                       {addendumTypeLabel(a.type)}
                     </span>
-                    <span className="text-white text-sm font-medium">{a.description}</span>
+                    <span className="text-slate-900 text-sm font-medium">{a.description}</span>
                   </div>
                   <div className="flex items-center gap-4 text-xs text-slate-500 flex-wrap">
                     {a.addedDays != null && (
@@ -812,7 +812,7 @@ export const ContractDataTab: React.FC<ContractDataTabProps> = ({
                 </div>
                 <button
                   onClick={() => handleDeleteAddendum(a.id)}
-                  className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-400/10 transition-all flex-shrink-0"
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-400/10 transition-all flex-shrink-0"
                   title="Remover aditivo"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -824,17 +824,17 @@ export const ContractDataTab: React.FC<ContractDataTabProps> = ({
 
         {/* Totals summary */}
         {addenda.length > 0 && (
-          <div className="px-6 py-3 border-t border-white/5 bg-slate-800/40 flex items-center gap-6 flex-wrap">
+          <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center gap-6 flex-wrap">
             {totalAddedDays > 0 && (
-              <span className="text-xs text-slate-400 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-violet-400" />
-                Total de prazo adicionado: <strong className="text-violet-300 ml-1">+{totalAddedDays} dias</strong>
+              <span className="text-xs text-slate-500 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-violet-600" />
+                Total de prazo adicionado: <strong className="text-violet-700 ml-1">+{totalAddedDays} dias</strong>
               </span>
             )}
             {totalAddedValue > 0 && (
-              <span className="text-xs text-slate-400 flex items-center gap-1.5">
-                <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
-                Total de valor adicionado: <strong className="text-emerald-300 ml-1">+{fmtBRL(totalAddedValue)}</strong>
+              <span className="text-xs text-slate-500 flex items-center gap-1.5">
+                <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+                Total de valor adicionado: <strong className="text-emerald-700 ml-1">+{fmtBRL(totalAddedValue)}</strong>
               </span>
             )}
           </div>

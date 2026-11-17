@@ -106,7 +106,7 @@ export const ResourcesMatrixTable: React.FC<ResourcesMatrixTableProps> = ({ fact
 
   if (facts.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+      <div className="flex flex-col items-center justify-center py-20 text-slate-500">
         <p>Nenhum dado encontrado para o período/filtros selecionados.</p>
       </div>
     );
@@ -119,7 +119,7 @@ export const ResourcesMatrixTable: React.FC<ResourcesMatrixTableProps> = ({ fact
   return (
     <div className="flex flex-col gap-4">
       {/* Filtros */}
-      <div className="flex items-center gap-4 p-4 bg-slate-900/50 border border-white/10 rounded-xl">
+      <div className="flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl">
         <div className="flex flex-col">
           <label className="text-[10px] uppercase font-bold text-slate-500 mb-1">Filtrar por Grupo</label>
           <div className="flex gap-2">
@@ -134,8 +134,8 @@ export const ResourcesMatrixTable: React.FC<ResourcesMatrixTableProps> = ({ fact
                 onClick={() => setSelectedGroup(g.id as any)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
                   selectedGroup === g.id
-                    ? 'bg-blue-600/20 border-blue-500/50 text-blue-400'
-                    : 'bg-slate-800/50 border-white/5 text-slate-400 hover:bg-slate-800 hover:text-slate-300'
+                    ? 'bg-blue-600/20 border-blue-500/50 text-blue-600'
+                    : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-700'
                 }`}
               >
                 {g.label}
@@ -145,40 +145,40 @@ export const ResourcesMatrixTable: React.FC<ResourcesMatrixTableProps> = ({ fact
         </div>
       </div>
 
-      <div className="w-full overflow-x-auto rounded-xl border border-white/10 bg-slate-900/50">
+      <div className="w-full overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full text-sm text-left border-collapse min-w-max">
-          <thead className="bg-slate-800/80 sticky top-0 z-40 text-[10px] uppercase tracking-wider text-slate-300">
+          <thead className="bg-slate-50 sticky top-0 z-40 text-[10px] uppercase tracking-wider text-slate-700">
             <tr>
-              <th rowSpan={2} className="px-4 py-3 font-bold border-b border-r border-white/10 bg-slate-800 sticky left-0 z-50 w-[150px] min-w-[150px] max-w-[150px] text-center shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)]">
+              <th rowSpan={2} className="px-4 py-3 font-bold border-b border-r border-slate-200 bg-slate-100 sticky left-0 z-50 w-[150px] min-w-[150px] max-w-[150px] text-center shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)]">
                 Item
               </th>
-              <th rowSpan={2} className="px-4 py-3 font-bold border-b border-r border-white/10 bg-slate-800 sticky left-[150px] z-40 w-[180px] min-w-[180px] max-w-[180px] text-center shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)]">
+              <th rowSpan={2} className="px-4 py-3 font-bold border-b border-r border-slate-200 bg-slate-100 sticky left-[150px] z-40 w-[180px] min-w-[180px] max-w-[180px] text-center shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)]">
                 Condição
               </th>
             {years.map(year => (
               <th 
                 key={year} 
                 colSpan={allMonths[year].length} 
-                className="px-4 py-2 font-bold border-b border-r border-white/10 text-center bg-slate-800/80 text-white"
+                className="px-4 py-2 font-bold border-b border-r border-slate-200 text-center bg-slate-50 text-slate-900"
               >
                 {year}
               </th>
             ))}
-            <th rowSpan={2} className="px-4 py-3 font-bold border-b border-white/10 text-center bg-slate-800/90 min-w-[140px] text-emerald-400">
+            <th rowSpan={2} className="px-4 py-3 font-bold border-b border-slate-200 text-center bg-slate-50 min-w-[140px] text-emerald-600">
               TOTAL
             </th>
           </tr>
           <tr>
             {years.map(year => 
               allMonths[year].map(month => (
-                <th key={`${year}-${month}`} className="px-3 py-2 font-bold border-b border-r border-white/10 text-center bg-slate-800/60 min-w-[100px] text-slate-200">
+                <th key={`${year}-${month}`} className="px-3 py-2 font-bold border-b border-r border-slate-200 text-center bg-slate-50 min-w-[100px] text-slate-800">
                   {getMonthAbbr(month)}
                 </th>
               ))
             )}
           </tr>
         </thead>
-        <tbody className="divide-y divide-white/5 text-[11px] font-medium">
+        <tbody className="divide-y divide-slate-100 text-[11px] font-medium">
           {Object.entries(groupedData).sort(([a], [b]) => a.localeCompare(b)).map(([group, itemsMap]) => (
             <React.Fragment key={group}>
               {Object.entries(itemsMap).sort(([a], [b]) => a.localeCompare(b)).map(([itemKey, itemData], itemIndex) => {
@@ -186,11 +186,11 @@ export const ResourcesMatrixTable: React.FC<ResourcesMatrixTableProps> = ({ fact
                 return (
                   <React.Fragment key={itemKey}>
                     {/* Linha 1: Previsto Contrato (Qtd) */}
-                    <tr className="hover:bg-slate-800/40 transition-colors bg-slate-900/30">
-                      <td rowSpan={4} className="px-4 py-3 border-r border-b border-white/10 font-bold text-slate-200 bg-slate-900 sticky left-0 z-30 w-[150px] min-w-[150px] max-w-[150px] break-words align-middle text-center shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)]">
+                    <tr className="hover:bg-slate-50 transition-colors bg-white">
+                      <td rowSpan={4} className="px-4 py-3 border-r border-b border-slate-200 font-bold text-slate-800 bg-white sticky left-0 z-30 w-[150px] min-w-[150px] max-w-[150px] break-words align-middle text-center shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)]">
                         {itemData.displayName}
                       </td>
-                      <td className="px-4 py-2 border-r border-white/10 text-blue-300 uppercase tracking-wider bg-slate-900 sticky left-[150px] z-20 w-[180px] min-w-[180px] max-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)] font-semibold">
+                      <td className="px-4 py-2 border-r border-slate-200 text-blue-700 uppercase tracking-wider bg-white sticky left-[150px] z-20 w-[180px] min-w-[180px] max-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)] font-semibold">
                         Previsto Contrato
                       </td>
                       {years.map(year => 
@@ -198,20 +198,20 @@ export const ResourcesMatrixTable: React.FC<ResourcesMatrixTableProps> = ({ fact
                           const mk = `${year}-${month}`;
                           const val = itemData.months[mk]?.plannedQty || 0;
                           return (
-                            <td key={`p-${mk}`} className="px-3 py-2 border-r border-white/5 text-right font-semibold text-blue-300/80 tabular-nums">
+                            <td key={`p-${mk}`} className="px-3 py-2 border-r border-slate-200 text-right font-semibold text-blue-700/80 tabular-nums">
                               {val > 0 ? formatValue(val, false) : '-'}
                             </td>
                           );
                         })
                       )}
-                      <td className="px-4 py-2 text-right font-bold text-blue-300 border-white/10 bg-slate-800/30 tabular-nums">
+                      <td className="px-4 py-2 text-right font-bold text-blue-700 border-slate-200 bg-slate-50 tabular-nums">
                         {total.plannedQty > 0 ? formatValue(total.plannedQty, false) : '-'}
                       </td>
                     </tr>
 
                     {/* Linha 2: Realizado (Qtd) */}
-                    <tr className="hover:bg-slate-800/40 transition-colors bg-slate-900/10">
-                      <td className="px-4 py-2 border-r border-white/10 text-rose-400 uppercase tracking-wider bg-slate-900 sticky left-[150px] z-20 w-[180px] min-w-[180px] max-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)] font-semibold">
+                    <tr className="hover:bg-slate-50 transition-colors bg-white">
+                      <td className="px-4 py-2 border-r border-slate-200 text-rose-600 uppercase tracking-wider bg-white sticky left-[150px] z-20 w-[180px] min-w-[180px] max-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)] font-semibold">
                         Realizado
                       </td>
                       {years.map(year => 
@@ -219,20 +219,20 @@ export const ResourcesMatrixTable: React.FC<ResourcesMatrixTableProps> = ({ fact
                           const mk = `${year}-${month}`;
                           const val = itemData.months[mk]?.realizedQty || 0;
                           return (
-                            <td key={`r-${mk}`} className="px-3 py-2 border-r border-white/5 text-right font-semibold text-rose-400/80 tabular-nums">
+                            <td key={`r-${mk}`} className="px-3 py-2 border-r border-slate-200 text-right font-semibold text-rose-600/80 tabular-nums">
                               {val > 0 ? formatValue(val, false) : '-'}
                             </td>
                           );
                         })
                       )}
-                      <td className="px-4 py-2 text-right font-bold text-rose-400 border-white/10 bg-slate-800/30 tabular-nums">
+                      <td className="px-4 py-2 text-right font-bold text-rose-600 border-slate-200 bg-slate-50 tabular-nums">
                         {total.realizedQty > 0 ? formatValue(total.realizedQty, false) : '-'}
                       </td>
                     </tr>
 
                     {/* Linha 3: Previsto Contrato ($) */}
-                    <tr className="hover:bg-slate-800/40 transition-colors bg-slate-900/30">
-                      <td className="px-4 py-2 border-r border-white/10 text-slate-400 uppercase tracking-wider bg-slate-900 sticky left-[150px] z-20 w-[180px] min-w-[180px] max-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)]">
+                    <tr className="hover:bg-slate-50 transition-colors bg-white">
+                      <td className="px-4 py-2 border-r border-slate-200 text-slate-500 uppercase tracking-wider bg-white sticky left-[150px] z-20 w-[180px] min-w-[180px] max-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)]">
                         Previsto Contrato ($)
                       </td>
                       {years.map(year => 
@@ -240,20 +240,20 @@ export const ResourcesMatrixTable: React.FC<ResourcesMatrixTableProps> = ({ fact
                           const mk = `${year}-${month}`;
                           const val = itemData.months[mk]?.plannedCost || 0;
                           return (
-                            <td key={`p$-${mk}`} className="px-3 py-2 border-r border-white/5 text-right font-medium text-slate-400/80 tabular-nums">
+                            <td key={`p$-${mk}`} className="px-3 py-2 border-r border-slate-200 text-right font-medium text-slate-500 tabular-nums">
                               {val > 0 ? formatValue(val, true) : '-'}
                             </td>
                           );
                         })
                       )}
-                      <td className="px-4 py-2 text-right font-bold text-slate-300 border-white/10 bg-slate-800/30 tabular-nums">
+                      <td className="px-4 py-2 text-right font-bold text-slate-700 border-slate-200 bg-slate-50 tabular-nums">
                         {total.plannedCost > 0 ? formatValue(total.plannedCost, true) : '-'}
                       </td>
                     </tr>
 
                     {/* Linha 4: Realizado ($) */}
-                    <tr className="hover:bg-slate-800/40 transition-colors bg-slate-900/10 border-b border-white/10">
-                      <td className="px-4 py-2 border-r border-white/10 text-slate-400 uppercase tracking-wider bg-slate-900 sticky left-[150px] z-20 w-[180px] min-w-[180px] max-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)] italic">
+                    <tr className="hover:bg-slate-50 transition-colors bg-white border-b border-slate-200">
+                      <td className="px-4 py-2 border-r border-slate-200 text-slate-500 uppercase tracking-wider bg-white sticky left-[150px] z-20 w-[180px] min-w-[180px] max-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)] italic">
                         Realizado ($)
                       </td>
                       {years.map(year => 
@@ -261,13 +261,13 @@ export const ResourcesMatrixTable: React.FC<ResourcesMatrixTableProps> = ({ fact
                           const mk = `${year}-${month}`;
                           const val = itemData.months[mk]?.realizedCost || 0;
                           return (
-                            <td key={`r$-${mk}`} className="px-3 py-2 border-r border-white/5 text-right font-medium text-slate-400/80 tabular-nums italic">
+                            <td key={`r$-${mk}`} className="px-3 py-2 border-r border-slate-200 text-right font-medium text-slate-500 tabular-nums italic">
                               {val > 0 ? formatValue(val, true) : '-'}
                             </td>
                           );
                         })
                       )}
-                      <td className="px-4 py-2 text-right font-bold text-slate-300 border-white/10 bg-slate-800/30 tabular-nums italic">
+                      <td className="px-4 py-2 text-right font-bold text-slate-700 border-slate-200 bg-slate-50 tabular-nums italic">
                         {total.realizedCost > 0 ? formatValue(total.realizedCost, true) : '-'}
                       </td>
                     </tr>
@@ -279,11 +279,11 @@ export const ResourcesMatrixTable: React.FC<ResourcesMatrixTableProps> = ({ fact
           {/* Linha de Total Geral */}
           <React.Fragment>
             {/* Linha 1: Previsto Contrato (Qtd) */}
-            <tr className="hover:bg-slate-800/40 transition-colors bg-blue-900/20 border-t-2 border-blue-500/50">
-              <td rowSpan={4} className="px-4 py-3 border-r border-b border-white/10 font-black text-blue-400 bg-slate-900 sticky left-0 z-30 w-[150px] min-w-[150px] max-w-[150px] break-words align-middle text-center shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)]">
+            <tr className="hover:bg-slate-50 transition-colors bg-blue-900/20 border-t-2 border-blue-500/50">
+              <td rowSpan={4} className="px-4 py-3 border-r border-b border-slate-200 font-black text-blue-600 bg-white sticky left-0 z-30 w-[150px] min-w-[150px] max-w-[150px] break-words align-middle text-center shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)]">
                 TOTAL GERAL
               </td>
-              <td className="px-4 py-2 border-r border-white/10 text-blue-300 uppercase tracking-wider bg-slate-900 sticky left-[150px] z-20 w-[180px] min-w-[180px] max-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)] font-bold">
+              <td className="px-4 py-2 border-r border-slate-200 text-blue-700 uppercase tracking-wider bg-white sticky left-[150px] z-20 w-[180px] min-w-[180px] max-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)] font-bold">
                 Previsto Contrato
               </td>
               {years.map(year => 
@@ -291,20 +291,20 @@ export const ResourcesMatrixTable: React.FC<ResourcesMatrixTableProps> = ({ fact
                   const mk = `${year}-${month}`;
                   const val = grandTotals.months[mk]?.plannedQty || 0;
                   return (
-                    <td key={`tot-p-${mk}`} className="px-3 py-2 border-r border-white/5 text-right font-bold text-blue-300 tabular-nums">
+                    <td key={`tot-p-${mk}`} className="px-3 py-2 border-r border-slate-200 text-right font-bold text-blue-700 tabular-nums">
                       {val > 0 ? formatValue(val, false) : '-'}
                     </td>
                   );
                 })
               )}
-              <td className="px-4 py-2 text-right font-black text-blue-300 border-white/10 bg-slate-800/50 tabular-nums">
+              <td className="px-4 py-2 text-right font-black text-blue-700 border-slate-200 bg-slate-50 tabular-nums">
                 {grandTotals.overall.plannedQty > 0 ? formatValue(grandTotals.overall.plannedQty, false) : '-'}
               </td>
             </tr>
 
             {/* Linha 2: Realizado (Qtd) */}
-            <tr className="hover:bg-slate-800/40 transition-colors bg-rose-900/20">
-              <td className="px-4 py-2 border-r border-white/10 text-rose-400 uppercase tracking-wider bg-slate-900 sticky left-[150px] z-20 w-[180px] min-w-[180px] max-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)] font-bold">
+            <tr className="hover:bg-slate-50 transition-colors bg-rose-900/20">
+              <td className="px-4 py-2 border-r border-slate-200 text-rose-600 uppercase tracking-wider bg-white sticky left-[150px] z-20 w-[180px] min-w-[180px] max-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)] font-bold">
                 Realizado
               </td>
               {years.map(year => 
@@ -312,20 +312,20 @@ export const ResourcesMatrixTable: React.FC<ResourcesMatrixTableProps> = ({ fact
                   const mk = `${year}-${month}`;
                   const val = grandTotals.months[mk]?.realizedQty || 0;
                   return (
-                    <td key={`tot-r-${mk}`} className="px-3 py-2 border-r border-white/5 text-right font-bold text-rose-400 tabular-nums">
+                    <td key={`tot-r-${mk}`} className="px-3 py-2 border-r border-slate-200 text-right font-bold text-rose-600 tabular-nums">
                       {val > 0 ? formatValue(val, false) : '-'}
                     </td>
                   );
                 })
               )}
-              <td className="px-4 py-2 text-right font-black text-rose-400 border-white/10 bg-slate-800/50 tabular-nums">
+              <td className="px-4 py-2 text-right font-black text-rose-600 border-slate-200 bg-slate-50 tabular-nums">
                 {grandTotals.overall.realizedQty > 0 ? formatValue(grandTotals.overall.realizedQty, false) : '-'}
               </td>
             </tr>
 
             {/* Linha 3: Previsto Contrato ($) */}
-            <tr className="hover:bg-slate-800/40 transition-colors bg-blue-900/20">
-              <td className="px-4 py-2 border-r border-white/10 text-slate-300 uppercase tracking-wider bg-slate-900 sticky left-[150px] z-20 w-[180px] min-w-[180px] max-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)] font-bold">
+            <tr className="hover:bg-slate-50 transition-colors bg-blue-900/20">
+              <td className="px-4 py-2 border-r border-slate-200 text-slate-700 uppercase tracking-wider bg-white sticky left-[150px] z-20 w-[180px] min-w-[180px] max-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)] font-bold">
                 Previsto Contrato ($)
               </td>
               {years.map(year => 
@@ -333,20 +333,20 @@ export const ResourcesMatrixTable: React.FC<ResourcesMatrixTableProps> = ({ fact
                   const mk = `${year}-${month}`;
                   const val = grandTotals.months[mk]?.plannedCost || 0;
                   return (
-                    <td key={`tot-p$-${mk}`} className="px-3 py-2 border-r border-white/5 text-right font-bold text-slate-300 tabular-nums">
+                    <td key={`tot-p$-${mk}`} className="px-3 py-2 border-r border-slate-200 text-right font-bold text-slate-700 tabular-nums">
                       {val > 0 ? formatValue(val, true) : '-'}
                     </td>
                   );
                 })
               )}
-              <td className="px-4 py-2 text-right font-black text-slate-200 border-white/10 bg-slate-800/50 tabular-nums">
+              <td className="px-4 py-2 text-right font-black text-slate-800 border-slate-200 bg-slate-50 tabular-nums">
                 {grandTotals.overall.plannedCost > 0 ? formatValue(grandTotals.overall.plannedCost, true) : '-'}
               </td>
             </tr>
 
             {/* Linha 4: Realizado ($) */}
-            <tr className="hover:bg-slate-800/40 transition-colors bg-rose-900/20 border-b border-white/10">
-              <td className="px-4 py-2 border-r border-white/10 text-slate-300 uppercase tracking-wider bg-slate-900 sticky left-[150px] z-20 w-[180px] min-w-[180px] max-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)] font-bold italic">
+            <tr className="hover:bg-slate-50 transition-colors bg-rose-900/20 border-b border-slate-200">
+              <td className="px-4 py-2 border-r border-slate-200 text-slate-700 uppercase tracking-wider bg-white sticky left-[150px] z-20 w-[180px] min-w-[180px] max-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)] font-bold italic">
                 Realizado ($)
               </td>
               {years.map(year => 
@@ -354,13 +354,13 @@ export const ResourcesMatrixTable: React.FC<ResourcesMatrixTableProps> = ({ fact
                   const mk = `${year}-${month}`;
                   const val = grandTotals.months[mk]?.realizedCost || 0;
                   return (
-                    <td key={`tot-r$-${mk}`} className="px-3 py-2 border-r border-white/5 text-right font-bold text-slate-300 tabular-nums italic">
+                    <td key={`tot-r$-${mk}`} className="px-3 py-2 border-r border-slate-200 text-right font-bold text-slate-700 tabular-nums italic">
                       {val > 0 ? formatValue(val, true) : '-'}
                     </td>
                   );
                 })
               )}
-              <td className="px-4 py-2 text-right font-black text-slate-200 border-white/10 bg-slate-800/50 tabular-nums italic">
+              <td className="px-4 py-2 text-right font-black text-slate-800 border-slate-200 bg-slate-50 tabular-nums italic">
                 {grandTotals.overall.realizedCost > 0 ? formatValue(grandTotals.overall.realizedCost, true) : '-'}
               </td>
             </tr>
