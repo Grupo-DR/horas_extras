@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import './index.css';
 import { Building2, FileText, LayoutDashboard, ClipboardList } from 'lucide-react';
-import { PortalTopBar } from '../../pages/CentroInteligencia/PortalTopBar';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../contexts/AuthContext';
+import { CorporateSidebar, SidebarItem } from '../../components/navigation/CorporateSidebar';
 import { useUiState, useUiActions, useUiStore, MainMenu } from './src/stores/uiStore';
 import { useProjectActions } from './src/stores/projectStore';
 import { useTeamActions } from './src/stores/teamStore';
@@ -15,7 +17,7 @@ import { PlanningPage } from './src/modules/planning/pages/PlanningPage';
 import { ProjectModal } from './src/modules/projects/components/ProjectModal';
 import { LocalDataRecoveryBanner } from './components/LocalDataRecoveryBanner';
 
-const MENU: { id: MainMenu; label: string; icon: React.ElementType }[] = [
+const MENU: { id: MainMenu; label: string; icon: SidebarItem['icon'] }[] = [
   { id: 'DASHBOARD', label: 'Painel Geral', icon: LayoutDashboard },
   { id: 'PROJECTS', label: 'Minhas Obras', icon: Building2 },
   { id: 'CONTRACT_INTELLIGENCE', label: 'Inteligência Contratual', icon: FileText },
@@ -23,6 +25,8 @@ const MENU: { id: MainMenu; label: string; icon: React.ElementType }[] = [
 ];
 
 function App() {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const { activeMenu } = useUiState();
   const { setActiveMenu, setLoading, setError } = useUiActions();
 
@@ -64,42 +68,45 @@ function App() {
     }
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const sidebarItems: SidebarItem[] = MENU.map(({ id, label, icon }) => ({
+    key: id,
+    label,
+    icon,
+    onClick: () => openMenu(id),
+    isActive: activeMenu === id,
+  }));
+
+  const activeLabel = MENU.find(m => m.id === activeMenu)?.label ?? 'RDO Online';
+
   return (
-    // Mesma aparência da tela inicial: barra superior branca, fundo cinza-claro, cartões brancos.
-    <div className="rdo-theme flex h-screen flex-col overflow-hidden bg-[#f3f5f9] text-slate-900 font-inter">
-      <PortalTopBar title="RDO Online" />
+    // Mesma estrutura dos outros módulos (painel VLI, Capital Humano, SSMA): barra lateral do portal + conteúdo claro.
+    <div className="rdo-theme flex h-screen overflow-hidden text-slate-900 font-inter">
+      <CorporateSidebar
+        brand={{ topLogoSrc: "/assets/dr-logo.png", title: "RDO Online", subtitle: "Gestão de Obras" }}
+        items={sidebarItems}
+        userDisplay={{ name: user?.name || 'Usuário', role: user?.role || 'Membro', avatarUrl: user?.avatarUrl }}
+        onLogout={handleLogout}
+        accountLinkTo="/config/account"
+        storageKey="drnexus.sidebar.collapsed.rdo"
+      />
 
-      <nav
-        className="flex shrink-0 gap-1 overflow-x-auto border-b border-slate-200 bg-white px-5 lg:px-8"
-        aria-label="Seções do RDO Online"
-      >
-        {MENU.map(({ id, label, icon: Icon }) => {
-          const active = activeMenu === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => openMenu(id)}
-              aria-current={active ? 'page' : undefined}
-              className={`flex shrink-0 items-center gap-2 border-b-2 px-4 py-3 text-sm transition ${
-                active
-                  ? 'border-[#0b1d4f] font-semibold text-[#0b1d4f]'
-                  : 'border-transparent font-medium text-slate-500 hover:text-slate-900'
-              }`}
-            >
-              <Icon className="h-4 w-4" strokeWidth={1.75} />
-              {label}
-            </button>
-          );
-        })}
-      </nav>
+      <main className="relative flex-1 overflow-y-auto bg-slate-50">
+        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/80 px-8 py-4 backdrop-blur-md">
+          <h1 className="text-xl font-bold text-slate-800">{activeLabel}</h1>
+        </header>
 
-      <main className="flex-1 overflow-y-auto p-5 lg:p-8">
-        <LocalDataRecoveryBanner ready={dataReady} />
-        {activeMenu === 'DASHBOARD' && <DashboardPage />}
-        {activeMenu === 'PROJECTS' && <ProjectsPage />}
-        {activeMenu === 'CONTRACT_INTELLIGENCE' && <ContractIntelligencePage />}
-        {activeMenu === 'PLANNING' && <PlanningPage />}
+        <div className="p-5 lg:p-8">
+          <LocalDataRecoveryBanner ready={dataReady} />
+          {activeMenu === 'DASHBOARD' && <DashboardPage />}
+          {activeMenu === 'PROJECTS' && <ProjectsPage />}
+          {activeMenu === 'CONTRACT_INTELLIGENCE' && <ContractIntelligencePage />}
+          {activeMenu === 'PLANNING' && <PlanningPage />}
+        </div>
       </main>
 
       <ProjectModal />

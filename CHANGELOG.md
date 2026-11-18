@@ -21,6 +21,10 @@ versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, se
 - Caminho de navegação simples (Obras / obra / turma / RDO) e tela de importação de RDOs mais
   objetiva, com progresso e orientação sobre tamanho e duplicidade.
 
+### Corrigido
+- Os filtros do Painel Geral e o calendário de período da Inteligência Contratual não passam mais
+  por cima da barra lateral nem do cabeçalho da página.
+
 ### Removido
 - Cópia antiga e sem uso do app do RDO (`App_fixed.tsx`).
 
@@ -29,8 +33,8 @@ versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, se
 ### Alterado
 - RDO Online com a mesma aparência da tela inicial do portal: fundo claro, cartões brancos com
   borda fina e azul-marinho da marca nos destaques. Saiu o tema escuro.
-- A barra lateral do RDO Online deu lugar à barra superior do portal (logo, usuário, sair) com as
-  seções do módulo em abas: Painel Geral, Minhas Obras, Inteligência Contratual e Planejamento.
+- A barra lateral escura própria do RDO Online foi trocada pela barra lateral padrão do portal, a
+  mesma do painel VLI, Capital Humano e SSMA (clara, recolhível, com seletor de módulos e conta).
 - Tabelas, gráficos e etiquetas da Inteligência Contratual com cores ajustadas para fundo claro.
 
 ### Corrigido

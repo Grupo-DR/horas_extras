@@ -136,7 +136,7 @@ export function DateRangePicker({ startDate, endDate, onChange }: DateRangePicke
 
       {isOpen && (
         <div style={{
-          position: 'absolute', top: '100%', left: 0, marginTop: 8, zIndex: 50,
+          position: 'absolute', top: '100%', left: 0, marginTop: 8, zIndex: 40,
           background: '#fff', borderRadius: 12, padding: 16, width: 320,
           boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)', color: '#1e293b',
           fontFamily: "'Inter', sans-serif"

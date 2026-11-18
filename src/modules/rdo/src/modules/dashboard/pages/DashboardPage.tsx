@@ -40,7 +40,7 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <div className="animate-fade-in space-y-8">
-      <div className="glass-panel relative z-[100] p-6 rounded-3xl border border-slate-200 flex flex-col md:flex-row gap-6 items-end md:items-center justify-between shadow-2xl shadow-blue-900/10">
+      <div className="glass-panel relative z-20 p-6 rounded-3xl border border-slate-200 flex flex-col md:flex-row gap-6 items-end md:items-center justify-between shadow-2xl shadow-blue-900/10">
         <div className="flex flex-col md:flex-row gap-6 w-full">
           <div className="flex flex-col gap-2 w-full md:w-52">
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Mês (Medição)</label>
