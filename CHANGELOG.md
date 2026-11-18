@@ -4,6 +4,26 @@ Todas as mudanças relevantes do DR Nexus, da mais nova para a mais antiga.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, seção "Versionamento".
 
+## [1.5.2] - 2026-11-17
+
+### Alterado
+- RDO Online, aba Minhas Obras: os cartões grandes deram lugar a tabelas compactas. Obras, turmas e
+  RDOs passam a caber numa tela, com busca, filtro por regional e ações (editar, excluir) sempre
+  visíveis, inclusive no celular.
+- Lista de obras mostra o que importa para acompanhar: turmas, RDOs, data do último RDO (com alerta
+  quando passa de 7 dias sem RDO) e se a tabela de preços foi importada (sem ela a produção sai R$ 0).
+- Turmas mostram período, último RDO e produção acumulada em R$; saiu a barra de progresso
+  decorativa, que não representava nenhum dado.
+- RDOs da turma em tabela com efetivo, ocorrências, produção e situação ("a revisar" quando a IA
+  deixou atividades para conferir).
+- Página da obra com cabeçalho (centro de custo, contrato, regional, modelo de RDO), abas Turmas e
+  Tabela de preços com contagem, e busca na tabela de preços.
+- Caminho de navegação simples (Obras / obra / turma / RDO) e tela de importação de RDOs mais
+  objetiva, com progresso e orientação sobre tamanho e duplicidade.
+
+### Removido
+- Cópia antiga e sem uso do app do RDO (`App_fixed.tsx`).
+
 ## [1.5.1] - 2026-11-17
 
 ### Alterado

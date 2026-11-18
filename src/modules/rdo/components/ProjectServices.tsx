@@ -1,119 +1,149 @@
-import React from 'react';
-import { FileSpreadsheet, Plus, Users, Table as TableIcon, BarChart2 } from 'lucide-react';
-import { Project, ServiceItem } from '../types';
+import React, { useMemo, useRef, useState } from 'react';
+import { FileSpreadsheet, Pencil, Upload } from 'lucide-react';
+import { Project } from '../types';
 import { formatMoney } from '../utils';
+import { rdoModelLabel } from '../services/rdoModels';
+import { splitProjectName } from '../utils/projectSummary';
+import { Badge, Button, EmptyState, PageHeader, SearchInput, TableCard, Td, Th } from './ui';
 
 interface ProjectServicesProps {
   selectedProject: Project | null;
   projectTab: 'TEAMS' | 'SERVICES';
+  teamCount: number;
   onSetTab: (tab: 'TEAMS' | 'SERVICES') => void;
   onServicesUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onEditProject: (project: Project) => void;
 }
 
-export const ProjectServices: React.FC<ProjectServicesProps> = ({ 
-  selectedProject, 
-  projectTab, 
-  onSetTab, 
-  onServicesUpload 
+const isoToBr = (iso?: string) => (iso ? iso.split('-').reverse().join('/') : '');
+
+/** Cabeçalho da obra com as abas Turmas / Tabela de preços; a aba de preços é renderizada aqui. */
+export const ProjectServices: React.FC<ProjectServicesProps> = ({
+  selectedProject, projectTab, teamCount, onSetTab, onServicesUpload, onEditProject
 }) => {
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [search, setSearch] = useState('');
+  const services = selectedProject?.services ?? [];
+
+  const visibleServices = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return term ? services.filter(s => `${s.code} ${s.scope}`.toLowerCase().includes(term)) : services;
+  }, [services, search]);
+
+  if (!selectedProject) return null;
+  const { code, detail } = splitProjectName(selectedProject.name);
+
+  const tabs = [
+    { id: 'TEAMS' as const, label: 'Turmas', count: teamCount },
+    { id: 'SERVICES' as const, label: 'Tabela de preços', count: services.length },
+  ];
+
+  const importButton = (
+    <>
+      <input
+        ref={fileInput}
+        type="file"
+        accept=".xlsx,.xls"
+        className="hidden"
+        onChange={e => { onServicesUpload(e); e.target.value = ''; }}
+      />
+      <Button variant={services.length ? 'secondary' : 'primary'} icon={Upload} onClick={() => fileInput.current?.click()}>
+        {services.length ? 'Atualizar tabela' : 'Importar tabela'}
+      </Button>
+    </>
+  );
+
   return (
-    <div className="animate-fade-in space-y-6">
-      <div className="flex space-x-2 glass-panel p-2 rounded-2xl border border-slate-200 shadow-inner mb-8">
-        <button
-          onClick={() => onSetTab('TEAMS')}
-          className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold rounded-xl transition-all duration-300 ${
-            projectTab === 'TEAMS' 
-              ? 'bg-gradient-premium text-white shadow-lg shadow-blue-600/20 scale-[1.02]' 
-              : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          TURMAS E EQUIPES
-        </button>
-        <button
-          onClick={() => onSetTab('SERVICES')}
-          className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold rounded-xl transition-all duration-300 ${
-            projectTab === 'SERVICES' 
-              ? 'bg-gradient-premium text-white shadow-lg shadow-blue-600/20 scale-[1.02]' 
-              : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-          }`}
-        >
-          <TableIcon className="w-4 h-4" />
-          TABELA DE PREÇOS
-        </button>
+    <>
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-xl font-semibold tracking-tight text-slate-900">{code}</h2>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+            {detail && <span>{detail}</span>}
+            {selectedProject.regional && <Badge>{selectedProject.regional}</Badge>}
+            <Badge tone={selectedProject.rdoModel && selectedProject.rdoModel !== 'PADRAO' ? 'info' : 'neutral'}>
+              RDO {rdoModelLabel(selectedProject.rdoModel)}
+            </Badge>
+          </div>
+        </div>
+        <Button icon={Pencil} onClick={() => onEditProject(selectedProject)}>Editar obra</Button>
+      </div>
+
+      <div className="mb-5 flex gap-1 border-b border-slate-200" role="tablist">
+        {tabs.map(tab => {
+          const active = projectTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => onSetTab(tab.id)}
+              className={`-mb-px flex items-center gap-2 border-b-2 px-3 py-2 text-sm transition ${
+                active ? 'border-[#0b1d4f] font-semibold text-[#0b1d4f]' : 'border-transparent text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              {tab.label}
+              <span className={`rounded-full px-1.5 text-xs tabular-nums ${active ? 'bg-[#0b1d4f] text-white' : 'bg-slate-100 text-slate-500'}`}>
+                {tab.count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {projectTab === 'SERVICES' && (
-        <div className="animate-fade-in space-y-8">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <h2 className="text-3xl font-bold text-slate-900 tracking-tight text-gradient">Serviços Disponíveis</h2>
-              <p className="text-slate-500 text-sm mt-1">
-                Catálogo de serviços e valores unitários para <span className="text-blue-600 font-semibold">{selectedProject?.name}</span>
-              </p>
+        services.length === 0 ? (
+          <EmptyState
+            icon={FileSpreadsheet}
+            title="Tabela de preços não importada"
+            description={selectedProject.rdoModel === 'VALE_NOVAS_FERROVIAS'
+              ? 'Importe a PQ da Vale (.xlsx). Sem ela a IA não identifica os serviços dos RDOs e a produção fica em R$ 0.'
+              : 'Importe a planilha com código, descrição, unidade, preço e vigência. Sem ela a produção dos RDOs fica em R$ 0.'}
+            action={importButton}
+          />
+        ) : (
+          <>
+            <PageHeader
+              title="Tabela de preços"
+              subtitle={`${services.length} itens · usados para valorizar a produção dos RDOs`}
+              actions={importButton}
+            />
+            <div className="mb-3">
+              <SearchInput value={search} onChange={setSearch} placeholder="Buscar por código ou descrição" />
             </div>
-            <div className="relative group">
-              <input
-                type="file"
-                accept=".xlsx, .xls"
-                onChange={onServicesUpload}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-              />
-              <button 
-                className="bg-emerald-600/10 text-emerald-600 px-6 py-3 rounded-2xl flex items-center gap-3 border border-emerald-500/20 group-hover:bg-emerald-600 group-hover:text-white transition-all shadow-xl shadow-emerald-900/10"
-              >
-                <FileSpreadsheet className="w-5 h-5" />
-                <span className="font-bold text-sm">Atualizar Tabela</span>
-              </button>
-            </div>
-          </div>
-
-          {!selectedProject?.services || selectedProject.services.length === 0 ? (
-            <div className="py-24 glass-panel rounded-2xl border border-dashed border-slate-200 flex flex-col items-center justify-center text-center px-6">
-              <div className="bg-slate-50 p-8 rounded-full mb-8 shadow-inner border border-slate-200">
-                 <FileSpreadsheet className="w-14 h-14 text-slate-400 opacity-20" />
-              </div>
-              <h4 className="text-xl font-bold text-slate-900 mb-3">Tabela Vazia</h4>
-              <p className="text-slate-500 max-w-xs leading-relaxed">Nenhum serviço importado para esta obra. Importe uma planilha XLSX para configurar os preços.</p>
-            </div>
-          ) : (
-            <div className="glass-panel rounded-3xl border border-slate-200 overflow-hidden shadow-2xl">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200">
-                      <th className="py-5 px-8 text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em]">Cód. Item</th>
-                      <th className="py-5 px-8 text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em]">Escopo e Descritivo</th>
-                      <th className="py-5 px-8 text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em] text-center">Unid.</th>
-                      <th className="py-5 px-8 text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em] text-center">Vigência</th>
-                      <th className="py-5 px-8 text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em] text-right">Preço Unitário</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {selectedProject.services.map((service, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50 transition-colors group">
-                        <td className="py-5 px-8 font-mono text-xs text-blue-600/70 font-bold tracking-tight">{service.code}</td>
-                        <td className="py-5 px-8 font-semibold text-slate-800 group-hover:text-slate-900 transition-colors">{service.scope}</td>
-                        <td className="py-5 px-8 text-center bg-slate-50">
-                           <span className="px-2 py-1 bg-slate-50 text-slate-500 text-[10px] font-bold rounded-md border border-slate-200">{service.unit}</span>
-                        </td>
-                        <td className="py-5 px-8 text-center text-xs text-slate-500 font-medium">
-                          {service.startDate ? service.startDate.split('-').reverse().join('/') : 'Início'} 
-                          <span className="mx-1 text-slate-500">até</span> 
-                          {service.endDate ? service.endDate.split('-').reverse().join('/') : 'Fim'}
-                        </td>
-                        <td className="py-5 px-8 text-right font-mono font-bold text-emerald-600 group-hover:scale-105 transition-transform">
-                          {formatMoney(service.value)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
+            <TableCard footer={visibleServices.length !== services.length ? `Mostrando ${visibleServices.length} de ${services.length} itens` : undefined}>
+              <thead>
+                <tr>
+                  <Th>Código</Th>
+                  <Th>Descrição</Th>
+                  <Th align="center">Unid.</Th>
+                  <Th>Vigência</Th>
+                  <Th align="right">Preço unitário</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleServices.map((service, idx) => (
+                  <tr key={`${service.code}_${service.startDate ?? ''}_${idx}`} className="hover:bg-slate-50">
+                    <Td className="whitespace-nowrap font-mono text-xs text-slate-600">{service.code}</Td>
+                    <Td className="text-slate-900">{service.scope}</Td>
+                    <Td align="center">{service.unit}</Td>
+                    <Td className="whitespace-nowrap text-slate-500">
+                      {service.startDate || service.endDate
+                        ? `${isoToBr(service.startDate) || 'início'} a ${isoToBr(service.endDate) || 'fim'}`
+                        : 'Contrato todo'}
+                    </Td>
+                    <Td align="right" className="whitespace-nowrap font-medium text-slate-900">{formatMoney(service.value)}</Td>
+                  </tr>
+                ))}
+                {visibleServices.length === 0 && (
+                  <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-slate-500">Nenhum item encontrado.</td></tr>
+                )}
+              </tbody>
+            </TableCard>
+          </>
+        )
       )}
-    </div>
+    </>
   );
 };

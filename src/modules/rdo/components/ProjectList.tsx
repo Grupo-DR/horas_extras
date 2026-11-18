@@ -1,120 +1,147 @@
-import React from 'react';
-import { Building2, Plus, Edit, Trash2, FolderOpen } from 'lucide-react';
-import { Project, Team } from '../types';
+import React, { useMemo, useState } from 'react';
+import { Building2, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Project, RDOData, Team } from '../types';
+import { rdoModelLabel } from '../services/rdoModels';
+import { STALE_AFTER_DAYS, summarizeProjects } from '../utils/projectSummary';
+import { Badge, Button, ClickableRow, EmptyState, IconButton, PageHeader, SearchInput, Select, TableCard, Td, Th } from './ui';
 
 interface ProjectListProps {
   projects: Project[];
   teams: Team[];
+  rdos: RDOData[];
   onSelectProject: (project: Project) => void;
   onEditProject: (project: Project) => void;
   onDeleteProject: (id: string, e: React.MouseEvent) => void;
   onCreateProject: () => void;
 }
 
-export const ProjectList: React.FC<ProjectListProps> = ({ 
-  projects, 
-  teams, 
-  onSelectProject, 
-  onEditProject, 
-  onDeleteProject, 
-  onCreateProject 
+const ALL = 'all';
+const plural = (n: number, one: string, many: string) => `${n.toLocaleString('pt-BR')} ${n === 1 ? one : many}`;
+
+export const ProjectList: React.FC<ProjectListProps> = ({
+  projects, teams, rdos, onSelectProject, onEditProject, onDeleteProject, onCreateProject
 }) => {
+  const [search, setSearch] = useState('');
+  const [regional, setRegional] = useState(ALL);
+
+  const summaries = useMemo(() => summarizeProjects(projects, teams, rdos), [projects, teams, rdos]);
+  const regionals = useMemo(
+    () => Array.from(new Set(projects.map(p => p.regional).filter(Boolean) as string[])).sort(),
+    [projects]
+  );
+
+  const visible = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return summaries.filter(s =>
+      (regional === ALL || s.project.regional === regional) &&
+      (!term || `${s.project.name} ${s.project.regional ?? ''}`.toLowerCase().includes(term))
+    );
+  }, [summaries, search, regional]);
+
+  const totals = useMemo(() => ({
+    teams: summaries.reduce((n, s) => n + s.teamCount, 0),
+    rdos: summaries.reduce((n, s) => n + s.rdoCount, 0),
+  }), [summaries]);
+
+  const newProjectButton = (
+    <Button variant="primary" icon={Plus} onClick={onCreateProject}>Nova obra</Button>
+  );
+
+  if (projects.length === 0) {
+    return (
+      <>
+        <PageHeader title="Obras" />
+        <EmptyState
+          icon={Building2}
+          title="Nenhuma obra cadastrada"
+          description="Cadastre a obra, importe a tabela de preços e crie as turmas para começar a enviar RDOs."
+          action={newProjectButton}
+        />
+      </>
+    );
+  }
+
   return (
-    <div className="animate-fade-in space-y-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Gerenciamento de Obras</h2>
-          <p className="text-slate-500 text-sm mt-1">Visualize e gerencie todos os projetos ativos da transportadora.</p>
-        </div>
-        <button 
-          onClick={onCreateProject}
-          className="bg-gradient-premium text-white px-6 py-3 rounded-2xl flex items-center gap-2 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-blue-600/20 group"
-        >
-          <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-          <span className="font-semibold text-sm">Nova Obra</span>
-        </button>
-      </div>
+    <>
+      <PageHeader
+        title="Obras"
+        subtitle={`${plural(projects.length, 'obra', 'obras')} · ${plural(totals.teams, 'turma', 'turmas')} · ${plural(totals.rdos, 'RDO', 'RDOs')}`}
+        actions={newProjectButton}
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {projects.map(proj => {
-          const teamCount = teams.filter(t => t.projectId === proj.id).length;
-          const serviceCount = proj.services?.length || 0;
-
-          return (
-            <div 
-              key={proj.id}
-              onClick={() => onSelectProject(proj)}
-              className="glass-card p-8 rounded-2xl border border-slate-200 hover:border-blue-500/30 cursor-pointer transition-all duration-500 group relative overflow-hidden flex flex-col h-full"
-            >
-              {/* Background Glow */}
-              <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-40 h-40 bg-blue-600/10 blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-              
-              <div className="flex justify-between items-start relative z-10">
-                <div className="bg-blue-500/10 p-4 rounded-2xl border border-blue-500/20 group-hover:bg-blue-500/20 group-hover:scale-110 transition-all duration-500 shadow-inner">
-                  <Building2 className="w-7 h-7 text-blue-600" />
-                </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0" onClick={e => e.stopPropagation()}>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); onEditProject(proj); }}
-                    className="p-2.5 text-slate-500 hover:text-blue-600 hover:bg-blue-400/10 rounded-xl transition-all"
-                    title="Editar"
-                  >
-                    <Edit className="w-4.5 h-4.5" />
-                  </button>
-                  <button 
-                     onClick={(e) => onDeleteProject(proj.id, e)}
-                     className="p-2.5 text-slate-500 hover:text-red-600 hover:bg-red-400/10 rounded-xl transition-all"
-                     title="Excluir"
-                  >
-                    <Trash2 className="w-4.5 h-4.5" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-8 flex-1 relative z-10">
-                <h3 className="text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-1">{proj.name}</h3>
-                
-                <div className="mt-6 flex flex-col gap-3">
-                   <div className="flex items-center gap-3 text-slate-500">
-                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500/50" />
-                      <span className="text-sm font-medium">{teamCount} Turmas Operativas</span>
-                   </div>
-                   <div className="flex items-center gap-3 text-slate-500">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/50" />
-                      <span className="text-sm font-medium">{serviceCount} Serviços Mapeados</span>
-                   </div>
-                </div>
-
-                {proj.regional && (
-                  <div className="mt-8 flex items-center justify-between">
-                    <span className="px-3 py-1.5 bg-slate-50 text-blue-600 text-[10px] font-extrabold uppercase tracking-widest rounded-full border border-slate-200 backdrop-blur-md">
-                      {proj.regional}
-                    </span>
-                    <FolderOpen className="w-4 h-4 text-slate-500 group-hover:text-blue-500/50 transition-colors" />
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-
-        {projects.length === 0 && (
-          <div className="col-span-full py-20 glass-panel rounded-2xl border border-dashed border-slate-200 flex flex-col items-center justify-center text-center px-6">
-             <div className="bg-slate-50 p-6 rounded-full mb-6">
-                <Building2 className="w-12 h-12 text-slate-500 opacity-30" />
-             </div>
-             <h4 className="text-xl font-bold text-slate-900 mb-2">Início de Atividades</h4>
-             <p className="text-slate-500 max-w-xs">Ainda não existem obras configuradas. Comece criando seu primeiro projeto.</p>
-             <button 
-                onClick={onCreateProject}
-                className="mt-8 text-blue-600 font-bold flex items-center gap-2 hover:gap-3 transition-all underline decoration-blue-500/30 underline-offset-8"
-              >
-                Adicionar minha primeira obra
-                <Plus className="w-4 h-4" />
-             </button>
-          </div>
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <SearchInput value={search} onChange={setSearch} placeholder="Buscar por centro de custo ou contrato" />
+        {regionals.length > 1 && (
+          <Select label="Filtrar por regional" value={regional} onChange={e => setRegional(e.target.value)}>
+            <option value={ALL}>Todas as regionais</option>
+            {regionals.map(r => <option key={r} value={r}>{r}</option>)}
+          </Select>
         )}
       </div>
-    </div>
+
+      <TableCard footer={visible.length !== summaries.length ? `Mostrando ${visible.length} de ${summaries.length} obras` : undefined}>
+        <thead>
+          <tr>
+            <Th>Obra</Th>
+            <Th>Regional</Th>
+            <Th align="center">Turmas</Th>
+            <Th>Tabela de preços</Th>
+            <Th align="right">RDOs</Th>
+            <Th>Último RDO</Th>
+            <Th align="right"><span className="sr-only">Ações</span></Th>
+          </tr>
+        </thead>
+        <tbody>
+          {visible.map(s => (
+            <ClickableRow key={s.project.id} onOpen={() => onSelectProject(s.project)} label={`Abrir obra ${s.project.name}`}>
+              <Td>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-slate-900">{s.code}</span>
+                  {s.project.rdoModel && s.project.rdoModel !== 'PADRAO' && (
+                    <Badge tone="info" title="Modelo de RDO lido pela IA">{rdoModelLabel(s.project.rdoModel)}</Badge>
+                  )}
+                </div>
+                {s.detail && <div className="mt-0.5 text-xs text-slate-500">{s.detail}</div>}
+              </Td>
+              <Td className="whitespace-nowrap">{s.project.regional || <span className="text-slate-400">—</span>}</Td>
+              <Td align="center">{s.teamCount}</Td>
+              <Td>
+                {s.serviceCount > 0
+                  ? <span className="whitespace-nowrap">{plural(s.serviceCount, 'item', 'itens')}</span>
+                  : <Badge tone="warning" title="Sem tabela de preços a produção dos RDOs fica em R$ 0">Não importada</Badge>}
+              </Td>
+              <Td align="right">{s.rdoCount.toLocaleString('pt-BR')}</Td>
+              <Td className="whitespace-nowrap">
+                {s.lastDate ? (
+                  <div className="flex items-center gap-2">
+                    <span>{s.lastDate}</span>
+                    {s.daysSince !== null && s.daysSince > STALE_AFTER_DAYS && (
+                      <Badge tone="warning" title="Sem RDO recente">há {s.daysSince} dias</Badge>
+                    )}
+                  </div>
+                ) : <span className="text-slate-400">Nenhum</span>}
+              </Td>
+              <Td align="right" className="whitespace-nowrap">
+                <div className="flex items-center justify-end gap-0.5">
+                  <IconButton icon={Pencil} label="Editar obra" onClick={() => onEditProject(s.project)} />
+                  <IconButton icon={Trash2} label="Excluir obra" tone="danger" onClick={e => onDeleteProject(s.project.id, e)} />
+                  <ChevronRight className="ml-1 h-4 w-4 text-slate-300 transition group-hover:text-slate-500" aria-hidden="true" />
+                </div>
+              </Td>
+            </ClickableRow>
+          ))}
+          {visible.length === 0 && (
+            <tr>
+              <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-500">
+                Nenhuma obra encontrada.{' '}
+                <button type="button" className="font-medium text-[#0b1d4f] underline-offset-2 hover:underline" onClick={() => { setSearch(''); setRegional(ALL); }}>
+                  Limpar filtros
+                </button>
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </TableCard>
+    </>
   );
 };

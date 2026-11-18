@@ -1,9 +1,11 @@
 import React from 'react';
-import { Loader2, Layers, AlertTriangle } from 'lucide-react';
+import { Loader2, Upload, AlertTriangle } from 'lucide-react';
 import { useProjectStore, useProjectActions, useSelectedProject } from '../../../stores/projectStore';
 import { useTeamStore, useTeamActions, useSelectedTeam } from '../../../stores/teamStore';
 import { useRdoStore, useRdoActions, useCurrentRdo, useUploadProgress } from '../../../stores/rdoStore';
-import { useUiStore, useUiActions } from '../../../stores/uiStore';
+import { useUiActions, useUiState } from '../../../stores/uiStore';
+import { rdoModelLabel } from '../../../../services/rdoModels';
+import { Button, PageHeader } from '../../../../components/ui';
 
 import { Breadcrumbs } from '../../../../components/Breadcrumbs';
 import { RDODetail } from '../../../../components/RDODetail';
@@ -163,6 +165,7 @@ export const ProjectsPage: React.FC = () => {
             <ProjectList 
               projects={projects}
               teams={teams}
+              rdos={rdos}
               onSelectProject={handleSelectProject}
               onEditProject={(p) => openEditModal(p, 'PROJECT')}
               onDeleteProject={handleDeleteProjectWrapper}
@@ -175,8 +178,10 @@ export const ProjectsPage: React.FC = () => {
               <ProjectServices 
                 selectedProject={selectedProject}
                 projectTab={projectTab}
+                teamCount={teams.filter(t => t.projectId === selectedProject?.id).length}
                 onSetTab={setProjectTab}
                 onServicesUpload={handleServicesUploadWrapper}
+                onEditProject={(p) => openEditModal(p, 'PROJECT')}
               />
               {projectTab === 'TEAMS' && (
                 <TeamList 
@@ -205,62 +210,59 @@ export const ProjectsPage: React.FC = () => {
           )}
 
           {currentView === 'UPLOAD_ANALYSIS' && (
-            <div className="max-w-2xl mx-auto mt-8 animate-fade-in text-center">
-              <h2 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">Análise Inteligente</h2>
-              <p className="text-slate-500 mb-8 font-medium">
-                Importando novos RDOs para <span className="text-blue-600">{selectedTeam?.name}</span>
-              </p>
+            <div className="mx-auto max-w-2xl">
+              <PageHeader
+                title="Importar RDOs"
+                subtitle={<>Turma {selectedTeam?.name} · modelo {rdoModelLabel(selectedProject?.rdoModel)}</>}
+                actions={<Button onClick={() => setCurrentView('RDO_LIST')} disabled={loading}>Voltar</Button>}
+              />
 
-              <div className="relative group">
+              <label
+                className={`relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed bg-white px-6 py-12 text-center transition ${
+                  loading ? 'cursor-wait border-[#0b1d4f]/40' : 'cursor-pointer border-slate-300 hover:border-[#0b1d4f] hover:bg-slate-50'
+                }`}
+              >
                 <input
                   type="file"
                   accept="image/*,application/pdf"
                   onChange={handleFileUploadWrapper}
                   disabled={loading}
                   multiple
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+                  className="sr-only"
                 />
-                <div className={`glass-panel border-2 border-dashed rounded-2xl p-16 transition-all duration-500 ${loading ? 'border-blue-500/50 bg-blue-500/5' : 'border-slate-200 hover:border-blue-500/50 hover:bg-slate-50 shadow-2xl'}`}>
-                  <div className="flex flex-col items-center justify-center gap-6">
-                    {loading ? (
-                      <>
-                        <div className="relative">
-                          <div className="w-20 h-20 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <Loader2 className="w-8 h-8 text-blue-500 animate-pulse" />
-                          </div>
-                        </div>
-                        <div className="flex flex-col gap-2 items-center">
-                          <div className="text-slate-900 font-black text-xl tracking-tight">Extraindo Dados...</div>
-                          <div className="text-blue-600 font-bold text-sm tracking-widest uppercase">{uploadProgress.current} DE {uploadProgress.total} COMPLETOS</div>
-                          <div className="w-64 h-2 bg-slate-50 rounded-full mt-4 overflow-hidden border border-slate-200 shadow-inner">
-                            <div 
-                              className="h-full bg-[#0b1d4f] hover:bg-[#13296b] transition-all duration-500 rounded-full shadow-[0_0_15px_rgba(37,99,235,0.5)]" 
-                              style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
-                            />
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="p-8 bg-blue-500/10 rounded-full border border-blue-500/20 group-hover:scale-110 group-hover:bg-blue-500/20 transition-all duration-500 shadow-2xl">
-                          <Layers className="w-12 h-12 text-blue-600" />
-                        </div>
-                        <div>
-                          <p className="text-xl font-bold text-slate-900 tracking-tight">Arraste seus relatórios aqui</p>
-                          <p className="text-slate-500 font-medium mt-2">Suporta PDF e imagens em alta resolução</p>
-                          <div className="mt-8 px-6 py-2 bg-blue-500/10 text-blue-600 text-[10px] font-black uppercase tracking-[0.3em] rounded-full border border-blue-500/10 inline-block">
-                            Processamento Seguro via Gemini AI
-                          </div>
-                        </div>
-                      </>
-                    )}
+                {loading ? (
+                  <div className="w-full max-w-xs" role="status" aria-live="polite">
+                    <Loader2 className="mx-auto mb-3 h-6 w-6 animate-spin text-[#0b1d4f]" />
+                    <p className="text-sm font-semibold text-slate-900">
+                      Lendo RDO {uploadProgress.current} de {uploadProgress.total}…
+                    </p>
+                    <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-[#0b1d4f] transition-all duration-500"
+                        style={{ width: `${uploadProgress.total ? (uploadProgress.current / uploadProgress.total) * 100 : 0}%` }}
+                      />
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500">Cada arquivo leva de 20 a 60 segundos. Não feche a página.</p>
                   </div>
-                </div>
-              </div>
+                ) : (
+                  <>
+                    <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-[#0b1d4f]">
+                      <Upload className="h-5 w-5" strokeWidth={1.75} />
+                    </span>
+                    <p className="text-sm font-semibold text-slate-900">Clique para selecionar ou arraste os arquivos</p>
+                    <p className="mt-1 text-xs text-slate-500">PDF ou imagem, até 7 MB cada. Vários arquivos de uma vez.</p>
+                  </>
+                )}
+              </label>
+
+              <p className="mt-3 text-xs text-slate-500">
+                A IA lê cada documento e grava o RDO na turma. RDOs já existentes (mesma data e número) são ignorados,
+                e atividades com código ou quantidade incertos ficam marcadas para revisão.
+              </p>
+
               {error && (
-                <div className="mt-8 p-6 bg-red-500/10 border border-red-500/25 text-red-600 rounded-3xl text-sm font-bold flex items-center gap-4 animate-shake">
-                  <AlertTriangle className="w-6 h-6 shrink-0" />
+                <div role="alert" className="mt-4 flex items-start gap-3 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                   {error}
                 </div>
               )}
@@ -272,5 +274,3 @@ export const ProjectsPage: React.FC = () => {
   );
 };
 
-// UI helper
-import { useUiState } from '../../../stores/uiStore';

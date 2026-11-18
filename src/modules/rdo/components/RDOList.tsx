@@ -1,10 +1,11 @@
-import React from 'react';
-import { FileText, Upload, Download, Trash2, Calendar, ClipboardList, ArrowRight, DollarSign, CloudRain, AlertTriangle, FileSpreadsheet } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ChevronRight, ClipboardList, Download, FileSpreadsheet, Trash2, Upload } from 'lucide-react';
 import { exportRDOsToExcel } from '../utils/excelExportUtils';
 import * as db from '../services/firestoreService';
-import { HistogramItem } from '../types';
-import { RDOData, Team, Project } from '../types';
+import { HistogramItem, RDOData, Team, Project } from '../types';
 import { formatMoney, calculateRDOTotal, parseDate } from '../utils';
+import { headcount, pendingReviewCount } from '../utils/projectSummary';
+import { Badge, Button, ClickableRow, EmptyState, IconButton, PageHeader, SearchInput, TableCard, Td, Th } from './ui';
 
 interface RDOListProps {
   rdos: RDOData[];
@@ -16,174 +17,119 @@ interface RDOListProps {
   onUploadNew: () => void;
 }
 
-export const RDOList: React.FC<RDOListProps> = ({ 
-  rdos, 
-  selectedTeam, 
-  selectedProject, 
-  onSelectRDO, 
-  onExportCSV, 
-  onDeleteRDO, 
-  onUploadNew 
+const weatherOf = (rdo: RDOData) =>
+  [rdo.weatherMorning, rdo.weatherAfternoon].filter(Boolean).join(' / ') || rdo.weather || '—';
+
+export const RDOList: React.FC<RDOListProps> = ({
+  rdos, selectedTeam, selectedProject, onSelectRDO, onExportCSV, onDeleteRDO, onUploadNew
 }) => {
-  // Filta por equipe e ordena por data (mais recente primeiro)
-  const teamRdos = rdos
+  const [search, setSearch] = useState('');
+  const [histograms, setHistograms] = useState<HistogramItem[]>([]);
+
+  // RDOs da turma, do mais recente para o mais antigo, já com a produção calculada.
+  const teamRdos = useMemo(() => rdos
     .filter(r => r.teamId === selectedTeam?.id)
-    .sort((a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime());
+    .sort((a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime())
+    .map(rdo => ({ rdo, total: calculateRDOTotal(rdo, selectedProject || undefined), review: pendingReviewCount(rdo) })),
+  [rdos, selectedTeam, selectedProject]);
 
-  const [histograms, setHistograms] = React.useState<HistogramItem[]>([]);
+  const visible = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return term ? teamRdos.filter(({ rdo }) => `${rdo.reportNumber ?? ''} ${rdo.date}`.toLowerCase().includes(term)) : teamRdos;
+  }, [teamRdos, search]);
 
-  React.useEffect(() => {
-    if (selectedProject?.id) {
-      db.getHistograms(selectedProject.id)
-        .then(setHistograms)
-        .catch(err => console.error("Erro ao carregar histogramas", err));
-    }
-  }, [selectedProject]);
+  const totalProduction = useMemo(() => teamRdos.reduce((sum, r) => sum + r.total, 0), [teamRdos]);
+  const toReview = useMemo(() => teamRdos.filter(r => r.review > 0).length, [teamRdos]);
+
+  useEffect(() => {
+    if (!selectedProject?.id) return;
+    db.getHistograms(selectedProject.id)
+      .then(setHistograms)
+      .catch(err => console.error('Erro ao carregar histogramas', err));
+  }, [selectedProject?.id]);
 
   const handleExportExcel = () => {
     if (!selectedTeam || !selectedProject) return;
-    
     const fileName = `Diario_RDO_Equipe_${selectedTeam.name.replace(/\s+/g, '_')}_${selectedProject.name.replace(/\s+/g, '_')}.xlsx`;
-    exportRDOsToExcel(teamRdos, selectedProject.name, histograms, fileName);
+    exportRDOsToExcel(teamRdos.map(r => r.rdo), selectedProject.name, histograms, fileName);
   };
 
-  return (
-    <div className="animate-fade-in space-y-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Relatórios Diários</h2>
-          <p className="text-slate-500 text-sm mt-1">
-            Histórico de produção para a turma <span className="text-blue-600 font-bold">{selectedTeam?.name}</span>
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-          {teamRdos.length > 0 && (
-            <button 
-              onClick={handleExportExcel}
-              className="bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-600 px-6 py-3.5 rounded-2xl flex items-center gap-2.5 hover:scale-105 active:scale-95 transition-all border border-emerald-500/20 w-full md:w-auto justify-center font-bold text-sm tracking-wide"
-              title="Exportar apontamento diário desta equipe para Excel"
-            >
-              <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
-              <span>Exportar Excel</span>
-            </button>
-          )}
+  const uploadButton = <Button variant="primary" icon={Upload} onClick={onUploadNew}>Importar RDOs</Button>;
 
-          <button 
-            onClick={onUploadNew}
-            className="bg-[#0b1d4f] hover:bg-[#13296b] text-white px-8 py-3.5 rounded-2xl flex items-center gap-3 hover:scale-105 active:scale-95 transition-all shadow-xl shadow-blue-900/40 group border border-slate-200 w-full md:w-auto justify-center"
-          >
-            <Upload className="w-5 h-5 group-hover:-translate-y-1 transition-transform duration-300" />
-            <span className="font-black text-sm tracking-wide uppercase">Analisar com IA</span>
-          </button>
-        </div>
+  if (teamRdos.length === 0) {
+    return (
+      <>
+        <PageHeader title={`RDOs · ${selectedTeam?.name ?? ''}`} />
+        <EmptyState
+          icon={ClipboardList}
+          title="Nenhum RDO nesta turma"
+          description="Envie os RDOs em PDF ou imagem: a IA lê o documento e preenche mão de obra, equipamentos e atividades."
+          action={uploadButton}
+        />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <PageHeader
+        title={`RDOs · ${selectedTeam?.name ?? ''}`}
+        subtitle={`${teamRdos.length.toLocaleString('pt-BR')} relatórios · produção ${formatMoney(totalProduction)}${toReview ? ` · ${toReview} com itens a revisar` : ''}`}
+        actions={<>
+          <Button icon={FileSpreadsheet} onClick={handleExportExcel} title="Apontamento diário da turma em Excel">Exportar Excel</Button>
+          {uploadButton}
+        </>}
+      />
+
+      <div className="mb-3">
+        <SearchInput value={search} onChange={setSearch} placeholder="Buscar por número ou data (ex.: 10/2026)" />
       </div>
 
-      {teamRdos.length === 0 ? (
-        <div className="py-24 glass-panel rounded-2xl border border-dashed border-slate-200 flex flex-col items-center justify-center text-center px-6">
-           <div className="bg-slate-50 p-8 rounded-full mb-8 shadow-inner border border-slate-200">
-              <ClipboardList className="w-14 h-14 text-slate-400 opacity-20" />
-           </div>
-           <h4 className="text-xl font-bold text-slate-900 mb-3">Histórico Vazio</h4>
-           <p className="text-slate-500 max-w-xs leading-relaxed">Não há relatórios processados para esta turma. Utilize a inteligência artificial para extrair dados de imagens ou PDFs.</p>
-           <button 
-              onClick={onUploadNew}
-              className="mt-10 px-8 py-3 bg-slate-50 text-slate-900 font-bold rounded-2xl border border-slate-200 hover:bg-slate-100 transition-all backdrop-blur-sm"
-            >
-              Iniciar primeira análise
-           </button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="hidden md:grid grid-cols-12 px-10 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] pb-2">
-            <div className="col-span-1 text-center">Info</div>
-            <div className="col-span-4">Relatório e Data</div>
-            <div className="col-span-3 text-right">Valor Produzido</div>
-            <div className="col-span-4 text-right">Ações Rápidas</div>
-          </div>
-          
-          {teamRdos.map(rdo => {
-            const rdoTotal = calculateRDOTotal(rdo, selectedProject || undefined);
-
-            return (
-              <div 
-                key={rdo.id}
-                onClick={() => onSelectRDO(rdo)}
-                className="glass-card p-5 md:px-10 rounded-2xl border border-slate-200 hover:border-blue-500/30 cursor-pointer transition-all duration-300 group relative overflow-hidden flex flex-col md:grid md:grid-cols-12 md:items-center gap-4 md:gap-0"
-              >
-                {/* Background Decor */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-[50px] opacity-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none" />
-                
-                {/* Col 1: Identifier Box */}
-                <div className="col-span-1 flex justify-center md:block">
-                  <div className="bg-blue-500/10 w-12 h-12 flex flex-col items-center justify-center rounded-xl border border-blue-500/10 group-hover:bg-blue-500/20 transition-all shadow-inner group-hover:scale-110 origin-center">
-                    <span className="text-[8px] font-black text-blue-600/60 uppercase leading-none mb-0.5">RDO</span>
-                    <span className="text-[15px] font-black text-blue-600 leading-none">#{rdo.reportNumber}</span>
-                  </div>
+      <TableCard footer={visible.length !== teamRdos.length ? `Mostrando ${visible.length} de ${teamRdos.length} RDOs` : undefined}>
+        <thead>
+          <tr>
+            <Th>RDO</Th>
+            <Th>Data</Th>
+            <Th>Clima</Th>
+            <Th align="right">Efetivo</Th>
+            <Th align="right">Ocorrências</Th>
+            <Th>Situação</Th>
+            <Th align="right">Produção</Th>
+            <Th align="right"><span className="sr-only">Ações</span></Th>
+          </tr>
+        </thead>
+        <tbody>
+          {visible.map(({ rdo, total, review }) => (
+            <ClickableRow key={rdo.id} onOpen={() => onSelectRDO(rdo)} label={`Abrir RDO ${rdo.reportNumber ?? ''} de ${rdo.date}`}>
+              <Td className="whitespace-nowrap font-semibold text-slate-900">nº {rdo.reportNumber || '—'}</Td>
+              <Td className="whitespace-nowrap">{rdo.date}</Td>
+              <Td className="whitespace-nowrap text-slate-500">{weatherOf(rdo)}</Td>
+              <Td align="right">{headcount(rdo)}</Td>
+              <Td align="right">
+                {(rdo.occurrences?.length ?? 0) > 0
+                  ? <Badge tone="danger">{rdo.occurrences.length}</Badge>
+                  : <span className="text-slate-400">0</span>}
+              </Td>
+              <Td>
+                {review > 0
+                  ? <Badge tone="warning" title="Atividades com código ou quantidade a conferir">{review} a revisar</Badge>
+                  : <Badge tone="success">Conferido</Badge>}
+              </Td>
+              <Td align="right" className="whitespace-nowrap font-medium text-slate-900">{formatMoney(total)}</Td>
+              <Td align="right" className="whitespace-nowrap">
+                <div className="flex items-center justify-end gap-0.5">
+                  <IconButton icon={Download} label="Baixar CSV do RDO" onClick={() => onExportCSV(rdo)} />
+                  <IconButton icon={Trash2} label="Excluir RDO" tone="danger" onClick={e => onDeleteRDO(rdo.id, e)} />
+                  <ChevronRight className="ml-1 h-4 w-4 text-slate-300 transition group-hover:text-slate-500" aria-hidden="true" />
                 </div>
-
-                {/* Col 2: Info (Cleaned up) */}
-                <div className="col-span-4 space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest px-2 py-0.5 bg-blue-500/10 rounded-md border border-blue-500/10">DIÁRIO</span>
-                    <div className="flex items-center gap-1.5 text-slate-500 font-bold text-[11px] uppercase tracking-wider ml-1">
-                      <Calendar className="w-4 h-4 text-slate-500" />
-                      {rdo.date}
-                    </div>
-                  </div>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em]">Produção Diária Consolidada</p>
-                  <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-500/10 border border-sky-500/20 text-[10px] font-black text-sky-600 uppercase tracking-widest">
-                      <CloudRain className="w-3 h-3" />
-                      {rdo.weather || 'Sem clima'}
-                    </span>
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-black uppercase tracking-widest ${
-                      (rdo.occurrences?.length || 0) > 0
-                        ? 'bg-red-500/10 border-red-500/20 text-red-600'
-                        : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600'
-                    }`}>
-                      <AlertTriangle className="w-3 h-3" />
-                      {rdo.occurrences?.length || 0} ocorr.
-                    </span>
-                  </div>
-                </div>
-
-                {/* Col 3: Financial */}
-                <div className="col-span-3 md:text-right">
-                  <div className="flex flex-col md:items-end">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Faturamento Dia</span>
-                    <span className="text-xl font-black text-emerald-600 font-mono tracking-tighter">
-                      {formatMoney(rdoTotal)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Col 4: Actions */}
-                <div className="col-span-4 flex justify-end items-center gap-4">
-                  <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); onExportCSV(rdo); }}
-                      className="p-3 bg-slate-50 text-slate-500 hover:text-emerald-600 hover:bg-emerald-400/10 rounded-xl border border-slate-200 transition-all shadow-lg shadow-emerald-900/10"
-                      title="Exportar CSV"
-                    >
-                      <Download className="w-5 h-5" />
-                    </button>
-                    <button 
-                       onClick={(e) => onDeleteRDO(rdo.id, e)}
-                       className="p-3 bg-slate-50 text-slate-500 hover:text-red-600 hover:bg-red-400/10 rounded-xl border border-slate-200 transition-all shadow-lg shadow-red-900/10"
-                       title="Excluir"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                  <div className="hidden md:flex ml-2 w-10 h-10 bg-slate-50 rounded-full items-center justify-center border border-slate-200 group-hover:bg-blue-500/10 group-hover:border-blue-500/20 transition-all">
-                    <ArrowRight className="w-5 h-5 text-slate-500 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
+              </Td>
+            </ClickableRow>
+          ))}
+          {visible.length === 0 && (
+            <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-500">Nenhum RDO encontrado.</td></tr>
+          )}
+        </tbody>
+      </TableCard>
+    </>
   );
 };
