@@ -4,6 +4,12 @@ Todas as mudanças relevantes do DR Nexus, da mais nova para a mais antiga.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, seção "Versionamento".
 
+## [1.5.4] - 2026-11-18
+
+### Corrigido
+- Inteligência Contratual: o filtro de turmas listava as turmas de todas as obras; agora mostra só as
+  da obra aberta, em ordem alfabética. Ao trocar de obra, o filtro volta para "Todas as Turmas".
+
 ## [1.5.3] - 2026-11-18
 
 ### Corrigido

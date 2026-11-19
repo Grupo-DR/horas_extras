@@ -149,14 +149,25 @@ export default function ContractIntelligencePage({
   const [idlenessFacts, setIdlenessFacts] = useState<IdlenessFact[]>([]);
   const [validationIssues, setValidationIssues] = useState<ValidationItem[]>([]);
 
-  // 1. Filtrar RDOs apenas do projeto selecionado
+  // 1. Turmas e RDOs só da obra selecionada (o RDO aponta para a turma; a turma, para a obra)
+  const projectTeams = useMemo(
+    () => selectedProject
+      ? teams
+          .filter(t => t.projectId === selectedProject.id)
+          .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { numeric: true }))
+      : [],
+    [selectedProject, teams]
+  );
+
   const projectRdos = useMemo(() => {
-    if (!selectedProject) return [];
-    // O RDO não tem projectId direto salvo? Na modelagem, o RDO aponta para teamId.
-    // E o Team aponta para projectId.
-    const projectTeamIds = new Set(teams.filter(t => t.projectId === selectedProject.id).map(t => t.id));
+    const projectTeamIds = new Set(projectTeams.map(t => t.id));
     return rdos.filter(r => projectTeamIds.has(r.teamId));
-  }, [selectedProject, rdos, teams]);
+  }, [projectTeams, rdos]);
+
+  // Ao trocar de obra, a turma escolhida na obra anterior não existe nesta.
+  useEffect(() => {
+    setGlobalTeamFilter('ALL');
+  }, [selectedProject?.id]);
 
   // 2. Carregar Dimensões e Rodar Motores (useCallback/useEffect)
   const runEngines = useCallback(async () => {
@@ -440,7 +451,7 @@ export default function ContractIntelligencePage({
             style={{ padding: '8px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, color: '#0f172a', minWidth: 150 }}
           >
             <option value="ALL">Todas as Turmas</option>
-            {teams.map(t => (
+            {projectTeams.map(t => (
               <option key={t.id} value={t.id}>{t.name}</option>
             ))}
           </select>
@@ -549,11 +560,11 @@ export default function ContractIntelligencePage({
              )
           )}
           
-          {activeTab === 'MEDICAO' && <MeasurementTable facts={filteredMeasureFacts} projectName={selectedProject.name} teams={teams} onNavigateToRDO={onNavigateToRDO} />}
+          {activeTab === 'MEDICAO' && <MeasurementTable facts={filteredMeasureFacts} projectName={selectedProject.name} teams={projectTeams} onNavigateToRDO={onNavigateToRDO} />}
           
           {activeTab === 'PRODUTIVIDADE' && <ProductivityTable facts={filteredProdFacts} projectName={selectedProject.name} />}
           
-          {activeTab === 'OCORRENCIAS' && <OccurrencesTable facts={filteredOccurrenceFacts} projectName={selectedProject.name} teams={teams} onNavigateToRDO={onNavigateToRDO} onCategoryChange={handleCategoryChange} onEligibilityChange={handleEligibilityChange} />}
+          {activeTab === 'OCORRENCIAS' && <OccurrencesTable facts={filteredOccurrenceFacts} projectName={selectedProject.name} teams={projectTeams} onNavigateToRDO={onNavigateToRDO} onCategoryChange={handleCategoryChange} onEligibilityChange={handleEligibilityChange} />}
           
           { activeTab === 'IMPRODUTIVIDADE' && <IdlenessTable facts={filteredIdlenessFacts} projectName={selectedProject.name} /> }
           
