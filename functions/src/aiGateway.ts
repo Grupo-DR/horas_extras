@@ -19,7 +19,11 @@ const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 /** Trocar o modelo de todo o portal é mudar só esta linha. */
 const GEMINI_MODEL = "gemini-3-flash-preview";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
-const GEMINI_TIMEOUT_MS = 280_000;
+/** Prazo total dentro dos 300 s da função; cada tentativa tem limite próprio. */
+const GEMINI_DEADLINE_MS = 285_000;
+/** Uma leitura de RDO leva 20–60 s; acima disso o modelo travou e vale tentar de novo. */
+const GEMINI_ATTEMPT_TIMEOUT_MS = 110_000;
+const MIN_ATTEMPT_MS = 15_000;
 const GEMINI_ATTEMPTS = 4;
 const RETRY_STATUS = [429, 500, 503];
 const RETRY_BASE_MS = 5_000;
@@ -118,12 +122,15 @@ export const aiGenerateContent = onCall(
             },
         };
 
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
-        let response!: Response;
-        try {
-            // O modelo devolve 503/429 em picos de uso: tenta de novo com espera crescente.
-            for (let attempt = 1; attempt <= GEMINI_ATTEMPTS; attempt++) {
+        // Tenta de novo quando o modelo está ocupado (429/500/503), trava sem responder
+        // ou a rede falha, enquanto couber outra tentativa no prazo da função.
+        const deadline = Date.now() + GEMINI_DEADLINE_MS;
+        let response: Response | undefined;
+        let timedOut = false;
+        for (let attempt = 1; attempt <= GEMINI_ATTEMPTS; attempt++) {
+            const remaining = deadline - Date.now();
+            if (remaining < MIN_ATTEMPT_MS) break;
+            try {
                 response = await fetch(GEMINI_URL, {
                     method: "POST",
                     headers: {
@@ -131,17 +138,28 @@ export const aiGenerateContent = onCall(
                         "x-goog-api-key": GEMINI_API_KEY.value(),
                     },
                     body: JSON.stringify(body),
-                    signal: controller.signal,
+                    signal: AbortSignal.timeout(Math.min(GEMINI_ATTEMPT_TIMEOUT_MS, remaining)),
                 });
-                if (!RETRY_STATUS.includes(response.status) || attempt === GEMINI_ATTEMPTS) break;
+                timedOut = false;
+                if (!RETRY_STATUS.includes(response.status)) break;
                 logger.warn("aiGenerateContent: Gemini ocupado, nova tentativa", { feature: req.feature, status: response.status, attempt });
-                await new Promise(resolve => setTimeout(resolve, RETRY_BASE_MS * attempt));
+            } catch (error) {
+                response = undefined;
+                timedOut = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+                logger.warn("aiGenerateContent: sem resposta do Gemini, nova tentativa", {
+                    feature: req.feature, attempt, timedOut, error: String(error),
+                });
             }
-        } catch (error) {
-            logger.error("aiGenerateContent: falha de rede", { feature: req.feature, error: String(error) });
-            throw new HttpsError("unavailable", "Não foi possível falar com a IA. Tente novamente.");
-        } finally {
-            clearTimeout(timer);
+            if (attempt < GEMINI_ATTEMPTS) {
+                await new Promise(resolve => setTimeout(resolve, Math.min(RETRY_BASE_MS * attempt, Math.max(deadline - Date.now() - MIN_ATTEMPT_MS, 0))));
+            }
+        }
+
+        if (!response) {
+            logger.error("aiGenerateContent: Gemini não respondeu", { feature: req.feature, timedOut });
+            throw timedOut
+                ? new HttpsError("deadline-exceeded", "A IA não respondeu a tempo (serviço sobrecarregado). Tente de novo em alguns minutos.")
+                : new HttpsError("unavailable", "Não foi possível falar com a IA. Tente de novo em alguns minutos.");
         }
 
         if (!response.ok) {

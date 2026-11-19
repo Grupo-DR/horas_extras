@@ -48,7 +48,10 @@ export const aiErrorMessage = (error: unknown): string => {
         case 'functions/resource-exhausted':
             return 'A IA está sobrecarregada ou no limite de uso. Tente em alguns minutos.';
         case 'functions/deadline-exceeded':
-            return 'A IA demorou demais para responder. Tente com um arquivo menor.';
+            // Sem mensagem do servidor (tempo esgotado no navegador) o SDK devolve só o código.
+            return err.message && !/deadline-exceeded/i.test(err.message)
+                ? err.message
+                : 'A IA não respondeu a tempo. Tente de novo em alguns minutos.';
         case 'functions/not-found':
             return 'Serviço de IA ainda não publicado. Avise o administrador.';
         default:

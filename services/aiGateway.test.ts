@@ -21,6 +21,13 @@ describe('aiErrorMessage', () => {
         expect(aiErrorMessage({ code: 'functions/not-found' })).toMatch(/não publicado/);
     });
 
+    it('explica tempo esgotado, com ou sem mensagem do servidor', () => {
+        expect(aiErrorMessage({ code: 'functions/deadline-exceeded', message: 'deadline-exceeded' }))
+            .toBe('A IA não respondeu a tempo. Tente de novo em alguns minutos.');
+        expect(aiErrorMessage({ code: 'functions/deadline-exceeded', message: 'A IA não respondeu a tempo (serviço sobrecarregado).' }))
+            .toBe('A IA não respondeu a tempo (serviço sobrecarregado).');
+    });
+
     it('usa a mensagem do servidor nos demais casos', () => {
         expect(aiErrorMessage({ code: 'functions/invalid-argument', message: 'Arquivo grande demais' })).toBe('Arquivo grande demais');
     });

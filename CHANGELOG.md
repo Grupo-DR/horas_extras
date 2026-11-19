@@ -12,6 +12,9 @@ versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, se
 - RDO Vale: a área "Operável Parcialmente" (ou "Inoperável") virava ocorrência só quando a IA
   respondia o código pedido; se respondesse com o texto do documento, a condição se perdia e não
   entrava na análise de improdutividade. O mesmo ajuste vale para o clima ("Chuva", "Sol"...).
+- IA: quando o Gemini trava sem responder (aconteceu em 19/11 com um RDO da Vale, que ficou 280 s
+  esperando), cada tentativa agora tem limite de 110 s e o servidor tenta de novo sozinho; a mensagem
+  final diz que o serviço não respondeu a tempo, em vez de "não foi possível falar com a IA".
 
 ## [1.5.3] - 2026-11-18
 
