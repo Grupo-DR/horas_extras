@@ -11,7 +11,7 @@
  *    com ícones; a IA lê o PDF como imagem.
  */
 import { Schema, Type } from "@google/genai";
-import { generateWithAi } from "@/services/aiGateway";
+import { generateWithAi, parseAiJson } from "@/services/aiGateway";
 import {
   Activity, Equipment, Occurrence, RDOData, ServiceItem,
   ValeActivity, ValeRdoDetail, ValeResourceRow, Workforce,
@@ -329,11 +329,12 @@ export const extractValeRDO = async (
     responseMimeType: "application/json",
     responseSchema: valeRdoSchema,
     temperature: 0.1,
+    thinkingLevel: "low",
   });
   if (!response.text) throw new Error("A IA não devolveu dados do RDO.");
 
   return {
-    ...mapValeExtraction(JSON.parse(response.text), services),
+    ...mapValeExtraction(parseAiJson(response.text, "o RDO da Vale"), services),
     id: generateUUID(),
     teamId: "",
     processedAt: new Date().toISOString(),

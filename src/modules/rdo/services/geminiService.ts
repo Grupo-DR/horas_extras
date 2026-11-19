@@ -1,7 +1,7 @@
 import { Schema, Type } from "@google/genai";
 import { RDOData } from "../types";
 import { generateUUID } from "../utils";
-import { AI_MAX_FILE_BYTES, generateWithAi } from "@/services/aiGateway";
+import { AI_MAX_FILE_BYTES, generateWithAi, parseAiJson } from "@/services/aiGateway";
 
 export const extractRDOData = async (base64Image: string, mimeType: string): Promise<RDOData> => {
   const schema: Schema = {
@@ -77,12 +77,13 @@ export const extractRDOData = async (base64Image: string, mimeType: string): Pro
     ],
     responseMimeType: "application/json",
     responseSchema: schema,
+    thinkingLevel: "low",
   });
 
   const text = response.text;
   if (!text) throw new Error("No data returned from Gemini");
 
-  const parsedData = JSON.parse(text);
+  const parsedData = parseAiJson<Omit<RDOData, "id">>(text, "o RDO");
 
   // Enrich with metadata
   const rdoData: RDOData = {

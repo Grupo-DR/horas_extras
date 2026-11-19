@@ -2,12 +2,14 @@ import { create } from 'zustand';
 import { Project, RDOData } from '../../types';
 import { FirestoreRDORepository } from '../repositories/FirestoreRDORepository';
 import { fileToBase64 } from '../../services/geminiService';
-import { extractRDOForProject } from '../../services/rdoModels';
+import { assertProjectReadyForUpload, extractRDOForProject } from '../../services/rdoModels';
 
 export interface UploadResult {
   saved: RDOData[];
   /** Arquivos não gravados porque a turma já tem RDO com a mesma data e número. */
   skipped: string[];
+  /** Arquivos que a IA não conseguiu ler; os demais do lote seguem normalmente. */
+  failed: { file: string; message: string }[];
 }
 
 /** Chave de duplicidade: mesma turma, data e número de RDO. */
@@ -62,11 +64,14 @@ export const useRdoStore = create<RdoState>((set, get) => ({
     },
     handleFileUpload: async (files, selectedTeamId, project) => {
       if (!files || files.length === 0 || !selectedTeamId) return;
+      // Problema da obra (ex.: sem PQ) falharia em todos os arquivos: avisa antes de gastar IA.
+      assertProjectReadyForUpload(project);
 
       set({ uploadProgress: { current: 0, total: files.length } });
 
       const newRdos: RDOData[] = [];
       const skipped: string[] = [];
+      const failed: UploadResult['failed'] = [];
       const existing = new Set(get().rdos.map(rdoDuplicateKey));
 
       try {
@@ -74,8 +79,14 @@ export const useRdoStore = create<RdoState>((set, get) => ({
           set({ uploadProgress: { current: i + 1, total: files.length } });
           const file = files[i];
 
-          const base64 = await fileToBase64(file);
-          const data = await extractRDOForProject(base64, file.type, project);
+          // Falha de leitura de um arquivo não interrompe o lote.
+          let data: RDOData;
+          try {
+            data = await extractRDOForProject(await fileToBase64(file), file.type, project);
+          } catch (err) {
+            failed.push({ file: file.name, message: err instanceof Error ? err.message : String(err) });
+            continue;
+          }
 
           data.teamId = selectedTeamId;
           if (project?.id) data.projectId = project.id;
@@ -92,8 +103,9 @@ export const useRdoStore = create<RdoState>((set, get) => ({
         const updatedRdos = [...newRdos, ...get().rdos];
         set({ rdos: updatedRdos });
         set({ uploadProgress: { current: 0, total: 0 } });
-        return { saved: newRdos, skipped };
+        return { saved: newRdos, skipped, failed };
       } catch (err) {
+        // Falha ao gravar (ex.: sem permissão) se repetiria em todos: interrompe o lote.
         // Os arquivos anteriores ao erro já foram gravados: mostra-os na lista.
         set({ rdos: [...newRdos, ...get().rdos], uploadProgress: { current: 0, total: 0 } });
         throw err;

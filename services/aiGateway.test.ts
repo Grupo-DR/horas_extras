@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aiErrorMessage, toAiContents } from './aiGateway';
+import { aiErrorMessage, parseAiJson, toAiContents } from './aiGateway';
 
 describe('toAiContents', () => {
     it('transforma texto simples numa mensagem do usuário', () => {
@@ -23,5 +23,17 @@ describe('aiErrorMessage', () => {
 
     it('usa a mensagem do servidor nos demais casos', () => {
         expect(aiErrorMessage({ code: 'functions/invalid-argument', message: 'Arquivo grande demais' })).toBe('Arquivo grande demais');
+    });
+});
+
+describe('parseAiJson', () => {
+    it('lê JSON puro ou dentro de bloco de código', () => {
+        expect(parseAiJson('{"a":1}', 'o RDO')).toEqual({ a: 1 });
+        expect(parseAiJson('```json\n{"a":1}\n```', 'o RDO')).toEqual({ a: 1 });
+    });
+
+    it('troca o erro técnico de resposta cortada por mensagem clara', () => {
+        expect(() => parseAiJson('{"maoDeObra": [{"nome": "Técnico de Qualidade", "classificacao": "INDIRE', 'o RDO da Vale'))
+            .toThrow('A IA devolveu uma resposta incompleta ao ler o RDO da Vale. Envie o arquivo de novo.');
     });
 });

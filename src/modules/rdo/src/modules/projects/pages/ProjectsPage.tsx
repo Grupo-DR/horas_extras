@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { toast } from 'sonner';
 import { Loader2, Upload, AlertTriangle } from 'lucide-react';
 import { useProjectStore, useProjectActions, useSelectedProject } from '../../../stores/projectStore';
 import { useTeamStore, useTeamActions, useSelectedTeam } from '../../../stores/teamStore';
-import { useRdoStore, useRdoActions, useCurrentRdo, useUploadProgress } from '../../../stores/rdoStore';
+import { useRdoStore, useRdoActions, useCurrentRdo, useUploadProgress, UploadResult } from '../../../stores/rdoStore';
 import { useUiActions, useUiState } from '../../../stores/uiStore';
 import { rdoModelLabel } from '../../../../services/rdoModels';
-import { Button, PageHeader } from '../../../../components/ui';
+import { Badge, Button, PageHeader } from '../../../../components/ui';
 
 import { Breadcrumbs } from '../../../../components/Breadcrumbs';
 import { RDODetail } from '../../../../components/RDODetail';
@@ -22,6 +23,7 @@ export const ProjectsPage: React.FC = () => {
   const rdos = useRdoStore((state) => state.rdos);
   const currentRDO = useCurrentRdo();
   const uploadProgress = useUploadProgress();
+  const [uploadReport, setUploadReport] = useState<UploadResult | null>(null);
 
   const {
     activeMenu,
@@ -63,10 +65,10 @@ export const ProjectsPage: React.FC = () => {
     if (!file) return;
     try {
       await handleServicesUpload(file);
-      alert('Serviços importados com sucesso!');
+      toast.success('Tabela de preços importada.');
     } catch (e) {
       console.error(e);
-      alert('Erro ao importar serviços. Verifique o formato.');
+      toast.error(e instanceof Error ? `Erro ao importar a tabela: ${e.message}` : 'Erro ao importar a tabela. Verifique o formato.');
     }
   };
 
@@ -76,22 +78,22 @@ export const ProjectsPage: React.FC = () => {
 
     setLoading(true);
     setError(null);
+    setUploadReport(null);
     try {
       const result = await handleFileUpload(files, selectedTeam.id, selectedProject);
-      const newRdos = result?.saved ?? [];
-      if (result?.skipped.length) {
-        alert(`Já existiam e não foram gravados de novo:\n${result.skipped.join('\n')}`);
-      }
-      const toReview = newRdos.reduce((n, r) => n + (r.vale?.atividades.filter(a => a.revisar).length ?? 0), 0);
-      if (toReview > 0) {
-        alert(`${toReview} atividade(s) ficaram com código de serviço ou quantidade a conferir. Abra o RDO e use "Editar" para corrigir.`);
-      }
-      if (newRdos.length === 1) {
-        setCurrentRDO(newRdos[0]);
-      } else if (newRdos.length > 1) {
-        alert(`${newRdos.length} relatórios processados com sucesso!`);
+      if (!result) return;
+      const { saved, skipped, failed } = result;
+      if (failed.length > 0 || skipped.length > 0) {
+        // Algo precisa de atenção: fica nesta tela mostrando o resumo do lote.
+        setUploadReport(result);
+      } else if (saved.length === 1) {
+        setCurrentRDO(saved[0]);
+      } else {
+        toast.success(`${saved.length} RDOs importados.`);
         setCurrentView('RDO_LIST');
       }
+      const toReview = saved.reduce((n, r) => n + (r.vale?.atividades.filter(a => a.revisar).length ?? 0), 0);
+      if (toReview > 0) toast.warning(`${toReview} atividade(s) a revisar: abra o RDO e use "Editar" para conferir.`);
     } catch (err) {
       console.error(err);
       const detail = err instanceof Error ? err.message : '';
@@ -260,6 +262,10 @@ export const ProjectsPage: React.FC = () => {
                 e atividades com código ou quantidade incertos ficam marcadas para revisão.
               </p>
 
+              {uploadReport && (
+                <UploadReportPanel report={uploadReport} onOpenList={() => { setUploadReport(null); setCurrentView('RDO_LIST'); }} />
+              )}
+
               {error && (
                 <div role="alert" className="mt-4 flex items-start gap-3 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -274,3 +280,35 @@ export const ProjectsPage: React.FC = () => {
   );
 };
 
+/** Resumo do envio em lote: gravados, já existentes e falhas (com o motivo de cada arquivo). */
+const UploadReportPanel: React.FC<{ report: UploadResult; onOpenList: () => void }> = ({ report, onOpenList }) => (
+  <div className="mt-4 rounded-xl border border-slate-200 bg-white" role="status">
+    <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-4 py-3">
+      <span className="text-sm font-semibold text-slate-900">Resultado do envio</span>
+      <Badge tone="success">{report.saved.length} importado(s)</Badge>
+      {report.skipped.length > 0 && <Badge>{report.skipped.length} já existia(m)</Badge>}
+      {report.failed.length > 0 && <Badge tone="danger">{report.failed.length} com falha</Badge>}
+      {report.saved.length > 0 && (
+        <Button className="ml-auto" onClick={onOpenList}>Ver RDOs da turma</Button>
+      )}
+    </div>
+    <ul className="divide-y divide-slate-100 text-sm">
+      {report.failed.map(f => (
+        <li key={`f_${f.file}`} className="px-4 py-2.5">
+          <span className="font-medium text-rose-700">{f.file}</span>
+          <span className="block text-xs text-slate-500">{f.message}</span>
+        </li>
+      ))}
+      {report.skipped.map(name => (
+        <li key={`s_${name}`} className="px-4 py-2.5 text-slate-600">
+          {name} <span className="text-xs text-slate-400">· já estava gravado</span>
+        </li>
+      ))}
+    </ul>
+    {report.failed.length > 0 && (
+      <p className="border-t border-slate-200 px-4 py-2.5 text-xs text-slate-500">
+        Envie de novo só os arquivos com falha; os já importados são reconhecidos e ignorados.
+      </p>
+    )}
+  </div>
+);

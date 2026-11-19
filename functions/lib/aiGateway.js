@@ -26,6 +26,13 @@ const RETRY_STATUS = [429, 500, 503];
 const RETRY_BASE_MS = 5000;
 /** Módulos que podem usar a IA (chave do perfil em user_profiles.modules). */
 const AI_FEATURES = ["construction_rdo", "human_capital"];
+/**
+ * Raciocínio do modelo antes de responder. O Gemini 3 conta o raciocínio no mesmo limite de
+ * saída: em extrações de RDO ele chegou a gastar 63 mil tokens pensando e cortou o JSON no meio.
+ * "low" resolveu nos testes com 23 RDOs reais da Vale (mesmos números, sem respostas cortadas).
+ */
+const THINKING_LEVELS = ["minimal", "low", "medium", "high"];
+const MAX_OUTPUT_TOKENS = 65536;
 /** Limite do pedido: o callable aceita até 10 MB e os PDFs vão em base64 (+33%). */
 const MAX_REQUEST_CHARS = 9500000;
 const parseRequest = (data) => {
@@ -50,6 +57,9 @@ const parseRequest = (data) => {
         temperature,
         responseMimeType: input.responseMimeType === "application/json" ? "application/json" : undefined,
         responseSchema: input.responseSchema,
+        thinkingLevel: THINKING_LEVELS.includes(input.thinkingLevel)
+            ? input.thinkingLevel
+            : undefined,
     };
 };
 /** Mesmo critério das regras do Firestore (canReadModule): super admin ou módulo habilitado. */
@@ -71,7 +81,7 @@ exports.aiGenerateContent = (0, https_1.onCall)({
     timeoutSeconds: 300,
     memory: "512MiB",
 }, async (request) => {
-    var _a, _b, _c, _d, _e, _f, _g;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "O usuário deve estar logado.");
     }
@@ -80,7 +90,7 @@ exports.aiGenerateContent = (0, https_1.onCall)({
     const body = Object.assign(Object.assign({ contents: req.contents.map(content => {
             const c = content;
             return c && typeof c === "object" && !c.role ? Object.assign({ role: "user" }, c) : c;
-        }) }, (req.systemInstruction ? { systemInstruction: { parts: [{ text: req.systemInstruction }] } } : {})), { generationConfig: Object.assign(Object.assign(Object.assign({}, (req.temperature !== undefined ? { temperature: req.temperature } : {})), (req.responseMimeType ? { responseMimeType: req.responseMimeType } : {})), (req.responseSchema ? { responseSchema: req.responseSchema } : {})) });
+        }) }, (req.systemInstruction ? { systemInstruction: { parts: [{ text: req.systemInstruction }] } } : {})), { generationConfig: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (req.temperature !== undefined ? { temperature: req.temperature } : {})), (req.responseMimeType ? { responseMimeType: req.responseMimeType } : {})), (req.responseSchema ? { responseSchema: req.responseSchema } : {})), { maxOutputTokens: MAX_OUTPUT_TOKENS }), (req.thinkingLevel ? { thinkingConfig: { thinkingLevel: req.thinkingLevel } } : {})) });
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
     let response;
@@ -123,6 +133,13 @@ exports.aiGenerateContent = (0, https_1.onCall)({
     const json = await response.json();
     const candidate = (_a = json.candidates) === null || _a === void 0 ? void 0 : _a[0];
     const text = ((_c = (_b = candidate === null || candidate === void 0 ? void 0 : candidate.content) === null || _b === void 0 ? void 0 : _b.parts) !== null && _c !== void 0 ? _c : []).map(p => { var _a; return (_a = p.text) !== null && _a !== void 0 ? _a : ""; }).join("");
+    if ((candidate === null || candidate === void 0 ? void 0 : candidate.finishReason) === "MAX_TOKENS") {
+        // Resposta cortada: entregar o texto quebraria o JSON no navegador.
+        logger.error("aiGenerateContent: resposta cortada no limite de tokens", {
+            feature: req.feature, usage: json.usageMetadata,
+        });
+        throw new https_1.HttpsError("out-of-range", "A IA não terminou a resposta (documento longo demais). Tente de novo ou divida o arquivo.");
+    }
     if (!text) {
         logger.warn("aiGenerateContent: resposta vazia", { feature: req.feature, finishReason: candidate === null || candidate === void 0 ? void 0 : candidate.finishReason });
         throw new https_1.HttpsError("internal", "A IA não devolveu conteúdo.");
@@ -131,7 +148,8 @@ exports.aiGenerateContent = (0, https_1.onCall)({
         uid: request.auth.uid,
         feature: req.feature,
         tokens: (_e = (_d = json.usageMetadata) === null || _d === void 0 ? void 0 : _d.totalTokenCount) !== null && _e !== void 0 ? _e : 0,
+        thinkingTokens: (_g = (_f = json.usageMetadata) === null || _f === void 0 ? void 0 : _f.thoughtsTokenCount) !== null && _g !== void 0 ? _g : 0,
     });
-    return { text, totalTokenCount: (_g = (_f = json.usageMetadata) === null || _f === void 0 ? void 0 : _f.totalTokenCount) !== null && _g !== void 0 ? _g : 0 };
+    return { text, totalTokenCount: (_j = (_h = json.usageMetadata) === null || _h === void 0 ? void 0 : _h.totalTokenCount) !== null && _j !== void 0 ? _j : 0 };
 });
 //# sourceMappingURL=aiGateway.js.map

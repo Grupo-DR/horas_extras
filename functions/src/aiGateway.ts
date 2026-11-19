@@ -28,6 +28,15 @@ const RETRY_BASE_MS = 5_000;
 const AI_FEATURES = ["construction_rdo", "human_capital"] as const;
 type AiFeature = typeof AI_FEATURES[number];
 
+/**
+ * Raciocínio do modelo antes de responder. O Gemini 3 conta o raciocínio no mesmo limite de
+ * saída: em extrações de RDO ele chegou a gastar 63 mil tokens pensando e cortou o JSON no meio.
+ * "low" resolveu nos testes com 23 RDOs reais da Vale (mesmos números, sem respostas cortadas).
+ */
+const THINKING_LEVELS = ["minimal", "low", "medium", "high"] as const;
+type ThinkingLevel = typeof THINKING_LEVELS[number];
+const MAX_OUTPUT_TOKENS = 65_536;
+
 /** Limite do pedido: o callable aceita até 10 MB e os PDFs vão em base64 (+33%). */
 const MAX_REQUEST_CHARS = 9_500_000;
 
@@ -38,6 +47,7 @@ interface AiRequest {
     temperature?: number;
     responseMimeType?: string;
     responseSchema?: unknown;
+    thinkingLevel?: ThinkingLevel;
 }
 
 const parseRequest = (data: unknown): AiRequest => {
@@ -62,6 +72,9 @@ const parseRequest = (data: unknown): AiRequest => {
         temperature,
         responseMimeType: input.responseMimeType === "application/json" ? "application/json" : undefined,
         responseSchema: input.responseSchema,
+        thinkingLevel: THINKING_LEVELS.includes(input.thinkingLevel as ThinkingLevel)
+            ? input.thinkingLevel as ThinkingLevel
+            : undefined,
     };
 };
 
@@ -100,6 +113,8 @@ export const aiGenerateContent = onCall(
                 ...(req.temperature !== undefined ? { temperature: req.temperature } : {}),
                 ...(req.responseMimeType ? { responseMimeType: req.responseMimeType } : {}),
                 ...(req.responseSchema ? { responseSchema: req.responseSchema } : {}),
+                maxOutputTokens: MAX_OUTPUT_TOKENS,
+                ...(req.thinkingLevel ? { thinkingConfig: { thinkingLevel: req.thinkingLevel } } : {}),
             },
         };
 
@@ -143,10 +158,17 @@ export const aiGenerateContent = onCall(
 
         const json = await response.json() as {
             candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
-            usageMetadata?: { totalTokenCount?: number };
+            usageMetadata?: { totalTokenCount?: number; thoughtsTokenCount?: number };
         };
         const candidate = json.candidates?.[0];
         const text = (candidate?.content?.parts ?? []).map(p => p.text ?? "").join("");
+        if (candidate?.finishReason === "MAX_TOKENS") {
+            // Resposta cortada: entregar o texto quebraria o JSON no navegador.
+            logger.error("aiGenerateContent: resposta cortada no limite de tokens", {
+                feature: req.feature, usage: json.usageMetadata,
+            });
+            throw new HttpsError("out-of-range", "A IA não terminou a resposta (documento longo demais). Tente de novo ou divida o arquivo.");
+        }
         if (!text) {
             logger.warn("aiGenerateContent: resposta vazia", { feature: req.feature, finishReason: candidate?.finishReason });
             throw new HttpsError("internal", "A IA não devolveu conteúdo.");
@@ -156,6 +178,7 @@ export const aiGenerateContent = onCall(
             uid: request.auth.uid,
             feature: req.feature,
             tokens: json.usageMetadata?.totalTokenCount ?? 0,
+            thinkingTokens: json.usageMetadata?.thoughtsTokenCount ?? 0,
         });
         return { text, totalTokenCount: json.usageMetadata?.totalTokenCount ?? 0 };
     }

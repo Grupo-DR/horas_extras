@@ -1,5 +1,5 @@
 import { Schema, Type } from "@google/genai";
-import { AI_MAX_FILE_BYTES, generateWithAi } from "@/services/aiGateway";
+import { AI_MAX_FILE_BYTES, generateWithAi, parseAiJson } from "@/services/aiGateway";
 import { 
   CompositionAIExtractionResult, 
   AICompositionItem, 
@@ -136,12 +136,13 @@ export const extractCompositionsFromPDF = async (
       responseMimeType: "application/json",
       responseSchema: compositionSchema,
       temperature: 0.1,
+      thinkingLevel: "low",
     });
 
     const text = response.text;
     if (!text) throw new Error("No data returned from Gemini");
 
-    const parsedData = JSON.parse(text);
+    const parsedData = parseAiJson<any>(text, "o PDF de composições");
     return postProcessCompositionExtraction(parsedData, projectId, file.name);
 
   } catch (err: any) {

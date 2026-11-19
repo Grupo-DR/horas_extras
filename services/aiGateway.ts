@@ -19,6 +19,11 @@ export interface AiRequest {
     temperature?: number;
     responseMimeType?: 'application/json';
     responseSchema?: unknown;
+    /**
+     * Quanto o modelo raciocina antes de responder. Use 'low' em extração de documentos:
+     * o raciocínio padrão chegou a consumir todo o limite e cortar o JSON no meio.
+     */
+    thinkingLevel?: 'minimal' | 'low' | 'medium' | 'high';
 }
 
 export interface AiResponse {
@@ -48,6 +53,19 @@ export const aiErrorMessage = (error: unknown): string => {
             return 'Serviço de IA ainda não publicado. Avise o administrador.';
         default:
             return err.message || 'Falha na comunicação com a IA.';
+    }
+};
+
+/**
+ * Lê o JSON devolvido pela IA. Se vier inválido (resposta incompleta), lança uma mensagem
+ * clara em vez do erro técnico do JSON.parse.
+ */
+export const parseAiJson = <T = Record<string, unknown>>(text: string, context: string): T => {
+    const cleaned = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+    try {
+        return JSON.parse(cleaned) as T;
+    } catch {
+        throw new Error(`A IA devolveu uma resposta incompleta ao ler ${context}. Envie o arquivo de novo.`);
     }
 };
 

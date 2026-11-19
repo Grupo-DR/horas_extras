@@ -4,6 +4,23 @@ Todas as mudanças relevantes do DR Nexus, da mais nova para a mais antiga.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, seção "Versionamento".
 
+## [1.5.3] - 2026-11-18
+
+### Corrigido
+- RDO Online: a importação de RDOs da Vale falhava em cerca de metade dos arquivos com "Expected
+  property name or '}' in JSON". A IA gastava quase todo o limite de resposta raciocinando e o
+  resultado chegava cortado. A leitura de documentos agora usa raciocínio reduzido: nos testes com os
+  23 RDOs reais de outubro/2026 nenhuma resposta veio cortada e os números ficaram iguais.
+- Se mesmo assim a resposta da IA vier incompleta, o servidor avisa e o usuário recebe uma mensagem
+  clara para reenviar o arquivo, em vez do erro técnico.
+
+### Alterado
+- No envio de vários RDOs, um arquivo que a IA não consegue ler não interrompe mais o lote: os demais
+  são importados e a tela mostra um resumo com importados, já existentes e falhas (com o motivo).
+- Os avisos de importação de RDOs e da tabela de preços aparecem como notificações na tela, no lugar
+  das janelas de alerta; o erro da tabela de preços mostra o motivo real.
+- Obra no modelo Vale sem PQ é avisada antes de começar o envio, sem gastar leitura de IA.
+
 ## [1.5.2] - 2026-11-17
 
 ### Alterado
