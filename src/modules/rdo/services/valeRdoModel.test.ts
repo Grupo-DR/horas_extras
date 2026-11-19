@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { utils } from 'xlsx';
 import { ServiceItem } from '../types';
-import { mapValeExtraction, spanHours, valeWorkHours } from './valeRdoModel';
+import { mapValeExtraction, normalizeAreaCondition, normalizeWeather, spanHours, valeWorkHours } from './valeRdoModel';
 import { isValePQ, parseValePQ } from './valePQParser';
 import { rdoDuplicateKey } from '../src/stores/rdoStore';
 
@@ -88,6 +88,26 @@ describe('mapValeExtraction', () => {
   it('registra área parcialmente operável como ocorrência', () => {
     expect(rdo.occurrences).toHaveLength(1);
     expect(rdo.occurrences[0].category).toBe('CONDICAO_AREA');
+  });
+});
+
+describe('condição da área e clima escritos de outro jeito pela IA', () => {
+  it('reconhece o texto do documento além do código pedido', () => {
+    expect(normalizeAreaCondition('PARCIAL')).toBe('PARCIAL');
+    expect(normalizeAreaCondition('OPERAVEL PARCIALMENTE')).toBe('PARCIAL');
+    expect(normalizeAreaCondition('Operável Parcialmente')).toBe('PARCIAL');
+    expect(normalizeAreaCondition('Inoperável')).toBe('INOPERAVEL');
+    expect(normalizeAreaCondition('')).toBe('OPERAVEL');
+    expect(normalizeWeather('Chuva')).toBe('CHUVOSO');
+    expect(normalizeWeather('nublado')).toBe('NUBLADO');
+    expect(normalizeWeather('Sol')).toBe('ENSOLARADO');
+    expect(normalizeWeather('')).toBe('');
+  });
+
+  it('área "Operável Parcialmente" vira ocorrência', () => {
+    const rdo = mapValeExtraction({ ...raw, condicaoArea: 'OPERAVEL PARCIALMENTE', clima: { manha: 'Chuva', tarde: 'Nublado', noite: '' } }, services);
+    expect(rdo.occurrences).toHaveLength(1);
+    expect(rdo.weatherMorning).toBe('Chuvoso');
   });
 });
 

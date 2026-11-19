@@ -9,6 +9,9 @@ versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, se
 ### Corrigido
 - Inteligência Contratual: o filtro de turmas listava as turmas de todas as obras; agora mostra só as
   da obra aberta, em ordem alfabética. Ao trocar de obra, o filtro volta para "Todas as Turmas".
+- RDO Vale: a área "Operável Parcialmente" (ou "Inoperável") virava ocorrência só quando a IA
+  respondia o código pedido; se respondesse com o texto do documento, a condição se perdia e não
+  entrava na análise de improdutividade. O mesmo ajuste vale para o clima ("Chuva", "Sol"...).
 
 ## [1.5.3] - 2026-11-18
 

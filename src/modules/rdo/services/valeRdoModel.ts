@@ -214,6 +214,30 @@ export const peakInOperation = (row: ValeResourceRow): number =>
 const CLIMA_LABEL: Record<string, string> = { ENSOLARADO: "Ensolarado", NUBLADO: "Nublado", CHUVOSO: "Chuvoso" };
 const AREA_LABEL: Record<string, string> = { PARCIAL: "operável parcialmente", INOPERAVEL: "inoperável" };
 
+const plain = (value: unknown) =>
+  text(value).normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
+
+/**
+ * A IA às vezes devolve o texto do documento ("Operável Parcialmente") em vez do código
+ * pedido ("PARCIAL"); sem normalizar, a área parcial não virava ocorrência.
+ */
+export const normalizeAreaCondition = (value: unknown): "OPERAVEL" | "PARCIAL" | "INOPERAVEL" => {
+  const v = plain(value);
+  if (v.includes("INOPER")) return "INOPERAVEL";
+  if (v.includes("PARCIAL")) return "PARCIAL";
+  return "OPERAVEL";
+};
+
+/** Clima do turno no código usado pelo sistema; vazio quando nada está marcado. */
+export const normalizeWeather = (value: unknown): string => {
+  const v = plain(value);
+  if (!v) return "";
+  if (v.includes("CHUV")) return "CHUVOSO";
+  if (v.includes("NUBL") || v.includes("NUVEM")) return "NUBLADO";
+  if (v.includes("SOL") || v.includes("CLARO") || v.includes("BOM")) return "ENSOLARADO";
+  return v;
+};
+
 /** Converte a resposta da IA (já em JSON) no RDO do sistema, validando os códigos contra a PQ da obra. */
 export const mapValeExtraction = (
   raw: Record<string, unknown>,
@@ -229,7 +253,7 @@ export const mapValeExtraction = (
   const detail: ValeRdoDetail = {
     numeroPedido: text(raw.numeroPedido),
     status: text(raw.status),
-    condicaoArea: text(raw.condicaoArea).toUpperCase() || "OPERAVEL",
+    condicaoArea: normalizeAreaCondition(raw.condicaoArea),
     horasTrabalhadas: {
       segundaAQuinta: text(horas.segundaAQuinta),
       sexta: text(horas.sexta),
@@ -237,7 +261,7 @@ export const mapValeExtraction = (
       domingo: text(horas.domingo),
     },
     horasDia: 0,
-    clima: { manha: text(clima.manha).toUpperCase(), tarde: text(clima.tarde).toUpperCase(), noite: text(clima.noite).toUpperCase() },
+    clima: { manha: normalizeWeather(clima.manha), tarde: normalizeWeather(clima.tarde), noite: normalizeWeather(clima.noite) },
     pluviometria: { manha: num(chuva.manha), tarde: num(chuva.tarde), noite: num(chuva.noite) },
     prazos: {
       contratualDias: prazos.contratualDias == null ? null : num(prazos.contratualDias),
