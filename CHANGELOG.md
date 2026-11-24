@@ -4,6 +4,20 @@ Todas as mudanças relevantes do DR Nexus, da mais nova para a mais antiga.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, seção "Versionamento".
 
+## [1.6.0] - 2026-11-24
+
+### Adicionado
+- RDO Online › Planejamento › **Curva S** física e financeira por obra, no formato da planilha
+  "Planejamento - Modelo": semanas de segunda a domingo (numeração ISO), previsto por linha de base
+  (LB0 e revisões LB1, LB2...), realizado e tendência, todos digitados no sistema.
+- Cálculo automático de acumulados, desvio contra a linha de base vigente e contra a LB0, semana de
+  status, término da linha de base e término pela tendência (mesma regra da planilha). Conferido
+  contra a planilha modelo: diferença zero em todas as linhas calculadas das duas curvas.
+- Curva financeira digitada em R$, com o % calculado sobre o total da linha de base vigente.
+- Colar uma coluna do Excel numa célula preenche as semanas seguintes (aceita %, frações e R$).
+- Gráfico com previsto acumulado (LB0 e vigente), realizado acumulado, tendência e barras semanais.
+- Visualizador só consulta; Gerente e Administrador editam (regra nova `construction_s_curves`).
+
 ## [1.5.5] - 2026-11-24
 
 ### Alterado

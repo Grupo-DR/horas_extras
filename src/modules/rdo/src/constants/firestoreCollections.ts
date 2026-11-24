@@ -7,4 +7,5 @@ export const COLLECTIONS = {
   COMPOSITIONS: "construction_compositions",
   CONTRACTS: "construction_contracts",
   DAILY_PLANS: "construction_daily_plans",
+  S_CURVES: "construction_s_curves",
 } as const;

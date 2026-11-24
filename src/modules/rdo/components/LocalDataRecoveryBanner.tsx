@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle, CloudUpload, Download, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from '../../../../contexts/AuthContext';
+import { useCanWriteRdo } from '../hooks/useCanWriteRdo';
 import { useProjectStore } from '../src/stores/projectStore';
 import { usePlanningStore } from '../src/stores/planningStore';
 import { applyDailyPlanChanges, getDailyPlans } from '../services/dailyPlanService';
@@ -13,8 +13,6 @@ import {
   PendingLocalData, RemoteSnapshot, clearLegacyLocalData, countPending,
   downloadLocalSnapshot, findPendingLocalData, hasLegacyLocalData, readLocalSnapshot,
 } from '../services/localRecoveryService';
-
-const WRITE_ROLES = ['CONSTRUCTION_ADMIN', 'CONSTRUCTION_MANAGER'];
 
 /** Compara as cópias locais antigas com o banco. Sem pendências, limpa o navegador. */
 const checkLocalData = async (): Promise<PendingLocalData | null> => {
@@ -69,13 +67,10 @@ const uploadPending = async (pending: PendingLocalData): Promise<void> => {
 };
 
 export const LocalDataRecoveryBanner: React.FC<{ ready: boolean }> = ({ ready }) => {
-  const { profile } = useAuth();
   const [pending, setPending] = useState<PendingLocalData | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const rdoModule = profile?.modules?.construction_rdo;
-  const canWrite = !!profile?.isSuperAdmin ||
-    (!!rdoModule?.enabled && WRITE_ROLES.includes(rdoModule.role ?? ''));
+  const canWrite = useCanWriteRdo();
 
   useEffect(() => {
     if (!ready) return;

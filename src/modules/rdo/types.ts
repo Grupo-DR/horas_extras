@@ -159,6 +159,36 @@ export interface RDOData {
   vale?: ValeRdoDetail;
 }
 
+// --- Curva S (planejamento semanal da obra) ---
+
+/** Valores por semana; a chave é a segunda-feira da semana ("AAAA-MM-DD"). */
+export type SCurveWeekly = Record<string, number>;
+
+/** Série física (% por semana, em pontos percentuais) e financeira (R$ por semana). */
+export interface SCurveSeries {
+  fisico: SCurveWeekly;
+  financeiro: SCurveWeekly;
+}
+
+/** Linha de base: LB0 é a original; revisões viram LB1, LB2... */
+export interface SCurveBaseline extends SCurveSeries {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
+/** Curva S de uma obra (coleção construction_s_curves, Document ID = projectId). */
+export interface SCurveDoc {
+  projectId: string;
+  /** Segunda-feira da primeira semana ("AAAA-MM-DD"). */
+  startWeek: string;
+  weekCount: number;
+  baselines: SCurveBaseline[];
+  realizado: SCurveSeries;
+  tendencia: SCurveSeries;
+  updatedAt: string;
+}
+
 // --- Modelos de RDO ---
 
 export type RdoModelId = 'PADRAO' | 'VALE_NOVAS_FERROVIAS';

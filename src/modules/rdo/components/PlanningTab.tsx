@@ -1,15 +1,16 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
   ChevronLeft, ChevronRight, Save, CheckCircle2,
-  Building2, AlertCircle, Calendar, Users, FileText, ClipboardList, Activity
+  Building2, AlertCircle, Calendar, Users, FileText, ClipboardList, Activity, LineChart
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Project, Team, DailyPlan, ContractData } from '../types';
 import { makePlanId } from '../services/dailyPlanService';
 import { ContractDataTab } from './ContractDataTab';
 import { ContractAnalysisTab } from './ContractAnalysisTab';
+import { SCurveTab } from './SCurveTab';
 
-type PlanningSubTab = 'CONTRACT_DATA' | 'DAILY_PLAN' | 'CONTRACT_ANALYSIS';
+type PlanningSubTab = 'CONTRACT_DATA' | 'DAILY_PLAN' | 'CONTRACT_ANALYSIS' | 'S_CURVE';
 
 interface PlanningTabProps {
   projects: Project[];
@@ -271,6 +272,7 @@ export const PlanningTab: React.FC<PlanningTabProps> = ({
           ['CONTRACT_DATA', 'Dados do Contrato', FileText],
           ['DAILY_PLAN',    'Planejamento',       ClipboardList],
           ['CONTRACT_ANALYSIS', 'Análise do Contrato', Activity],
+          ['S_CURVE', 'Curva S', LineChart],
         ] as [PlanningSubTab, string, React.ElementType][]).map(([key, label, Icon]) => (
           <button
             key={key}
@@ -295,6 +297,9 @@ export const PlanningTab: React.FC<PlanningTabProps> = ({
           onSave={onSaveContractData}
         />
       )}
+
+      {/* ── Sub-tab: Curva S física e financeira ── */}
+      {subTab === 'S_CURVE' && <SCurveTab project={selectedProject} />}
 
       {/* ── Sub-tab: Análise do Contrato ── */}
       {subTab === 'CONTRACT_ANALYSIS' && (

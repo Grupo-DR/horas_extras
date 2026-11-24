@@ -761,6 +761,11 @@ service cloud.firestore {
       allow read: if canReadModule('construction_rdo');
       allow write: if canWriteModule('construction_rdo');
     }
+    // Curva S física e financeira por obra (Document ID = projectId).
+    match /construction_s_curves/{id} {
+      allow read: if canReadModule('construction_rdo');
+      allow write: if canWriteModule('construction_rdo');
+    }
 
     match /{document=**} {
       allow read, write: if false;
