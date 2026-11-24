@@ -28,7 +28,7 @@ const MODULES: ModuleTile[] = [
     { title: 'Gestão de Contratos', description: 'Saúde financeira e prazos dos contratos de obra.', path: '/powerbi-viewer?area=Gestão de Contratos', icon: FileText },
     { title: 'Comercial', description: 'Prospecções, orçamentos e CRM de clientes.', path: '/commercial', icon: TrendingUp },
     { title: 'SSMA', description: 'Segurança, meio ambiente, alojamentos e frentes.', path: '/ssma', icon: ShieldCheck },
-    { title: 'Obras', description: 'Produção nos canteiros e eficiência dos projetos.', path: '/construction-selection', icon: Building2 }
+    { title: 'Obras', description: 'Produção nos canteiros e eficiência dos projetos.', path: '/rdo', icon: Building2 }
 ];
 
 const IAM_MODULE: ModuleTile = {

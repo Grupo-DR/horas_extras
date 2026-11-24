@@ -43,11 +43,12 @@ export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ isOpen, onClose 
             name: 'Gestão de Obras',
             description: 'RDOs, medições e acompanhamento de obras.',
             icon: HardHat,
-            path: '/construction',
+            // Painel VLI (/construction) em espera: Obras abre direto o RDO Online.
+            path: '/rdo',
             color: 'bg-amber-600',
             textColor: 'text-amber-600',
             bgLight: 'bg-amber-50',
-            allowed: profile?.isSuperAdmin || hasModuleAccess('construction')
+            allowed: profile?.isSuperAdmin || hasModuleAccess('construction_rdo')
         }
     ];
 
@@ -82,7 +83,7 @@ export const ModuleSwitcher: React.FC<ModuleSwitcherProps> = ({ isOpen, onClose 
                 <div className="p-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {modules.map((module) => {
                         const isCurrent = module.path === '/'
-                            ? location.pathname === '/' || (!location.pathname.startsWith('/human-capital') && !location.pathname.startsWith('/construction'))
+                            ? location.pathname === '/' || (!location.pathname.startsWith('/human-capital') && !location.pathname.startsWith('/construction') && !location.pathname.startsWith('/rdo'))
                             : location.pathname.startsWith(module.path);
 
                         return (

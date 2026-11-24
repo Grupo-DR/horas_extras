@@ -55,7 +55,8 @@ O sistema utiliza **Firebase** como backend (Firestore para dados, Firebase Auth
 | **Produção** | `/production` | Gestão de medições por contrato (BM + RDO) |
 | **Ações** | `/actions` | Central de tarefas e ações da equipe |
 | **Capital Humano** | `/human-capital/*` | Horas extras, planejamento, aprovação, análise IA |
-| **Obra** | `/construction/*` | Dashboard RDO, importação de relatórios |
+| **Obras (RDO Online)** | `/rdo/*` | RDOs lidos por IA, obras, turmas, Inteligência Contratual, Planejamento e Curva S |
+| **Painel VLI** (em espera) | `/construction/*` | Fora dos atalhos desde 24/11/2026; só pelo endereço |
 | **Usuários** | `/users` | Gestão de perfis e permissões (IAM Admin) |
 | **Config** | `/config/account` | Configurações da conta do usuário |
 

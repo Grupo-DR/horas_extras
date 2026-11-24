@@ -32,7 +32,6 @@ import ProfileManager from './src/modules/iam/components/ProfileManager';
 import { CentroInteligenciaView } from './src/pages/CentroInteligencia/CentroInteligenciaView';
 import { PowerBiView } from './src/pages/CentroInteligencia/PowerBiView';
 import { MarketIndicatorsView } from './src/pages/Indicadores/MarketIndicatorsView';
-import { ConstructionSelectionView } from './src/pages/ConstructionSelectionView';
 import RdoApp from './src/modules/rdo/RdoApp';
 import SSMAApp from './src/modules/ssma/SSMAApp';
 
@@ -101,7 +100,7 @@ root.render(
                 }
               />
 
-              {/* MÓDULO OBRA (Layout Independente) */}
+              {/* PAINEL VLI — em espera desde 24/11/2026: fora dos atalhos, acessível só pelo endereço */}
               <Route
                 path="/construction/*"
                 element={
@@ -111,15 +110,8 @@ root.render(
                 }
               />
 
-              {/* SELEÇÃO DE MÓDULO DE OBRAS */}
-              <Route
-                path="/construction-selection"
-                element={
-                  <PrivateRoute>
-                    <ConstructionSelectionView />
-                  </PrivateRoute>
-                }
-              />
+              {/* Antiga escolha entre painel VLI e RDO: Obras agora abre direto o RDO Online */}
+              <Route path="/construction-selection" element={<Navigate to="/rdo" replace />} />
 
               {/* MÓDULO RDO ONLINE */}
               <Route

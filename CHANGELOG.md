@@ -18,6 +18,14 @@ versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, se
 - Gráfico com previsto acumulado (LB0 e vigente), realizado acumulado, tendência e barras semanais.
 - Visualizador só consulta; Gerente e Administrador editam (regra nova `construction_s_curves`).
 
+### Alterado
+- "Obras" (tela inicial e seletor de módulos) abre direto o RDO Online; saiu a tela de escolha entre
+  painel VLI e RDO. O painel VLI fica em espera: fora dos atalhos, com dados e endereço preservados.
+
+### Corrigido
+- Seletor de módulos: "Gestão de Obras" só aparecia para super admin (testava um módulo inexistente);
+  agora aparece para quem tem o RDO Online liberado.
+
 ## [1.5.5] - 2026-11-24
 
 ### Alterado
