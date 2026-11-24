@@ -38,3 +38,6 @@ modelos-excel/carol_clockin*.xlsx
 # Documentos de cliente (PQ Vale = RESTRITO) e planilhas com dados pessoais: nunca no repositório
 modelos-excel/model_vale/
 modelos-excel/Analise Localiza*
+
+# Dados financeiros (razão, budget, forecast, medições, .pbix, retratos): nunca no repositório
+projeto_financeiro/

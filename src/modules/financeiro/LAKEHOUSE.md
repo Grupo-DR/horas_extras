@@ -50,13 +50,31 @@ Toda tabela bronze tem as colunas de controle `_carga_id`, `_arquivo`, `_aba`, `
 
 | Tabela | Colunas de origem |
 |---|---|
-| `razao_totvs` | CUSTO, DESCCC, SALDO_ANTERIOR, CONTA, DESCCON, DATA, LOTE_SUB_DOC_LINHA, FL (filial), HISTORICO, XPARTIDA, ITEM_CONTA, COD_CL_VAL, DEBITO, CREDITO, SALDO_ATUAL *(a confirmar com um arquivo real)* |
+| `razao_totvs` | FILIAL, DATA_LANCAMENTO, CENTRO_CUSTO, CENTRO_CUSTO_MASC, CODIGO_CONTA, COD_CONTA_MASC, DESCRICAO_CONTA, HISTORICO, DEBITO, CREDITO + classificação PADRAO, CODIGO, EMPRESA_PESSOA, DESCRICAO, PEDIDO, OBSERVACAO, ATIVO (layout do Protheus, ver 3.1) |
 | `valores_gerenciais` | as mesmas do razão + PADRAO, CODIGO, EMPRESA_PESSOA, DESCRICAO, PEDIDO, OBSERVACAO, ATIVO |
 | `medicoes_obra` | ANO, MES, CUSTO, AREA, MEDICAO, GRUPO, CONTA, CC_TOTVS |
 | `previsao_semanal` | ANO, MES, CUSTO, AREA, PROJECAO, GRUPO, ETAPA, CONTA, MES_REFERENCIA, REF_ETAPA |
 | `budget`, `forecast` | MES, CC_DR, GRUPO, CONTA, DESCRICAO, TIPO, VALOR, CLASSE, ANO |
 | `dim_centro_custo` | CC_TOTVS, IDENTIFICACAO, CC_DR, TIPO_CC, STATUS, REGIONAL |
 | `dim_conta` | CONTA, DESCRICAO, GRUPO, TIPO_CONTA, TIPO_CONTA_2 |
+
+### 3.1 Razão contábil (Protheus) — confirmado com o arquivo de 23/11/2026
+
+- Aba `sheet1`, cabeçalho na linha 1; filial `0101` = Construtora, `0201` = Rental (o Power BI usava 101/201).
+- `Data Lancamento` vem como número de série do Excel; CC e conta vêm sem máscara (`301804`) e com máscara
+  (`3.0.1.804`, `3.1.1.01.000001`). **Usar as colunas com máscara**: são as chaves das dimensões.
+- **Linhas de continuação:** quando o histórico é longo, o Protheus o quebra em linhas seguintes com débito e
+  crédito vazios (25.345 de 105.236 linhas no arquivo). A carga junta essas linhas ao histórico do lançamento
+  anterior (mesma regra do `protheus_parserV5.py`) e não as grava como lançamentos.
+- As 7 colunas de classificação (Padrão, Código, Empresa/Pessoa, Descrição, Pedido, Observação, Ativo) são
+  geradas pelo `protheus_parserV5.py`. O arquivo de 23/11 já veio processado; para aceitar o relatório cru do
+  Protheus, a classificação será portada para a função de carga (sem depender de Python na máquina de ninguém).
+- 316 lançamentos sem centro de custo ficam como "CC em branco", como no Power BI.
+
+**Validação (24/11/2026):** aplicando as regras da prata ao razão de 23/11 e comparando com o relatório
+Financeiro de 18/11, jan–out/2026 ficaram **idênticos** em 12.645 de 12.647 combinações mês × conta × CC.
+As 2 restantes são uma única NF (5923, Ouro Minas Logística, 19/02, rateada nos CCs 3.0.4.401/402) que aparece
+duas vezes nos dados de 18/11 e uma vez no arquivo de 23/11 — provável correção no Protheus entre as datas.
 
 A validação do upload recusa o arquivo se faltar coluna obrigatória e avisa (sem recusar) linhas sem data,
 sem conta ou com valor não numérico, mostrando a linha da planilha.
@@ -68,8 +86,8 @@ Transcrição em SQL das consultas `slv_*` do Power Query (DOCUMENTACAO.md, seç
 | Visão | Regra |
 |---|---|
 | `dim_centro_custo` | sem duplicidade de CC Totvs |
-| `real_rental` | razão com FL = 201, CUSTO ≠ 999; Valor = (Débito − Crédito) × −1 |
-| `real_construtora` | razão com FL = 101, CUSTO ≠ 999; Valor = (Débito − Crédito) × −1; CC `3.0.1.503` → `3.0.1.502` |
+| `real_rental` | razão com filial 0201, CC ≠ 999; Valor = (Débito − Crédito) × −1 |
+| `real_construtora` | razão com filial 0101, CC ≠ 999; Valor = (Débito − Crédito) × −1; CC `3.0.1.503` → `3.0.1.502` |
 | `valores_gerenciais` | Valor = (Débito − Crédito) × −1 (nulos = 0); exige CONTA |
 | `real_custos_despesas` | Rental + Construtora + Gerenciais, sem contas de Tipo Faturamento e Impostos |
 | `medicao_mensal` | medições tipadas |
@@ -120,6 +138,6 @@ O custo relevante será o do chat (Gemini, por pergunta).
 
 ## 9. Pendências para começar
 
-- [ ] Um arquivo real do **Razão Contábil.xlsx** (de preferência o usado em 18/11) para confirmar colunas e validar.
+- [x] Arquivo real do **Razão Contábil.xlsx** (23/11/2026) — colunas confirmadas e regras validadas (seção 3.1).
 - [ ] Autorização para criar no projeto `kanbancomercial-af561`: API do BigQuery, datasets `fin_bronze`/`fin_prata`/`fin_ouro`, bucket `fin-cargas` e as Cloud Functions de carga.
 - [ ] Definir quem envia os arquivos (papel "carga financeira" no IAM).
