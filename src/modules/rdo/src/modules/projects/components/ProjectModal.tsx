@@ -4,6 +4,7 @@ import { useProjectActions, useSelectedProject } from '../../../stores/projectSt
 import { useTeamActions } from '../../../stores/teamStore';
 import { RdoModelId } from '../../../../types';
 import { RDO_MODEL_OPTIONS } from '../../../../services/rdoModels';
+import { KNOWN_CLIENTS } from '../../../../utils/projectSummary';
 
 export const ProjectModal: React.FC = () => {
   const {
@@ -13,6 +14,7 @@ export const ProjectModal: React.FC = () => {
     newItemName,
     newItemRegional,
     newItemRdoModel,
+    newItemClient,
     editingItemId
   } = useUiState();
 
@@ -20,6 +22,7 @@ export const ProjectModal: React.FC = () => {
     setNewItemName,
     setNewItemRegional,
     setNewItemRdoModel,
+    setNewItemClient,
     setIsModalOpen
   } = useUiActions();
 
@@ -32,7 +35,11 @@ export const ProjectModal: React.FC = () => {
   const handleSave = async () => {
     try {
       if (currentView === 'PROJECT_LIST') {
-        await saveProject(newItemName, newItemRegional, isEditMode, editingItemId, newItemRdoModel);
+        await saveProject(
+          { name: newItemName, regional: newItemRegional, client: newItemClient, rdoModel: newItemRdoModel },
+          isEditMode,
+          editingItemId
+        );
       } else {
         await saveTeam(newItemName, selectedProject?.id, isEditMode, editingItemId);
       }
@@ -50,7 +57,7 @@ export const ProjectModal: React.FC = () => {
         </h3>
         <div className="space-y-4 mb-6">
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">Nome</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Nome</label>
             <input 
               autoFocus 
               type="text" 
@@ -61,7 +68,7 @@ export const ProjectModal: React.FC = () => {
           </div>
           {currentView === 'PROJECT_LIST' && (
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Regional</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Regional</label>
               <input 
                 type="text" 
                 value={newItemRegional} 
@@ -72,7 +79,23 @@ export const ProjectModal: React.FC = () => {
           )}
           {currentView === 'PROJECT_LIST' && (
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Modelo de RDO</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Cliente</label>
+              <input
+                type="text"
+                list="rdo-clientes"
+                value={newItemClient}
+                onChange={(e) => setNewItemClient(e.target.value)}
+                placeholder="Ex.: Vale, VLI, Rumo"
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-slate-800"
+              />
+              <datalist id="rdo-clientes">
+                {KNOWN_CLIENTS.map(c => <option key={c} value={c} />)}
+              </datalist>
+            </div>
+          )}
+          {currentView === 'PROJECT_LIST' && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Modelo de RDO</label>
               <select
                 value={newItemRdoModel}
                 onChange={(e) => setNewItemRdoModel(e.target.value as RdoModelId)}

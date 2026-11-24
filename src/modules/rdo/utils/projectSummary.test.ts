@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { Project, RDOData, Team } from '../types';
 import {
-  headcount, lastRdoInfo, pendingReviewCount, splitProjectName, summarizeProjects, summarizeTeams,
+  clientOf, headcount, lastRdoInfo, pendingReviewCount, splitProjectName, summarizeProjects, summarizeTeams,
 } from './projectSummary';
+import { compareValues } from '../components/ui';
 
 const today = new Date(2026, 10, 17); // 17/11/2026
 
@@ -26,11 +27,12 @@ describe('splitProjectName', () => {
 describe('lastRdoInfo', () => {
   it('acha o RDO mais recente e os dias desde ele, ignorando datas inválidas', () => {
     const info = lastRdoInfo([rdo('a', 't', '01/11/2026'), rdo('b', 't', '10/11/2026'), rdo('c', 't', 'sem data')], today);
-    expect(info).toEqual({ lastDate: '10/11/2026', daysSince: 7 });
+    expect(info).toMatchObject({ lastDate: '10/11/2026', daysSince: 7 });
+    expect(info.lastTime).toBe(new Date(2026, 10, 10).getTime());
   });
 
   it('sem RDO, devolve vazio', () => {
-    expect(lastRdoInfo([], today)).toEqual({ lastDate: null, daysSince: null });
+    expect(lastRdoInfo([], today)).toEqual({ lastDate: null, lastTime: null, daysSince: null });
   });
 });
 
@@ -74,5 +76,34 @@ describe('indicadores do RDO', () => {
     });
     expect(headcount(r)).toBe(18);
     expect(pendingReviewCount(r)).toBe(1);
+  });
+});
+
+describe('clientOf', () => {
+  it('usa o cliente cadastrado na obra', () => {
+    expect(clientOf({ ...project('p', '3047.01 - Manutenção'), client: 'Rumo' })).toBe('Rumo');
+  });
+
+  it('reconhece Vale, VLI ou Rumo no nome quando o cliente não foi cadastrado', () => {
+    expect(clientOf(project('p', '3047.01 - VALE - MANUTENCAO DE ATIVOS'))).toBe('Vale');
+    expect(clientOf(project('p', '3047.01 - Manutenção de Infraestrutura (VLI)'))).toBe('VLI');
+    expect(clientOf(project('p', '3018.05 - CW58778/CW58773'))).toBe('');
+  });
+
+  it('não confunde palavras que só contêm o nome (ex.: "Valença")', () => {
+    expect(clientOf(project('p', '3050.01 - Obra Valença'))).toBe('');
+  });
+
+  it('obra no modelo de RDO Vale é da Vale', () => {
+    expect(clientOf({ ...project('p', '3047.01 - Manutenção'), rdoModel: 'VALE_NOVAS_FERROVIAS' })).toBe('Vale');
+  });
+});
+
+describe('compareValues', () => {
+  it('ordena números e textos com números, deixando vazios no fim', () => {
+    const codes = ['3044.03', '3018.05', '', '3019.03'];
+    expect([...codes].sort((a, b) => compareValues(a, b, 'asc'))).toEqual(['3018.05', '3019.03', '3044.03', '']);
+    expect([...codes].sort((a, b) => compareValues(a, b, 'desc'))).toEqual(['3044.03', '3019.03', '3018.05', '']);
+    expect([5, null, 99, 0].sort((a, b) => compareValues(a, b, 'desc'))).toEqual([99, 5, 0, null]);
   });
 });

@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronRight, ClipboardList, Download, FileSpreadsheet, Trash2, Upload } from 'lucide-react';
+import { ClipboardList, Download, FileSpreadsheet, Trash2, Upload } from 'lucide-react';
 import { exportRDOsToExcel } from '../utils/excelExportUtils';
 import * as db from '../services/firestoreService';
 import { HistogramItem, RDOData, Team, Project } from '../types';
 import { formatMoney, calculateRDOTotal, parseDate } from '../utils';
 import { headcount, pendingReviewCount } from '../utils/projectSummary';
-import { Badge, Button, ClickableRow, EmptyState, IconButton, PageHeader, SearchInput, TableCard, Td, Th } from './ui';
+import { Button, ClickableRow, EmptyState, PageHeader, RowMenu, SearchInput, TableCard, Td, Th } from './ui';
 
 interface RDOListProps {
   rdos: RDOData[];
@@ -93,7 +93,7 @@ export const RDOList: React.FC<RDOListProps> = ({
             <Th>Clima</Th>
             <Th align="right">Efetivo</Th>
             <Th align="right">Ocorrências</Th>
-            <Th>Situação</Th>
+            <Th>Conferência</Th>
             <Th align="right">Produção</Th>
             <Th align="right"><span className="sr-only">Ações</span></Th>
           </tr>
@@ -101,27 +101,25 @@ export const RDOList: React.FC<RDOListProps> = ({
         <tbody>
           {visible.map(({ rdo, total, review }) => (
             <ClickableRow key={rdo.id} onOpen={() => onSelectRDO(rdo)} label={`Abrir RDO ${rdo.reportNumber ?? ''} de ${rdo.date}`}>
-              <Td className="whitespace-nowrap font-semibold text-slate-900">nº {rdo.reportNumber || '—'}</Td>
+              <Td className="whitespace-nowrap font-medium text-slate-900">nº {rdo.reportNumber || '—'}</Td>
               <Td className="whitespace-nowrap">{rdo.date}</Td>
               <Td className="whitespace-nowrap text-slate-500">{weatherOf(rdo)}</Td>
               <Td align="right">{headcount(rdo)}</Td>
-              <Td align="right">
-                {(rdo.occurrences?.length ?? 0) > 0
-                  ? <Badge tone="danger">{rdo.occurrences.length}</Badge>
-                  : <span className="text-slate-400">0</span>}
-              </Td>
-              <Td>
+              <Td align="right">{rdo.occurrences?.length ?? 0}</Td>
+              <Td className="whitespace-nowrap">
                 {review > 0
-                  ? <Badge tone="warning" title="Atividades com código ou quantidade a conferir">{review} a revisar</Badge>
-                  : <Badge tone="success">Conferido</Badge>}
+                  ? <span className="text-amber-700" title="Atividades com código ou quantidade a conferir">{review} a revisar</span>
+                  : <span className="text-slate-400">—</span>}
               </Td>
-              <Td align="right" className="whitespace-nowrap font-medium text-slate-900">{formatMoney(total)}</Td>
-              <Td align="right" className="whitespace-nowrap">
-                <div className="flex items-center justify-end gap-0.5">
-                  <IconButton icon={Download} label="Baixar CSV do RDO" onClick={() => onExportCSV(rdo)} />
-                  <IconButton icon={Trash2} label="Excluir RDO" tone="danger" onClick={e => onDeleteRDO(rdo.id, e)} />
-                  <ChevronRight className="ml-1 h-4 w-4 text-slate-300 transition group-hover:text-slate-500" aria-hidden="true" />
-                </div>
+              <Td align="right" className="whitespace-nowrap text-slate-900">{formatMoney(total)}</Td>
+              <Td align="right" className="w-10">
+                <RowMenu
+                  label={`Ações do RDO ${rdo.reportNumber ?? ''}`}
+                  actions={[
+                    { label: 'Baixar CSV', icon: Download, onSelect: () => onExportCSV(rdo) },
+                    { label: 'Excluir RDO', icon: Trash2, tone: 'danger', onSelect: e => onDeleteRDO(rdo.id, e) },
+                  ]}
+                />
               </Td>
             </ClickableRow>
           ))}

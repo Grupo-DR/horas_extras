@@ -5,8 +5,16 @@
 import { Project, RDOData, Team } from '../types';
 import { calculateRDOTotal, parseDate } from '../utils';
 
-/** Dias sem RDO a partir dos quais a obra/turma é destacada como desatualizada. */
-export const STALE_AFTER_DAYS = 7;
+/** Clientes sugeridos no cadastro e reconhecidos no nome da obra. */
+export const KNOWN_CLIENTS = ['Vale', 'VLI', 'Rumo'] as const;
+
+/** Cliente da obra: o cadastrado ou, se vazio, o reconhecido no nome / modelo de RDO. */
+export const clientOf = (project: Project): string => {
+  if (project.client?.trim()) return project.client.trim();
+  const found = KNOWN_CLIENTS.find(c => new RegExp(`(^|[^A-Za-z])${c}([^A-Za-z]|$)`, 'i').test(project.name));
+  if (found) return found;
+  return project.rdoModel === 'VALE_NOVAS_FERROVIAS' ? 'Vale' : '';
+};
 
 /** "3044.02 - CW64111" → { code: "3044.02", detail: "CW64111" }. Sem " - ", tudo vai em code. */
 export const splitProjectName = (name: string): { code: string; detail: string } => {
@@ -31,19 +39,21 @@ export const lastRdoInfo = (rdos: RDOData[], today: Date = new Date()) => {
       last = rdo;
     }
   }
-  if (!last) return { lastDate: null as string | null, daysSince: null as number | null };
+  if (!last) return { lastDate: null as string | null, lastTime: null as number | null, daysSince: null as number | null };
   const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
-  return { lastDate: last.date, daysSince: Math.max(0, Math.round((startOfToday - lastTime) / 86_400_000)) };
+  return { lastDate: last.date, lastTime, daysSince: Math.max(0, Math.round((startOfToday - lastTime) / 86_400_000)) };
 };
 
 export interface ProjectSummary {
   project: Project;
   code: string;
   detail: string;
+  client: string;
   teamCount: number;
   rdoCount: number;
   serviceCount: number;
   lastDate: string | null;
+  lastTime: number | null;
   daysSince: number | null;
 }
 
@@ -69,6 +79,7 @@ export const summarizeProjects = (
       return {
         project,
         ...splitProjectName(project.name),
+        client: clientOf(project),
         teamCount: teams.filter((t) => t.projectId === project.id).length,
         rdoCount: projectRdos.length,
         serviceCount: project.services?.length ?? 0,
@@ -83,6 +94,7 @@ export interface TeamSummary {
   rdoCount: number;
   firstDate: string | null;
   lastDate: string | null;
+  lastTime: number | null;
   daysSince: number | null;
   production: number;
 }

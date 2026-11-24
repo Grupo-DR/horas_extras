@@ -7,6 +7,14 @@ import { isValePQ, parseValePQ } from '../../services/valePQParser';
 
 const projectRepo = new FirestoreProjectRepository();
 
+/** Campos editáveis no cadastro da obra. */
+export interface ProjectInput {
+  name: string;
+  regional: string;
+  client: string;
+  rdoModel: RdoModelId;
+}
+
 interface ProjectState {
   projects: Project[];
   selectedProject: Project | null;
@@ -14,7 +22,7 @@ interface ProjectState {
     setProjects: (projects: Project[]) => void;
     setSelectedProject: (project: Project | null) => void;
     loadProjects: () => Promise<Project[]>;
-    saveProject: (name: string, regional: string, isEditMode: boolean, editingItemId: string | null, rdoModel?: RdoModelId) => Promise<void>;
+    saveProject: (input: ProjectInput, isEditMode: boolean, editingItemId: string | null) => Promise<void>;
     deleteProject: (id: string) => Promise<void>;
     handleServicesUpload: (file: File) => Promise<void>;
   };
@@ -31,7 +39,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       set({ projects: projectsList });
       return projectsList;
     },
-    saveProject: async (name, regional, isEditMode, editingItemId, rdoModel = 'PADRAO') => {
+    saveProject: async ({ name, regional, client, rdoModel }, isEditMode, editingItemId) => {
       const { projects } = get();
       if (!name.trim()) return;
 
@@ -41,6 +49,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
             ...p,
             name,
             regional,
+            client: client.trim() || undefined,
             rdoModel
           } : p
         );
@@ -57,6 +66,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           id: generateUUID(),
           name,
           regional,
+          client: client.trim() || undefined,
           rdoModel,
           createdAt: new Date().toISOString(),
           services: []

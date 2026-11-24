@@ -21,6 +21,7 @@ interface UiState {
   newItemName: string;
   newItemRegional: string;
   newItemRdoModel: RdoModelId;
+  newItemClient: string;
 
   // Filter states
   filterMes: string;
@@ -45,6 +46,7 @@ interface UiState {
     setNewItemName: (name: string) => void;
     setNewItemRegional: (regional: string) => void;
     setNewItemRdoModel: (model: RdoModelId) => void;
+    setNewItemClient: (client: string) => void;
     openCreateModal: () => void;
     openEditModal: (item: Project | Team, type: 'PROJECT' | 'TEAM') => void;
 
@@ -73,6 +75,7 @@ export const useUiStore = create<UiState>((set) => ({
   newItemName: '',
   newItemRegional: '',
   newItemRdoModel: 'PADRAO',
+  newItemClient: '',
 
   filterMes: 'all',
   filterStartDate: '',
@@ -95,12 +98,14 @@ export const useUiStore = create<UiState>((set) => ({
     setNewItemName: (newItemName) => set({ newItemName }),
     setNewItemRegional: (newItemRegional) => set({ newItemRegional }),
     setNewItemRdoModel: (newItemRdoModel) => set({ newItemRdoModel }),
+    setNewItemClient: (newItemClient) => set({ newItemClient }),
 
     openCreateModal: () => set({
       isEditMode: false,
       newItemName: '',
       newItemRegional: '',
       newItemRdoModel: 'PADRAO',
+      newItemClient: '',
       isModalOpen: true
     }),
 
@@ -110,6 +115,7 @@ export const useUiStore = create<UiState>((set) => ({
       newItemName: item.name,
       newItemRegional: type === 'PROJECT' ? (item as Project).regional || '' : '',
       newItemRdoModel: type === 'PROJECT' ? (item as Project).rdoModel || 'PADRAO' : 'PADRAO',
+      newItemClient: type === 'PROJECT' ? (item as Project).client || '' : '',
       isModalOpen: true
     }),
 
@@ -143,7 +149,8 @@ export const useUiState = () => useUiStore(useShallow((state) => ({
   editingItemId: state.editingItemId,
   newItemName: state.newItemName,
   newItemRegional: state.newItemRegional,
-  newItemRdoModel: state.newItemRdoModel
+  newItemRdoModel: state.newItemRdoModel,
+  newItemClient: state.newItemClient
 })));
 
 export const useUiFilters = () => useUiStore(useShallow((state) => ({

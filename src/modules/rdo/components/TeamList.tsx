@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
-import { ChevronRight, Pencil, Plus, Trash2, Users } from 'lucide-react';
+import { Pencil, Plus, Trash2, Users } from 'lucide-react';
 import { Team, RDOData, Project } from '../types';
 import { formatMoney } from '../utils';
-import { STALE_AFTER_DAYS, summarizeTeams } from '../utils/projectSummary';
-import { Badge, Button, ClickableRow, EmptyState, IconButton, PageHeader, TableCard, Td, Th } from './ui';
+import { TeamSummary, summarizeTeams } from '../utils/projectSummary';
+import { Button, ClickableRow, EmptyState, PageHeader, RowMenu, SortableTh, TableCard, Td, Th, compareValues, useSort } from './ui';
 
 interface TeamListProps {
   teams: Team[];
@@ -15,13 +15,30 @@ interface TeamListProps {
   onCreateTeam: () => void;
 }
 
+type SortKey = 'name' | 'rdos' | 'last' | 'production';
+
+const SORT_VALUE: Record<SortKey, (s: TeamSummary) => string | number | null> = {
+  name: s => s.team.name,
+  rdos: s => s.rdoCount,
+  last: s => s.lastTime,
+  production: s => s.production,
+};
+
+const muted = <span className="text-slate-400">—</span>;
+
 export const TeamList: React.FC<TeamListProps> = ({
   teams, rdos, selectedProject, onSelectTeam, onEditTeam, onDeleteTeam, onCreateTeam
 }) => {
+  const { sort, onSort } = useSort<SortKey>({ key: 'name', dir: 'asc' });
   const summaries = useMemo(() => summarizeTeams(selectedProject, teams, rdos), [selectedProject, teams, rdos]);
+  const sorted = useMemo(
+    () => [...summaries].sort((a, b) => compareValues(SORT_VALUE[sort.key](a), SORT_VALUE[sort.key](b), sort.dir)),
+    [summaries, sort]
+  );
   const totalProduction = useMemo(() => summaries.reduce((sum, s) => sum + s.production, 0), [summaries]);
   const hasPrices = (selectedProject?.services?.length ?? 0) > 0;
 
+  const sortBy = (key: SortKey) => onSort(key, key === 'name' ? 'asc' : 'desc');
   const newTeamButton = <Button variant="primary" icon={Plus} onClick={onCreateTeam}>Nova turma</Button>;
 
   if (summaries.length === 0) {
@@ -46,41 +63,34 @@ export const TeamList: React.FC<TeamListProps> = ({
       <TableCard>
         <thead>
           <tr>
-            <Th>Turma</Th>
-            <Th align="right">RDOs</Th>
+            <SortableTh label="Turma" sortKey="name" sort={sort} onSort={sortBy} />
+            <SortableTh label="RDOs" sortKey="rdos" sort={sort} onSort={sortBy} align="right" />
             <Th>Período</Th>
-            <Th>Último RDO</Th>
-            <Th align="right">Produção</Th>
+            <SortableTh label="Último RDO" sortKey="last" sort={sort} onSort={sortBy} />
+            <SortableTh label="Produção" sortKey="production" sort={sort} onSort={sortBy} align="right" />
             <Th align="right"><span className="sr-only">Ações</span></Th>
           </tr>
         </thead>
         <tbody>
-          {summaries.map(s => (
+          {sorted.map(s => (
             <ClickableRow key={s.team.id} onOpen={() => onSelectTeam(s.team)} label={`Abrir RDOs da turma ${s.team.name}`}>
-              <Td className="font-semibold text-slate-900">{s.team.name}</Td>
+              <Td className="font-medium text-slate-900">{s.team.name}</Td>
               <Td align="right">{s.rdoCount.toLocaleString('pt-BR')}</Td>
               <Td className="whitespace-nowrap text-slate-500">
-                {s.firstDate && s.lastDate ? `${s.firstDate} a ${s.lastDate}` : '—'}
+                {s.firstDate && s.lastDate ? `${s.firstDate} a ${s.lastDate}` : muted}
               </Td>
-              <Td className="whitespace-nowrap">
-                {s.lastDate ? (
-                  <div className="flex items-center gap-2">
-                    <span>{s.lastDate}</span>
-                    {s.daysSince !== null && s.daysSince > STALE_AFTER_DAYS && (
-                      <Badge tone="warning" title="Sem RDO recente">há {s.daysSince} dias</Badge>
-                    )}
-                  </div>
-                ) : <span className="text-slate-400">Nenhum</span>}
+              <Td className="whitespace-nowrap">{s.lastDate ?? muted}</Td>
+              <Td align="right" className="whitespace-nowrap text-slate-900">
+                {hasPrices ? formatMoney(s.production) : muted}
               </Td>
-              <Td align="right" className="whitespace-nowrap font-medium text-slate-900">
-                {hasPrices ? formatMoney(s.production) : <span className="font-normal text-slate-400">—</span>}
-              </Td>
-              <Td align="right" className="whitespace-nowrap">
-                <div className="flex items-center justify-end gap-0.5">
-                  <IconButton icon={Pencil} label="Renomear turma" onClick={() => onEditTeam(s.team)} />
-                  <IconButton icon={Trash2} label="Excluir turma" tone="danger" onClick={e => onDeleteTeam(s.team.id, e)} />
-                  <ChevronRight className="ml-1 h-4 w-4 text-slate-300 transition group-hover:text-slate-500" aria-hidden="true" />
-                </div>
+              <Td align="right" className="w-10">
+                <RowMenu
+                  label={`Ações da turma ${s.team.name}`}
+                  actions={[
+                    { label: 'Renomear turma', icon: Pencil, onSelect: () => onEditTeam(s.team) },
+                    { label: 'Excluir turma', icon: Trash2, tone: 'danger', onSelect: e => onDeleteTeam(s.team.id, e) },
+                  ]}
+                />
               </Td>
             </ClickableRow>
           ))}

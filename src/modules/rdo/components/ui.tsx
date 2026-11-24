@@ -2,8 +2,8 @@
  * Peças visuais do RDO Online no padrão da tela inicial do portal:
  * fundo claro, cartões brancos com borda fina, azul-marinho da marca e tabelas compactas.
  */
-import React from 'react';
-import { Search } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { ArrowDown, ArrowUp, MoreHorizontal, Search } from 'lucide-react';
 
 const cx = (...classes: (string | false | null | undefined)[]) => classes.filter(Boolean).join(' ');
 
@@ -128,7 +128,7 @@ export const Th: React.FC<React.ThHTMLAttributes<HTMLTableCellElement> & { align
   <th
     scope="col"
     className={cx(
-      'whitespace-nowrap border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500',
+      'whitespace-nowrap border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs font-medium text-slate-500',
       align === 'right' && 'text-right',
       align === 'center' && 'text-center',
       className
@@ -140,7 +140,7 @@ export const Th: React.FC<React.ThHTMLAttributes<HTMLTableCellElement> & { align
 export const Td: React.FC<React.TdHTMLAttributes<HTMLTableCellElement> & { align?: 'left' | 'right' | 'center' }> = ({ align = 'left', className, ...props }) => (
   <td
     className={cx(
-      'border-b border-slate-100 px-4 py-3 align-middle text-slate-700',
+      'border-b border-slate-100 px-4 py-2 align-middle text-[13px] text-slate-700',
       align === 'right' && 'text-right tabular-nums',
       align === 'center' && 'text-center tabular-nums',
       className
@@ -148,6 +148,135 @@ export const Td: React.FC<React.TdHTMLAttributes<HTMLTableCellElement> & { align
     {...props}
   />
 );
+
+export type SortDirection = 'asc' | 'desc';
+
+/** Cabeçalho clicável que ordena a tabela; mostra a seta só na coluna ativa. */
+export const SortableTh = <K extends string>({ label, sortKey, sort, onSort, align = 'left' }: {
+  label: string;
+  sortKey: K;
+  sort: { key: K; dir: SortDirection };
+  onSort: (key: K) => void;
+  align?: 'left' | 'right' | 'center';
+}) => {
+  const active = sort.key === sortKey;
+  const Arrow = sort.dir === 'asc' ? ArrowUp : ArrowDown;
+  return (
+    <Th align={align} aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={cx(
+          'inline-flex items-center gap-1 rounded transition hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0b1d4f]/30',
+          active && 'text-slate-900'
+        )}
+      >
+        {label}
+        <Arrow className={cx('h-3 w-3', active ? 'opacity-100' : 'opacity-0')} aria-hidden="true" />
+      </button>
+    </Th>
+  );
+};
+
+/** Alterna a ordenação: mesma coluna inverte o sentido; outra coluna começa no sentido indicado. */
+export const useSort = <K extends string>(initial: { key: K; dir: SortDirection }) => {
+  const [sort, setSort] = useState(initial);
+  const onSort = (key: K, firstDir: SortDirection = 'asc') =>
+    setSort(prev => (prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: firstDir }));
+  return { sort, onSort };
+};
+
+/** Compara valores para ordenação; vazios sempre no fim. */
+export const compareValues = (a: string | number | null | undefined, b: string | number | null | undefined, dir: SortDirection) => {
+  const emptyA = a === null || a === undefined || a === '';
+  const emptyB = b === null || b === undefined || b === '';
+  if (emptyA || emptyB) return emptyA === emptyB ? 0 : emptyA ? 1 : -1;
+  const result = typeof a === 'number' && typeof b === 'number'
+    ? a - b
+    : String(a).localeCompare(String(b), 'pt-BR', { numeric: true });
+  return dir === 'asc' ? result : -result;
+};
+
+// ─── Menu de ações da linha ──────────────────────────────────────────────────
+
+export interface RowAction {
+  label: string;
+  icon: React.ElementType;
+  onSelect: (e: React.MouseEvent) => void;
+  tone?: 'default' | 'danger';
+}
+
+const MENU_WIDTH = 176;
+const MENU_ITEM_HEIGHT = 36;
+
+/**
+ * Menu "⋯" com as ações da linha. Abre em posição fixa na tela (a tabela tem rolagem e
+ * cortaria um menu absoluto nas últimas linhas); fecha ao clicar fora, com Esc ou ao rolar.
+ */
+export const RowMenu: React.FC<{ label: string; actions: RowAction[] }> = ({ label, actions }) => {
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+  const open = position !== null;
+
+  const toggle = () => {
+    if (open || !ref.current) return setPosition(null);
+    const rect = ref.current.getBoundingClientRect();
+    const height = actions.length * MENU_ITEM_HEIGHT + 8;
+    const fitsBelow = rect.bottom + height + 8 < window.innerHeight;
+    setPosition({
+      top: fitsBelow ? rect.bottom + 4 : rect.top - height - 4,
+      left: Math.max(8, rect.right - MENU_WIDTH),
+    });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: Event) => {
+      if (e instanceof KeyboardEvent && e.key !== 'Escape') return;
+      if (e.type === 'mousedown' && ref.current?.contains(e.target as Node)) return;
+      setPosition(null);
+    };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', close);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', close);
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="inline-block text-left" onClick={e => e.stopPropagation()}>
+      <IconButton icon={MoreHorizontal} label={label} aria-haspopup="menu" aria-expanded={open} onClick={toggle} />
+      {position && (
+        <div
+          role="menu"
+          style={{ top: position.top, left: position.left, width: MENU_WIDTH }}
+          className="fixed z-40 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+        >
+          {actions.map(({ label: actionLabel, icon: Icon, onSelect, tone }) => (
+            <button
+              key={actionLabel}
+              type="button"
+              role="menuitem"
+              onClick={e => { e.stopPropagation(); setPosition(null); onSelect(e); }}
+              className={cx(
+                'flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition',
+                tone === 'danger' ? 'text-rose-600 hover:bg-rose-50' : 'text-slate-700 hover:bg-slate-50'
+              )}
+            >
+              <Icon className="h-4 w-4" strokeWidth={1.75} />
+              {actionLabel}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 /** Linha que abre o item: clique, Enter ou espaço. */
 export const ClickableRow: React.FC<{ onOpen: () => void; label: string; children: React.ReactNode }> = ({ onOpen, label, children }) => (

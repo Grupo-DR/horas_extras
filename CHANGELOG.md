@@ -4,6 +4,24 @@ Todas as mudanças relevantes do DR Nexus, da mais nova para a mais antiga.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, seção "Versionamento".
 
+## [1.5.5] - 2026-11-24
+
+### Alterado
+- RDO Online, aba Minhas Obras com visual de sistema corporativo: sem etiquetas coloridas nas
+  tabelas, cabeçalhos em texto normal, linhas mais compactas e colunas ordenáveis (clique no título).
+- Lista de obras com colunas separadas para centro de custo, contrato/descrição, cliente e regional;
+  obra sem tabela de preços aparece como "não importada" na própria coluna.
+- Saiu o alerta de dias sem RDO das obras e turmas; fica só a data do último RDO.
+- Editar e excluir (obras, turmas e RDOs) ficam num menu "⋯" na linha, em vez de ícones soltos.
+- RDOs da turma sem etiquetas: ocorrências como número e só "N a revisar" quando há o que conferir.
+
+### Adicionado
+- Campo Cliente no cadastro da obra (Vale, VLI, Rumo...). Se não for preenchido, o cliente é
+  reconhecido pelo nome da obra ou pelo modelo de RDO.
+
+### Corrigido
+- Rótulos do cadastro de obra/turma estavam em cinza-claro, com pouco contraste.
+
 ## [1.5.4] - 2026-11-18
 
 ### Corrigido
