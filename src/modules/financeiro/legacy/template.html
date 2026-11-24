@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demonstrativos Financeiros - Gerencial</title>
+<style>
+:root{--side:#0f1b2d;--side2:#162030;--ink:#111827;--muted:#6b7280;--line:#e5e7eb;--bg:#f3f4f6;--card:#fff;--accent:#2563eb}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'Segoe UI',Arial,sans-serif}
+.app{display:grid;grid-template-columns:132px 1fr;min-height:100vh}
+aside{background:var(--side);color:#e2e8f0;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:12px 8px}
+#brand{background:none;border:0;cursor:pointer;padding:4px 0 10px;border-bottom:1px solid #22324a}
+#brand img{width:100%;max-width:110px;display:block;margin:0 auto}
+.side-sub{font-size:11px;text-align:center;color:#94a3b8;margin:2px 0 10px;letter-spacing:.3px}
+.nav-item{background:none;border:0;color:#cbd5e1;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border-radius:10px;cursor:pointer;font:600 12px 'Segoe UI',Arial;text-align:center}
+.nav-item img{width:44px;height:44px;object-fit:contain;filter:brightness(1.05)}
+.nav-item:hover{background:var(--side2)}
+.nav-item.active{background:#1e3a5f;color:#fff;box-shadow:inset 3px 0 0 #60a5fa}
+#btn-limpar{margin-top:auto;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:8px;padding:9px 6px;font:600 12px 'Segoe UI',Arial;cursor:pointer}
+#btn-limpar:hover{background:#273449}
+main{min-width:0;padding:16px 20px 40px}
+.topbar{display:flex;align-items:baseline;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.topbar h1{font-size:20px;margin:0}
+.topbar .rep{color:var(--muted);font-size:13px}
+#filters{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:flex-end;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px;box-shadow:0 2px 8px rgba(15,23,42,.05)}
+.slicer{display:flex;flex-direction:column;gap:5px;min-width:0}
+.slicer-label{font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.4px}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{border:1px solid #d1d5db;background:#fff;color:#1f2937;border-radius:999px;padding:6px 12px;font:600 12px 'Segoe UI',Arial;cursor:pointer;white-space:nowrap}
+.pill:hover{border-color:#94a3b8;background:#f8fafc}
+.pill.on{background:#1f2937;color:#fff;border-color:#1f2937}
+.dd{position:relative}
+.dd-btn{min-width:150px;max-width:280px;display:flex;justify-content:space-between;gap:8px;align-items:center;border:1px solid #d1d5db;background:#fff;border-radius:8px;padding:7px 10px;font:600 12px 'Segoe UI',Arial;cursor:pointer;color:#1f2937}
+.dd-btn span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dd-btn.active{border-color:#1f2937;box-shadow:0 0 0 1px #1f2937}
+.dd-panel{display:none;position:absolute;z-index:50;top:100%;left:0;margin-top:4px;background:#fff;border:1px solid #d1d5db;border-radius:10px;box-shadow:0 12px 28px rgba(15,23,42,.18);min-width:220px;max-width:420px;padding:6px}
+.dd.open .dd-panel{display:block}
+.dd-search{width:100%;padding:7px 9px;border:1px solid #d1d5db;border-radius:7px;margin-bottom:6px;font:13px 'Segoe UI',Arial}
+.dd-list{max-height:300px;overflow:auto}
+.dd-item{display:flex;gap:8px;align-items:center;padding:5px 6px;font-size:12px;border-radius:6px;cursor:pointer}
+.dd-item:hover{background:#f3f4f6}
+.dd-item.all{font-weight:700;border-bottom:1px solid #f1f5f9}
+.grid-row{display:grid;gap:14px;margin-bottom:14px;align-items:start}
+.visual{min-width:0;background:transparent}
+.html-visual{overflow:auto}
+.card-visual{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 22px rgba(15,23,42,.08);padding:14px}
+.v-title{font-weight:800;font-size:16px;margin-bottom:8px}
+.legend{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--muted);margin-bottom:4px}
+.lg{display:inline-block;width:14px;height:10px;border-radius:2px}
+.lg.bar{background:#2563eb}.lg.line{background:none;border-top:3px solid #f59e0b;height:0;margin-left:10px}
+.pchart{width:100%;height:auto;display:block}
+.pchart .grid{stroke:#eef0f3}.pchart .ax{font-size:11px;fill:#6b7280}.pchart .cat{font-size:10.5px;fill:#374151}
+.pchart .bar{fill:#2563eb}.pchart .bar:hover{fill:#1d4ed8}
+.pchart .line{fill:none;stroke:#f59e0b;stroke-width:2.5}.pchart .dot{fill:#f59e0b;stroke:#fff;stroke-width:1.5}
+.tbl-wrap{max-height:460px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{position:sticky;top:0;background:#1f2937;color:#fff;text-align:left;padding:9px 10px;font-weight:700;white-space:nowrap;z-index:1}
+.tbl td{padding:7px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+.tbl tbody tr:nth-child(even){background:#f9fafb}
+.tbl .r{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.tbl .neg{color:#b91c1c}
+.tbl .hist{max-width:900px}
+.tbl tfoot td{position:sticky;bottom:0;background:#f3f4f6;font-weight:800;border-top:2px solid #9ca3af}
+.matrix tr.lvl0 td:first-child{font-weight:700}
+.matrix tr.lvl1 td:first-child{color:#1f2937}
+.matrix tr.lvl2 td:first-child{color:#4b5563}
+.tog{width:18px;height:18px;margin-right:6px;border:0;border-radius:5px;background:#e5e7eb;font-weight:800;cursor:pointer;line-height:1;padding:0}
+.more{margin-top:8px;border:1px solid #d1d5db;background:#fff;border-radius:8px;padding:7px 12px;font:600 12px 'Segoe UI',Arial;cursor:pointer}
+.empty,.error{padding:20px;color:var(--muted)}
+#loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#fff;z-index:100;font-size:15px;color:#374151;padding:16px;text-align:center}
+/* capa */
+#capa{display:none;position:fixed;inset:0;z-index:40;background:#0b1220 url('data:image/jpeg;base64,') center/cover no-repeat}
+#capa .shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(11,18,32,.92),rgba(11,18,32,.55))}
+#capa .inner{position:relative;height:100%;display:flex;flex-direction:column;justify-content:center;padding:0 8vw;color:#fff;gap:18px}
+#capa img{width:160px;max-width:40vw}
+#capa h2{font-size:clamp(24px,4vw,44px);margin:0;font-weight:800}
+#capa p{margin:0;color:#cbd5e1;max-width:620px}
+#btn-acessar{align-self:flex-start;background:#2563eb;color:#fff;border:0;border-radius:10px;padding:12px 26px;font:700 15px 'Segoe UI',Arial;cursor:pointer}
+#btn-acessar:hover{background:#1d4ed8}
+body.on-capa #capa{display:block}
+body.on-capa .app{visibility:hidden}
+@media (max-width:899px){.grid-row{grid-template-columns:1fr !important}}
+@media (max-width:720px){.app{grid-template-columns:1fr}aside{position:static;height:auto;flex-direction:row;flex-wrap:wrap;justify-content:center}#brand,.side-sub{display:none}.nav-item{flex-direction:row}.nav-item img{width:24px;height:24px}#btn-limpar{margin:0}main{padding:12px 16px}}
+</style>
+</head>
+<body class="on-capa">
+<div id="loading">Carregando dados do relatório…</div>
+<section id="capa"><div class="shade"></div><div class="inner">
+  <img src="data:image/png;base64," alt="DR">
+  <h2>Demonstrativos Financeiros - Gerencial</h2>
+  <p>Relatório interativo — réplica em HTML do painel Power BI.</p>
+  <button id="btn-acessar" type="button">Acessar</button>
+</div></section>
+<div class="app">
+  <aside>
+    <button id="brand" type="button" title="Voltar à capa"><img src="data:image/png;base64," alt="DR"></button>
+    <div class="side-sub">Relatório Gerencial</div>
+    <nav id="nav" style="display:flex;flex-direction:column;gap:4px"></nav>
+    <button id="btn-limpar" type="button">Limpar Filtros</button>
+  </aside>
+  <main>
+    <div class="topbar"><h1 id="page-title"></h1><span class="rep">Demonstrativos Financeiros - Gerencial</span></div>
+    <div id="filters"></div>
+    <div id="grid"></div>
+  </main>
+</div>
+<script id="report-data" type="application/octet-stream"><!-- dados --></script>
+<script>/* config | engine.js | app.js */</script>
+<script>/* config | engine.js | app.js */</script>
+<script>/* config | engine.js | app.js */</script>
+</body>
+</html>
