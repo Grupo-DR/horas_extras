@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.finCarregarRazao = exports.finAutorizarCarga = exports.FIN_CARGA_CLAIM = void 0;
+exports.finCarregarRazao = exports.finAutorizarCarga = exports.FIN_CARGA_CLAIM = exports.garantirTabela = exports.assertSuperAdmin = exports.bigquery = exports.DATASET_BRONZE = exports.LOCATION = void 0;
 /**
  * Lakehouse financeiro — carga do razão contábil (Protheus) na camada bronze do BigQuery.
  *
@@ -17,12 +17,12 @@ const admin = require("firebase-admin");
 const bigquery_1 = require("@google-cloud/bigquery");
 const XLSX = require("xlsx");
 const razaoProtheus_1 = require("./shared/financeiro/razaoProtheus");
-const LOCATION = "southamerica-east1";
-const DATASET_BRONZE = "fin_bronze";
+exports.LOCATION = "southamerica-east1";
+exports.DATASET_BRONZE = "fin_bronze";
 const TABELA_RAZAO = "razao_totvs";
 const PREFIXO_RAZAO = "fin-cargas/razao/";
 const MAX_AVISOS = 50;
-const bigquery = new bigquery_1.BigQuery();
+exports.bigquery = new bigquery_1.BigQuery();
 const SCHEMA_RAZAO = [
     { name: "carga_id", type: "STRING", mode: "REQUIRED" },
     { name: "arquivo", type: "STRING" },
@@ -55,27 +55,27 @@ const assertSuperAdmin = async (uid) => {
     }
     return String(profile.email ?? uid);
 };
-/** Cria o dataset e a tabela do razão na primeira carga (idempotente). */
-const garantirTabelaRazao = async () => {
-    const dataset = bigquery.dataset(DATASET_BRONZE);
+exports.assertSuperAdmin = assertSuperAdmin;
+/** Cria o dataset da bronze e a tabela na primeira carga (idempotente). */
+const garantirTabela = async (nome, schema, opcoes) => {
+    const dataset = exports.bigquery.dataset(exports.DATASET_BRONZE);
     const [datasetExiste] = await dataset.exists();
     if (!datasetExiste) {
-        await bigquery.createDataset(DATASET_BRONZE, {
-            location: LOCATION,
+        await exports.bigquery.createDataset(exports.DATASET_BRONZE, {
+            location: exports.LOCATION,
             description: "Lakehouse financeiro — camada bronze (dado como chega). Ver LAKEHOUSE.md.",
         });
     }
-    const tabela = dataset.table(TABELA_RAZAO);
-    const [tabelaExiste] = await tabela.exists();
-    if (!tabelaExiste) {
-        await dataset.createTable(TABELA_RAZAO, {
-            schema: SCHEMA_RAZAO,
-            timePartitioning: { type: "MONTH", field: "data" },
-            clustering: { fields: ["filial", "centro_custo", "conta"] },
-            description: "Razão contábil do Protheus (lançamentos com histórico completo e classificado).",
-        });
-    }
+    const [tabelaExiste] = await dataset.table(nome).exists();
+    if (!tabelaExiste)
+        await dataset.createTable(nome, { schema, ...opcoes });
 };
+exports.garantirTabela = garantirTabela;
+const garantirTabelaRazao = () => (0, exports.garantirTabela)(TABELA_RAZAO, SCHEMA_RAZAO, {
+    timePartitioning: { type: "MONTH", field: "data" },
+    clustering: { fields: ["filial", "centro_custo", "conta"] },
+    description: "Razão contábil do Protheus (lançamentos com histórico completo e classificado).",
+});
 const paraLinhaBq = (l, meta) => ({
     carga_id: meta.cargaId,
     arquivo: meta.arquivo,
@@ -130,7 +130,7 @@ exports.finAutorizarCarga = (0, https_1.onCall)({ region: "us-central1" }, async
 exports.finCarregarRazao = (0, https_1.onCall)({ region: "us-central1", timeoutSeconds: 540, memory: "2GiB" }, async (request) => {
     if (!request.auth)
         throw new https_1.HttpsError("unauthenticated", "O usuário deve estar logado.");
-    const email = await assertSuperAdmin(request.auth.uid);
+    const email = await (0, exports.assertSuperAdmin)(request.auth.uid);
     const path = String(request.data?.path ?? "");
     if (!path.startsWith(PREFIXO_RAZAO) || path.includes("..")) {
         throw new https_1.HttpsError("invalid-argument", "Arquivo de carga inválido.");
@@ -155,7 +155,7 @@ exports.finCarregarRazao = (0, https_1.onCall)({ region: "us-central1", timeoutS
         const ndjson = leitura.lancamentos.map(l => JSON.stringify(paraLinhaBq(l, meta))).join("\n");
         await bucket.file(ndjsonPath).save(ndjson, { contentType: "application/x-ndjson" });
         await garantirTabelaRazao();
-        const dataset = bigquery.dataset(DATASET_BRONZE);
+        const dataset = exports.bigquery.dataset(exports.DATASET_BRONZE);
         const staging = `${TABELA_RAZAO}__carga_${cargaId.replace(/[^A-Za-z0-9_]/g, "_")}`;
         await dataset.table(staging).load(bucket.file(ndjsonPath), {
             sourceFormat: "NEWLINE_DELIMITED_JSON",
@@ -163,10 +163,10 @@ exports.finCarregarRazao = (0, https_1.onCall)({ region: "us-central1", timeoutS
             writeDisposition: "WRITE_TRUNCATE",
         });
         // Substitui só as competências × filiais do arquivo, numa transação.
-        const alvo = `\`${DATASET_BRONZE}.${TABELA_RAZAO}\``;
-        const temp = `\`${DATASET_BRONZE}.${staging}\``;
-        const [job] = await bigquery.createQueryJob({
-            location: LOCATION,
+        const alvo = `\`${exports.DATASET_BRONZE}.${TABELA_RAZAO}\``;
+        const temp = `\`${exports.DATASET_BRONZE}.${staging}\``;
+        const [job] = await exports.bigquery.createQueryJob({
+            location: exports.LOCATION,
             query: `
                     BEGIN TRANSACTION;
                     DELETE FROM ${alvo} t

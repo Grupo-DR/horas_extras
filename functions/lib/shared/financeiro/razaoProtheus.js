@@ -15,7 +15,9 @@ exports.lerRazaoProtheus = exports.dataExcel = void 0;
  * Função pura: recebe as linhas da planilha (matriz, como `sheet_to_json(..., { header: 1 })`).
  */
 const historicoClassifier_1 = require("./historicoClassifier");
-const norm = (v) => String(v ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
+const planilha_1 = require("./planilha");
+var planilha_2 = require("./planilha");
+Object.defineProperty(exports, "dataExcel", { enumerable: true, get: function () { return planilha_2.dataExcel; } });
 /** Nomes aceitos para cada coluna (o relatório do Protheus pode variar entre versões). */
 const COLUNAS = {
     filial: ['FILIAL', 'FL'],
@@ -30,35 +32,14 @@ const COLUNAS = {
     credito: ['CREDITO'],
 };
 const OBRIGATORIAS = ['filial', 'data', 'conta', 'historico', 'debito', 'credito'];
-const isBlank = (v) => v === null || v === undefined || String(v).trim() === '';
-/** Número de série do Excel (ou "dd/mm/aaaa") → "AAAA-MM-DD". */
-const dataExcel = (v) => {
-    if (typeof v === 'number' && Number.isFinite(v)) {
-        const ms = Math.round((Math.floor(v) - 25569) * 86400000);
-        const d = new Date(ms);
-        return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
-    }
-    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(String(v ?? '').trim());
-    return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : null;
-};
-exports.dataExcel = dataExcel;
-const numero = (v) => {
-    if (typeof v === 'number')
-        return v;
-    const s = String(v ?? '').trim();
-    if (!s)
-        return 0;
-    const n = Number(s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s);
-    return Number.isFinite(n) ? n : NaN;
-};
 /** Aplica a máscara do Protheus quando o arquivo só traz o código "cru" (ex.: 301804 → 3.0.1.804). */
 const mascararCC = (cc) => (/^\d{6}$/.test(cc) ? `${cc[0]}.${cc[1]}.${cc[2]}.${cc.slice(3)}` : cc);
 const mascararConta = (c) => /^\d{11}$/.test(c) ? `${c[0]}.${c[1]}.${c[2]}.${c.slice(3, 5)}.${c.slice(5)}` : c;
 const lerRazaoProtheus = (rows) => {
-    const headerIdx = rows.slice(0, 15).findIndex(r => r.some(c => norm(c) === 'HISTORICO'));
+    const headerIdx = rows.slice(0, 15).findIndex(r => r.some(c => (0, planilha_1.norm)(c) === 'HISTORICO'));
     if (headerIdx < 0)
         throw new Error('Cabeçalho do razão não encontrado (coluna "Historico") nas primeiras linhas.');
-    const header = rows[headerIdx].map(norm);
+    const header = rows[headerIdx].map(planilha_1.norm);
     const col = (nomes) => {
         for (const nome of nomes) {
             const i = header.indexOf(nome);
@@ -77,10 +58,10 @@ const lerRazaoProtheus = (rows) => {
     for (let i = headerIdx + 1; i < rows.length; i++) {
         const r = rows[i] ?? [];
         const linha = i + 1;
-        if (r.every(isBlank))
+        if (r.every(planilha_1.isBlank))
             continue;
         // Continuação do histórico do lançamento anterior: Débito vazio (regra do script Python).
-        if (isBlank(r[idx.debito])) {
+        if ((0, planilha_1.isBlank)(r[idx.debito])) {
             const texto = String(r[idx.historico] ?? '').trim();
             if (lancamentos.length) {
                 if (texto)
@@ -92,9 +73,9 @@ const lerRazaoProtheus = (rows) => {
             linhasContinuacao++;
             continue;
         }
-        const data = (0, exports.dataExcel)(r[idx.data]);
-        const debito = numero(r[idx.debito]);
-        const credito = numero(r[idx.credito]);
+        const data = (0, planilha_1.dataExcel)(r[idx.data]);
+        const debito = (0, planilha_1.numero)(r[idx.debito]);
+        const credito = (0, planilha_1.numero)(r[idx.credito]);
         if (!data) {
             avisos.push(`Linha ${linha}: data inválida (${String(r[idx.data])}); lançamento ignorado.`);
             continue;
