@@ -112,6 +112,6 @@ exports.lerPlanilhaPlano = lerPlanilhaPlano;
 /** Escolhe a aba de dados (ignora tabelas dinâmicas como "Planilha1"). */
 const abaDoPlano = (abas) => Object.keys(abas).find(nome => (0, planilha_1.localizarColunas)(abas[nome], COLUNAS, OBRIGATORIAS) !== null) ?? null;
 exports.abaDoPlano = abaDoPlano;
-/** Tipos de Forecast "meses realizados + meses projetados" (3+9, 6+6...). */
-exports.TIPOS_FORECAST = Array.from({ length: 11 }, (_, i) => `${i + 1}+${11 - i}`);
+/** Tipos de Forecast "meses realizados + meses projetados" usados pela empresa (decisão de 25/11/2026). */
+exports.TIPOS_FORECAST = ['3+9', '6+6', '9+3'];
 //# sourceMappingURL=budgetForecast.js.map

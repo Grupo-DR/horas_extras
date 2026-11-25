@@ -132,5 +132,5 @@ export const lerPlanilhaPlano = (rows: Linhas): LeituraPlano => {
 export const abaDoPlano = (abas: Record<string, Linhas>): string | null =>
   Object.keys(abas).find(nome => localizarColunas(abas[nome], COLUNAS, OBRIGATORIAS) !== null) ?? null;
 
-/** Tipos de Forecast "meses realizados + meses projetados" (3+9, 6+6...). */
-export const TIPOS_FORECAST = Array.from({ length: 11 }, (_, i) => `${i + 1}+${11 - i}`);
+/** Tipos de Forecast "meses realizados + meses projetados" usados pela empresa (decisão de 25/11/2026). */
+export const TIPOS_FORECAST = ['3+9', '6+6', '9+3'];

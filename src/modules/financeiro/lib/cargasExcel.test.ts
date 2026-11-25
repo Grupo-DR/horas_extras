@@ -62,11 +62,8 @@ describe('lerPlanilhaPlano (Budget/Forecast)', () => {
     expect(abaDoPlano({ Planilha1: [['Rótulos', 'Soma']], 'Budget 2026': [CAB_PLANO] })).toBe('Budget 2026');
   });
 
-  it('lista os tipos de Forecast de 1+11 a 11+1', () => {
-    expect(TIPOS_FORECAST).toHaveLength(11);
-    expect(TIPOS_FORECAST).toContain('3+9');
-    expect(TIPOS_FORECAST).toContain('6+6');
-    expect(TIPOS_FORECAST[10]).toBe('11+1');
+  it('aceita só os tipos de Forecast 3+9, 6+6 e 9+3', () => {
+    expect(TIPOS_FORECAST).toEqual(['3+9', '6+6', '9+3']);
   });
 });
 

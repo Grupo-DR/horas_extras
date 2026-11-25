@@ -152,6 +152,6 @@ O custo relevante será o do chat (Gemini, por pergunta).
 | Tela de cargas | `/financeiro/cargas` (super admin) | 1.7.0 |
 | Leitura de Budget/Forecast, Dimensões e Valores gerenciais | `lib/budgetForecast.ts`, `lib/dimensoes.ts`, `lib/valoresGerenciais.ts` (base comum em `lib/planilha.ts`) | 1.8.0 |
 | Carga das planilhas na bronze | Cloud Function `finCarregarPlanilha` (`fin-cargas/<tipo>/<carga>/`): `budget` e `forecast` substituem por `versao_id`; `dim_centro_custo` e `dim_conta` trocadas inteiras; `valores_gerenciais` substitui por competência | 1.8.0 |
-| Versões de Budget/Forecast | Firestore `fin_versoes` (fonte do catálogo) espelhado em `fin_bronze.plano_versoes`; Budget = ano + nome, Forecast = ano + tipo N+M + revisão automática; uma vigente por tipo e ano (`finDefinirVigente`) | 1.8.0 |
+| Versões de Budget/Forecast | Firestore `fin_versoes` (fonte do catálogo) espelhado em `fin_bronze.plano_versoes`; Budget = ano + nome, Forecast = ano + tipo (3+9, 6+6 ou 9+3) + revisão automática; uma vigente por tipo e ano (`finDefinirVigente`) | 1.8.0 |
 | Medições de obra e previsões semanais dos engenheiros | Telas de digitação no portal (sem Excel) | próximo |
 | Prata e ouro (SQL) | — | próximo |

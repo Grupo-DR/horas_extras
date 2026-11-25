@@ -10,7 +10,7 @@ versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, se
 - **Cargas Financeiras: Budget, Forecast, Valores gerenciais e Dimensões por Excel**, além do razão. A tela
   ganhou uma aba por fonte; cada arquivo é conferido no portal antes do envio (totais por mês, avisos).
 - **Versões de Budget e Forecast:** o Budget é identificado por ano e nome da versão (reenviar com o mesmo
-  nome substitui aquela versão); o Forecast por ano, tipo (1+11 a 11+1, ex.: 3+9, 6+6) e revisão numerada
+  nome substitui aquela versão); o Forecast por ano, tipo (3+9, 6+6 ou 9+3) e revisão numerada
   automaticamente. Todas as versões ficam guardadas e uma por ano fica marcada como **vigente**, escolhida
   no envio ou trocada depois na lista de versões.
 - Budget/Forecast cujo nome do mês não bate com a data (coluna "Ano") são **recusados**, com o total de
