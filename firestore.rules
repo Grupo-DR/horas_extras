@@ -761,6 +761,11 @@ service cloud.firestore {
       allow read: if canReadModule('construction_rdo');
       allow write: if canWriteModule('construction_rdo');
     }
+    // Lakehouse financeiro: histórico das cargas (gravado só pela Cloud Function).
+    match /fin_cargas/{cargaId} {
+      allow read: if isAuthenticated() && isSuperAdmin();
+      allow write: if false;
+    }
     // Curva S física e financeira por obra (Document ID = projectId).
     match /construction_s_curves/{id} {
       allow read: if canReadModule('construction_rdo');

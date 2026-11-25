@@ -139,5 +139,16 @@ O custo relevante será o do chat (Gemini, por pergunta).
 ## 9. Pendências para começar
 
 - [x] Arquivo real do **Razão Contábil.xlsx** (23/11/2026) — colunas confirmadas e regras validadas (seção 3.1).
-- [ ] Autorização para criar no projeto `kanbancomercial-af561`: API do BigQuery, datasets `fin_bronze`/`fin_prata`/`fin_ouro`, bucket `fin-cargas` e as Cloud Functions de carga.
-- [ ] Definir quem envia os arquivos (papel "carga financeira" no IAM).
+- [x] Autorização para criar os recursos no projeto `kanbancomercial-af561` (24/11/2026).
+- [x] Quem envia: por enquanto só o administrador (super admin); papel próprio depois.
+- [x] Formato: razão **cru** do Protheus; a classificação do `protheus_parserV5.py` roda na função.
+
+## 10. Implementado
+
+| Etapa | Onde | Situação |
+|---|---|---|
+| Leitura e classificação do razão | `lib/razaoProtheus.ts`, `lib/historicoClassifier.ts` (copiados para as Functions por `sync-shared`) | 1.7.0 |
+| Carga do razão na bronze | Cloud Function `finCarregarRazao`; arquivos em `fin-cargas/razao/<carga>/` no Storage padrão; histórico em Firestore `fin_cargas` | 1.7.0 |
+| Tela de cargas | `/financeiro/cargas` (super admin) | 1.7.0 |
+| Demais fontes (dimensões, budget, forecast, medições, gerenciais) | — | próximo |
+| Prata e ouro (SQL) | — | próximo |

@@ -40,7 +40,7 @@ const MAX_OUTPUT_TOKENS = 65536;
 /** Limite do pedido: o callable aceita até 10 MB e os PDFs vão em base64 (+33%). */
 const MAX_REQUEST_CHARS = 9500000;
 const parseRequest = (data) => {
-    const input = (data !== null && data !== void 0 ? data : {});
+    const input = (data ?? {});
     const feature = input.feature;
     if (!AI_FEATURES.includes(feature)) {
         throw new https_1.HttpsError("invalid-argument", "Módulo inválido para a IA.");
@@ -68,14 +68,13 @@ const parseRequest = (data) => {
 };
 /** Mesmo critério das regras do Firestore (canReadModule): super admin ou módulo habilitado. */
 const assertModuleAccess = async (uid, feature) => {
-    var _a, _b;
     const snap = await admin.firestore().collection("user_profiles").doc(uid).get();
     const profile = snap.data();
     if (!profile)
         throw new https_1.HttpsError("permission-denied", "Perfil de usuário não encontrado.");
     if (profile.isSuperAdmin === true)
         return;
-    if (((_b = (_a = profile.modules) === null || _a === void 0 ? void 0 : _a[feature]) === null || _b === void 0 ? void 0 : _b.enabled) !== true) {
+    if (profile.modules?.[feature]?.enabled !== true) {
         throw new https_1.HttpsError("permission-denied", "Sem acesso ao módulo para usar a IA.");
     }
 };
@@ -85,16 +84,25 @@ exports.aiGenerateContent = (0, https_1.onCall)({
     timeoutSeconds: 300,
     memory: "512MiB",
 }, async (request) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "O usuário deve estar logado.");
     }
     const req = parseRequest(request.data);
     await assertModuleAccess(request.auth.uid, req.feature);
-    const body = Object.assign(Object.assign({ contents: req.contents.map(content => {
+    const body = {
+        contents: req.contents.map(content => {
             const c = content;
-            return c && typeof c === "object" && !c.role ? Object.assign({ role: "user" }, c) : c;
-        }) }, (req.systemInstruction ? { systemInstruction: { parts: [{ text: req.systemInstruction }] } } : {})), { generationConfig: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (req.temperature !== undefined ? { temperature: req.temperature } : {})), (req.responseMimeType ? { responseMimeType: req.responseMimeType } : {})), (req.responseSchema ? { responseSchema: req.responseSchema } : {})), { maxOutputTokens: MAX_OUTPUT_TOKENS }), (req.thinkingLevel ? { thinkingConfig: { thinkingLevel: req.thinkingLevel } } : {})) });
+            return c && typeof c === "object" && !c.role ? { role: "user", ...c } : c;
+        }),
+        ...(req.systemInstruction ? { systemInstruction: { parts: [{ text: req.systemInstruction }] } } : {}),
+        generationConfig: {
+            ...(req.temperature !== undefined ? { temperature: req.temperature } : {}),
+            ...(req.responseMimeType ? { responseMimeType: req.responseMimeType } : {}),
+            ...(req.responseSchema ? { responseSchema: req.responseSchema } : {}),
+            maxOutputTokens: MAX_OUTPUT_TOKENS,
+            ...(req.thinkingLevel ? { thinkingConfig: { thinkingLevel: req.thinkingLevel } } : {}),
+        },
+    };
     // Tenta de novo quando o modelo está ocupado (429/500/503), trava sem responder
     // ou a rede falha, enquanto couber outra tentativa no prazo da função.
     const deadline = Date.now() + GEMINI_DEADLINE_MS;
@@ -148,9 +156,9 @@ exports.aiGenerateContent = (0, https_1.onCall)({
         throw new https_1.HttpsError("internal", "A IA respondeu com erro. Tente novamente.");
     }
     const json = await response.json();
-    const candidate = (_a = json.candidates) === null || _a === void 0 ? void 0 : _a[0];
-    const text = ((_c = (_b = candidate === null || candidate === void 0 ? void 0 : candidate.content) === null || _b === void 0 ? void 0 : _b.parts) !== null && _c !== void 0 ? _c : []).map(p => { var _a; return (_a = p.text) !== null && _a !== void 0 ? _a : ""; }).join("");
-    if ((candidate === null || candidate === void 0 ? void 0 : candidate.finishReason) === "MAX_TOKENS") {
+    const candidate = json.candidates?.[0];
+    const text = (candidate?.content?.parts ?? []).map(p => p.text ?? "").join("");
+    if (candidate?.finishReason === "MAX_TOKENS") {
         // Resposta cortada: entregar o texto quebraria o JSON no navegador.
         logger.error("aiGenerateContent: resposta cortada no limite de tokens", {
             feature: req.feature, usage: json.usageMetadata,
@@ -158,15 +166,15 @@ exports.aiGenerateContent = (0, https_1.onCall)({
         throw new https_1.HttpsError("out-of-range", "A IA não terminou a resposta (documento longo demais). Tente de novo ou divida o arquivo.");
     }
     if (!text) {
-        logger.warn("aiGenerateContent: resposta vazia", { feature: req.feature, finishReason: candidate === null || candidate === void 0 ? void 0 : candidate.finishReason });
+        logger.warn("aiGenerateContent: resposta vazia", { feature: req.feature, finishReason: candidate?.finishReason });
         throw new https_1.HttpsError("internal", "A IA não devolveu conteúdo.");
     }
     logger.info("aiGenerateContent", {
         uid: request.auth.uid,
         feature: req.feature,
-        tokens: (_e = (_d = json.usageMetadata) === null || _d === void 0 ? void 0 : _d.totalTokenCount) !== null && _e !== void 0 ? _e : 0,
-        thinkingTokens: (_g = (_f = json.usageMetadata) === null || _f === void 0 ? void 0 : _f.thoughtsTokenCount) !== null && _g !== void 0 ? _g : 0,
+        tokens: json.usageMetadata?.totalTokenCount ?? 0,
+        thinkingTokens: json.usageMetadata?.thoughtsTokenCount ?? 0,
     });
-    return { text, totalTokenCount: (_j = (_h = json.usageMetadata) === null || _h === void 0 ? void 0 : _h.totalTokenCount) !== null && _j !== void 0 ? _j : 0 };
+    return { text, totalTokenCount: json.usageMetadata?.totalTokenCount ?? 0 };
 });
 //# sourceMappingURL=aiGateway.js.map

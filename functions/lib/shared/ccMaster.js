@@ -48,16 +48,14 @@ const normalizeCC = (cc) => cc.replace(/\./g, "");
 exports.normalizeCC = normalizeCC;
 /** Retorna o nome oficial do CC; se não mapeado, retorna o próprio código */
 const getCCName = (rawCC) => {
-    var _a, _b;
     const norm = (0, exports.normalizeCC)(rawCC);
-    return (_b = (_a = exports.CC_MAP[norm]) === null || _a === void 0 ? void 0 : _a.name) !== null && _b !== void 0 ? _b : rawCC;
+    return exports.CC_MAP[norm]?.name ?? rawCC;
 };
 exports.getCCName = getCCName;
 /** Retorna a regional do CC; se não mapeado, retorna 'Outros' */
 const getCCRegional = (rawCC) => {
-    var _a, _b;
     const norm = (0, exports.normalizeCC)(rawCC);
-    return (_b = (_a = exports.CC_MAP[norm]) === null || _a === void 0 ? void 0 : _a.regional) !== null && _b !== void 0 ? _b : "Outros";
+    return exports.CC_MAP[norm]?.regional ?? "Outros";
 };
 exports.getCCRegional = getCCRegional;
 //# sourceMappingURL=ccMaster.js.map

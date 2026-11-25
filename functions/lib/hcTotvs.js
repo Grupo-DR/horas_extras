@@ -63,15 +63,14 @@ const chunk = (items, size) => {
 };
 /** Lê o perfil do usuário e devolve escopo e liberações do Capital Humano, ou recusa o acesso. */
 const resolveHumanCapitalAccess = async (uid) => {
-    var _a, _b;
     const snap = await admin.firestore().collection("user_profiles").doc(uid).get();
     const profile = snap.data();
     if (!profile)
         throw new https_1.HttpsError("permission-denied", "Perfil de usuário não encontrado.");
-    const canAuditClockin = ((_a = profile.features) === null || _a === void 0 ? void 0 : _a.clockinAudit) === true;
+    const canAuditClockin = profile.features?.clockinAudit === true;
     if (profile.isSuperAdmin === true)
         return { scope: { type: "ALL" }, canAuditClockin };
-    const hc = (_b = profile.modules) === null || _b === void 0 ? void 0 : _b.human_capital;
+    const hc = profile.modules?.human_capital;
     if (!hc || hc.enabled !== true || !HC_ROLES.includes(normalizeRole(hc.role))) {
         throw new https_1.HttpsError("permission-denied", "Sem acesso ao módulo Capital Humano.");
     }
@@ -110,11 +109,10 @@ const getChapasAllocatedInScope = async (scope, startIso, endIso) => {
     return chapas;
 };
 const extractRawItems = (payload) => {
-    var _a;
     const items = Array.isArray(payload)
         ? payload
         : (payload && typeof payload === "object")
-            ? ((_a = payload.Items) !== null && _a !== void 0 ? _a : payload.items)
+            ? (payload.Items ?? payload.items)
             : null;
     if (!Array.isArray(items))
         return null;
@@ -150,7 +148,7 @@ const fetchTotvsQuery = async (url, tag) => {
     try {
         payload = await response.json();
     }
-    catch (_a) {
+    catch {
         throw new https_1.HttpsError("internal", "Resposta do TOTVS não é JSON.", { totvsCode: "UNEXPECTED_FORMAT" });
     }
     const items = extractRawItems(payload);
@@ -165,12 +163,11 @@ exports.hcFetchOvertime = (0, https_1.onCall)({
     timeoutSeconds: 120,
     memory: "512MiB",
 }, async (request) => {
-    var _a, _b, _c, _d;
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "O usuário deve estar logado.");
     }
-    const startDate = String((_b = (_a = request.data) === null || _a === void 0 ? void 0 : _a.startDate) !== null && _b !== void 0 ? _b : "").trim();
-    const endDate = String((_d = (_c = request.data) === null || _c === void 0 ? void 0 : _c.endDate) !== null && _d !== void 0 ? _d : "").trim();
+    const startDate = String(request.data?.startDate ?? "").trim();
+    const endDate = String(request.data?.endDate ?? "").trim();
     const startIso = toIsoDate(startDate);
     const endIso = toIsoDate(endDate);
     if (!startIso || !endIso) {
@@ -190,11 +187,8 @@ exports.hcFetchOvertime = (0, https_1.onCall)({
     ]);
     const visible = scope.type === "ALL"
         ? items
-        : items.filter(item => {
-            var _a, _b;
-            return isCostCenterInScope(scope, String((_a = item.CODCCUSTO) !== null && _a !== void 0 ? _a : "")) ||
-                allocatedChapas.has(String((_b = item.CHAPA) !== null && _b !== void 0 ? _b : ""));
-        });
+        : items.filter(item => isCostCenterInScope(scope, String(item.CODCCUSTO ?? "")) ||
+            allocatedChapas.has(String(item.CHAPA ?? "")));
     logger.info("[hcFetchOvertime] consulta atendida", {
         uid: request.auth.uid,
         email: request.auth.token.email,
@@ -214,17 +208,16 @@ const toDateOnly = (value) => {
     return match ? match[1] : null;
 };
 const pickEmployee = (item) => {
-    var _a, _b, _c, _d, _e;
-    const cpf = String((_a = item.CPF) !== null && _a !== void 0 ? _a : "").replace(/\D/g, "");
-    const chapa = String((_b = item.CHAPA) !== null && _b !== void 0 ? _b : "").trim();
+    const cpf = String(item.CPF ?? "").replace(/\D/g, "");
+    const chapa = String(item.CHAPA ?? "").trim();
     if (!chapa && !cpf)
         return null;
     return {
         chapa,
-        nome: String((_c = item.NOME) !== null && _c !== void 0 ? _c : "").trim(),
+        nome: String(item.NOME ?? "").trim(),
         cpf: cpf ? cpf.padStart(11, "0") : "",
-        funcao: String((_d = item.NOME1) !== null && _d !== void 0 ? _d : "").trim(),
-        codCCusto: String((_e = item.CODCCUSTO) !== null && _e !== void 0 ? _e : "").trim(),
+        funcao: String(item.NOME1 ?? "").trim(),
+        codCCusto: String(item.CODCCUSTO ?? "").trim(),
         dataAdmissao: toDateOnly(item.DATAADMISSAO),
         dataDemissao: toDateOnly(item.DATADEMISSAO),
     };

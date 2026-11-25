@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowUpRight, Building2, CircleDollarSign, FileText, LineChart, Shield, ShieldCheck, TrendingUp, Users } from 'lucide-react';
+import { ArrowUpRight, Building2, CircleDollarSign, Database, FileText, LineChart, Shield, ShieldCheck, TrendingUp, Users } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { canManageProfiles } from '../../modules/iam/types';
 import { MarketTicker } from './MarketTicker';
@@ -36,6 +36,13 @@ const IAM_MODULE: ModuleTile = {
     description: 'Usuários, perfis de acesso e permissões.',
     path: '/admin/users',
     icon: Shield
+};
+
+const FIN_CARGAS_MODULE: ModuleTile = {
+    title: 'Cargas Financeiras',
+    description: 'Razão contábil e bases do lakehouse financeiro.',
+    path: '/financeiro/cargas',
+    icon: Database
 };
 
 /** "antonio.silva" → "Antonio"; "Renata Branco" → "Renata". */
@@ -100,7 +107,11 @@ export const CentroInteligenciaView: React.FC = () => {
 
     const now = new Date();
     const today = now.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    const modules = canManageProfiles(profile) ? [...MODULES, IAM_MODULE] : MODULES;
+    const modules = [
+        ...MODULES,
+        ...(canManageProfiles(profile) ? [IAM_MODULE] : []),
+        ...(profile?.isSuperAdmin ? [FIN_CARGAS_MODULE] : []),
+    ];
     const name = firstName(user?.name);
 
     return (

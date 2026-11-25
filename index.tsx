@@ -33,6 +33,7 @@ import { CentroInteligenciaView } from './src/pages/CentroInteligencia/CentroInt
 import { PowerBiView } from './src/pages/CentroInteligencia/PowerBiView';
 import { MarketIndicatorsView } from './src/pages/Indicadores/MarketIndicatorsView';
 import RdoApp from './src/modules/rdo/RdoApp';
+import { CargasFinanceirasPage } from './src/modules/financeiro/pages/CargasFinanceirasPage';
 import SSMAApp from './src/modules/ssma/SSMAApp';
 
 import { useNavigate } from 'react-router-dom';
@@ -159,6 +160,16 @@ root.render(
                 element={
                   <PrivateRoute>
                     <PowerBiView />
+                  </PrivateRoute>
+                }
+              />
+
+              {/* LAKEHOUSE FINANCEIRO: cargas (razão Protheus...) — só super admin */}
+              <Route
+                path="/financeiro/cargas"
+                element={
+                  <PrivateRoute>
+                    <CargasFinanceirasPage />
                   </PrivateRoute>
                 }
               />

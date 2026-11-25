@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.aiGenerateContent = exports.hcFetchEmployees = exports.hcFetchOvertime = exports.auditSSMAEvidenceWrite = exports.auditSSMAMonthlyTargetWrite = exports.auditSSMAInspectionEventUpdate = exports.auditSSMAInspectionEventCreate = exports.adminBackfillUserDirectory = exports.syncUserDirectory = exports.adminBackfillUserProfiles = exports.adminRevokeSessions = exports.adminGeneratePasswordResetLink = exports.adminDeleteUser = exports.adminEnableUser = exports.adminDisableUser = exports.adminCreateUserInvite = exports.ssmaCreateForemanAccount = void 0;
+exports.finCarregarRazao = exports.aiGenerateContent = exports.hcFetchEmployees = exports.hcFetchOvertime = exports.auditSSMAEvidenceWrite = exports.auditSSMAMonthlyTargetWrite = exports.auditSSMAInspectionEventUpdate = exports.auditSSMAInspectionEventCreate = exports.adminBackfillUserDirectory = exports.syncUserDirectory = exports.adminBackfillUserProfiles = exports.adminRevokeSessions = exports.adminGeneratePasswordResetLink = exports.adminDeleteUser = exports.adminEnableUser = exports.adminDisableUser = exports.adminCreateUserInvite = exports.ssmaCreateForemanAccount = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 admin.initializeApp();
@@ -11,7 +11,6 @@ const auth = admin.auth();
  * Verifies if the caller is an IAM Admin or Super Admin.
  */
 async function verifyAdmin(context) {
-    var _a, _b;
     if (!context.auth) {
         throw new functions.https.HttpsError("unauthenticated", "O usuário deve estar logado.");
     }
@@ -25,7 +24,7 @@ async function verifyAdmin(context) {
     // Mesmo critério de isIAMAdmin() nas regras do Firestore: só super admin e admin do IAM
     // administram contas. Administrador CH não (decisão de 31/10/2026).
     const isSuperAdmin = profile.isSuperAdmin === true;
-    const isIamAdmin = ((_b = (_a = profile.modules) === null || _a === void 0 ? void 0 : _a.commercial) === null || _b === void 0 ? void 0 : _b.role) === 'IAM_ADMIN';
+    const isIamAdmin = profile.modules?.commercial?.role === 'IAM_ADMIN';
     if (!isSuperAdmin && !isIamAdmin) {
         throw new functions.https.HttpsError("permission-denied", "Acesso negado. Requer permissão de Administrador IAM.");
     }
@@ -35,15 +34,18 @@ async function verifyAdmin(context) {
  * Logs an audit event to the database.
  */
 async function logAudit(type, actorUid, actorEmail, targetUid, targetEmail, extra) {
-    await db.collection("audit_logs").add(Object.assign({ type,
+    await db.collection("audit_logs").add({
+        type,
         actorUid,
         actorEmail,
         targetUid,
-        targetEmail, timestamp: admin.firestore.FieldValue.serverTimestamp() }, extra));
+        targetEmail,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        ...extra
+    });
 }
 // --- Cloud Functions ---
 exports.ssmaCreateForemanAccount = functions.https.onCall(async (data, context) => {
-    var _a, _b;
     if (!context.auth)
         throw new functions.https.HttpsError("unauthenticated", "O usuário deve estar logado.");
     const adminUid = context.auth.uid;
@@ -53,7 +55,7 @@ exports.ssmaCreateForemanAccount = functions.https.onCall(async (data, context) 
     if (!profile)
         throw new functions.https.HttpsError("permission-denied", "Perfil não encontrado.");
     const isSuperAdmin = profile.isSuperAdmin === true;
-    const ssmaRole = (_b = (_a = profile.modules) === null || _a === void 0 ? void 0 : _a.ssma) === null || _b === void 0 ? void 0 : _b.role;
+    const ssmaRole = profile.modules?.ssma?.role;
     if (!isSuperAdmin && ssmaRole !== 'SSMA_ADMIN' && ssmaRole !== 'SSMA_MANAGER' && ssmaRole !== 'Gerente de SSMA') {
         throw new functions.https.HttpsError("permission-denied", "Acesso negado. Requer permissão de Gestor de SSMA.");
     }
@@ -241,7 +243,6 @@ exports.adminBackfillUserProfiles = functions.https.onCall(async (data, context)
         const batch = db.batch();
         let migratedCount = 0;
         snapshot.docs.forEach((docSnap) => {
-            var _a;
             const profile = docSnap.data();
             let changed = false;
             if (!profile.status) {
@@ -255,7 +256,7 @@ exports.adminBackfillUserProfiles = functions.https.onCall(async (data, context)
             if (changed) {
                 batch.update(docSnap.ref, {
                     status: profile.status,
-                    isSuperAdmin: (_a = profile.isSuperAdmin) !== null && _a !== void 0 ? _a : false,
+                    isSuperAdmin: profile.isSuperAdmin ?? false,
                     updatedAt: new Date().toISOString()
                 });
                 migratedCount++;
@@ -278,7 +279,6 @@ exports.adminBackfillUserProfiles = functions.https.onCall(async (data, context)
 exports.syncUserDirectory = functions.firestore
     .document('user_profiles/{uid}')
     .onWrite(async (change, context) => {
-    var _a, _b;
     const uid = context.params.uid;
     const directoryRef = db.collection('user_directory').doc(uid);
     // If deleted, remove from directory
@@ -302,7 +302,7 @@ exports.syncUserDirectory = functions.firestore
         status: profile.status || "active", // fallback for legacy
         modules: {
             commercial: {
-                enabled: ((_b = (_a = profile.modules) === null || _a === void 0 ? void 0 : _a.commercial) === null || _b === void 0 ? void 0 : _b.enabled) || false
+                enabled: profile.modules?.commercial?.enabled || false
             }
         },
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -316,7 +316,6 @@ exports.syncUserDirectory = functions.firestore
  * reading from all existing user_profiles. One-time use mostly.
  */
 exports.adminBackfillUserDirectory = functions.https.onCall(async (data, context) => {
-    var _a, _b;
     const adminUser = await verifyAdmin(context);
     try {
         const snapshot = await db.collection("user_profiles").get();
@@ -335,7 +334,7 @@ exports.adminBackfillUserDirectory = functions.https.onCall(async (data, context
                 status: profile.status || "active",
                 modules: {
                     commercial: {
-                        enabled: ((_b = (_a = profile.modules) === null || _a === void 0 ? void 0 : _a.commercial) === null || _b === void 0 ? void 0 : _b.enabled) || false
+                        enabled: profile.modules?.commercial?.enabled || false
                     }
                 },
                 updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -361,7 +360,6 @@ exports.adminBackfillUserDirectory = functions.https.onCall(async (data, context
     }
 });
 async function getSSMAActor(uid) {
-    var _a, _b;
     if (!uid) {
         return { uid: "system", displayName: "System", role: "SYSTEM" };
     }
@@ -369,8 +367,8 @@ async function getSSMAActor(uid) {
     const profile = profileSnap.data();
     return {
         uid,
-        displayName: (profile === null || profile === void 0 ? void 0 : profile.displayName) || (profile === null || profile === void 0 ? void 0 : profile.email) || uid,
-        role: ((_b = (_a = profile === null || profile === void 0 ? void 0 : profile.modules) === null || _a === void 0 ? void 0 : _a.ssma) === null || _b === void 0 ? void 0 : _b.role) || "UNKNOWN"
+        displayName: profile?.displayName || profile?.email || uid,
+        role: profile?.modules?.ssma?.role || "UNKNOWN"
     };
 }
 async function writeSSMAAuditLog(params) {
@@ -476,4 +474,6 @@ Object.defineProperty(exports, "hcFetchOvertime", { enumerable: true, get: funct
 Object.defineProperty(exports, "hcFetchEmployees", { enumerable: true, get: function () { return hcTotvs_1.hcFetchEmployees; } });
 var aiGateway_1 = require("./aiGateway");
 Object.defineProperty(exports, "aiGenerateContent", { enumerable: true, get: function () { return aiGateway_1.aiGenerateContent; } });
+var financeiro_1 = require("./financeiro");
+Object.defineProperty(exports, "finCarregarRazao", { enumerable: true, get: function () { return financeiro_1.finCarregarRazao; } });
 //# sourceMappingURL=index.js.map

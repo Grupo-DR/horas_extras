@@ -4,6 +4,19 @@ Todas as mudanças relevantes do DR Nexus, da mais nova para a mais antiga.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, seção "Versionamento".
 
+## [1.7.0] - 2026-11-24
+
+### Adicionado
+- **Lakehouse financeiro (BigQuery), primeira etapa:** tela **Cargas Financeiras** (só administrador,
+  atalho na tela inicial) para enviar o **razão contábil cru exportado do Protheus**. O portal confere o
+  arquivo antes de enviar (lançamentos, competências, filiais, avisos) e grava em `fin_bronze.razao_totvs`
+  (região São Paulo), substituindo só as competências e filiais do arquivo.
+- Leitura do razão no sistema, sem o script Python: junta as linhas de continuação do histórico e
+  classifica cada lançamento (Nota Fiscal, Caixinha, Folha, Provisão, bem do ativo...) exatamente como o
+  `protheus_parserV5.py` — conferido nos 79.891 lançamentos do razão de 23/11/2026, sem diferenças.
+- Código do motor dos relatórios financeiros (Power BI → HTML) recuperado para o repositório e desenho do
+  lakehouse em `src/modules/financeiro/LAKEHOUSE.md`.
+
 ## [1.6.0] - 2026-11-24
 
 ### Adicionado

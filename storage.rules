@@ -33,6 +33,30 @@ service firebase.storage {
       allow delete: if false;
     }
 
+    // Lakehouse financeiro: arquivos de carga (razão, budget, forecast...). Só super admin envia;
+    // ninguém lê pelo navegador (a Cloud Function lê com a conta de serviço).
+    function isSuperAdmin() {
+      return isSignedIn() &&
+        firestore.get(/databases/(default)/documents/user_profiles/$(request.auth.uid)).data.get('isSuperAdmin', false) == true;
+    }
+
+    function validFinanceWorkbook() {
+      return request.resource != null &&
+        request.resource.size > 0 &&
+        request.resource.size <= 100 * 1024 * 1024 &&
+        request.resource.contentType in [
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'application/vnd.ms-excel',
+          'application/vnd.ms-excel.sheet.macroEnabled.12'
+        ];
+    }
+
+    match /fin-cargas/{tipo}/{cargaId}/{fileName} {
+      allow read: if false;
+      allow create: if isSuperAdmin() && validFinanceWorkbook();
+      allow update, delete: if false;
+    }
+
     // Bloqueia acesso a qualquer outro arquivo não mapeado acima
     match /{allPaths=**} {
       allow read, write: if false;

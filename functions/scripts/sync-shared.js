@@ -1,6 +1,6 @@
 /**
  * Copia para as Functions os arquivos compartilhados com o portal.
- * Fonte única: o cadastro de CCs do portal (src/modules/human-capital/data/ccMaster.ts).
+ * Fonte única: o código do portal (cadastro de CCs e leitura do razão financeiro).
  * Roda automaticamente antes do build (script "prebuild").
  */
 const fs = require('fs');
@@ -10,6 +10,15 @@ const files = [
     {
         from: path.resolve(__dirname, '../../src/modules/human-capital/data/ccMaster.ts'),
         to: path.resolve(__dirname, '../src/shared/ccMaster.ts'),
+    },
+    // Leitura do razão do Protheus: o código testado fica no portal (src/modules/financeiro/lib).
+    {
+        from: path.resolve(__dirname, '../../src/modules/financeiro/lib/historicoClassifier.ts'),
+        to: path.resolve(__dirname, '../src/shared/financeiro/historicoClassifier.ts'),
+    },
+    {
+        from: path.resolve(__dirname, '../../src/modules/financeiro/lib/razaoProtheus.ts'),
+        to: path.resolve(__dirname, '../src/shared/financeiro/razaoProtheus.ts'),
     },
 ];
 
