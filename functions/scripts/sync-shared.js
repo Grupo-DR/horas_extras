@@ -11,15 +11,11 @@ const files = [
         from: path.resolve(__dirname, '../../src/modules/human-capital/data/ccMaster.ts'),
         to: path.resolve(__dirname, '../src/shared/ccMaster.ts'),
     },
-    // Leitura do razão do Protheus: o código testado fica no portal (src/modules/financeiro/lib).
-    {
-        from: path.resolve(__dirname, '../../src/modules/financeiro/lib/historicoClassifier.ts'),
-        to: path.resolve(__dirname, '../src/shared/financeiro/historicoClassifier.ts'),
-    },
-    {
-        from: path.resolve(__dirname, '../../src/modules/financeiro/lib/razaoProtheus.ts'),
-        to: path.resolve(__dirname, '../src/shared/financeiro/razaoProtheus.ts'),
-    },
+    // Leitores das planilhas financeiras: o código testado fica no portal (src/modules/financeiro/lib).
+    ...['planilha', 'historicoClassifier', 'razaoProtheus', 'budgetForecast', 'dimensoes', 'valoresGerenciais'].map(nome => ({
+        from: path.resolve(__dirname, `../../src/modules/financeiro/lib/${nome}.ts`),
+        to: path.resolve(__dirname, `../src/shared/financeiro/${nome}.ts`),
+    })),
 ];
 
 for (const { from, to } of files) {

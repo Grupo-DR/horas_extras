@@ -766,6 +766,11 @@ service cloud.firestore {
       allow read: if isAuthenticated() && isSuperAdmin();
       allow write: if false;
     }
+    // Catálogo das versões de Budget e Forecast (gravado só pelas Cloud Functions).
+    match /fin_versoes/{versaoId} {
+      allow read: if isAuthenticated() && isSuperAdmin();
+      allow write: if false;
+    }
     // Curva S física e financeira por obra (Document ID = projectId).
     match /construction_s_curves/{id} {
       allow read: if canReadModule('construction_rdo');

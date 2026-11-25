@@ -11,17 +11,17 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
-import { BigQuery, TableField } from "@google-cloud/bigquery";
+import { BigQuery, TableField, TableMetadata } from "@google-cloud/bigquery";
 import * as XLSX from "xlsx";
 import { lerRazaoProtheus, LancamentoRazao } from "./shared/financeiro/razaoProtheus";
 
-const LOCATION = "southamerica-east1";
-const DATASET_BRONZE = "fin_bronze";
+export const LOCATION = "southamerica-east1";
+export const DATASET_BRONZE = "fin_bronze";
 const TABELA_RAZAO = "razao_totvs";
 const PREFIXO_RAZAO = "fin-cargas/razao/";
 const MAX_AVISOS = 50;
 
-const bigquery = new BigQuery();
+export const bigquery = new BigQuery();
 
 const SCHEMA_RAZAO: TableField[] = [
     { name: "carga_id", type: "STRING", mode: "REQUIRED" },
@@ -48,7 +48,7 @@ const SCHEMA_RAZAO: TableField[] = [
 ];
 
 /** Por enquanto só super admin envia cargas financeiras (decisão de 24/11/2026). */
-const assertSuperAdmin = async (uid: string): Promise<string> => {
+export const assertSuperAdmin = async (uid: string): Promise<string> => {
     const snap = await admin.firestore().collection("user_profiles").doc(uid).get();
     const profile = snap.data();
     if (profile?.isSuperAdmin !== true) {
@@ -57,8 +57,8 @@ const assertSuperAdmin = async (uid: string): Promise<string> => {
     return String(profile.email ?? uid);
 };
 
-/** Cria o dataset e a tabela do razão na primeira carga (idempotente). */
-const garantirTabelaRazao = async () => {
+/** Cria o dataset da bronze e a tabela na primeira carga (idempotente). */
+export const garantirTabela = async (nome: string, schema: TableField[], opcoes: TableMetadata) => {
     const dataset = bigquery.dataset(DATASET_BRONZE);
     const [datasetExiste] = await dataset.exists();
     if (!datasetExiste) {
@@ -67,17 +67,15 @@ const garantirTabelaRazao = async () => {
             description: "Lakehouse financeiro — camada bronze (dado como chega). Ver LAKEHOUSE.md.",
         });
     }
-    const tabela = dataset.table(TABELA_RAZAO);
-    const [tabelaExiste] = await tabela.exists();
-    if (!tabelaExiste) {
-        await dataset.createTable(TABELA_RAZAO, {
-            schema: SCHEMA_RAZAO,
-            timePartitioning: { type: "MONTH", field: "data" },
-            clustering: { fields: ["filial", "centro_custo", "conta"] },
-            description: "Razão contábil do Protheus (lançamentos com histórico completo e classificado).",
-        });
-    }
+    const [tabelaExiste] = await dataset.table(nome).exists();
+    if (!tabelaExiste) await dataset.createTable(nome, { schema, ...opcoes });
 };
+
+const garantirTabelaRazao = () => garantirTabela(TABELA_RAZAO, SCHEMA_RAZAO, {
+    timePartitioning: { type: "MONTH", field: "data" },
+    clustering: { fields: ["filial", "centro_custo", "conta"] },
+    description: "Razão contábil do Protheus (lançamentos com histórico completo e classificado).",
+});
 
 const paraLinhaBq = (l: LancamentoRazao, meta: { cargaId: string; arquivo: string; em: string; por: string }) => ({
     carga_id: meta.cargaId,

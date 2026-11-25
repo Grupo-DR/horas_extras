@@ -550,3 +550,4 @@ export const auditSSMAEvidenceWrite = functions.firestore
 export { hcFetchOvertime, hcFetchEmployees } from "./hcTotvs";
 export { aiGenerateContent } from "./aiGateway";
 export { finAutorizarCarga, finCarregarRazao } from "./financeiro";
+export { finCarregarPlanilha, finDefinirVigente } from "./financeiroPlanilhas";

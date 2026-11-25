@@ -4,6 +4,23 @@ Todas as mudanças relevantes do DR Nexus, da mais nova para a mais antiga.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, seção "Versionamento".
 
+## [1.8.0] - 2026-11-25
+
+### Adicionado
+- **Cargas Financeiras: Budget, Forecast, Valores gerenciais e Dimensões por Excel**, além do razão. A tela
+  ganhou uma aba por fonte; cada arquivo é conferido no portal antes do envio (totais por mês, avisos).
+- **Versões de Budget e Forecast:** o Budget é identificado por ano e nome da versão (reenviar com o mesmo
+  nome substitui aquela versão); o Forecast por ano, tipo (1+11 a 11+1, ex.: 3+9, 6+6) e revisão numerada
+  automaticamente. Todas as versões ficam guardadas e uma por ano fica marcada como **vigente**, escolhida
+  no envio ou trocada depois na lista de versões.
+- Budget/Forecast cujo nome do mês não bate com a data (coluna "Ano") são **recusados**, com o total de
+  linhas divergentes e até 20 exemplos com o número da linha na planilha.
+- Funções `finCarregarPlanilha` e `finDefinirVigente`; tabelas `budget`, `forecast`, `plano_versoes`,
+  `dim_centro_custo`, `dim_conta` e `valores_gerenciais` na camada bronze; catálogo `fin_versoes` no Firestore.
+
+### Alterado
+- O histórico de cargas mostra o nome original do arquivo (com acentos) e a fonte de cada carga.
+
 ## [1.7.1] - 2026-11-25
 
 ### Corrigido

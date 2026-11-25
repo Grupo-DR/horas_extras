@@ -10,6 +10,9 @@
  * Função pura: recebe as linhas da planilha (matriz, como `sheet_to_json(..., { header: 1 })`).
  */
 import { classificarHistorico, HistoricoClassificado } from './historicoClassifier';
+import { dataExcel, isBlank, norm, numero } from './planilha';
+
+export { dataExcel } from './planilha';
 
 export interface LancamentoRazao extends HistoricoClassificado {
   linha: number;           // linha da planilha (1 = primeira linha do arquivo)
@@ -32,9 +35,6 @@ export interface LeituraRazao {
   filiais: string[];
 }
 
-const norm = (v: unknown) =>
-  String(v ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
-
 /** Nomes aceitos para cada coluna (o relatório do Protheus pode variar entre versões). */
 const COLUNAS = {
   filial: ['FILIAL', 'FL'],
@@ -50,27 +50,6 @@ const COLUNAS = {
 } as const;
 
 const OBRIGATORIAS: (keyof typeof COLUNAS)[] = ['filial', 'data', 'conta', 'historico', 'debito', 'credito'];
-
-const isBlank = (v: unknown) => v === null || v === undefined || String(v).trim() === '';
-
-/** Número de série do Excel (ou "dd/mm/aaaa") → "AAAA-MM-DD". */
-export const dataExcel = (v: unknown): string | null => {
-  if (typeof v === 'number' && Number.isFinite(v)) {
-    const ms = Math.round((Math.floor(v) - 25569) * 86_400_000);
-    const d = new Date(ms);
-    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
-  }
-  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(String(v ?? '').trim());
-  return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : null;
-};
-
-const numero = (v: unknown): number => {
-  if (typeof v === 'number') return v;
-  const s = String(v ?? '').trim();
-  if (!s) return 0;
-  const n = Number(s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s);
-  return Number.isFinite(n) ? n : NaN;
-};
 
 /** Aplica a máscara do Protheus quando o arquivo só traz o código "cru" (ex.: 301804 → 3.0.1.804). */
 const mascararCC = (cc: string) => (/^\d{6}$/.test(cc) ? `${cc[0]}.${cc[1]}.${cc[2]}.${cc.slice(3)}` : cc);
