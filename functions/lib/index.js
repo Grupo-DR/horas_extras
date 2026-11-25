@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.finCarregarRazao = exports.aiGenerateContent = exports.hcFetchEmployees = exports.hcFetchOvertime = exports.auditSSMAEvidenceWrite = exports.auditSSMAMonthlyTargetWrite = exports.auditSSMAInspectionEventUpdate = exports.auditSSMAInspectionEventCreate = exports.adminBackfillUserDirectory = exports.syncUserDirectory = exports.adminBackfillUserProfiles = exports.adminRevokeSessions = exports.adminGeneratePasswordResetLink = exports.adminDeleteUser = exports.adminEnableUser = exports.adminDisableUser = exports.adminCreateUserInvite = exports.ssmaCreateForemanAccount = void 0;
+exports.finCarregarRazao = exports.finAutorizarCarga = exports.aiGenerateContent = exports.hcFetchEmployees = exports.hcFetchOvertime = exports.auditSSMAEvidenceWrite = exports.auditSSMAMonthlyTargetWrite = exports.auditSSMAInspectionEventUpdate = exports.auditSSMAInspectionEventCreate = exports.adminBackfillUserDirectory = exports.syncUserDirectory = exports.adminBackfillUserProfiles = exports.adminRevokeSessions = exports.adminGeneratePasswordResetLink = exports.adminDeleteUser = exports.adminEnableUser = exports.adminDisableUser = exports.adminCreateUserInvite = exports.ssmaCreateForemanAccount = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 admin.initializeApp();
@@ -475,5 +475,6 @@ Object.defineProperty(exports, "hcFetchEmployees", { enumerable: true, get: func
 var aiGateway_1 = require("./aiGateway");
 Object.defineProperty(exports, "aiGenerateContent", { enumerable: true, get: function () { return aiGateway_1.aiGenerateContent; } });
 var financeiro_1 = require("./financeiro");
+Object.defineProperty(exports, "finAutorizarCarga", { enumerable: true, get: function () { return financeiro_1.finAutorizarCarga; } });
 Object.defineProperty(exports, "finCarregarRazao", { enumerable: true, get: function () { return financeiro_1.finCarregarRazao; } });
 //# sourceMappingURL=index.js.map

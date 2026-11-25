@@ -5,7 +5,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { read, utils } from 'xlsx';
 import { Database, FileSpreadsheet, Loader2, Lock, Upload } from 'lucide-react';
 import { toast } from 'sonner';
-import { app, db, storage } from '../../../../services/firebaseConfig';
+import { app, auth, db, storage } from '../../../../services/firebaseConfig';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { PortalTopBar } from '../../../pages/CentroInteligencia/PortalTopBar';
 import { LeituraRazao, lerRazaoProtheus } from '../lib/razaoProtheus';
@@ -86,6 +86,12 @@ export const CargasFinanceirasPage: React.FC = () => {
     const path = `fin-cargas/razao/${cargaId}/${arquivo.name.replace(/[^\w.\- ()]/g, '_')}`;
     setEtapa('enviando');
     try {
+      // Libera o envio no Storage (claim finCarga) e renova o token para a regra enxergar a claim.
+      const autorizar = httpsCallable<void, { alterado: boolean }>(getFunctions(app, 'us-central1'), 'finAutorizarCarga');
+      const { data: autorizacao } = await autorizar();
+      const token = await auth.currentUser?.getIdTokenResult(autorizacao.alterado);
+      if (token?.claims.finCarga !== true) await auth.currentUser?.getIdToken(true);
+
       await new Promise<void>((resolve, reject) => {
         const task = uploadBytesResumable(ref(storage, path), arquivo, {
           contentType: arquivo.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

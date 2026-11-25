@@ -4,6 +4,14 @@ Todas as mudanças relevantes do DR Nexus, da mais nova para a mais antiga.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, seção "Versionamento".
 
+## [1.7.1] - 2026-11-25
+
+### Corrigido
+- Cargas Financeiras: o envio do arquivo era recusado pelo Storage ("User does not have permission").
+  A regra consultava o perfil no Firestore, o que exige uma permissão de IAM entre serviços. Agora o
+  portal pede à função `finAutorizarCarga` um carimbo no login (custom claim `finCarga`, só para super
+  admin) e a regra do Storage confere apenas esse carimbo.
+
 ## [1.7.0] - 2026-11-24
 
 ### Adicionado

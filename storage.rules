@@ -33,11 +33,11 @@ service firebase.storage {
       allow delete: if false;
     }
 
-    // Lakehouse financeiro: arquivos de carga (razão, budget, forecast...). Só super admin envia;
-    // ninguém lê pelo navegador (a Cloud Function lê com a conta de serviço).
-    function isSuperAdmin() {
-      return isSignedIn() &&
-        firestore.get(/databases/(default)/documents/user_profiles/$(request.auth.uid)).data.get('isSuperAdmin', false) == true;
+    // Lakehouse financeiro: arquivos de carga (razão, budget, forecast...). Só quem tem a claim
+    // finCarga (dada pela função finAutorizarCarga a super admins) envia; ninguém lê pelo navegador.
+    // A claim evita consultar o Firestore daqui, o que exigiria permissão de IAM entre serviços.
+    function canUploadFinance() {
+      return isSignedIn() && request.auth.token.finCarga == true;
     }
 
     function validFinanceWorkbook() {
@@ -53,7 +53,7 @@ service firebase.storage {
 
     match /fin-cargas/{tipo}/{cargaId}/{fileName} {
       allow read: if false;
-      allow create: if isSuperAdmin() && validFinanceWorkbook();
+      allow create: if canUploadFinance() && validFinanceWorkbook();
       allow update, delete: if false;
     }
 

@@ -103,6 +103,35 @@ const paraLinhaBq = (l: LancamentoRazao, meta: { cargaId: string; arquivo: strin
     ativo: l.ativo,
 });
 
+/** Carimbo no token de login que libera o envio para fin-cargas/ no Storage (ver storage.rules). */
+export const FIN_CARGA_CLAIM = "finCarga";
+
+/**
+ * Libera o envio de arquivos de carga para quem é super admin, gravando a custom claim `finCarga`
+ * no login. A regra do Storage confere só a claim (sem consultar o Firestore, o que exigiria
+ * permissão de IAM entre serviços). Quem deixar de ser super admin perde a claim na próxima chamada,
+ * e a carga em si continua conferindo o perfil em finCarregarRazao.
+ */
+export const finAutorizarCarga = onCall({ region: "us-central1" }, async request => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "O usuário deve estar logado.");
+    const uid = request.auth.uid;
+    const user = await admin.auth().getUser(uid);
+    const claims = { ...(user.customClaims ?? {}) };
+    const profile = (await admin.firestore().collection("user_profiles").doc(uid).get()).data();
+    const permitido = profile?.isSuperAdmin === true;
+
+    if (permitido && claims[FIN_CARGA_CLAIM] !== true) {
+        await admin.auth().setCustomUserClaims(uid, { ...claims, [FIN_CARGA_CLAIM]: true });
+        return { permitido, alterado: true };
+    }
+    if (!permitido && FIN_CARGA_CLAIM in claims) {
+        delete claims[FIN_CARGA_CLAIM];
+        await admin.auth().setCustomUserClaims(uid, claims);
+    }
+    if (!permitido) throw new HttpsError("permission-denied", "Só o administrador pode enviar cargas financeiras.");
+    return { permitido, alterado: false };
+});
+
 export const finCarregarRazao = onCall(
     { region: "us-central1", timeoutSeconds: 540, memory: "2GiB" },
     async request => {
