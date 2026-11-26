@@ -5,6 +5,8 @@ que alimenta as páginas financeiras do portal e o chat com IA. Decisões de 24/
 **BigQuery** no projeto do portal, **razão contábil por upload do Excel no portal**, acesso pela
 **área BI com recorte por regional**.
 
+> **Estado atual, decisões e próximos passos:** [`CONTINUIDADE.md`](CONTINUIDADE.md).
+
 ## 1. Visão geral
 
 ```
