@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Project, RdoModelId, ServiceItem } from '../../types';
+import { Accommodation, Project, ProjectCostItem, ProjectEquipment, RdoModelId, ServiceItem } from '../../types';
 import { FirestoreProjectRepository } from '../repositories/FirestoreProjectRepository';
 import { generateUUID, parseExcelDate } from '../../utils';
 import { read, utils } from 'xlsx';
@@ -25,6 +25,9 @@ interface ProjectState {
     saveProject: (input: ProjectInput, isEditMode: boolean, editingItemId: string | null) => Promise<void>;
     deleteProject: (id: string) => Promise<void>;
     handleServicesUpload: (file: File) => Promise<void>;
+    saveAccommodations: (accommodations: Accommodation[]) => Promise<void>;
+    saveEquipmentAssets: (equipmentAssets: ProjectEquipment[]) => Promise<void>;
+    saveCostItems: (costItems: ProjectCostItem[]) => Promise<void>;
   };
 }
 
@@ -144,6 +147,36 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       set({ 
         projects: updatedProjects,
         selectedProject: updatedProject
+      });
+    },
+    saveAccommodations: async (accommodations) => {
+      const selected = get().selectedProject;
+      if (!selected) return;
+      const updatedProject = { ...selected, accommodations };
+      await projectRepo.update(updatedProject);
+      set({
+        projects: get().projects.map(p => p.id === selected.id ? updatedProject : p),
+        selectedProject: updatedProject,
+      });
+    },
+    saveEquipmentAssets: async (equipmentAssets) => {
+      const selected = get().selectedProject;
+      if (!selected) return;
+      const updatedProject = { ...selected, equipmentAssets };
+      await projectRepo.update(updatedProject);
+      set({
+        projects: get().projects.map(p => p.id === selected.id ? updatedProject : p),
+        selectedProject: updatedProject,
+      });
+    },
+    saveCostItems: async (costItems) => {
+      const selected = get().selectedProject;
+      if (!selected) return;
+      const updatedProject = { ...selected, costItems };
+      await projectRepo.update(updatedProject);
+      set({
+        projects: get().projects.map(p => p.id === selected.id ? updatedProject : p),
+        selectedProject: updatedProject,
       });
     }
   }

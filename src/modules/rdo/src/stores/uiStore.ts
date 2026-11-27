@@ -4,7 +4,7 @@ import { Project, RdoModelId, Team } from '../../types';
 
 export type MainMenu = 'DASHBOARD' | 'PROJECTS' | 'CONTRACT_INTELLIGENCE' | 'PLANNING';
 export type ViewState = 'PROJECT_LIST' | 'TEAMS_LIST' | 'RDO_LIST' | 'UPLOAD_ANALYSIS';
-export type ProjectTab = 'TEAMS' | 'SERVICES';
+export type ProjectTab = 'TEAMS' | 'SERVICES' | 'LODGING' | 'EQUIPMENT' | 'ADM_LOCAL' | 'CANTEIRO' | 'FRENTE_AVANCADA';
 
 interface UiState {
   activeMenu: MainMenu;

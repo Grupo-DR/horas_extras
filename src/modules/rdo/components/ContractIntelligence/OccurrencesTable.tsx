@@ -95,7 +95,7 @@ export function OccurrencesTable({ facts, projectName, teams = [], onNavigateToR
   const chartData = useMemo(() => {
     const dataMap: Record<string, number> = {};
     filtered.forEach(f => {
-      const cat = f.category || 'Sem Categoria';
+      const cat = f.category || 'Sem Classificação';
       if (!dataMap[cat]) dataMap[cat] = 0;
       dataMap[cat] += f.impactHours;
     });
@@ -122,10 +122,10 @@ export function OccurrencesTable({ facts, projectName, teams = [], onNavigateToR
     const dataToExport = sorted.map(f => ({
       Data: f.date,
       Descrição: f.description,
-      Categoria: f.category || 'Não categorizada',
+      Classificação: f.category || 'Não classificada',
       Turma: teams.find(t => t.id === f.teamId)?.name || f.teamId,
       'Impacto (h)': f.status === 'SEM_DURACAO_EXPLICITA' ? '—' : f.impactHours,
-      Elegibilidade: ELIGIBILITY_CONFIG[f.eligibility]?.label || f.eligibility
+      Responsabilidade: ELIGIBILITY_CONFIG[f.eligibility]?.label || f.eligibility
     }));
 
     const ws = XLSX.utils.json_to_sheet(dataToExport);
@@ -160,7 +160,7 @@ export function OccurrencesTable({ facts, projectName, teams = [], onNavigateToR
 
       {chartData.length > 0 && (
         <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '20px', marginBottom: 24, height: 350 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: '#1e293b', margin: '0 0 16px 0' }}>Impacto por Categoria de Ocorrência</h3>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: '#1e293b', margin: '0 0 16px 0' }}>Impacto por Classificação de Ocorrência</h3>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
@@ -184,7 +184,7 @@ export function OccurrencesTable({ facts, projectName, teams = [], onNavigateToR
           onChange={e => setEligibilityFilter(e.target.value as any)}
           style={{ padding: '8px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, color: '#0f172a' }}
         >
-          <option value="ALL">Todas as Elegibilidades</option>
+          <option value="ALL">Todas as Responsabilidades</option>
           {Object.entries(ELIGIBILITY_CONFIG).map(([k, v]) => (
             <option key={k} value={k}>{v.label}</option>
           ))}
@@ -197,10 +197,10 @@ export function OccurrencesTable({ facts, projectName, teams = [], onNavigateToR
             <tr>
               <th style={thStyle} onClick={() => handleSort('date')}>Data <SortIcon k="date" /></th>
               <th style={thStyle} onClick={() => handleSort('description')}>Descrição <SortIcon k="description" /></th>
-              <th style={thStyle} onClick={() => handleSort('category')}>Categoria <SortIcon k="category" /></th>
+              <th style={thStyle} onClick={() => handleSort('category')}>Classificação <SortIcon k="category" /></th>
               <th style={thStyle}>Turma</th>
               <th style={{ ...thStyle, textAlign: 'right' }} onClick={() => handleSort('impactHours')}>Impacto (h) <SortIcon k="impactHours" /></th>
-              <th style={thStyle} onClick={() => handleSort('eligibility')}>Elegibilidade <SortIcon k="eligibility" /></th>
+              <th style={thStyle} onClick={() => handleSort('eligibility')}>Responsabilidade <SortIcon k="eligibility" /></th>
               <th style={{ ...thStyle, textAlign: 'center' }}>Ação</th>
             </tr>
           </thead>

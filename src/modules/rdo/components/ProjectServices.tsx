@@ -1,6 +1,8 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { FileSpreadsheet, Pencil, Upload } from 'lucide-react';
 import { Project } from '../types';
+import type { ProjectTab } from '../src/stores/uiStore';
+import { COST_CATEGORIES } from './CostItemsTab';
 import { formatMoney } from '../utils';
 import { rdoModelLabel } from '../services/rdoModels';
 import { splitProjectName } from '../utils/projectSummary';
@@ -8,16 +10,16 @@ import { Badge, Button, EmptyState, PageHeader, SearchInput, TableCard, Td, Th }
 
 interface ProjectServicesProps {
   selectedProject: Project | null;
-  projectTab: 'TEAMS' | 'SERVICES';
+  projectTab: ProjectTab;
   teamCount: number;
-  onSetTab: (tab: 'TEAMS' | 'SERVICES') => void;
+  onSetTab: (tab: ProjectTab) => void;
   onServicesUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onEditProject: (project: Project) => void;
 }
 
 const isoToBr = (iso?: string) => (iso ? iso.split('-').reverse().join('/') : '');
 
-/** Cabeçalho da obra com as abas Turmas / Tabela de preços; a aba de preços é renderizada aqui. */
+/** Cabeçalho da obra com as abas (Turmas, Tabela de preços, Alojamentos, Equipamentos e custos); a aba de preços é renderizada aqui. */
 export const ProjectServices: React.FC<ProjectServicesProps> = ({
   selectedProject, projectTab, teamCount, onSetTab, onServicesUpload, onEditProject
 }) => {
@@ -36,6 +38,11 @@ export const ProjectServices: React.FC<ProjectServicesProps> = ({
   const tabs = [
     { id: 'TEAMS' as const, label: 'Turmas', count: teamCount },
     { id: 'SERVICES' as const, label: 'Tabela de preços', count: services.length },
+    { id: 'LODGING' as const, label: 'Alojamentos', count: selectedProject.accommodations?.length ?? 0 },
+    { id: 'EQUIPMENT' as const, label: 'Equipamentos', count: selectedProject.equipmentAssets?.length ?? 0 },
+    ...(['ADM_LOCAL', 'CANTEIRO', 'FRENTE_AVANCADA'] as const).map(id => ({
+      id, label: COST_CATEGORIES[id].label, count: selectedProject.costItems?.filter(c => c.category === id).length ?? 0,
+    })),
   ];
 
   const importButton = (
@@ -69,7 +76,7 @@ export const ProjectServices: React.FC<ProjectServicesProps> = ({
         <Button icon={Pencil} onClick={() => onEditProject(selectedProject)}>Editar obra</Button>
       </div>
 
-      <div className="mb-5 flex gap-1 border-b border-slate-200" role="tablist">
+      <div className="mb-5 flex gap-1 overflow-x-auto border-b border-slate-200" role="tablist">
         {tabs.map(tab => {
           const active = projectTab === tab.id;
           return (
@@ -79,7 +86,7 @@ export const ProjectServices: React.FC<ProjectServicesProps> = ({
               role="tab"
               aria-selected={active}
               onClick={() => onSetTab(tab.id)}
-              className={`-mb-px flex items-center gap-2 border-b-2 px-3 py-2 text-sm transition ${
+              className={`-mb-px flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2 text-sm transition ${
                 active ? 'border-[#0b1d4f] font-semibold text-[#0b1d4f]' : 'border-transparent text-slate-500 hover:text-slate-900'
               }`}
             >

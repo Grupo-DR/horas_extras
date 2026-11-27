@@ -4,6 +4,26 @@ Todas as mudanças relevantes do DR Nexus, da mais nova para a mais antiga.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versões em [SemVer](https://semver.org/lang/pt-BR/). Regra completa: README, seção "Versionamento".
 
+## [1.9.0] - 2026-11-27
+
+### Adicionado
+- **Obras: calendário mensal dos RDOs** na tela da obra, ao lado da lista de turmas. Cada dia mostra a
+  produção em R$ (quando a obra tem tabela de preços), o efetivo MOD e MOI, os equipamentos, o clima e um
+  alerta quando houve ocorrência. Filtro por turma, troca de mês e clique no dia para abrir o RDO. MOD/MOI
+  vêm da tabela de dimensões da obra; sem ela, são separados pelo nome da função.
+- **Obras: aba Alojamentos** — cadastro de hotéis e casas com endereço, pessoas no local e cobrança por
+  contrato (período e valor mensal) ou por diárias; total e situação do contrato calculados.
+- **Obras: aba Equipamentos** — tipo, código (placa, patrimônio ou frota), período e valor mensal ou
+  fechado; situação Na obra / A mobilizar / Desmobilizado e total.
+- **Obras: abas Adm Local, Canteiro de Obras e Frente Avançada** — cadastro de itens com fornecedor,
+  prazo e valor mensal ou fechado, com situação e total.
+
+### Alterado
+- Inteligência Contratual (Classificação de Ocorrências): "Elegibilidade" passou a se chamar
+  **Responsabilidade** e "Categoria" passou a se chamar **Classificação** (tela, filtro e Excel exportado);
+  o campo da ocorrência no formulário do RDO também virou "Classificação".
+- A lista de turmas da obra ficou mais estreita para dar espaço ao calendário.
+
 ## [1.8.0] - 2026-11-25
 
 ### Adicionado

@@ -70,6 +70,75 @@ export interface Project {
   createdAt: string;
   address?: string;
   services: ServiceItem[];
+  /** Hotéis e casas (alojamentos) usados pela obra. */
+  accommodations?: Accommodation[];
+  /** Equipamentos cadastrados na obra (próprios ou locados), com período e valor. */
+  equipmentAssets?: ProjectEquipment[];
+  /** Custos de Adm Local, Canteiro de Obras e Frente Avançada (aluguéis, serviços, itens). */
+  costItems?: ProjectCostItem[];
+}
+
+/** Grupo do custo: cada um é uma aba na tela da obra. */
+export type CostItemCategory = 'ADM_LOCAL' | 'CANTEIRO' | 'FRENTE_AVANCADA';
+
+export interface ProjectCostItem {
+  id: string;
+  category: CostItemCategory;
+  /** O que é: aluguel de container escritório, rádio digital, internet, ar-condicionado... */
+  item: string;
+  supplier: string;
+  /** Prazo: "AAAA-MM-DD"; fim vazio = em andamento. */
+  startDate: string;
+  endDate?: string;
+  value: number;
+  valueBasis: EquipmentValueBasis;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Valor do equipamento: por mês (multiplica pelos meses do período) ou fechado para o período todo. */
+export type EquipmentValueBasis = 'MENSAL' | 'TOTAL';
+
+export interface ProjectEquipment {
+  id: string;
+  /** Tipo do equipamento (ex.: Caminhão munck, Escavadeira). */
+  type: string;
+  /** Código de identificação (placa, patrimônio, frota). */
+  code: string;
+  /** "AAAA-MM-DD". */
+  startDate: string;
+  /** "AAAA-MM-DD"; vazio = ainda na obra. */
+  endDate?: string;
+  value: number;
+  valueBasis: EquipmentValueBasis;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Hotel ou casa alugada para alojar a equipe da obra. */
+export type AccommodationType = 'HOTEL' | 'CASA';
+/** Contrato por período (valor mensal) ou por quantidade de diárias. */
+export type AccommodationBilling = 'CONTRATO' | 'DIARIAS';
+
+export interface Accommodation {
+  id: string;
+  type: AccommodationType;
+  name: string;
+  address: string;
+  people: number;
+  billing: AccommodationBilling;
+  /** CONTRATO: início e término ("AAAA-MM-DD") e valor mensal. */
+  startDate?: string;
+  endDate?: string;
+  monthlyValue?: number;
+  /** DIARIAS: quantidade de diárias e valor de cada diária. */
+  stays?: number;
+  dailyValue?: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ServiceItem {

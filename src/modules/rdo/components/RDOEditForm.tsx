@@ -527,7 +527,7 @@ export const RDOEditForm: React.FC<RDOEditFormProps> = ({
                       />
                     </div>
                     <div>
-                      <label className={labelClass}>Categoria</label>
+                      <label className={labelClass}>Classificação</label>
                       <input 
                         type="text" 
                         value={occ.category || ''} 

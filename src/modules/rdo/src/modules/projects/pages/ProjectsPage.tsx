@@ -13,6 +13,10 @@ import { RDODetail } from '../../../../components/RDODetail';
 import { ProjectList } from '../../../../components/ProjectList';
 import { ProjectServices } from '../../../../components/ProjectServices';
 import { TeamList } from '../../../../components/TeamList';
+import { ProjectCalendar } from '../../../../components/ProjectCalendar';
+import { AccommodationsTab } from '../../../../components/AccommodationsTab';
+import { EquipmentTab } from '../../../../components/EquipmentTab';
+import { CostItemsTab } from '../../../../components/CostItemsTab';
 import { RDOList } from '../../../../components/RDOList';
 
 export const ProjectsPage: React.FC = () => {
@@ -42,7 +46,7 @@ export const ProjectsPage: React.FC = () => {
     setError
   } = useUiActions();
 
-  const { setSelectedProject, deleteProject, handleServicesUpload } = useProjectActions();
+  const { setSelectedProject, deleteProject, handleServicesUpload, saveAccommodations, saveEquipmentAssets, saveCostItems } = useProjectActions();
   const { setSelectedTeam, deleteTeam } = useTeamActions();
   const { setCurrentRDO, deleteRdo, saveRdo, handleFileUpload, exportToCSV } = useRdoActions();
 
@@ -185,16 +189,48 @@ export const ProjectsPage: React.FC = () => {
                 onServicesUpload={handleServicesUploadWrapper}
                 onEditProject={(p) => openEditModal(p, 'PROJECT')}
               />
+              {projectTab === 'LODGING' && selectedProject && (
+                <AccommodationsTab project={selectedProject} onSave={saveAccommodations} />
+              )}
+              {projectTab === 'EQUIPMENT' && selectedProject && (
+                <EquipmentTab project={selectedProject} teams={teams} rdos={rdos} onSave={saveEquipmentAssets} />
+              )}
+              {(projectTab === 'ADM_LOCAL' || projectTab === 'CANTEIRO' || projectTab === 'FRENTE_AVANCADA') && selectedProject && (
+                <CostItemsTab key={projectTab} project={selectedProject} category={projectTab} onSave={saveCostItems} />
+              )}
               {projectTab === 'TEAMS' && (
-                <TeamList 
-                  teams={teams}
-                  rdos={rdos}
-                  selectedProject={selectedProject}
-                  onSelectTeam={handleSelectTeam}
-                  onEditTeam={(t) => openEditModal(t, 'TEAM')}
-                  onDeleteTeam={handleDeleteTeamWrapper}
-                  onCreateTeam={openCreateModal}
-                />
+                teams.some(t => t.projectId === selectedProject?.id) ? (
+                  <div className="grid items-start gap-5 xl:grid-cols-[minmax(420px,1fr)_minmax(0,1.35fr)]">
+                    <div className="min-w-0">
+                      <TeamList
+                        compact
+                        teams={teams}
+                        rdos={rdos}
+                        selectedProject={selectedProject}
+                        onSelectTeam={handleSelectTeam}
+                        onEditTeam={(t) => openEditModal(t, 'TEAM')}
+                        onDeleteTeam={handleDeleteTeamWrapper}
+                        onCreateTeam={openCreateModal}
+                      />
+                    </div>
+                    <ProjectCalendar
+                      project={selectedProject}
+                      teams={teams}
+                      rdos={rdos}
+                      onOpenRdo={(rdo, team) => { setSelectedTeam(team); setCurrentView('RDO_LIST'); setCurrentRDO(rdo); }}
+                    />
+                  </div>
+                ) : (
+                  <TeamList
+                    teams={teams}
+                    rdos={rdos}
+                    selectedProject={selectedProject}
+                    onSelectTeam={handleSelectTeam}
+                    onEditTeam={(t) => openEditModal(t, 'TEAM')}
+                    onDeleteTeam={handleDeleteTeamWrapper}
+                    onCreateTeam={openCreateModal}
+                  />
+                )
               )}
             </>
           )}
